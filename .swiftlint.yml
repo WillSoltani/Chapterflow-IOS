@@ -1,0 +1,24 @@
+# SwiftLint configuration (optional).
+# Install via `brew install swiftlint`. The build does not require SwiftLint;
+# this config is here so linting is consistent if/when it is added to CI or a
+# build phase.
+
+included:
+  - ChapterFlow
+  - Packages
+
+excluded:
+  - "**/.build"
+  - "**/Package.swift"
+  - DerivedData
+
+disabled_rules:
+  - todo
+  - line_length
+
+opt_in_rules:
+  - empty_count
+  - closure_spacing
+  - explicit_init
+
+reporter: "xcode"
