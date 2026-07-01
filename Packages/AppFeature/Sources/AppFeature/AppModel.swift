@@ -48,6 +48,14 @@ public final class AppModel {
         self.apiClient = APIClient(config: config, tokenProvider: provider)
     }
 
+    // MARK: - Computed
+
+    /// Returns `true` when the user has a valid signed-in session.
+    public var isSignedIn: Bool {
+        if case .signedIn = authService.authState { return true }
+        return false
+    }
+
     // MARK: - Lifecycle
 
     /// Configures Amplify and resolves the initial `authState`.

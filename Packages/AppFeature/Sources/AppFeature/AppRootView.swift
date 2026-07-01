@@ -46,6 +46,11 @@ public struct AppRootView: View {
         .onOpenURL { url in
             model.handle(url: url)
         }
+#if canImport(UIKit)
+        .fullScreenCover(isPresented: .constant(!model.isSignedIn)) {
+            AuthFlowView(authService: model.authService)
+        }
+#endif
     }
 }
 

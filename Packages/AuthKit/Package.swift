@@ -10,6 +10,7 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../CoreKit"),
+        .package(path: "../DesignSystem"),
         .package(path: "../Networking"),
         .package(path: "../Persistence"),
         .package(
@@ -22,6 +23,7 @@ let package = Package(
             name: "AuthKit",
             dependencies: [
                 "CoreKit",
+                "DesignSystem",
                 "Networking",
                 "Persistence",
                 .product(name: "Amplify", package: "amplify-swift"),

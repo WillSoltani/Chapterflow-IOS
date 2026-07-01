@@ -66,12 +66,15 @@ public final class AuthService: TokenRefreshing {
     public func signUp(
         username: String,
         password: String,
-        email: String
+        email: String,
+        name: String? = nil
     ) async throws -> SignUpStep {
         do {
-            let opts = AuthSignUpRequest.Options(
-                userAttributes: [AuthUserAttribute(.email, value: email)]
-            )
+            var userAttributes = [AuthUserAttribute(.email, value: email)]
+            if let name, !name.isEmpty {
+                userAttributes.append(AuthUserAttribute(.name, value: name))
+            }
+            let opts = AuthSignUpRequest.Options(userAttributes: userAttributes)
             let result = try await Amplify.Auth.signUp(
                 username: username,
                 password: password,
