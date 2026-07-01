@@ -1,9 +1,8 @@
 import SwiftUI
+import CoreKit
 
 // Bring every workspace module into the composition root so the dependency
-// graph is exercised. These are placeholders today; feature views will be
-// mounted into the tabs below as each module is built out.
-import CoreKit
+// graph is exercised and their public surfaces are reachable as features land.
 import DesignSystem
 import Models
 import Networking
@@ -20,50 +19,33 @@ import NotificationsFeature
 import OnboardingFeature
 import SettingsFeature
 
-/// The top-level tab shell for ChapterFlow.
+/// The app's public entry point.
 ///
-/// This is a placeholder scaffold: five tabs, each showing its name. Real
-/// feature views from the corresponding modules will replace the placeholders.
+/// Builds the live ``Dependencies`` once, injects them into the environment, and
+/// hosts ``RootView`` (splash → auth/shell). The app target links only
+/// `AppFeature` and renders `AppRootView()`.
 public struct AppRootView: View {
-    public init() {}
+    @State private var dependencies: Dependencies
+
+    public init() {
+        _dependencies = State(initialValue: .live())
+    }
+
+    /// Testable/preview seam: inject a specific container.
+    init(dependencies: Dependencies) {
+        _dependencies = State(initialValue: dependencies)
+    }
 
     public var body: some View {
-        TabView {
-            PlaceholderTab(title: "Home", systemImage: "house")
-                .tabItem { Label("Home", systemImage: "house") }
-
-            PlaceholderTab(title: "Library", systemImage: "books.vertical")
-                .tabItem { Label("Library", systemImage: "books.vertical") }
-
-            PlaceholderTab(title: "Reviews", systemImage: "star")
-                .tabItem { Label("Reviews", systemImage: "star") }
-
-            PlaceholderTab(title: "Profile", systemImage: "person.crop.circle")
-                .tabItem { Label("Profile", systemImage: "person.crop.circle") }
-
-            PlaceholderTab(title: "Settings", systemImage: "gearshape")
-                .tabItem { Label("Settings", systemImage: "gearshape") }
-        }
+        RootView()
+            .environment(\.dependencies, dependencies)
     }
 }
 
-/// A simple placeholder screen used by every tab until real features land.
-private struct PlaceholderTab: View {
-    let title: String
-    let systemImage: String
-
-    var body: some View {
-        NavigationStack {
-            ContentUnavailableView(
-                title,
-                systemImage: systemImage,
-                description: Text("\(title) is coming soon.")
-            )
-            .navigationTitle(title)
-        }
-    }
+#Preview("Shell (signed in)") {
+    AppRootView(dependencies: .mock(signedIn: true))
 }
 
-#Preview {
-    AppRootView()
+#Preview("Signed out") {
+    AppRootView(dependencies: .mock(signedIn: false))
 }

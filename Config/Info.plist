@@ -16,5 +16,21 @@
 	<string>$(COGNITO_USER_POOL_ID)</string>
 	<key>CognitoClientID</key>
 	<string>$(COGNITO_CLIENT_ID)</string>
+	<!--
+	  Custom URL scheme for deep links (chapterflow://…). Handled by
+	  AppFeature's DeepLinkParser via SwiftUI's onOpenURL. Universal links
+	  (https) are wired later via an associated-domains entitlement.
+	-->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.chapterflow.ios.deeplink</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>chapterflow</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
