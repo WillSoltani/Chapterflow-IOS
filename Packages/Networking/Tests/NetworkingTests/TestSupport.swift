@@ -1,4 +1,5 @@
 import Foundation
+import CoreKit
 @testable import Networking
 
 // MARK: - Stubbed URLProtocol

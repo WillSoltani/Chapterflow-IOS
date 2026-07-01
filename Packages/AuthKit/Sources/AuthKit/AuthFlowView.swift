@@ -1,19 +1,24 @@
 import SwiftUI
 
-/// Placeholder sign-in / sign-up flow.
+/// Sign-in / sign-up flow entry point.
 ///
-/// The structural shell is complete; the real Cognito `initiateAuth` call and
-/// the sign-up / forgot-password paths are wired in P1.5. `AppRootView` presents
-/// this whenever `SessionManager.authState == .signedOut`.
+/// Currently presents the email + password form. The real Cognito
+/// `USER_PASSWORD_AUTH` call is wired in P1.4; this view calls the stub.
+/// `AppRootView` presents it whenever `launchState == .signedOut`.
+///
+/// `onSignIn` is invoked after `SessionManager.didSignIn` succeeds so the
+/// composition root can hydrate the user profile via `AppModel.bootstrap()`.
 public struct AuthFlowView: View {
     let sessionManager: SessionManager
+    let onSignIn: (() -> Void)?
 
     @State private var email = ""
     @State private var password = ""
     @State private var isLoading = false
 
-    public init(sessionManager: SessionManager) {
+    public init(sessionManager: SessionManager, onSignIn: (() -> Void)? = nil) {
         self.sessionManager = sessionManager
+        self.onSignIn = onSignIn
     }
 
     public var body: some View {
@@ -37,9 +42,11 @@ public struct AuthFlowView: View {
                 VStack(spacing: 16) {
                     TextField("Email", text: $email)
                         .textContentType(.emailAddress)
+#if canImport(UIKit)
                         .keyboardType(.emailAddress)
-                        .autocorrectionDisabled()
                         .textInputAutocapitalization(.never)
+#endif
+                        .autocorrectionDisabled()
                         .padding()
                         .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
                         .accessibilityLabel("Email address")
@@ -73,19 +80,22 @@ public struct AuthFlowView: View {
             }
             .padding(.horizontal, 24)
             .navigationTitle("")
+#if canImport(UIKit)
             .navigationBarHidden(true)
+#endif
         }
     }
 
     private func signIn() async {
         isLoading = true
         defer { isLoading = false }
-        // Stub: P1.5 replaces with real Cognito USER_PASSWORD_AUTH flow.
+        // Stub: P1.4 replaces with real Cognito USER_PASSWORD_AUTH flow.
         try? await Task.sleep(for: .seconds(1))
         sessionManager.didSignIn(
             idToken: "stub-id-token",
             refreshToken: "stub-refresh-token"
         )
+        onSignIn?()
     }
 }
 

@@ -105,6 +105,11 @@ public enum Endpoints {
         )
     }
 
+    /// `GET /me` → current user/profile summary.
+    public static func getMe() -> Endpoint {
+        Endpoint(method: .get, path: "/me", requiresAuth: true)
+    }
+
     /// `GET /book/me/entitlements` → `{ entitlement, paywall }`.
     public static func getEntitlements() -> Endpoint {
         Endpoint(method: .get, path: "/book/me/entitlements", requiresAuth: true)

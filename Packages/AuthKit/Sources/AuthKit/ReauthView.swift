@@ -87,7 +87,9 @@ public struct ReauthView: View {
             }
             .padding()
             .navigationTitle("Security Check")
+#if canImport(UIKit)
             .navigationBarTitleDisplayMode(.inline)
+#endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { sessionManager.stepUpCancelled() }

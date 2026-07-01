@@ -133,7 +133,7 @@ extension SessionManager: TokenProviding {
     /// challenge (`stepUpCompleted`) or cancels (`stepUpCancelled`).
     /// On success the client retries the original request transparently.
     public nonisolated func stepUp() async throws {
-        try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
             Task { @MainActor [weak self] in
                 guard let self else {
                     continuation.resume(throwing: CancellationError())
