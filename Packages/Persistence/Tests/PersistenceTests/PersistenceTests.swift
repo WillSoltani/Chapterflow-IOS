@@ -15,70 +15,73 @@ struct PersistenceTests {
 
 @Suite("TokenStore")
 struct TokenStoreTests {
-    /// A store backed by the in-memory Keychain fake. The real `SystemKeychain` path is
-    /// exercised by the app at runtime (it needs the app's keychain-access-group
-    /// entitlement, which a bare test bundle lacks — hence `errSecMissingEntitlement`).
-    private func makeStore() -> TokenStore {
-        TokenStore(keychain: InMemoryKeychain())
+    /// Uses the in-memory fake - the real `TokenStore` calls `SecItem*` APIs that need
+    /// a keychain-access-group entitlement unavailable in bare test bundles.
+    private func makeStore() -> InMemoryTokenStore {
+        InMemoryTokenStore()
     }
 
-    private let sample = TokenStore.Tokens(
+    private let sample = StoredTokens(
         idToken: "id-123",
         accessToken: "access-456",
-        refreshToken: "refresh-789"
+        refreshToken: "refresh-789",
+        expiresAt: Date.distantFuture
     )
 
-    @Test("round-trips set → get → clear")
-    func roundTrip() async throws {
+    @Test("round-trips save → load → delete")
+    func roundTrip() throws {
         let store = makeStore()
 
         // Empty to start.
-        #expect(try await store.load() == nil)
+        #expect(store.load() == nil)
 
         // Save then load returns the same triple.
-        try await store.save(sample)
-        let loaded = try await store.load()
-        #expect(loaded == sample)
+        try store.save(sample)
+        #expect(store.load() == sample)
 
-        // Clear removes everything.
-        try await store.clear()
-        #expect(try await store.load() == nil)
+        // Delete removes everything.
+        try store.delete()
+        #expect(store.load() == nil)
     }
 
-    @Test("load returns nil when the triple is incomplete")
-    func partialLoad() async throws {
-        // Only the id token present → load yields nil (all three are required).
-        let keychain = InMemoryKeychain()
-        try keychain.set(Data("only-id".utf8), for: "cognito.idToken")
-        let store = TokenStore(keychain: keychain)
-        #expect(try await store.load() == nil)
+    @Test("load returns nil on a fresh store")
+    func freshStoreReturnsNil() {
+        let store = makeStore()
+        #expect(store.load() == nil)
     }
 
     @Test("overwrites an existing token")
-    func overwrite() async throws {
+    func overwrite() throws {
         let store = makeStore()
-        try await store.save(sample)
+        try store.save(sample)
 
-        let updated = TokenStore.Tokens(idToken: "id-new", accessToken: "acc-new", refreshToken: "ref-new")
-        try await store.save(updated)
+        let updated = StoredTokens(
+            idToken: "id-new",
+            accessToken: "acc-new",
+            refreshToken: "ref-new",
+            expiresAt: Date.distantFuture
+        )
+        try store.save(updated)
 
-        #expect(try await store.load() == updated)
-        try await store.clear()
+        #expect(store.load() == updated)
+        try store.delete()
     }
 
-    @Test("changes stream emits on save and clear")
-    func changesStream() async throws {
-        let store = makeStore()
-        var iterator = await store.changes().makeAsyncIterator()
+    @Test("isExpired and isNearlyExpired reflect expiresAt")
+    func expiry() {
+        let expired = StoredTokens(
+            idToken: "t", accessToken: "t", refreshToken: "t",
+            expiresAt: Date.distantPast
+        )
+        #expect(expired.isExpired())
+        #expect(expired.isNearlyExpired())
 
-        try await store.save(sample)
-        let first = await iterator.next()
-        #expect(first ?? nil == sample)
-
-        try await store.clear()
-        let second = await iterator.next()
-        // Cleared → yields `Optional<Tokens>.some(nil)`.
-        #expect(second == .some(nil))
+        let fresh = StoredTokens(
+            idToken: "t", accessToken: "t", refreshToken: "t",
+            expiresAt: Date.distantFuture
+        )
+        #expect(!fresh.isExpired())
+        #expect(!fresh.isNearlyExpired())
     }
 }
 
