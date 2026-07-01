@@ -1,8 +1,12 @@
-/// Placeholder public entry point for the AuthKit module.
+/// AuthKit — Cognito authentication for ChapterFlow.
 ///
-/// This module is intentionally empty for now; it compiles and exposes a single
-/// public symbol so downstream modules can link against it.
-public enum AuthKit {
-    /// The name of this module. Useful as a smoke-test symbol.
-    public static let moduleName = "AuthKit"
-}
+/// Public surface:
+/// - `AuthService`       — `@Observable @MainActor` service; call `configure()` at app launch.
+/// - `AuthTokenProvider` — `actor` implementing `Networking.TokenProviding`; inject into `APIClient`.
+/// - `TokenRefreshing`   — protocol for the refresh path (injectable in tests).
+/// - `AuthState`         — `.unknown / .signedOut / .signedIn(UserSummary)`.
+/// - `AuthEvent`         — discrete events streamed from `AuthService.authEvents`.
+/// - `SignUpStep`         — result of `AuthService.signUp(…)`.
+/// - `UserSummary`       — value type snapshot of the signed-in user.
+/// - `TimeProvider`      — clock abstraction for testable token-expiry logic.
+public enum AuthKit {}

@@ -39,6 +39,10 @@ public struct AppRootView: View {
             }
         }
         .tint(.cfAccent)
+        .task {
+            // Configure Amplify + resolve initial auth state once at launch.
+            try? model.configure()
+        }
         .onOpenURL { url in
             model.handle(url: url)
         }
