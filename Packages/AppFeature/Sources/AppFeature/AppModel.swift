@@ -1,17 +1,22 @@
 import SwiftUI
 import CoreKit
+import AuthKit
 
 /// The top-level observable app state that drives `AppRootView`.
 ///
 /// Responsibilities:
+/// - Own the `SessionManager` (auth state + token lifecycle).
 /// - Own the currently selected tab.
 /// - Own a `Router` per tab so each tab's navigation stack is preserved when
 ///   the user switches away and back.
-/// - Parse incoming deep-link URLs and route them to the correct tab (and, in
-///   later phases, push the right destination onto that tab's router).
+/// - Parse incoming deep-link URLs and route them to the correct tab.
 @Observable
 @MainActor
 public final class AppModel {
+
+    // MARK: Session
+
+    public let session: SessionManager
 
     // MARK: Tab selection
 
@@ -25,7 +30,9 @@ public final class AppModel {
     public let profileRouter  = Router()
     public let settingsRouter = Router()
 
-    public init() {}
+    public init(session: SessionManager = SessionManager()) {
+        self.session = session
+    }
 
     // MARK: Deep-link handling
 
@@ -52,7 +59,6 @@ public final class AppModel {
         case .unknown:
             break
         }
-        // Feature-level navigation (e.g. libraryRouter.push(.bookDetail(id:)))
-        // will be wired here as the feature modules are built out in Phase 2+.
+        // Feature-level navigation will be wired as modules are built in Phase 2+.
     }
 }

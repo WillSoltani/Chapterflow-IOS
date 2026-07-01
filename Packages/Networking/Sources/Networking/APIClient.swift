@@ -81,6 +81,7 @@ public actor APIClient: APIClientProtocol {
     public func send<T: Decodable & Sendable>(_ endpoint: Endpoint) async throws -> T {
         var backoffAttempt = 0
         var didRefreshToken = false
+        var didStepUp = false
 
         while true {
             try Task.checkCancellation()
@@ -111,11 +112,25 @@ public actor APIClient: APIClientProtocol {
                     continue
                 }
 
+                // One-time step-up reauth: suspend until the user confirms
+                // identity, then retry the original request transparently.
+                if case .reauthRequired = error, endpoint.requiresAuth, !didStepUp {
+                    didStepUp = true
+                    try await tokenProvider.stepUp()
+                    continue
+                }
+
                 // Backoff on a transient auth-verifier outage.
                 if case .verifierUnavailable = error, backoffAttempt < maxRetries {
                     backoffAttempt += 1
                     try await backoff(backoffAttempt)
                     continue
+                }
+
+                // All verifier retries exhausted — notify the session manager so
+                // it can transition to a non-destructive "reconnecting" state.
+                if case .verifierUnavailable = error {
+                    await tokenProvider.reportSessionError(error)
                 }
 
                 throw error
