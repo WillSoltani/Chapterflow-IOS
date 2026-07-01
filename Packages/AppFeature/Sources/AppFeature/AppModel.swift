@@ -1,5 +1,8 @@
 import SwiftUI
 import CoreKit
+import Networking
+import Persistence
+import AuthKit
 
 /// The top-level observable app state that drives `AppRootView`.
 ///
@@ -9,6 +12,7 @@ import CoreKit
 ///   the user switches away and back.
 /// - Parse incoming deep-link URLs and route them to the correct tab (and, in
 ///   later phases, push the right destination onto that tab's router).
+/// - Own `AuthService` and `APIClient`; expose them to child feature views.
 @Observable
 @MainActor
 public final class AppModel {
@@ -25,7 +29,32 @@ public final class AppModel {
     public let profileRouter  = Router()
     public let settingsRouter = Router()
 
-    public init() {}
+    // MARK: Auth & Networking
+
+    /// Drives authentication state across the app.
+    public let authService: AuthService
+
+    /// Pre-wired `APIClient` authenticated via `authService`.
+    /// Feature modules receive this via the environment or direct injection.
+    public let apiClient: APIClient
+
+    // MARK: Init
+
+    public init(config: AppConfig = .fromInfoPlist()) {
+        let tokenStore = TokenStore()
+        let auth = AuthService(config: config, tokenStore: tokenStore)
+        let provider = AuthTokenProvider(store: tokenStore, refresher: auth)
+        self.authService = auth
+        self.apiClient = APIClient(config: config, tokenProvider: provider)
+    }
+
+    // MARK: - Lifecycle
+
+    /// Configures Amplify and resolves the initial `authState`.
+    /// Call once from the root view's `.task {}` modifier.
+    public func configure() throws {
+        try authService.configure()
+    }
 
     // MARK: Deep-link handling
 

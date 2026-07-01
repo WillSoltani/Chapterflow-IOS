@@ -1,10 +1,12 @@
 import Testing
 @testable import AuthKit
+import Persistence
+import Foundation
 
 @Suite("AuthKit")
 struct AuthKitTests {
-    @Test("module exposes its name")
-    func moduleName() {
-        #expect(AuthKit.moduleName == "AuthKit")
+    @Test("module compiles")
+    func moduleExists() {
+        _ = AuthKit.self
     }
 }
