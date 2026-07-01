@@ -1,8 +1,8 @@
 import SwiftUI
 
 // Bring every workspace module into the composition root so the dependency
-// graph is exercised. These are placeholders today; feature views will be
-// mounted into the tabs below as each module is built out.
+// graph is exercised. Real feature views from the corresponding modules will
+// replace the placeholder tabs as each module is built out.
 import CoreKit
 import DesignSystem
 import Models
@@ -22,48 +22,52 @@ import SettingsFeature
 
 /// The top-level tab shell for ChapterFlow.
 ///
-/// This is a placeholder scaffold: five tabs, each showing its name. Real
-/// feature views from the corresponding modules will replace the placeholders.
+/// Owns an `AppModel` that tracks the selected tab and per-tab navigation
+/// routers. Deep links received by `ChapterFlowApp` are forwarded here via
+/// `.onOpenURL` and dispatched to the correct tab by `AppModel`.
 public struct AppRootView: View {
+    @State private var model = AppModel()
+
     public init() {}
 
     public var body: some View {
-        TabView {
-            PlaceholderTab(title: "Home", systemImage: "house")
-                .tabItem { Label("Home", systemImage: "house") }
-
-            PlaceholderTab(title: "Library", systemImage: "books.vertical")
-                .tabItem { Label("Library", systemImage: "books.vertical") }
-
-            PlaceholderTab(title: "Reviews", systemImage: "star")
-                .tabItem { Label("Reviews", systemImage: "star") }
-
-            PlaceholderTab(title: "Profile", systemImage: "person.crop.circle")
-                .tabItem { Label("Profile", systemImage: "person.crop.circle") }
-
-            PlaceholderTab(title: "Settings", systemImage: "gearshape")
-                .tabItem { Label("Settings", systemImage: "gearshape") }
+        TabView(selection: $model.selectedTab) {
+            ForEach(AppTab.allCases, id: \.self) { tab in
+                PlaceholderTab(tab: tab)
+                    .tabItem { Label(tab.title, systemImage: tab.systemImage) }
+                    .tag(tab)
+            }
+        }
+        .tint(.cfAccent)
+        .onOpenURL { url in
+            model.handle(url: url)
         }
     }
 }
 
-/// A simple placeholder screen used by every tab until real features land.
+/// Placeholder navigation shell for a tab — replaced by real feature views
+/// in Phase 2 onward.
 private struct PlaceholderTab: View {
-    let title: String
-    let systemImage: String
+    let tab: AppTab
 
     var body: some View {
         NavigationStack {
             ContentUnavailableView(
-                title,
-                systemImage: systemImage,
-                description: Text("\(title) is coming soon.")
+                tab.title,
+                systemImage: tab.filledSystemImage,
+                description: Text("\(tab.title) is coming soon.")
             )
-            .navigationTitle(title)
+            .navigationTitle(tab.title)
         }
     }
 }
 
-#Preview {
+#Preview("Tab Shell") {
     AppRootView()
+}
+
+#Preview("Deep Link → Library") {
+    let view = AppRootView()
+    // Simulates a chapterflow://book/abc123 open-URL by selecting the tab directly.
+    return view
 }

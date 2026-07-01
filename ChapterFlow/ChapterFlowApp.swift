@@ -5,13 +5,17 @@
 
 import SwiftUI
 import AppFeature
+import CoreKit
 
 @main
 struct ChapterFlowApp: App {
+    /// App configuration read once at launch from Info.plist (backed by Secrets.xcconfig).
+    private let appConfig = AppConfig.fromInfoPlist()
+
     var body: some Scene {
         WindowGroup {
-            // AppFeature is the composition root; it owns the tab shell.
             AppRootView()
+                .environment(\.appConfig, appConfig)
         }
     }
 }
