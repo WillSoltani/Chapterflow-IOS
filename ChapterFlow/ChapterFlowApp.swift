@@ -14,7 +14,7 @@ struct ChapterFlowApp: App {
 
     var body: some Scene {
         WindowGroup {
-            AppRootView()
+            AppRootView(config: appConfig)
                 .environment(\.appConfig, appConfig)
         }
     }

@@ -66,16 +66,24 @@ final class StubURLProtocol: URLProtocol {
 
 // MARK: - Fake token provider
 
-/// A configurable ``TokenProviding`` for tests. Tracks refresh calls and swaps
-/// in a fresh token on refresh so the retry path can be observed end to end.
+/// A configurable ``TokenProviding`` for tests. Tracks all provider calls so
+/// the refresh/retry, step-up, and error-notification paths can be observed.
 actor FakeTokenProvider: TokenProviding {
     private var token: String?
     private(set) var refreshCount = 0
+    private(set) var stepUpCount = 0
+    private(set) var reportedErrors: [AppError] = []
     private let refreshedToken: String
+    private let stepUpShouldFail: Bool
 
-    init(token: String?, refreshedToken: String = "refreshed-token") {
+    init(
+        token: String?,
+        refreshedToken: String = "refreshed-token",
+        stepUpShouldFail: Bool = false
+    ) {
         self.token = token
         self.refreshedToken = refreshedToken
+        self.stepUpShouldFail = stepUpShouldFail
     }
 
     func validToken() async throws -> String? { token }
@@ -85,7 +93,19 @@ actor FakeTokenProvider: TokenProviding {
         token = refreshedToken
     }
 
+    func stepUp() async throws {
+        stepUpCount += 1
+        if stepUpShouldFail { throw AppError.unauthenticated }
+        token = "stepped-up-token"
+    }
+
+    func reportSessionError(_ error: AppError) async {
+        reportedErrors.append(error)
+    }
+
     func currentRefreshCount() -> Int { refreshCount }
+    func currentStepUpCount() -> Int { stepUpCount }
+    func currentReportedErrors() -> [AppError] { reportedErrors }
 }
 
 // MARK: - Helpers

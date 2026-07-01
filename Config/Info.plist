@@ -16,5 +16,11 @@
 	<string>$(COGNITO_USER_POOL_ID)</string>
 	<key>CognitoClientID</key>
 	<string>$(COGNITO_CLIENT_ID)</string>
+	<key>CognitoDomain</key>
+	<string>$(COGNITO_DOMAIN)</string>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.chapterflow.ios.tokenRefresh</string>
+	</array>
 </dict>
 </plist>

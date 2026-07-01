@@ -10,17 +10,21 @@ public struct AppConfig: Sendable, Equatable {
     public let cognitoRegion: String
     public let cognitoUserPoolID: String
     public let cognitoClientID: String
+    /// Custom Cognito domain, e.g. `auth.chapterflow.ca` (no https://, no trailing slash).
+    public let cognitoDomain: String
 
     public init(
         apiBaseURL: String,
         cognitoRegion: String,
         cognitoUserPoolID: String,
-        cognitoClientID: String
+        cognitoClientID: String,
+        cognitoDomain: String = ""
     ) {
         self.apiBaseURL = apiBaseURL
         self.cognitoRegion = cognitoRegion
         self.cognitoUserPoolID = cognitoUserPoolID
         self.cognitoClientID = cognitoClientID
+        self.cognitoDomain = cognitoDomain
     }
 
     /// Info.plist keys that carry the xcconfig-injected values.
@@ -29,6 +33,7 @@ public struct AppConfig: Sendable, Equatable {
         public static let cognitoRegion = "CognitoRegion"
         public static let cognitoUserPoolID = "CognitoUserPoolID"
         public static let cognitoClientID = "CognitoClientID"
+        public static let cognitoDomain = "CognitoDomain"
     }
 
     /// Reads configuration from the given bundle's Info.plist.
@@ -43,7 +48,8 @@ public struct AppConfig: Sendable, Equatable {
             apiBaseURL: value(InfoKey.apiBaseURL),
             cognitoRegion: value(InfoKey.cognitoRegion),
             cognitoUserPoolID: value(InfoKey.cognitoUserPoolID),
-            cognitoClientID: value(InfoKey.cognitoClientID)
+            cognitoClientID: value(InfoKey.cognitoClientID),
+            cognitoDomain: value(InfoKey.cognitoDomain)
         )
     }
 }
