@@ -5,34 +5,31 @@ import AuthKit
 /// The top-level observable app state that drives `AppRootView`.
 ///
 /// Responsibilities:
-/// - Own the `SessionManager` (auth state + token lifecycle).
-/// - Own a `CognitoTokenClient` for the sign-in flow.
-/// - Track the user's display name (decoded from the Cognito id_token JWT).
-/// - Own the currently selected tab.
-/// - Own a `Router` per tab so each tab's navigation stack is preserved when
-///   the user switches away and back.
+/// - Own `AuthService` (Amplify operations) and `SessionManager` (session lifecycle).
+/// - Expose `authService` to `AuthFlowView` for the sign-in/sign-up forms.
+/// - Track the user's display name resolved from the Cognito id_token JWT.
+/// - Own the currently selected tab and per-tab `Router` navigation stacks.
 /// - Parse incoming deep-link URLs and route them to the correct tab.
 @Observable
 @MainActor
 public final class AppModel {
 
-    // MARK: Session
+    // MARK: - Auth
 
+    public let authService: AuthService
     public let session: SessionManager
-    public let cognitoClient: CognitoTokenClient
 
-    // MARK: User profile
+    // MARK: - User profile
 
-    /// The user's display name, resolved from the Cognito id_token JWT.
-    /// Defaults to `""` when signed out and `"Reader"` when signed in but
-    /// no name claim is present.
+    /// Display name resolved from the Cognito id_token JWT.
+    /// Falls back to `"Reader"` when signed in with no name claims.
     public internal(set) var displayName: String = ""
 
-    // MARK: Tab selection
+    // MARK: - Tab selection
 
     public var selectedTab: AppTab = .home
 
-    // MARK: Per-tab routers
+    // MARK: - Per-tab routers
 
     public let homeRouter     = Router()
     public let libraryRouter  = Router()
@@ -40,81 +37,67 @@ public final class AppModel {
     public let profileRouter  = Router()
     public let settingsRouter = Router()
 
-    // MARK: Init
+    // MARK: - Init
 
-    /// Default init — used in unit tests and when no specific config is required.
-    /// Uses `StubTokenRefresher` for the token refresh path.
-    public init(session: SessionManager = SessionManager()) {
-        self.session = session
-        self.cognitoClient = CognitoTokenClient(config: .fromInfoPlist())
-        if case .signedIn = session.authState { hydrateDisplayName() }
-        registerBGTasks(session: session)
-    }
-
-    /// Config-based init used in production.
-    /// Wires a real `CognitoTokenRefresher` into the session lifecycle.
-    public init(config: AppConfig) {
-        let refresher = CognitoTokenRefresher(config: config)
-        let session = SessionManager(refresher: refresher)
-        self.session = session
-        self.cognitoClient = CognitoTokenClient(config: config)
-        if case .signedIn = session.authState { hydrateDisplayName() }
-        registerBGTasks(session: session)
-    }
-
-    private func registerBGTasks(session: SessionManager) {
-        // BGTaskScheduler is iOS-only; the macOS test host skips this.
+    public init(config: AppConfig = .fromInfoPlist()) {
+        let svc = AuthService(config: config)
+        self.authService = svc
+        self.session = SessionManager(authService: svc)
         #if os(iOS)
         session.registerBackgroundRefresh()
         #endif
     }
 
-    // MARK: Display name
+    // MARK: - Lifecycle
+
+    /// Configures Amplify and starts the auth-events listener. Call once at launch.
+    public func configure() throws {
+        try session.configure()
+    }
+
+    // MARK: - Display name
 
     /// Resolves and caches the display name from the stored id_token JWT.
-    /// Call whenever auth state transitions to `.signedIn`.
+    /// Call after `authState` transitions to `.signedIn`.
     public func hydrateDisplayName() {
-        // 1. Try JWT claims (Cognito stores the name attribute from Apple's first sign-in).
+        // 1. JWT claims (Cognito stores the name attribute).
         if let token = session.currentIdToken(),
            let profile = UserProfile.from(idToken: token),
            !profile.displayName.isEmpty {
             displayName = profile.displayName
             return
         }
-        // 2. Fallback: display name persisted from Apple's first-sign-in disclosure.
+        // 2. Display name persisted from Apple's first-sign-in disclosure.
         if let stored = UserDefaults.standard.string(forKey: "chapterflow.displayName"),
            !stored.isEmpty {
             displayName = stored
             return
         }
+        // 3. Username from UserSummary (may be display name for SIWA path).
+        if case .signedIn(let user) = session.authState, !user.username.isEmpty {
+            displayName = user.username
+            return
+        }
         displayName = "Reader"
     }
 
-    // MARK: Deep-link handling
+    // MARK: - Deep-link handling
 
-    /// Parses `url` and routes to the matching tab/screen.
-    /// Silently ignores URLs whose scheme isn't `chapterflow://`.
     public func handle(url: URL) {
         guard let link = DeepLink(url: url) else { return }
         handle(deepLink: link)
     }
 
-    /// Routes a parsed `DeepLink` to the appropriate tab and, where possible,
-    /// pushes the matching destination onto that tab's navigation stack.
     public func handle(deepLink: DeepLink) {
         switch deepLink {
         case .book, .chapter:
             selectedTab = .library
-
         case .review:
             selectedTab = .reviews
-
         case .pairAccept, .gift:
             selectedTab = .profile
-
         case .unknown:
             break
         }
-        // Feature-level navigation will be wired as modules are built in Phase 2+.
     }
 }

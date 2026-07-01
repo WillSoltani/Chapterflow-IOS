@@ -2,22 +2,26 @@ import Foundation
 import Observation
 import CoreKit
 import Networking
+import Persistence
 
 /// Manages the Cognito session lifecycle for the entire app.
 ///
-/// `SessionManager` is the single source of truth for `AuthState`. It
-/// implements `TokenProviding` so it is injected directly into `APIClient` —
-/// the client calls back into it for token access, refresh, step-up reauth,
-/// and error notification.
+/// `SessionManager` is the single observable source of truth for `AuthState`.
+/// It wraps `AuthService` (Amplify operations) and adds:
+/// - Session init / sign-out
+/// - BGTask pre-refresh scheduling
+/// - Step-up re-authentication (suspends API requests until the user confirms)
+/// - Non-destructive `.reconnecting` state when the verifier is unavailable
 ///
 /// **State machine:**
-/// - `.signedOut`      + sign-in success       → `.signedIn`
-/// - `.signedIn`       + refresh fails          → `.signedOut`
-/// - `.signedIn`       + server reauth_required → `.reauthRequired`
-/// - `.reauthRequired` + user confirms          → `.signedIn`  (original request retried)
-/// - `.reauthRequired` + user cancels           → `.signedOut`
-/// - `.signedIn`       + verifier exhausted     → `.reconnecting`
-/// - `.reconnecting`   + next request succeeds  → `.signedIn`
+/// - `.unknown`       → after `configure()` → `.signedOut` or `.signedIn(user)`
+/// - `.signedOut`     + sign-in success       → `.signedIn(user)`
+/// - `.signedIn`      + refresh fails          → `.signedOut`
+/// - `.signedIn`      + server reauthRequired → `.reauthRequired`
+/// - `.reauthRequired`+ user confirms          → `.signedIn(user)` (request retried)
+/// - `.reauthRequired`+ user cancels           → `.signedOut`
+/// - `.signedIn`      + verifier exhausted     → `.reconnecting`
+/// - `.reconnecting`  + refresh succeeds       → `.signedIn(user)`
 @Observable
 @MainActor
 public final class SessionManager {
@@ -26,71 +30,139 @@ public final class SessionManager {
 
     public private(set) var authState: AuthState
 
-    // MARK: - Private
+    // MARK: - Internal (accessible to AuthTokenProvider and BGTask)
 
     let tokenStore: any TokenStoring
-    private let refresher: any TokenRefreshing
+
+    // MARK: - Live auth service
+
+    let authService: AuthService?
+
+    // MARK: - Test-only refresh path
+
+    private let testRefresher: (any TokenRefreshing)?
+
+    // MARK: - Step-up reauth
 
     private var reauthContinuations: [CheckedContinuation<Void, Error>] = []
     private var isReauthInProgress = false
+    private var currentUser: UserSummary?
 
-    // MARK: - Init
+    // MARK: - Event listener
+
+    // nonisolated(unsafe): Task.cancel() is safe from any thread.
+    // @Observable's macro expansion requires (unsafe) for mutable stored properties.
+    nonisolated(unsafe) private var authEventsTask: Task<Void, Never>?
+
+    // MARK: - Production init
+
+    public init(authService: AuthService) {
+        self.authService = authService
+        self.tokenStore = authService.tokenStore
+        self.testRefresher = nil
+        // Start .unknown; configure() resolves to .signedIn or .signedOut via events.
+        self.authState = .unknown
+    }
+
+    // MARK: - Test init (no Amplify)
 
     public init(
-        tokenStore: any TokenStoring = KeychainTokenStore.shared,
+        tokenStore: any TokenStoring,
         refresher: any TokenRefreshing = StubTokenRefresher()
     ) {
+        self.authService = nil
+        self.testRefresher = refresher
         self.tokenStore = tokenStore
-        self.refresher = refresher
-        self.authState = tokenStore.idToken() != nil ? .signedIn : .signedOut
+        if let tokens = tokenStore.load(), !tokens.isExpired() {
+            let stub = UserSummary(userId: "", username: "test", email: nil)
+            self.authState = .signedIn(stub)
+            self.currentUser = stub
+        } else {
+            self.authState = .signedOut
+        }
     }
 
-    // MARK: - Token access
-
-    /// Returns the currently stored Cognito `id_token`, or `nil` when signed out.
-    /// Used by the app layer to decode JWT claims (e.g. display name) without
-    /// exposing the underlying token store.
-    public func currentIdToken() -> String? {
-        tokenStore.idToken()
+    deinit {
+        authEventsTask?.cancel()
     }
 
-    // MARK: - Session entry/exit
+    // MARK: - Lifecycle
 
-    /// Stores tokens from a successful sign-in and transitions to `.signedIn`.
-    public func didSignIn(idToken: String, refreshToken: String) {
-        tokenStore.store(idToken: idToken, refreshToken: refreshToken)
-        authState = .signedIn
+    /// Configures Amplify (production only) and starts listening to auth events.
+    /// Call once at app launch, from `AppModel.configure()`.
+    public func configure() throws {
+        guard let authService else { return }
+        try authService.configure()
+        // Capture the stream directly so the task doesn't hold `self` strongly
+        // between event arrivals. The `guard let self` inside the loop allows
+        // the task to exit cleanly if `SessionManager` is deallocated.
+        let eventsStream = authService.authEvents
+        authEventsTask = Task { [weak self] in
+            for await event in eventsStream {
+                guard let self else { return }
+                self.handleAuthEvent(event)
+            }
+        }
     }
 
-    /// Clears all tokens, cancels any in-progress reauth, and transitions to `.signedOut`.
-    public func signOut() {
-        tokenStore.clearAll()
-        authState = .signedOut
-        failAllReauthContinuations()
+    private func handleAuthEvent(_ event: AuthEvent) {
+        switch event {
+        case .signedIn(let user):
+            currentUser = user
+            authState = .signedIn(user)
+        case .signedOut, .sessionExpired:
+            currentUser = nil
+            authState = .signedOut
+            failAllReauthContinuations()
+        case .tokenRefreshed:
+            if case .reconnecting = authState, let user = currentUser {
+                authState = .signedIn(user)
+            }
+        }
     }
 
-    // MARK: - Step-up reauth callbacks (invoked from ReauthView)
+    // MARK: - Sign-out
 
-    /// Called when the user successfully completes step-up re-authentication.
-    /// Stores fresh tokens, resumes all suspended API requests, and returns to `.signedIn`.
-    public func stepUpCompleted(idToken: String, refreshToken: String) {
-        tokenStore.store(idToken: idToken, refreshToken: refreshToken)
-        authState = .signedIn
+    public func signOut() async {
+        if let authService {
+            await authService.signOut()
+            // authState updated via .signedOut event
+        } else {
+            try? tokenStore.delete()
+            currentUser = nil
+            authState = .signedOut
+            failAllReauthContinuations()
+        }
+    }
+
+    // MARK: - Step-up reauth (invoked from ReauthView)
+
+    /// Called after the user successfully completes the step-up challenge.
+    /// Resumes all suspended API requests and returns to `.signedIn`.
+    public func stepUpCompleted() {
+        let user = currentUser ?? UserSummary(userId: "", username: "", email: nil)
+        authState = .signedIn(user)
         isReauthInProgress = false
         resumeAllReauthContinuations()
     }
 
     /// Called when the user cancels the reauth sheet. Signs the user out.
     public func stepUpCancelled() {
-        signOut()
+        Task { await signOut() }
     }
 
     // MARK: - Reconnecting recovery
 
-    /// Marks the session as reconnected after a successful request following
-    /// a `.reconnecting` state.
     public func markReconnected() {
-        if case .reconnecting = authState { authState = .signedIn }
+        if case .reconnecting = authState, let user = currentUser {
+            authState = .signedIn(user)
+        }
+    }
+
+    /// Returns the cached Cognito id_token, or `nil` if none is stored.
+    /// Used by `AppModel` to extract display-name JWT claims on sign-in.
+    public func currentIdToken() -> String? {
+        tokenStore.load()?.idToken
     }
 
     // MARK: - Continuation management
@@ -109,38 +181,39 @@ public final class SessionManager {
     }
 }
 
-// MARK: - TokenProviding
+// MARK: - TokenRefreshing (used by AuthTokenProvider + BGTask)
+
+extension SessionManager: TokenRefreshing {
+    public func performRefresh() async throws -> StoredTokens {
+        if let authService {
+            return try await authService.performRefresh()
+        } else if let testRefresher {
+            let tokens = try await testRefresher.performRefresh()
+            try? tokenStore.save(tokens)
+            return tokens
+        }
+        throw AppError.unauthenticated
+    }
+}
+
+// MARK: - TokenProviding (wired into APIClient)
 
 extension SessionManager: TokenProviding {
 
-    /// Returns the stored `id_token`, or `nil` when the user is not signed in.
     public func validToken() async throws -> String? {
-        tokenStore.idToken()
+        guard let tokens = tokenStore.load(), !tokens.isExpired() else { return nil }
+        return tokens.idToken
     }
 
-    /// Attempts a Cognito token refresh using the stored refresh token.
-    ///
-    /// On failure the user is signed out (setting `authState = .signedOut`)
-    /// before re-throwing, so `AppRootView` transitions to the auth flow.
     public func refresh() async throws {
-        guard let refreshToken = tokenStore.refreshToken() else {
-            signOut()
-            throw AppError.unauthenticated
-        }
         do {
-            let tokens = try await refresher.refreshTokens(using: refreshToken)
-            tokenStore.store(idToken: tokens.idToken, refreshToken: tokens.refreshToken)
+            _ = try await performRefresh()
         } catch {
-            signOut()
+            await signOut()
             throw AppError.unauthenticated
         }
     }
 
-    /// Performs step-up authentication when the server returns `reauth_required`.
-    ///
-    /// Suspends the calling `APIClient` task until the user completes the
-    /// challenge (`stepUpCompleted`) or cancels (`stepUpCancelled`).
-    /// On success the client retries the original request transparently.
     public nonisolated func stepUp() async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             Task { @MainActor [weak self] in
@@ -161,9 +234,6 @@ extension SessionManager: TokenProviding {
         }
     }
 
-    /// Called by `APIClient` when the Cognito verifier is permanently unavailable
-    /// for this request (all backoff retries exhausted). Transitions to
-    /// `.reconnecting` so the UI can show a non-destructive indicator.
     public func reportSessionError(_ error: AppError) async {
         switch error {
         case .verifierUnavailable:

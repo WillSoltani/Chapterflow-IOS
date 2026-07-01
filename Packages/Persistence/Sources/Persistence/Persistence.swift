@@ -5,7 +5,7 @@ import Foundation
 /// The module provides the app's local storage stack:
 /// - ``PersistenceController`` — the SwiftData `ModelContainer` factory with a
 ///   configurable schema, main + background contexts, and a migration-plan scaffold.
-/// - ``TokenStore`` — an actor persisting the Cognito tokens in the Keychain.
+/// - ``TokenStore`` — a Keychain-backed struct for the Cognito token triple.
 /// - ``AppPreferences`` — an `@Observable` store of user reading/audio preferences
 ///   backed by App-Group `UserDefaults`.
 /// - ``KeyValueStore`` and ``FileStore`` — small wrappers for lightweight values and

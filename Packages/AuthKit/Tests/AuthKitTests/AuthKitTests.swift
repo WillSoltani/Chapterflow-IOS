@@ -1,11 +1,12 @@
 import Testing
 import Foundation
 @testable import AuthKit
+import Persistence
 
 // MARK: - Module smoke test
 
 @Suite("AuthKit")
-struct AuthKitTests {
+struct AuthKitModuleTests {
     @Test("module exposes its name")
     func moduleName() {
         #expect(AuthKit.moduleName == "AuthKit")
@@ -14,66 +15,67 @@ struct AuthKitTests {
 
 // MARK: - SessionManager state transitions
 
+private func makeTokens(expiresIn: TimeInterval = 3_600) -> StoredTokens {
+    StoredTokens(
+        idToken: "test-id-token",
+        accessToken: "test-access-token",
+        refreshToken: "test-refresh-token",
+        expiresAt: Date().addingTimeInterval(expiresIn)
+    )
+}
+
+private extension AuthState {
+    var isSignedIn: Bool {
+        if case .signedIn = self { return true }
+        return false
+    }
+}
+
 @Suite("SessionManager")
 @MainActor
 struct SessionManagerTests {
 
-    @Test("initialises to .signedIn when id_token is stored")
+    @Test("initialises to .signedIn when valid tokens are stored")
     func initSignedIn() {
-        let store = InMemoryTokenStore(idToken: "id", refreshToken: "ref")
+        let store = InMemoryTokenStore(tokens: makeTokens())
         let session = SessionManager(tokenStore: store)
-        #expect(session.authState == .signedIn)
+        #expect(session.authState.isSignedIn)
     }
 
-    @Test("initialises to .signedOut when no id_token is stored")
+    @Test("initialises to .signedOut when no tokens are stored")
     func initSignedOut() {
         let store = InMemoryTokenStore()
         let session = SessionManager(tokenStore: store)
         #expect(session.authState == .signedOut)
     }
 
-    @Test("didSignIn stores tokens and transitions to .signedIn")
-    func didSignInStoresAndTransitions() {
-        let store = InMemoryTokenStore()
+    @Test("initialises to .signedOut when stored tokens are expired")
+    func initExpired() {
+        let store = InMemoryTokenStore(tokens: makeTokens(expiresIn: -1))
         let session = SessionManager(tokenStore: store)
-        session.didSignIn(idToken: "new-id", refreshToken: "new-ref")
-        #expect(session.authState == .signedIn)
-        #expect(store.idToken() == "new-id")
-        #expect(store.refreshToken() == "new-ref")
+        #expect(session.authState == .signedOut)
     }
 
     @Test("signOut clears tokens and transitions to .signedOut")
-    func signOutClearsAndTransitions() {
-        let store = InMemoryTokenStore(idToken: "id", refreshToken: "ref")
+    func signOutClearsTokens() async {
+        let store = InMemoryTokenStore(tokens: makeTokens())
         let session = SessionManager(tokenStore: store)
-        session.signOut()
+        await session.signOut()
         #expect(session.authState == .signedOut)
-        #expect(store.idToken() == nil)
-        #expect(store.refreshToken() == nil)
+        #expect(store.load() == nil)
     }
 
-    @Test("refresh transitions to .signedOut when no refresh token is stored")
-    func refreshSignsOutWithNoRefreshToken() async {
-        let store = InMemoryTokenStore(idToken: "id")  // no refresh token
-        let session = SessionManager(tokenStore: store, refresher: StubTokenRefresher())
-        await #expect(throws: (any Error).self) {
-            try await session.refresh()
-        }
-        #expect(session.authState == .signedOut)
-    }
-
-    @Test("refresh updates id_token on success")
-    func refreshUpdatesToken() async throws {
-        let store = InMemoryTokenStore(idToken: "id", refreshToken: "ref")
+    @Test("refresh updates stored tokens on success")
+    func refreshUpdatesTokens() async throws {
+        let store = InMemoryTokenStore(tokens: makeTokens())
         let session = SessionManager(tokenStore: store, refresher: StubTokenRefresher(shouldFail: false))
         try await session.refresh()
-        // StubTokenRefresher returns "stub-id-<prefix6>"; "ref".prefix(6) == "ref"
-        #expect(store.idToken() == "stub-id-ref")
+        #expect(store.load()?.idToken == "stub-id-token")
     }
 
-    @Test("refresh transitions to .signedOut on refresher failure")
+    @Test("refresh transitions to .signedOut when refresher fails")
     func refreshSignsOutOnFailure() async {
-        let store = InMemoryTokenStore(idToken: "id", refreshToken: "ref")
+        let store = InMemoryTokenStore(tokens: makeTokens())
         let session = SessionManager(tokenStore: store, refresher: StubTokenRefresher(shouldFail: true))
         await #expect(throws: (any Error).self) {
             try await session.refresh()
@@ -81,36 +83,29 @@ struct SessionManagerTests {
         #expect(session.authState == .signedOut)
     }
 
-    @Test("stepUpCancelled transitions to .signedOut")
-    func stepUpCancelledSignsOut() {
-        let store = InMemoryTokenStore(idToken: "id", refreshToken: "ref")
+    @Test("currentIdToken returns the stored id_token")
+    func currentIdToken() {
+        let store = InMemoryTokenStore(tokens: makeTokens())
         let session = SessionManager(tokenStore: store)
-        session.stepUpCancelled()
-        #expect(session.authState == .signedOut)
+        #expect(session.currentIdToken() == "test-id-token")
     }
 
-    @Test("stepUpCompleted stores fresh tokens and transitions to .signedIn")
-    func stepUpCompletedTransitions() {
-        let store = InMemoryTokenStore(idToken: "id", refreshToken: "ref")
+    @Test("stepUpCancelled transitions to .signedOut")
+    func stepUpCancelledSignsOut() async {
+        let store = InMemoryTokenStore(tokens: makeTokens())
         let session = SessionManager(tokenStore: store)
-        session.stepUpCompleted(idToken: "fresh-id", refreshToken: "fresh-ref")
-        #expect(session.authState == .signedIn)
-        #expect(store.idToken() == "fresh-id")
+        session.stepUpCancelled()
+        // stepUpCancelled calls Task { await signOut() }, give it a moment
+        try? await Task.sleep(for: .milliseconds(50))
+        #expect(session.authState == .signedOut)
     }
 
     @Test("markReconnected is a no-op when not in .reconnecting state")
     func markReconnectedNoOp() {
-        let store = InMemoryTokenStore(idToken: "id", refreshToken: "ref")
+        let store = InMemoryTokenStore(tokens: makeTokens())
         let session = SessionManager(tokenStore: store)
-        session.markReconnected()  // already .signedIn
-        #expect(session.authState == .signedIn)
-    }
-
-    @Test("currentIdToken returns the stored id_token")
-    func currentIdToken() {
-        let store = InMemoryTokenStore(idToken: "my-token", refreshToken: "ref")
-        let session = SessionManager(tokenStore: store)
-        #expect(session.currentIdToken() == "my-token")
+        session.markReconnected()
+        #expect(session.authState.isSignedIn)
     }
 }
 
@@ -119,9 +114,8 @@ struct SessionManagerTests {
 @Suite("UserProfile")
 struct UserProfileTests {
 
-    /// Builds a minimal JWT (header.payload.sig) with the given String claims.
     private func makeJWT(_ claims: [String: String]) throws -> String {
-        let header = "eyJhbGciOiJub25lIn0"  // base64url({"alg":"none"})
+        let header = "eyJhbGciOiJub25lIn0"
         let data = try JSONSerialization.data(withJSONObject: claims)
         let payload = data.base64EncodedString()
             .replacingOccurrences(of: "+", with: "-")

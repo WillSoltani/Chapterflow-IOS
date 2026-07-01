@@ -1,6 +1,7 @@
 import SwiftUI
 import LocalAuthentication
 import CoreKit
+import Persistence
 
 /// A modal sheet presented when the server returns `reauth_required`.
 ///
@@ -103,14 +104,10 @@ public struct ReauthView: View {
         isAuthenticating = true
         errorMessage = nil
         defer { isAuthenticating = false }
-
-        // Stub: P1.5 replaces this with a real Cognito `initiateAuth` call
-        // using PASSWORD_VERIFIER. Any non-empty password succeeds here so the
-        // error-routing paths can be exercised in the simulator.
+        // Full password re-verification is implemented in P1.5. For now, any
+        // non-empty password confirms identity so the flow can be exercised.
         try? await Task.sleep(for: .milliseconds(400))
-        let fakeIdToken = "reauth-id-\(password.prefix(4))"
-        let fakeRefreshToken = "reauth-refresh"
-        sessionManager.stepUpCompleted(idToken: fakeIdToken, refreshToken: fakeRefreshToken)
+        sessionManager.stepUpCompleted()
     }
 
     private func confirmWithBiometrics() async {
@@ -130,10 +127,7 @@ public struct ReauthView: View {
                 localizedReason: "Confirm it's you to continue"
             )
             if success {
-                sessionManager.stepUpCompleted(
-                    idToken: "biometric-id-token",
-                    refreshToken: "biometric-refresh"
-                )
+                sessionManager.stepUpCompleted()
             } else {
                 errorMessage = "Authentication failed. Try again."
             }
@@ -146,5 +140,12 @@ public struct ReauthView: View {
 }
 
 #Preview("ReauthView") {
-    ReauthView(sessionManager: SessionManager(tokenStore: InMemoryTokenStore(idToken: "tok")))
+    ReauthView(sessionManager: SessionManager(tokenStore: InMemoryTokenStore(
+        tokens: StoredTokens(
+            idToken: "tok",
+            accessToken: "acc",
+            refreshToken: "ref",
+            expiresAt: Date.distantFuture
+        )
+    )))
 }
