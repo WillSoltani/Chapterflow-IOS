@@ -52,7 +52,7 @@ extension KeychainStoring {
     /// Reads a UTF-8 string for `account`, or `nil` if absent.
     func string(for account: String) throws -> String? {
         guard let data = try data(for: account) else { return nil }
-        return String(decoding: data, as: UTF8.self)
+        return String(bytes: data, encoding: .utf8)
     }
 }
 
@@ -68,7 +68,7 @@ struct SystemKeychain: KeychainStoring, Sendable {
         var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: configuration.service,
-            kSecAttrAccount as String: account,
+            kSecAttrAccount as String: account
         ]
         if let group = configuration.accessGroup {
             query[kSecAttrAccessGroup as String] = group

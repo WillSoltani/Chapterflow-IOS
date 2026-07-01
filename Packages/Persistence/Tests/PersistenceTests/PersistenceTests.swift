@@ -183,16 +183,16 @@ struct KeyValueStoreTests {
         var count: Int
     }
 
-    private func makeStore() -> (KeyValueStore, UserDefaults, String) {
+    private func makeStore() -> (store: KeyValueStore, suite: String) {
         let suite = "com.chapterflow.tests.kv.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
-        return (KeyValueStore(defaults: defaults), defaults, suite)
+        return (KeyValueStore(defaults: defaults), suite)
     }
 
     @Test("round-trips a Codable value")
     func roundTrip() throws {
-        let (store, defaults, suite) = makeStore()
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let (store, suite) = makeStore()
+        defer { UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite) }
 
         #expect(store.value(Sample.self, forKey: "s") == nil)
         #expect(store.contains("s") == false)
