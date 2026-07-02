@@ -63,6 +63,11 @@ public struct PreviewDependencies: Sendable {
 
     public let conceptGraph: ConceptGraph
 
+    // MARK: - Library
+
+    public let progressOverview: ProgressOverviewResponse
+    public let savedBookIds: [String]
+
     // MARK: - Computed convenience
 
     public var entitlementFreeValue: Entitlement { entitlementFree.entitlement }
@@ -101,7 +106,9 @@ public struct PreviewDependencies: Sendable {
         notebook: NotebookResponse = Fixtures.notebook,
         reviews: ReviewsResponse = Fixtures.reviews,
         notificationsResponse: NotificationsResponse = Fixtures.notificationsResponse,
-        conceptGraph: ConceptGraph = Fixtures.conceptGraph
+        conceptGraph: ConceptGraph = Fixtures.conceptGraph,
+        progressOverview: ProgressOverviewResponse = Fixtures.progressOverview,
+        savedBookIds: [String] = Fixtures.savedBookIds
     ) {
         self.books = books
         self.bookManifest = bookManifest
@@ -122,5 +129,7 @@ public struct PreviewDependencies: Sendable {
         self.reviews = reviews
         self.notificationsResponse = notificationsResponse
         self.conceptGraph = conceptGraph
+        self.progressOverview = progressOverview
+        self.savedBookIds = savedBookIds
     }
 }

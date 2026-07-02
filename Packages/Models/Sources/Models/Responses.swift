@@ -14,6 +14,59 @@ public struct CatalogResponse: Codable, Sendable {
     }
 }
 
+// MARK: - Library
+
+/// Per-book reading progress summary for the Home "Continue Reading" rail.
+/// Returned by `GET /book/me/progress`.
+public struct ProgressOverviewItem: Codable, Sendable, Identifiable {
+    public let bookId: String
+    public let currentChapterNumber: Int
+    public let totalChapters: Int
+    public let completedChapterCount: Int
+    /// ISO-8601 timestamp of the user's last reading session for this book.
+    public let lastReadAt: String?
+
+    public var id: String { bookId }
+
+    /// 0…1 fraction of chapters completed.
+    public var completionFraction: Double {
+        guard totalChapters > 0 else { return 0 }
+        return Double(completedChapterCount) / Double(totalChapters)
+    }
+
+    public init(
+        bookId: String,
+        currentChapterNumber: Int,
+        totalChapters: Int,
+        completedChapterCount: Int,
+        lastReadAt: String?
+    ) {
+        self.bookId = bookId
+        self.currentChapterNumber = currentChapterNumber
+        self.totalChapters = totalChapters
+        self.completedChapterCount = completedChapterCount
+        self.lastReadAt = lastReadAt
+    }
+}
+
+public struct ProgressOverviewResponse: Codable, Sendable {
+    public let progress: [ProgressOverviewItem]
+
+    public init(progress: [ProgressOverviewItem]) {
+        self.progress = progress
+    }
+}
+
+/// Saved (bookmarked) book IDs for the current user.
+/// Returned by `GET /book/me/saved` and `POST /book/me/saved`.
+public struct SavedBooksResponse: Codable, Sendable {
+    public let savedBookIds: [String]
+
+    public init(savedBookIds: [String]) {
+        self.savedBookIds = savedBookIds
+    }
+}
+
 public struct ChapterResponse: Codable, Sendable {
     public let chapter: Chapter
     public let progress: BookProgress

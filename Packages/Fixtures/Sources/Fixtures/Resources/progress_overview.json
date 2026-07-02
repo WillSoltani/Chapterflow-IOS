@@ -1,0 +1,18 @@
+{
+  "progress": [
+    {
+      "bookId": "b-atomic-habits",
+      "currentChapterNumber": 2,
+      "totalChapters": 5,
+      "completedChapterCount": 1,
+      "lastReadAt": "2024-01-16T09:00:00.000Z"
+    },
+    {
+      "bookId": "b-deep-work",
+      "currentChapterNumber": 1,
+      "totalChapters": 5,
+      "completedChapterCount": 0,
+      "lastReadAt": "2024-01-10T14:30:00.000Z"
+    }
+  ]
+}

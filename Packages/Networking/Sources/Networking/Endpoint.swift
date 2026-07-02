@@ -109,4 +109,21 @@ public enum Endpoints {
     public static func getEntitlements() -> Endpoint {
         Endpoint(method: .get, path: "/book/me/entitlements", requiresAuth: true)
     }
+
+    /// `GET /book/me/progress` → `{ progress: [...] }` — per-book reading progress overview.
+    public static func getProgressOverview() -> Endpoint {
+        Endpoint(method: .get, path: "/book/me/progress", requiresAuth: true)
+    }
+
+    /// `GET /book/me/saved` → `{ savedBookIds: [...] }` — the user's saved book IDs.
+    public static func getSavedBooks() -> Endpoint {
+        Endpoint(method: .get, path: "/book/me/saved", requiresAuth: true)
+    }
+
+    /// `POST /book/me/saved` → `{ savedBookIds: [...] }` — toggle a book's saved state.
+    public static func toggleSaved(bookId: String, saved: Bool) throws -> Endpoint {
+        struct Body: Encodable { let bookId: String; let saved: Bool }
+        return try Endpoint(method: .post, path: "/book/me/saved",
+                            body: Body(bookId: bookId, saved: saved))
+    }
 }
