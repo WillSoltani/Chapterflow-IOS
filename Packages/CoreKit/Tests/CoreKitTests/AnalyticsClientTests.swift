@@ -15,6 +15,7 @@ actor SpyTransport: AnalyticsTransport {
     }
 
     var count: Int { sent.count }
+    var isEmpty: Bool { sent.isEmpty }
 
     /// Decodes the events array from the most recent `track` batch.
     func lastBatchEventCount() -> Int? {
@@ -37,7 +38,7 @@ struct AnalyticsClientTests {
 
         await client.record(.appOpen)
         await client.record(.signIn(method: "cognito"))
-        #expect(await spy.count == 0)          // not full yet
+        #expect(await spy.isEmpty)          // not full yet
         #expect(await client.bufferedCount == 2)
 
         await client.record(.bookStarted(bookId: "b1"))  // hits batchSize → flush
@@ -53,7 +54,7 @@ struct AnalyticsClientTests {
         let client = DefaultAnalyticsClient(transport: spy, batchSize: 100, now: fixedNow)
 
         await client.flush()                   // nothing buffered → no send
-        #expect(await spy.count == 0)
+        #expect(await spy.isEmpty)
 
         await client.record(.paywallViewed(source: "home"))
         await client.record(.purchase(productId: "annual"))
@@ -72,7 +73,7 @@ struct AnalyticsClientTests {
         await client.flush()
         await client.deliverBeacon(name: "app_will_terminate", properties: [:])
 
-        #expect(await spy.count == 0)          // failing transport recorded nothing
+        #expect(await spy.isEmpty)          // failing transport recorded nothing
         #expect(await client.bufferedCount == 0) // batch was dropped, not requeued
     }
 
@@ -98,7 +99,7 @@ struct AnalyticsClientTests {
         await client.record(.signIn(method: "cognito"))
         await client.deliverBeacon(name: "x", properties: [:])
         await client.flush()
-        #expect(await spy.count == 0)              // nothing sent while opted out
+        #expect(await spy.isEmpty)              // nothing sent while opted out
     }
 
     @Test("the fire-and-forget track API eventually delivers")

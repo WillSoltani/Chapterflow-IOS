@@ -1,0 +1,182 @@
+name: Release — Archive & TestFlight
+
+# Triggers: push of a version tag (e.g. v1.0.0) or a manual workflow dispatch.
+# The entire job is guarded by the presence of ASC_KEY_ID; without it the job
+# is skipped cleanly. Add the secrets listed in docs/ios/SIGNING-AND-RELEASE.md
+# after Apple Developer Program enrollment to activate this workflow.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      notes:
+        description: 'What to Test notes for TestFlight'
+        required: false
+        default: ''
+
+jobs:
+  # Gate job: the `secrets` context is NOT available in a job-level `if:`
+  # (only github/needs/vars/inputs are), so referencing it there causes a
+  # workflow startup_failure. Instead, read the secret in a step (env is
+  # allowed there), expose it as an output, and gate the real job on `needs`.
+  guard:
+    name: Check signing secrets
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - name: Check for ASC_KEY_ID
+        id: check
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: |
+          if [ -n "$ASC_KEY_ID" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::ASC_KEY_ID not set — TestFlight release SKIPPED. Add Apple Developer secrets (see docs/ios/SIGNING-AND-RELEASE.md) to activate."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  testflight:
+    name: Archive → Export → TestFlight
+    needs: guard
+    # `needs` IS allowed in a job-level if — no-op cleanly until Apple
+    # Developer secrets are configured.
+    if: ${{ needs.guard.outputs.enabled == 'true' }}
+    # macos-26 ships Xcode 26 (iOS 26 SDK) required by the app's Liquid Glass UI.
+    runs-on: macos-26
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode 26
+        run: |
+          latest26="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -n "$latest26" ]; then sudo xcode-select -s "$latest26/Contents/Developer"; fi
+          xcodebuild -version
+
+      - name: Cache SPM repositories
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/org.swift.swiftpm/repositories
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      - name: Create Secrets.xcconfig
+        run: cp Secrets.example.xcconfig Secrets.xcconfig
+
+      # Write the ASC .p8 private key where xcrun altool/xcodebuild can find it.
+      - name: Install App Store Connect API key
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$ASC_API_KEY_P8" > \
+            "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+
+      # Import the distribution certificate (.p12) into a temporary keychain.
+      # DISTRIBUTION_CERT_P12_BASE64: base64 of the exported .p12 file.
+      # DISTRIBUTION_CERT_PASSWORD: the password used when exporting the .p12.
+      # See docs/ios/SIGNING-AND-RELEASE.md for how to generate these.
+      - name: Import distribution certificate
+        env:
+          CERTIFICATE_P12_BASE64: ${{ secrets.DISTRIBUTION_CERT_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.DISTRIBUTION_CERT_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          CERT_PATH="$RUNNER_TEMP/certificate.p12"
+          echo "$CERTIFICATE_P12_BASE64" | base64 --decode > "$CERT_PATH"
+          security import "$CERT_PATH" \
+            -P "$CERTIFICATE_PASSWORD" \
+            -A -t cert -f pkcs12 \
+            -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+      # Resolve tag name or use "manual" for workflow_dispatch.
+      - name: Derive version string
+        id: version
+        run: |
+          TAG="${GITHUB_REF_NAME:-manual}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      # Produce ExportOptions.plist with the real team ID substituted.
+      - name: Prepare ExportOptions.plist
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          sed "s/TEAM_ID_PLACEHOLDER/$APPLE_TEAM_ID/" \
+            Config/ExportOptions.plist > "$RUNNER_TEMP/ExportOptions.plist"
+
+      # Archive for generic iOS device (arm64).
+      # -allowProvisioningUpdates lets xcodebuild download/create provisioning
+      #   profiles from App Store Connect using the installed API key.
+      - name: Archive (Release)
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -project ChapterFlow.xcodeproj \
+            -scheme ChapterFlow \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/ChapterFlow.xcarchive" \
+            -authenticationKeyPath \
+              "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            CODE_SIGN_STYLE=Automatic \
+            -allowProvisioningUpdates \
+            -skipPackagePluginValidation \
+            -skipMacroValidation
+
+      # Export the archive to an IPA with App Store distribution method.
+      # ExportOptions.plist sets method=app-store and signingStyle=automatic.
+      - name: Export IPA
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          set -o pipefail
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/ChapterFlow.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -authenticationKeyPath \
+              "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            -allowProvisioningUpdates
+
+      # Upload the IPA to TestFlight via the App Store Connect API.
+      - name: Upload to TestFlight
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          IPA_PATH=$(find "$RUNNER_TEMP/export" -name '*.ipa' | head -1)
+          echo "Uploading: $IPA_PATH"
+          xcrun altool --upload-app \
+            --type ios \
+            --file "$IPA_PATH" \
+            --apiKey "$ASC_KEY_ID" \
+            --apiIssuer "$ASC_ISSUER_ID"
+
+      # Clean up the temporary keychain regardless of step outcomes.
+      - name: Delete temporary keychain
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" || true

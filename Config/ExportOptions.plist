@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Distribution method for App Store / TestFlight -->
+    <key>method</key>
+    <string>app-store</string>
+
+    <!-- Replaced by the release workflow with the APPLE_TEAM_ID secret -->
+    <key>teamID</key>
+    <string>TEAM_ID_PLACEHOLDER</string>
+
+    <!-- Automatic signing: xcodebuild downloads the provisioning profile
+         from App Store Connect using the installed API key. -->
+    <key>signingStyle</key>
+    <string>automatic</string>
+
+    <!-- Upload symbols for crash reporting (recommended) -->
+    <key>uploadSymbols</key>
+    <true/>
+
+    <!-- Bitcode is deprecated for iOS 16+; disable to keep archive slim -->
+    <key>uploadBitcode</key>
+    <false/>
+    <key>compileBitcode</key>
+    <false/>
+
+    <!-- Destination: export IPA locally; the workflow uploads via xcrun altool.
+         Change to "upload" to have xcodebuild upload directly during export. -->
+    <key>destination</key>
+    <string>export</string>
+</dict>
+</plist>

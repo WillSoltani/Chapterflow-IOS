@@ -51,8 +51,8 @@ struct ToneKeyEvolutionTests {
     @Test("unknown raw value decodes to .unknown, not throws")
     func unknownToneKey() throws {
         let data = json(#"{"tone":"mentor"}"#)
-        struct W: Decodable { let tone: ToneKey }
-        let w = try JSONDecoder.chapterFlow.decode(W.self, from: data)
+        struct ToneWrapper: Decodable { let tone: ToneKey }
+        let w = try JSONDecoder.chapterFlow.decode(ToneWrapper.self, from: data)
         #expect(w.tone == .unknown("mentor"))
     }
 
