@@ -26,7 +26,7 @@ public struct DesignSystemGallery: View {
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button("Light") { colorScheme = .light }
-                        Button("Dark")  { colorScheme = .dark }
+                        Button("Dark") { colorScheme = .dark }
                         Button("System") { colorScheme = nil }
                     } label: {
                         Label("Appearance", systemImage: "circle.lefthalf.filled")

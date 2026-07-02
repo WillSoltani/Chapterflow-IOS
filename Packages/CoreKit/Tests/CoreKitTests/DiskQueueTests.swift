@@ -24,7 +24,7 @@ struct DiskQueueTests {
     @Test("empty queue returns zero count")
     func emptyQueueCount() async {
         let (queue, _) = makeQueue()
-        await #expect(queue.count == 0)
+        #expect(await queue.isEmpty)
     }
 
     @Test("enqueued events persist across queue instances (simulates relaunch)")
@@ -47,7 +47,7 @@ struct DiskQueueTests {
         let (queue, _) = makeQueue()
         try await queue.enqueue([makeEvent()])
         _ = await queue.dequeueAll()
-        #expect(await queue.count == 0)
+        #expect(await queue.isEmpty)
     }
 
     @Test("dequeueAll on empty queue returns empty array")
@@ -82,7 +82,7 @@ struct DiskQueueTests {
         let (queue, _) = makeQueue()
         try await queue.enqueue([makeEvent(), makeEvent(), makeEvent()])
         try await queue.clear()
-        #expect(await queue.count == 0)
+        #expect(await queue.isEmpty)
     }
 
     @Test("multiple enqueue calls accumulate events")
@@ -142,7 +142,7 @@ struct DiskBackedAnalyticsClientTests {
         await client1.record(.appOpen)
         await client1.record(.signIn(method: "cognito"))
         // Events are on disk, NOT sent yet.
-        #expect(await spy.count == 0)
+        #expect(await spy.isEmpty)
         #expect(await diskQueue.count == 2)
 
         // Session 2: new client instance pointing at the same disk queue.
@@ -176,7 +176,7 @@ struct DiskBackedAnalyticsClientTests {
         await client.setOptedOut(true)
         // Allow the opt-out clear Task to run.
         try await Task.sleep(for: .milliseconds(50))
-        #expect(await diskQueue.count == 0)
+        #expect(await diskQueue.isEmpty)
     }
 
     @Test("events are re-queued to disk on send failure")
@@ -193,7 +193,7 @@ struct DiskBackedAnalyticsClientTests {
         await client.record(.appOpen)
         await client.flush()   // send fails → events re-queued
         // Nothing was delivered…
-        #expect(await spy.count == 0)
+        #expect(await spy.isEmpty)
         // …but events remain on disk for the next attempt.
         #expect(await diskQueue.count >= 1)
     }

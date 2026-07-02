@@ -63,6 +63,9 @@ actor DiskQueue {
     /// The current number of queued events (0 on read failure).
     var count: Int { load().count }
 
+    /// Whether the queue is empty.
+    var isEmpty: Bool { load().isEmpty }
+
     // MARK: - Private
 
     private func load() -> [AnalyticsWireEvent] {
