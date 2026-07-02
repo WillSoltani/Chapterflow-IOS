@@ -38,11 +38,14 @@ public struct Chapter: Codable, Sendable {
             ?? content
     }
 
-    /// The typed `contentVariants` map (unknown keys are silently dropped).
+    /// The typed `contentVariants` map (unrecognised variant keys are silently dropped).
     public var typedContentVariants: [VariantKey: ChapterVariantContent] {
         Dictionary(
             uniqueKeysWithValues: contentVariants.compactMap { k, v in
-                guard let key = VariantKey(rawValue: k) else { return nil }
+                let key = VariantKey(rawValue: k)
+                // Drop future server variants we don't know about from this typed view;
+                // they remain accessible via the raw `contentVariants` dict.
+                if case .unknown = key { return nil }
                 return (key, v)
             }
         )

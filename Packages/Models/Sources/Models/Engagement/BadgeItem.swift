@@ -13,6 +13,16 @@ public struct BadgeItem: Codable, Sendable, Identifiable {
     public var id: String { badgeId }
 }
 
+/// Response from `GET /book/me/badges`.
+/// Decodes the `badges` array lossily — one malformed badge is dropped and
+/// logged while the rest of the collection survives.
 public struct BadgesResponse: Codable, Sendable {
     public let badges: [BadgeItem]
+
+    private enum CodingKeys: String, CodingKey { case badges }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.badges = try container.decodeLossy(BadgeItem.self, forKey: .badges)
+    }
 }

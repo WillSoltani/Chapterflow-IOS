@@ -13,11 +13,13 @@ public struct ToneKeyed: Codable, Sendable, Equatable {
     }
 
     /// Returns the string for the given tone preference.
+    /// Falls back to the `gentle` variant for any unrecognised future tone.
     public func resolve(_ tone: ToneKey) -> String {
         switch tone {
-        case .gentle: return gentle
-        case .direct: return direct
+        case .gentle:      return gentle
+        case .direct:      return direct
         case .competitive: return competitive
+        case .unknown:     return gentle
         }
     }
 }
