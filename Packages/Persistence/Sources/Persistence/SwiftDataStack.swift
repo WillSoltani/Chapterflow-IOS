@@ -51,7 +51,7 @@ public enum PersistenceMigrationPlan: SchemaMigrationPlan {
 // MARK: - Controller
 
 /// Where the SwiftData store is physically located.
-public enum StorageMode: Sendable {
+public enum StorageMode: Sendable, Equatable {
     /// The shared App Group container, so widgets/extensions can read the store.
     case appGroup
     /// An ephemeral in-memory store (tests, previews).
@@ -66,6 +66,13 @@ public enum StorageMode: Sendable {
 /// ``PersistenceSchemaV1``). The store lives in the App Group container so widgets
 /// share it. `ModelContainer` is `Sendable`, so this controller is safe to pass across
 /// isolation domains; `ModelContext` is not, so background work uses ``BackgroundStore``.
+///
+/// - Important: **App extensions (widgets, share extensions, etc.) must never call
+///   this initialiser with a persistent storage mode.** Multi-process SQLite access
+///   (main app + extension both writing) is a data-corruption hazard that SwiftData
+///   does not protect against. Extensions must consume the lightweight App-Group
+///   key/value snapshot written by the main app instead (see the P8.0 shared-state
+///   module). This constraint is enforced at debug-build time by a `precondition`.
 public struct PersistenceController: Sendable {
     /// The underlying SwiftData container.
     public let container: ModelContainer
@@ -84,6 +91,16 @@ public struct PersistenceController: Sendable {
         storage: StorageMode = .appGroup,
         migrationPlan: (any SchemaMigrationPlan.Type)? = nil
     ) throws {
+        // Extensions that open a persistent SwiftData store risk corrupting the
+        // on-disk SQLite database when the main app is also running. Catch this
+        // in debug builds so the mistake is caught before it reaches production.
+        // Use `.inMemory` storage in tests and `.inMemory`/App-Group snapshot in
+        // extensions.
+        precondition(
+            storage == .inMemory || !Bundle.main.bundlePath.hasSuffix(".appex"),
+            "PersistenceController: App extensions must not open a persistent SwiftData " +
+            "container. Use the App Group key/value snapshot for extension data access."
+        )
         let schema = Schema(models)
         let configuration: ModelConfiguration
 

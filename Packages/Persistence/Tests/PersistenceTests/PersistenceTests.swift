@@ -21,6 +21,28 @@ struct TokenStoreTests {
         InMemoryTokenStore()
     }
 
+    // MARK: Keychain configuration (does NOT require Keychain entitlement)
+
+    @Test("default configuration uses afterFirstUnlockThisDeviceOnly accessibility")
+    func defaultConfigAccessibility() {
+        let store = TokenStore()
+        #expect(store.configuration.accessibility == .afterFirstUnlockThisDeviceOnly)
+    }
+
+    @Test("default configuration includes the App Group access group")
+    func defaultConfigAppGroup() {
+        let store = TokenStore()
+        #expect(store.configuration.accessGroup == AppGroup.identifier)
+    }
+
+    @Test("afterFirstUnlockThisDeviceOnly maps to the correct CFString constant")
+    func accessibilityConstant() {
+        let accessibility = KeychainAccessibility.afterFirstUnlockThisDeviceOnly
+        // Verify the raw Security framework constant. This catches accidental changes to
+        // a weaker accessibility class (e.g. afterFirstUnlock, which allows iCloud sync).
+        #expect(accessibility.secValue == kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly)
+    }
+
     private let sample = StoredTokens(
         idToken: "id-123",
         accessToken: "access-456",

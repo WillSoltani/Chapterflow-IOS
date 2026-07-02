@@ -13,6 +13,22 @@ import Foundation
 /// via `authEvents` so `SessionManager` can observe state changes.
 /// It is separate from `SessionManager` so the auth-flow UI (`AuthFlowModel`)
 /// can drive sign-up/sign-in without coupling to session lifecycle concerns.
+///
+/// ## Token Ownership — Single Write Path
+/// `AuthService` is the **sole writer** of `TokenStore` in production. All writes
+/// happen through one of four paths, each triggered by an Amplify auth event:
+///
+/// | Path | Trigger | Write |
+/// |------|---------|-------|
+/// | `handleSuccessfulAuth()` | email/password sign-in succeeds | `save` |
+/// | `signInWithApple(...)` | Apple credential exchanged | `save` |
+/// | `performRefresh()` | Amplify force-refresh completes | `save` |
+/// | `syncAuthState()` | app launch, Amplify already signed in | `save` |
+/// | `signOut()` | user signs out | `delete` (clears both Amplify AND the mirror) |
+///
+/// No other component may call `tokenStore.save(_:)`. `AuthTokenProvider` reads the
+/// mirror for fast token lookups and calls `performRefresh()` when near-expiry —
+/// it does NOT write to the store directly.
 @MainActor
 @Observable
 public final class AuthService: TokenRefreshing {
@@ -193,6 +209,9 @@ public final class AuthService: TokenRefreshing {
     }
 
     public func signOut() async {
+        // Clear BOTH copies: Amplify's internal credential storage AND our Keychain mirror.
+        // After this, Amplify.Auth.fetchAuthSession() will return isSignedIn == false
+        // and tokenStore.load() will return nil. The session is fully wiped.
         _ = await Amplify.Auth.signOut()
         try? tokenStore.delete()
         eventsContinuation.yield(.signedOut)

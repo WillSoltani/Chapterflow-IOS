@@ -186,8 +186,12 @@ public final class SessionManager {
 extension SessionManager: TokenRefreshing {
     public func performRefresh() async throws -> StoredTokens {
         if let authService {
+            // Production path: Amplify performs the refresh and AuthService writes to
+            // the TokenStore. This is the single production write path for token storage.
             return try await authService.performRefresh()
         } else if let testRefresher {
+            // Test-only path (authService == nil): no Amplify is available, so we write
+            // the stub tokens ourselves. This branch is unreachable in production.
             let tokens = try await testRefresher.performRefresh()
             try? tokenStore.save(tokens)
             return tokens
