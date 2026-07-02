@@ -12,19 +12,24 @@ public struct AppConfig: Sendable, Equatable {
     public let cognitoClientID: String
     /// Custom Cognito domain, e.g. `auth.chapterflow.ca` (no https://, no trailing slash).
     public let cognitoDomain: String
+    /// Sentry DSN for crash reporting. An empty string disables Sentry entirely
+    /// (the default in Debug builds and when the key is absent from Info.plist).
+    public let sentryDSN: String
 
     public init(
         apiBaseURL: String,
         cognitoRegion: String,
         cognitoUserPoolID: String,
         cognitoClientID: String,
-        cognitoDomain: String = ""
+        cognitoDomain: String = "",
+        sentryDSN: String = ""
     ) {
         self.apiBaseURL = apiBaseURL
         self.cognitoRegion = cognitoRegion
         self.cognitoUserPoolID = cognitoUserPoolID
         self.cognitoClientID = cognitoClientID
         self.cognitoDomain = cognitoDomain
+        self.sentryDSN = sentryDSN
     }
 
     /// Info.plist keys that carry the xcconfig-injected values.
@@ -34,6 +39,9 @@ public struct AppConfig: Sendable, Equatable {
         public static let cognitoUserPoolID = "CognitoUserPoolID"
         public static let cognitoClientID = "CognitoClientID"
         public static let cognitoDomain = "CognitoDomain"
+        /// Key injected from `SENTRY_DSN` xcconfig variable. Leave empty in
+        /// Debug xcconfig to keep Sentry off during local development.
+        public static let sentryDSN = "SentryDSN"
     }
 
     /// Reads configuration from the given bundle's Info.plist.
@@ -49,7 +57,8 @@ public struct AppConfig: Sendable, Equatable {
             cognitoRegion: value(InfoKey.cognitoRegion),
             cognitoUserPoolID: value(InfoKey.cognitoUserPoolID),
             cognitoClientID: value(InfoKey.cognitoClientID),
-            cognitoDomain: value(InfoKey.cognitoDomain)
+            cognitoDomain: value(InfoKey.cognitoDomain),
+            sentryDSN: value(InfoKey.sentryDSN)
         )
     }
 }

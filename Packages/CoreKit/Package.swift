@@ -9,8 +9,16 @@ let package = Package(
     products: [
         .library(name: "CoreKit", targets: ["CoreKit"]),
     ],
+    dependencies: [
+        .package(url: "https://github.com/getsentry/sentry-cocoa", from: "8.13.0"),
+    ],
     targets: [
-        .target(name: "CoreKit"),
+        .target(
+            name: "CoreKit",
+            dependencies: [
+                .product(name: "Sentry", package: "sentry-cocoa"),
+            ]
+        ),
         .testTarget(name: "CoreKitTests", dependencies: ["CoreKit"]),
     ]
 )
