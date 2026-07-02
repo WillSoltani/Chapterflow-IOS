@@ -21,7 +21,7 @@ public struct CFToast: View {
             // glassEffect(in:) ships with the iOS 26 SDK (Xcode 26 / Swift 6.1+).
             // The #if guard lets Xcode 16 compile the fallback path without knowing
             // about the new API; the runtime #available check handles older OS at run time.
-#if swift(>=6.1)
+#if swift(>=6.2)
             if #available(iOS 26, macOS 26, *) {
                 label
                     .glassEffect(in: Capsule())

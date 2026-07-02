@@ -36,7 +36,7 @@ public struct CFEmptyState: View {
             if let action, let label = actionLabel {
                 Group {
                     // .glass ButtonStyle ships with iOS 26 SDK (Xcode 26 / Swift 6.1+).
-#if swift(>=6.1)
+#if swift(>=6.2)
                     if #available(iOS 26, macOS 26, *) {
                         Button(label, action: action)
                             .buttonStyle(.glass)

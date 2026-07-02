@@ -212,7 +212,7 @@ public struct DesignSystemGallery: View {
         Section("Buttons") {
             VStack(spacing: .cfSpacing12) {
                 Group {
-#if swift(>=6.1)
+#if swift(>=6.2)
                     if #available(iOS 26, macOS 26, *) {
                         Button("Glass Button") {}
                             .buttonStyle(.glass)
