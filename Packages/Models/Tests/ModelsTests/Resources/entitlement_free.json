@@ -1,0 +1,41 @@
+{
+  "entitlement": {
+    "plan": "FREE",
+    "proStatus": null,
+    "proSource": null,
+    "freeBookSlots": 2,
+    "unlockedBookIds": ["b-atomic-habits"],
+    "unlockedBooksCount": 1,
+    "remainingFreeStarts": 1,
+    "currentPeriodEnd": null,
+    "cancelAtPeriodEnd": null,
+    "licenseKey": null,
+    "licenseExpiresAt": null
+  },
+  "paywall": {
+    "price": "$9.99/month",
+    "pricingTiers": [
+      {
+        "id": "pro_monthly",
+        "name": "Monthly",
+        "price": "$9.99",
+        "period": "month",
+        "isPopular": false
+      },
+      {
+        "id": "pro_annual",
+        "name": "Annual",
+        "price": "$79.99",
+        "period": "year",
+        "isPopular": true
+      }
+    ],
+    "benefits": [
+      "Unlimited access to all books",
+      "All reading depth variants",
+      "Audio narration",
+      "Offline reading",
+      "Advanced analytics"
+    ]
+  }
+}
