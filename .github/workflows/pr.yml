@@ -33,13 +33,26 @@ jobs:
   # ── 2. Build (iOS Simulator) + Unit Tests (all local packages) ───────────
   build-and-test:
     name: Build & Test
-    runs-on: macos-15
+    # macos-26 ships Xcode 26 (iOS 26 SDK), which the app REQUIRES: RF5's Liquid
+    # Glass APIs (.glassEffect, .buttonStyle(.glass)) do not exist in the iOS 18.x
+    # SDK on macos-15's default Xcode, so #available(iOS 26) guards cannot save a
+    # build there — the symbols are simply absent. Both the xcodebuild build and
+    # the `swift test` of DesignSystem need the 26 toolchain.
+    runs-on: macos-26
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Xcode version
-        run: xcodebuild -version
+      # Select the newest installed Xcode 26 explicitly (no-op if already default)
+      # and fail loudly, listing what IS available, if 26 is somehow missing.
+      - name: Select Xcode 26
+        run: |
+          echo "Installed Xcodes:"; ls -d /Applications/Xcode*.app 2>/dev/null || true
+          latest26="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -n "$latest26" ]; then
+            sudo xcode-select -s "$latest26/Contents/Developer"
+          fi
+          xcodebuild -version
 
       # Cache bare git repos used by both xcodebuild and swift test.
       # Key: hash of every Package.resolved in the tree.

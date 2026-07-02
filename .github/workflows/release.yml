@@ -17,17 +17,45 @@ on:
         default: ''
 
 jobs:
+  # Gate job: the `secrets` context is NOT available in a job-level `if:`
+  # (only github/needs/vars/inputs are), so referencing it there causes a
+  # workflow startup_failure. Instead, read the secret in a step (env is
+  # allowed there), expose it as an output, and gate the real job on `needs`.
+  guard:
+    name: Check signing secrets
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - name: Check for ASC_KEY_ID
+        id: check
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: |
+          if [ -n "$ASC_KEY_ID" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::ASC_KEY_ID not set — TestFlight release SKIPPED. Add Apple Developer secrets (see docs/ios/SIGNING-AND-RELEASE.md) to activate."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
   testflight:
     name: Archive → Export → TestFlight
-    runs-on: macos-15
-    # No-op cleanly until Apple Developer secrets are configured.
-    if: ${{ secrets.ASC_KEY_ID != '' }}
+    needs: guard
+    # `needs` IS allowed in a job-level if — no-op cleanly until Apple
+    # Developer secrets are configured.
+    if: ${{ needs.guard.outputs.enabled == 'true' }}
+    # macos-26 ships Xcode 26 (iOS 26 SDK) required by the app's Liquid Glass UI.
+    runs-on: macos-26
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Xcode version
-        run: xcodebuild -version
+      - name: Select Xcode 26
+        run: |
+          latest26="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)"
+          if [ -n "$latest26" ]; then sudo xcode-select -s "$latest26/Contents/Developer"; fi
+          xcodebuild -version
 
       - name: Cache SPM repositories
         uses: actions/cache@v4
