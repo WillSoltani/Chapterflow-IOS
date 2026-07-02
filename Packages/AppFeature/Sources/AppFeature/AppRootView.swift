@@ -1,8 +1,4 @@
 import SwiftUI
-
-// Bring every workspace module into the composition root so the dependency
-// graph is exercised. Real feature views from the corresponding modules will
-// replace the placeholder tabs as each module is built out.
 import CoreKit
 import DesignSystem
 import Models
@@ -25,7 +21,7 @@ import SettingsFeature
 /// Gates content on `AuthState`:
 /// - `.unknown`        → `ProgressView` (Amplify resolving startup state)
 /// - `.signedOut`      → `AuthFlowView` (Welcome / sign-in + email flows)
-/// - `.signedIn`       → main `TabView`
+/// - `.signedIn`       → main `TabView` (sidebarAdaptable, Liquid Glass tab bar)
 /// - `.reconnecting`   → main `TabView` + non-destructive top banner
 /// - `.reauthRequired` → main `TabView` + `ReauthView` sheet (blocking)
 public struct AppRootView: View {
@@ -39,7 +35,7 @@ public struct AppRootView: View {
         gatedContent
             .task { try? model.configure() }
             .onOpenURL { url in model.handle(url: url) }
-            .onChange(of: model.session.authState) { oldState, newState in
+            .onChange(of: model.session.authState) { _, newState in
                 switch newState {
                 case .signedIn:
                     model.hydrateDisplayName()
@@ -89,16 +85,32 @@ public struct AppRootView: View {
 
     // MARK: - Main tab view
 
+    /// Five-tab shell using the iOS 18 `Tab { }` API with `.sidebarAdaptable`
+    /// so iPad gets a collapsible sidebar and iPhone/Mac get a native tab bar
+    /// (which receives the Liquid Glass treatment automatically on iOS/macOS 26+).
     private var mainTabView: some View {
         TabView(selection: $model.selectedTab) {
-            ForEach(AppTab.allCases, id: \.self) { tab in
-                tabContent(for: tab)
-                    .tabItem { Label(tab.title, systemImage: tab.systemImage) }
-                    .tag(tab)
+            Tab("Home", systemImage: "house", value: AppTab.home) {
+                HomeTab(displayName: model.displayName)
+            }
+            Tab("Library", systemImage: "books.vertical", value: AppTab.library) {
+                PlaceholderTab(tab: .library)
+            }
+            Tab("Reviews", systemImage: "star", value: AppTab.reviews) {
+                PlaceholderTab(tab: .reviews)
+            }
+            Tab("Profile", systemImage: "person.crop.circle", value: AppTab.profile) {
+                PlaceholderTab(tab: .profile)
+            }
+            Tab("Settings", systemImage: "gearshape", value: AppTab.settings) {
+                PlaceholderTab(tab: .settings)
             }
         }
+        .tabViewStyle(.sidebarAdaptable)
         .tint(.cfAccent)
     }
+
+    // MARK: - Tab content
 
     @ViewBuilder
     private func tabContent(for tab: AppTab) -> some View {
@@ -151,19 +163,28 @@ private struct PlaceholderTab: View {
 
 // MARK: - Reconnecting banner
 
+/// A floating glass pill shown when the app is attempting to reconnect.
 private struct ReconnectingBanner: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: .cfSpacing8) {
             ProgressView().scaleEffect(0.8)
-            Text("Reconnecting…").font(.footnote)
+            Text("Reconnecting…").font(.cfFootnote)
         }
         .foregroundStyle(.secondary)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(.regularMaterial, in: Capsule())
-        .padding(.top, 8)
+        .padding(.horizontal, .cfSpacing16)
+        .padding(.vertical, .cfSpacing8)
+        .background(bannerBackground, in: Capsule())
+        .padding(.top, .cfSpacing8)
         .transition(.move(edge: .top).combined(with: .opacity))
         .accessibilityLabel("Reconnecting to the server")
+    }
+
+    private var bannerBackground: some ShapeStyle {
+        reduceTransparency
+            ? AnyShapeStyle(Color.cfSecondaryBackground)
+            : AnyShapeStyle(.regularMaterial)
     }
 }
 

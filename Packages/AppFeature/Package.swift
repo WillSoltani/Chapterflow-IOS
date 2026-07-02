@@ -26,7 +26,8 @@ let package = Package(
     name: "AppFeature",
     // macOS is declared only so the SwiftUI composition root builds and tests on
     // the host toolchain (`swift build`/`swift test`). The shipping target is iOS.
-    platforms: [.iOS(.v18), .macOS(.v14)],
+    // macOS 15 is required for the Tab { } API used in the tab shell.
+    platforms: [.iOS(.v18), .macOS(.v15)],
     products: [
         .library(name: "AppFeature", targets: ["AppFeature"]),
     ],
