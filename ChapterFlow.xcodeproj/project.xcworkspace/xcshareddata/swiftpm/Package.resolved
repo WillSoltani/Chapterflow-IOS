@@ -1,5 +1,5 @@
 {
-  "originHash" : "7d43bae1e843e9ccbaa8fd7c990827a46ebb6c69db43c5ad2841ad072e6a5056",
+  "originHash" : "018cf6b6e979e09d6a8dcf99b0df598935c8d3ac9d54164dc6541d4bd4ae67ae",
   "pins" : [
     {
       "identity" : "amplify-swift",
@@ -44,6 +44,15 @@
       "state" : {
         "revision" : "c71eb1515223bee2b2e4b96328655fd3bd9d442f",
         "version" : "1.7.27"
+      }
+    },
+    {
+      "identity" : "sentry-cocoa",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/getsentry/sentry-cocoa",
+      "state" : {
+        "revision" : "dad229c665bfd043c5d80ac7aa77717cbd19a1c3",
+        "version" : "8.58.3"
       }
     },
     {

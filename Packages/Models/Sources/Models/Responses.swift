@@ -49,11 +49,21 @@ public struct ProgressOverviewItem: Codable, Sendable, Identifiable {
     }
 }
 
+/// Response wrapper for `GET /book/me/progress`.
+/// Decodes the `progress` array lossily — one malformed item is dropped and
+/// logged while the rest of the collection survives.
 public struct ProgressOverviewResponse: Codable, Sendable {
     public let progress: [ProgressOverviewItem]
 
     public init(progress: [ProgressOverviewItem]) {
         self.progress = progress
+    }
+
+    private enum CodingKeys: String, CodingKey { case progress }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.progress = try container.decodeLossy(ProgressOverviewItem.self, forKey: .progress)
     }
 }
 

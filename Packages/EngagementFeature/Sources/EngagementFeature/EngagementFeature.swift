@@ -1,8 +1,10 @@
-/// Placeholder public entry point for the EngagementFeature module.
+/// EngagementFeature — progress dashboard, streak, flow-points, tier, badges, reviews, journeys.
 ///
-/// This module is intentionally empty for now; it compiles and exposes a single
-/// public symbol so downstream modules can link against it.
+/// Public API surface for P5.1:
+/// - ``EngagementRepository`` — shared data layer (dashboard/streak/progress/points/tier)
+/// - ``DashboardView`` — SwiftUI progress dashboard with Swift Charts
+/// - ``DashboardModel`` — `@Observable` view model for the dashboard
+/// - ``DashboardSnapshot`` — immutable aggregate of the three engagement endpoints
 public enum EngagementFeature {
-    /// The name of this module. Useful as a smoke-test symbol.
     public static let moduleName = "EngagementFeature"
 }

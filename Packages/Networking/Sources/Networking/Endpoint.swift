@@ -137,4 +137,26 @@ public enum Endpoints {
         struct Body: Encodable {}
         return try Endpoint(method: .post, path: "/book/me/books/\(bookId)/start", body: Body())
     }
+
+    // MARK: - Engagement
+
+    /// `GET /book/me/dashboard` → `{ dashboard: { ... } }`.
+    public static func getDashboard() -> Endpoint {
+        Endpoint(method: .get, path: "/book/me/dashboard", requiresAuth: true)
+    }
+
+    /// `GET /book/me/streak` → `{ streak: { ... } }`.
+    public static func getStreak() -> Endpoint {
+        Endpoint(method: .get, path: "/book/me/streak", requiresAuth: true)
+    }
+
+    /// `GET /book/me/flow-points` → `{ balance: Int }`.
+    public static func getFlowPoints() -> Endpoint {
+        Endpoint(method: .get, path: "/book/me/flow-points", requiresAuth: true)
+    }
+
+    /// `GET /book/me/badges` → `{ badges: [...] }`.
+    public static func getBadges() -> Endpoint {
+        Endpoint(method: .get, path: "/book/me/badges", requiresAuth: true)
+    }
 }
