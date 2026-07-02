@@ -46,6 +46,13 @@ public final class AppModel {
         #if os(iOS)
         session.registerBackgroundRefresh()
         #endif
+        #if DEBUG
+        // `--demo-tab=library` (etc.) lets simulator runs jump to a specific tab.
+        if let arg = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--demo-tab=") }) {
+            let name = String(arg.dropFirst("--demo-tab=".count))
+            selectedTab = AppTab.allCases.first { $0.title.lowercased() == name.lowercased() } ?? .home
+        }
+        #endif
     }
 
     // MARK: - Lifecycle

@@ -51,6 +51,21 @@ public struct AppRootView: View {
 
     @ViewBuilder
     private var gatedContent: some View {
+        // DEBUG: pass `--demo-tab-shell` as a launch argument to skip auth
+        // and land directly on the tab shell (e.g. for simulator walkthroughs).
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--demo-tab-shell") {
+            mainTabView
+        } else {
+            authGatedContent
+        }
+        #else
+        authGatedContent
+        #endif
+    }
+
+    @ViewBuilder
+    private var authGatedContent: some View {
         switch model.session.authState {
         case .unknown:
             ProgressView()
