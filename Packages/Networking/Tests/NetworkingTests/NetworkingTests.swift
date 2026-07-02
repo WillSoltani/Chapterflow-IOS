@@ -197,6 +197,31 @@ struct NetworkingTests {
         #expect(auth == nil)
     }
 
+    // MARK: B1 — Bearer-only, no CSRF origin headers
+
+    /// Native iOS clients never set an Origin or Sec-Fetch-Site header.
+    /// B1 (deployed) exempts Bearer-authenticated requests from the CSRF guard.
+    /// This test verifies the client never injects these headers so a PATCH
+    /// (or any mutating call) cannot be rejected by that guard.
+    @Test("mutating Bearer request carries no Origin or Sec-Fetch-Site headers")
+    func mutatingBearerRequestNoCsrfHeaders() async throws {
+        StubURLProtocol.reset()
+        StubURLProtocol.responder = { _ in
+            .init(statusCode: 200, body: #"{"loggedIn":true}"#.data(using: .utf8)!)
+        }
+        let (client, _) = TestFactory.client(token: "bearer-token")
+
+        // Use a PATCH endpoint; any auth'd method would do.
+        let patchEndpoint = Endpoint(method: .patch, path: "/user/settings", requiresAuth: true)
+        let _: SessionResponse = try await client.send(patchEndpoint)
+        let req = try #require(StubURLProtocol.recordedRequests.first)
+        #expect(req.value(forHTTPHeaderField: "Origin") == nil,
+                "native clients must never send Origin")
+        #expect(req.value(forHTTPHeaderField: "Sec-Fetch-Site") == nil,
+                "native clients must never send Sec-Fetch-Site")
+        #expect(req.value(forHTTPHeaderField: "Authorization") == "Bearer bearer-token")
+    }
+
     // MARK: 401 refresh + retry
 
     @Test("401 unauthenticated triggers one refresh then retries and succeeds")
