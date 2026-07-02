@@ -5,17 +5,15 @@ import DesignSystem
 struct BulletBlockView: View {
     let text: String
 
+    @Environment(\.readerAppearance) private var appearance
+
     var body: some View {
         HStack(alignment: .top, spacing: .cfSpacing12) {
             Circle()
-                .fill(Color.cfAccent)
+                .fill(appearance.colors.accent)
                 .frame(width: 5, height: 5)
                 .padding(.top, 8)
-            Text(AttributedString.inlineMarkdown(text))
-                .font(.cfBody)
-                .foregroundStyle(Color.cfLabel)
-                .lineSpacing(3)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            ReaderBodyText(text: AttributedString.inlineMarkdown(text))
         }
         .padding(.vertical, .cfSpacing4)
     }

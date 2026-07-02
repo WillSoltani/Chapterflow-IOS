@@ -10,6 +10,7 @@ let package = Package(
     dependencies: [
         .package(path: "../Models"),
         .package(path: "../DesignSystem"),
+        .package(path: "../Persistence"),
     ],
     targets: [
         .target(
@@ -17,6 +18,7 @@ let package = Package(
             dependencies: [
                 .product(name: "Models", package: "Models"),
                 .product(name: "DesignSystem", package: "DesignSystem"),
+                .product(name: "Persistence", package: "Persistence"),
             ]
         ),
         .testTarget(
@@ -24,6 +26,7 @@ let package = Package(
             dependencies: [
                 "ReaderFeature",
                 .product(name: "Models", package: "Models"),
+                .product(name: "Persistence", package: "Persistence"),
             ]
         ),
     ]

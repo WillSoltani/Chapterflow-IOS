@@ -6,21 +6,20 @@ import Models
 struct ImplementationPlanItemView: View {
     let item: ResolvedIfThenPlan
 
+    @Environment(\.readerAppearance) private var appearance
+
     var body: some View {
         VStack(alignment: .leading, spacing: .cfSpacing8) {
             HStack(spacing: .cfSpacing8) {
                 Image(systemName: "arrow.right.circle.fill")
                     .font(.cfBody)
-                    .foregroundStyle(Color.cfAccent)
+                    .foregroundStyle(appearance.colors.accent)
                 Text(AttributedString.inlineMarkdown(item.context))
                     .font(.cfCallout)
-                    .foregroundStyle(Color.cfSecondaryLabel)
+                    .foregroundStyle(appearance.colors.secondaryText)
                     .lineSpacing(2)
             }
-            Text(AttributedString.inlineMarkdown(item.plan))
-                .font(.cfBody)
-                .foregroundStyle(Color.cfLabel)
-                .lineSpacing(3)
+            ReaderBodyText(text: AttributedString.inlineMarkdown(item.plan))
                 .padding(.leading, .cfSpacing32)
         }
         .padding(.vertical, .cfSpacing8)

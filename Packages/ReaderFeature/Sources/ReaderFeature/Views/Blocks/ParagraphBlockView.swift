@@ -6,11 +6,7 @@ struct ParagraphBlockView: View {
     let text: String
 
     var body: some View {
-        Text(AttributedString.inlineMarkdown(text))
-            .font(.cfReaderBody())
-            .foregroundStyle(Color.cfLabel)
-            .lineSpacing(5)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        ReaderBodyText(text: AttributedString.inlineMarkdown(text))
             .padding(.vertical, .cfSpacing8)
     }
 }

@@ -7,6 +7,8 @@ struct CalloutBlockView: View {
     let title: String
     let bodyText: String
 
+    @Environment(\.readerAppearance) private var appearance
+
     private var icon: String {
         switch title.lowercased() {
         case "hook": return "sparkles"
@@ -26,22 +28,18 @@ struct CalloutBlockView: View {
             Label {
                 Text(title.uppercased())
                     .font(.cfCaption)
-                    .foregroundStyle(Color.cfAccent)
+                    .foregroundStyle(appearance.colors.accent)
                     .kerning(0.8)
             } icon: {
                 Image(systemName: icon)
                     .font(.cfCaption)
-                    .foregroundStyle(Color.cfAccent)
+                    .foregroundStyle(appearance.colors.accent)
             }
-            Text(AttributedString.inlineMarkdown(bodyText))
-                .font(.cfCallout)
-                .foregroundStyle(Color.cfLabel)
-                .lineSpacing(4)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            ReaderBodyText(text: AttributedString.inlineMarkdown(bodyText))
         }
         .padding(.cfSpacing16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.cfAccent.opacity(0.07))
+        .background(appearance.colors.surfaceBg)
         .clipShape(RoundedRectangle(cornerRadius: .cfRadius12))
         .padding(.vertical, .cfSpacing8)
         .accessibilityElement(children: .combine)
