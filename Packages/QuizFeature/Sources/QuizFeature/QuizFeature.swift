@@ -1,8 +1,12 @@
-/// Placeholder public entry point for the QuizFeature module.
+/// QuizFeature provides the Quiz experience for ChapterFlow.
 ///
-/// This module is intentionally empty for now; it compiles and exposes a single
-/// public symbol so downstream modules can link against it.
+/// Entry points:
+/// - ``QuizView``: present a quiz for a given book chapter.
+/// - ``LiveQuizRepository``: production data source backed by the REST API.
+/// - ``FakeQuizRepository``: in-memory fake for tests and previews.
+///
+/// Architecture: ``QuizModel`` (@Observable, @MainActor) drives ``QuizView``.
+/// The server is the **sole grader** — answers are never evaluated client-side.
 public enum QuizFeature {
-    /// The name of this module. Useful as a smoke-test symbol.
     public static let moduleName = "QuizFeature"
 }

@@ -9,6 +9,22 @@ public struct QuizClientSession: Codable, Sendable {
     public let bookId: String?
     public let chapterNumber: Int?
     public let tone: ToneKey?
+
+    public init(
+        sessionId: String?,
+        questions: [QuizQuestion],
+        passingScorePercent: Int?,
+        bookId: String?,
+        chapterNumber: Int?,
+        tone: ToneKey?
+    ) {
+        self.sessionId = sessionId
+        self.questions = questions
+        self.passingScorePercent = passingScorePercent
+        self.bookId = bookId
+        self.chapterNumber = chapterNumber
+        self.tone = tone
+    }
 }
 
 /// A single quiz question with a server-managed choice-ID scheme.
@@ -19,6 +35,12 @@ public struct QuizQuestion: Codable, Sendable, Identifiable {
     public let choices: [QuizChoice]
 
     public var id: String { questionId }
+
+    public init(questionId: String, prompt: String, choices: [QuizChoice]) {
+        self.questionId = questionId
+        self.prompt = prompt
+        self.choices = choices
+    }
 
     enum CodingKeys: String, CodingKey {
         case questionId, prompt, stem, choices
@@ -50,4 +72,9 @@ public struct QuizChoice: Codable, Sendable, Identifiable {
     public let text: String
 
     public var id: String { choiceId }
+
+    public init(choiceId: String, text: String) {
+        self.choiceId = choiceId
+        self.text = text
+    }
 }

@@ -9,4 +9,20 @@ public struct BookProgress: Codable, Sendable {
     public let bestScoreByChapter: [String: Int]
     public let preferredVariant: VariantKey?
     public let progressRev: Int?
+
+    public init(
+        currentChapterNumber: Int,
+        unlockedThroughChapterNumber: Int,
+        completedChapters: [Int],
+        bestScoreByChapter: [String: Int],
+        preferredVariant: VariantKey?,
+        progressRev: Int?
+    ) {
+        self.currentChapterNumber = currentChapterNumber
+        self.unlockedThroughChapterNumber = unlockedThroughChapterNumber
+        self.completedChapters = completedChapters
+        self.bestScoreByChapter = bestScoreByChapter
+        self.preferredVariant = preferredVariant
+        self.progressRev = progressRev
+    }
 }
