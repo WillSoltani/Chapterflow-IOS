@@ -1,8 +1,8 @@
-/// Placeholder public entry point for the SocialFeature module.
-///
-/// This module is intentionally empty for now; it compiles and exposes a single
-/// public symbol so downstream modules can link against it.
-public enum SocialFeature {
-    /// The name of this module. Useful as a smoke-test symbol.
-    public static let moduleName = "SocialFeature"
-}
+// SocialFeature — Profile, pairs, gifts, reflections, share cards, and referrals.
+//
+// Key entry points:
+//   ProfileView           — own-profile tab (display name, avatar, tier, stats, cosmetics, badges)
+//   PublicProfileView     — read-only partner profile
+//   SocialRepository      — single async data layer for all of Lane S
+//   LiveSocialRepository  — production network implementation
+//   FakeSocialRepository  — in-memory fake for tests and previews
