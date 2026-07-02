@@ -32,4 +32,14 @@ public enum Fixtures {
             fatalError("Fixtures: failed to decode '\(filename).json': \(error)")
         }
     }
+
+    /// Returns raw `Data` for a fixture JSON file. Used by evolution tests that
+    /// mutate the JSON before re-decoding it. `@testable import Fixtures` required.
+    static func rawData(_ filename: String) throws -> Data {
+        guard let url = Bundle.module.url(forResource: filename, withExtension: "json") else {
+            struct MissingFixture: Error { let name: String }
+            throw MissingFixture(name: filename)
+        }
+        return try Data(contentsOf: url)
+    }
 }

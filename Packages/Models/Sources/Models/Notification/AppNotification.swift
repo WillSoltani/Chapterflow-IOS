@@ -1,9 +1,64 @@
+/// The kind of an in-app notification.
+///
+/// Server-evolution contract: unrecognised raw values decode to `.unknown(rawValue)`
+/// instead of throwing. Views should handle `.unknown` with a generic icon/action.
+public enum NotificationKind: Sendable, Equatable, Hashable {
+    case quizUnlocked
+    case streakReminder
+    case badgeEarned
+    case reviewDue
+    /// A notification kind the client does not recognise. Show generically; never crash.
+    case unknown(String)
+}
+
+extension NotificationKind: RawRepresentable {
+    public var rawValue: String {
+        switch self {
+        case .quizUnlocked:   return "quiz_unlocked"
+        case .streakReminder: return "streak_reminder"
+        case .badgeEarned:    return "badge_earned"
+        case .reviewDue:      return "review_due"
+        case .unknown(let s): return s
+        }
+    }
+
+    public init(rawValue: String) {
+        switch rawValue {
+        case "quiz_unlocked":   self = .quizUnlocked
+        case "streak_reminder": self = .streakReminder
+        case "badge_earned":    self = .badgeEarned
+        case "review_due":      self = .reviewDue
+        default:                self = .unknown(rawValue)
+        }
+    }
+}
+
+extension NotificationKind: Codable {
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        self = NotificationKind(rawValue: try container.decode(String.self))
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
+}
+
+extension NotificationKind: CaseIterable {
+    public static var allCases: [NotificationKind] {
+        [.quizUnlocked, .streakReminder, .badgeEarned, .reviewDue]
+    }
+}
+
+// MARK: - AppNotification
+
 /// An in-app notification from the notification inbox.
 ///
 /// Returned within `GET /book/me/notifications`.
 public struct AppNotification: Codable, Sendable, Identifiable {
     public let notificationId: String
-    public let type: String
+    public let type: NotificationKind
     public let title: String
     public let body: String
     public let isRead: Bool
@@ -13,7 +68,20 @@ public struct AppNotification: Codable, Sendable, Identifiable {
     public var id: String { notificationId }
 }
 
+// MARK: - NotificationsResponse
+
+/// Response from `GET /book/me/notifications`.
+/// Decodes the `notifications` array lossily — one malformed notification is
+/// dropped and logged while the rest of the inbox survives.
 public struct NotificationsResponse: Codable, Sendable {
     public let notifications: [AppNotification]
     public let unreadCount: Int
+
+    private enum CodingKeys: String, CodingKey { case notifications, unreadCount }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.notifications = try container.decodeLossy(AppNotification.self, forKey: .notifications)
+        self.unreadCount = try container.decode(Int.self, forKey: .unreadCount)
+    }
 }

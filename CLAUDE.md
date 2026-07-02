@@ -56,6 +56,45 @@ xcodebuild -project ChapterFlow.xcodeproj -scheme ChapterFlow \
 cd Packages/<Name> && swift build && swift test
 ```
 
+## Server-evolution contract (RF2 — never regress these rules)
+
+A shipped binary can see server responses the web app never sees. Maintain a
+permanent safety margin between server and client versions.
+
+**Tolerant enums.** Every enum decoded from a server field (e.g. `VariantKey`,
+`ToneKey`, `VariantFamily`, `NotebookEntryType`, `FsrsCardState`,
+`ChapterApplicationState`, `Entitlement.Plan`, `NotificationKind`) carries an
+`.unknown(String)` case. Custom `Codable` init maps unrecognised raw values to
+`.unknown(rawValue)` instead of throwing. **An unknown enum case must never crash
+a view.** Every `switch` over a server enum must handle `.unknown` explicitly
+with a documented fallback (hide the element, use a default, render a generic
+icon, etc.). Do not use `@unknown default` — it hides future cases from the
+compiler.
+
+**Tolerant collections.** Collections of server items (`books`, `notifications`,
+`entries`, `cards`, `badges`) decode *lossily* using `decodeLossy(_:forKey:)` in
+`KeyedDecodingContainer`. One malformed element is dropped and logged via
+`os.Logger`; the rest of the list always survives. The response struct must never
+throw because of a single bad element.
+
+**Optional fields.** Never require a field the server marks optional (`?`). If
+the field is absent or `null`, the property must be `nil` — never a force-unwrap
+or a crash.
+
+**Extra fields.** Swift's default `Codable` synthesis ignores unknown JSON keys.
+Do not add any code that rejects unexpected keys (no `unknownKey` enum cases,
+no exhaustive key checking).
+
+**Dates.** Use `JSONDecoder.chapterFlow` everywhere. It accepts ISO-8601 with
+**and** without fractional seconds (`2024-01-01T00:00:00.000Z` and
+`2024-01-01T00:00:00Z` both decode). Do not use `.iso8601` strategy directly.
+
+**Testing.** Every server enum must have an evolution test that decodes an
+unknown raw value and asserts the `.unknown(...)` case. Every lossy collection
+must have a test that injects a `null`/corrupt element and asserts the remaining
+elements survive. Tests live in `ModelsTests/EvolutionTests.swift` and
+`FixturesTests/EvolutionTests.swift`.
+
 ## Working in Xcode
 
 Developed inside Xcode with the `xcode-tools` MCP server. Prefer those tools
