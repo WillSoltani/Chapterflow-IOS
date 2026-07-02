@@ -7,13 +7,12 @@ import Models
 struct RecapBlockView: View {
     let recap: ResolvedOneMinuteRecap
 
+    @Environment(\.readerAppearance) private var appearance
+
     var body: some View {
         VStack(alignment: .leading, spacing: .cfSpacing16) {
             if let text = recap.text {
-                Text(AttributedString.inlineMarkdown(text))
-                    .font(.cfReaderBody())
-                    .foregroundStyle(Color.cfLabel)
-                    .lineSpacing(4)
+                ReaderBodyText(text: AttributedString.inlineMarkdown(text))
             } else {
                 if let retrieve = recap.retrieve {
                     recapSection(label: "Retrieve", text: retrieve)
@@ -28,7 +27,7 @@ struct RecapBlockView: View {
         }
         .padding(.cfSpacing20)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.cfAccent.opacity(0.07))
+        .background(appearance.colors.surfaceBg)
         .clipShape(RoundedRectangle(cornerRadius: .cfRadius12))
         .padding(.vertical, .cfSpacing8)
         .accessibilityElement(children: .combine)
@@ -39,12 +38,13 @@ struct RecapBlockView: View {
         VStack(alignment: .leading, spacing: .cfSpacing4) {
             Text(label.uppercased())
                 .font(.cfCaption2)
-                .foregroundStyle(Color.cfAccent)
+                .foregroundStyle(appearance.colors.accent)
                 .kerning(0.6)
             Text(AttributedString.inlineMarkdown(text))
                 .font(.cfCallout)
-                .foregroundStyle(Color.cfLabel)
+                .foregroundStyle(appearance.colors.primaryText)
                 .lineSpacing(3)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

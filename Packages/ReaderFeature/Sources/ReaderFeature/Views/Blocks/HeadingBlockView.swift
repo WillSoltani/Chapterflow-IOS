@@ -6,10 +6,12 @@ struct HeadingBlockView: View {
     let text: String
     let isChapterTitle: Bool
 
+    @Environment(\.readerAppearance) private var appearance
+
     var body: some View {
         Text(text)
             .font(isChapterTitle ? .cfTitle1 : .cfTitle3)
-            .foregroundStyle(Color.cfLabel)
+            .foregroundStyle(appearance.colors.primaryText)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, isChapterTitle ? .cfSpacing32 : .cfSpacing24)
             .padding(.bottom, .cfSpacing8)

@@ -6,36 +6,34 @@ import Models
 struct ExampleBlockView: View {
     let example: ResolvedExample
 
+    @Environment(\.readerAppearance) private var appearance
+
     var body: some View {
         VStack(alignment: .leading, spacing: .cfSpacing12) {
             if let title = example.title, !title.isEmpty {
                 Text(title)
                     .font(.cfSubheadline)
-                    .foregroundStyle(Color.cfAccent)
+                    .foregroundStyle(appearance.colors.accent)
             }
 
-            // Scenario
             sectionLabel("Scenario")
-            Text(AttributedString.inlineMarkdown(example.scenario))
-                .font(.cfBody)
-                .foregroundStyle(Color.cfLabel)
-                .lineSpacing(3)
+            ReaderBodyText(text: AttributedString.inlineMarkdown(example.scenario))
 
             if !example.whatToDo.isEmpty {
                 Divider()
+                    .overlay(appearance.colors.separator)
                     .padding(.vertical, .cfSpacing4)
 
-                // What to do
                 sectionLabel("What To Do")
                 ForEach(Array(example.whatToDo.enumerated()), id: \.offset) { index, step in
                     HStack(alignment: .top, spacing: .cfSpacing12) {
                         Text("\(index + 1).")
                             .font(.cfCaption.monospacedDigit())
-                            .foregroundStyle(Color.cfAccent)
+                            .foregroundStyle(appearance.colors.accent)
                             .frame(minWidth: 20, alignment: .leading)
                         Text(AttributedString.inlineMarkdown(step))
                             .font(.cfBody)
-                            .foregroundStyle(Color.cfLabel)
+                            .foregroundStyle(appearance.colors.primaryText)
                             .lineSpacing(2)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -43,18 +41,19 @@ struct ExampleBlockView: View {
             }
 
             Divider()
+                .overlay(appearance.colors.separator)
                 .padding(.vertical, .cfSpacing4)
 
-            // Why it matters
             sectionLabel("Why It Matters")
             Text(AttributedString.inlineMarkdown(example.whyItMatters))
                 .font(.cfCallout)
-                .foregroundStyle(Color.cfSecondaryLabel)
+                .foregroundStyle(appearance.colors.secondaryText)
                 .lineSpacing(3)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.cfSpacing16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.cfSecondaryBackground)
+        .background(appearance.colors.surfaceBg)
         .clipShape(RoundedRectangle(cornerRadius: .cfRadius12))
         .padding(.vertical, .cfSpacing8)
         .accessibilityElement(children: .combine)
@@ -64,7 +63,7 @@ struct ExampleBlockView: View {
     private func sectionLabel(_ text: String) -> some View {
         Text(text.uppercased())
             .font(.cfCaption2)
-            .foregroundStyle(Color.cfTertiaryLabel)
+            .foregroundStyle(appearance.colors.tertiaryText)
             .kerning(0.6)
     }
 }

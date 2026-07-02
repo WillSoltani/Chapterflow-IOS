@@ -6,26 +6,23 @@ import Models
 struct PullQuoteBlockView: View {
     let line: MemorableLine
 
+    @Environment(\.readerAppearance) private var appearance
+
     var body: some View {
         VStack(spacing: .cfSpacing12) {
             Text("\u{201C}")
                 .font(.system(size: 52, weight: .thin, design: .serif))
-                .foregroundStyle(Color.cfAccent)
+                .foregroundStyle(appearance.colors.quoteBar)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .accessibilityHidden(true)
 
-            Text(AttributedString.inlineMarkdown(line.text))
-                .font(.system(.title3, design: .serif, weight: .light))
-                .italic()
-                .multilineTextAlignment(.center)
-                .foregroundStyle(Color.cfLabel)
-                .lineSpacing(5)
+            ReaderQuoteText(text: AttributedString.inlineMarkdown(line.text))
                 .padding(.horizontal, .cfSpacing8)
 
             if let location = line.location, !location.isEmpty {
                 Text("— \(location)")
                     .font(.cfFootnote)
-                    .foregroundStyle(Color.cfTertiaryLabel)
+                    .foregroundStyle(appearance.colors.tertiaryText)
             }
         }
         .frame(maxWidth: .infinity)
