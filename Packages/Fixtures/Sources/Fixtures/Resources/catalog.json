@@ -1,0 +1,43 @@
+{
+  "books": [
+    {
+      "bookId": "b-atomic-habits",
+      "title": "Atomic Habits",
+      "author": "James Clear",
+      "categories": ["Productivity", "Psychology"],
+      "tags": ["habits", "behavior-change", "systems", "marginal-gains"],
+      "cover": { "emoji": "⚛️", "color": "#2D6A4F" },
+      "variantFamily": "EMH",
+      "status": "published",
+      "latestVersion": 3,
+      "currentPublishedVersion": 3,
+      "updatedAt": "2024-01-15T10:00:00.000Z"
+    },
+    {
+      "bookId": "b-deep-work",
+      "title": "Deep Work",
+      "author": "Cal Newport",
+      "categories": ["Productivity", "Focus"],
+      "tags": ["focus", "deep-work", "distraction-free"],
+      "cover": { "emoji": "🎯", "color": "#1B4332" },
+      "variantFamily": "PBC",
+      "status": "published",
+      "latestVersion": 2,
+      "currentPublishedVersion": 2,
+      "updatedAt": "2024-02-01T09:00:00.000Z"
+    },
+    {
+      "bookId": "b-thinking-fast-slow",
+      "title": "Thinking, Fast and Slow",
+      "author": "Daniel Kahneman",
+      "categories": ["Psychology", "Cognitive Science"],
+      "tags": ["cognitive-bias", "decision-making", "system1-system2"],
+      "cover": { "emoji": "🧠", "color": "#1A237E" },
+      "variantFamily": "EMH",
+      "status": "published",
+      "latestVersion": 1,
+      "currentPublishedVersion": 1,
+      "updatedAt": "2024-01-20T12:00:00.000Z"
+    }
+  ]
+}

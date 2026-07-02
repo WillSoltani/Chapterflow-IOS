@@ -1,0 +1,40 @@
+{
+  "badges": [
+    {
+      "badgeId": "badge-first-chapter",
+      "name": "First Chapter",
+      "description": "Complete your first chapter",
+      "category": "mastery",
+      "isEarned": true,
+      "earnedAt": "2024-01-15T14:30:00.000Z",
+      "icon": "🏅"
+    },
+    {
+      "badgeId": "badge-streak-7",
+      "name": "Week Warrior",
+      "description": "Maintain a 7-day reading streak",
+      "category": "consistency",
+      "isEarned": false,
+      "earnedAt": null,
+      "icon": "🔥"
+    },
+    {
+      "badgeId": "badge-first-book",
+      "name": "Bookworm",
+      "description": "Complete your first book",
+      "category": "mastery",
+      "isEarned": true,
+      "earnedAt": "2024-01-16T10:00:00.000Z",
+      "icon": "📚"
+    },
+    {
+      "badgeId": "badge-explorer",
+      "name": "Explorer",
+      "description": "Start reading 3 different books",
+      "category": "exploration",
+      "isEarned": false,
+      "earnedAt": null,
+      "icon": "🗺️"
+    }
+  ]
+}

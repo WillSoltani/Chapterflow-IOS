@@ -1,0 +1,57 @@
+{
+  "concepts": [
+    {
+      "id": "concept-atomic-habits",
+      "label": "Atomic Habits",
+      "introducedIn": "ch-ah-1",
+      "summary": "Tiny, consistent improvements that compound into remarkable results over time."
+    },
+    {
+      "id": "concept-habit-loop",
+      "label": "The Habit Loop",
+      "introducedIn": "ch-ah-3",
+      "summary": "The four-step pattern: cue → craving → response → reward that governs all habits."
+    },
+    {
+      "id": "concept-identity-based",
+      "label": "Identity-Based Habits",
+      "introducedIn": "ch-ah-2",
+      "summary": "Building habits by first deciding what kind of person you want to become."
+    },
+    {
+      "id": "concept-marginal-gains",
+      "label": "Marginal Gains",
+      "introducedIn": "ch-ah-1",
+      "summary": "The philosophy of seeking 1% improvements in every area to create compounding advantages."
+    },
+    {
+      "id": "concept-implementation-intention",
+      "label": "Implementation Intention",
+      "introducedIn": "ch-ah-5",
+      "summary": "An 'if-then' plan that specifies when, where, and how you will perform a habit."
+    },
+    {
+      "id": "concept-habit-stacking",
+      "label": "Habit Stacking",
+      "introducedIn": "ch-ah-5",
+      "summary": "Linking a new habit to an existing one using the formula: After I [current habit], I will [new habit]."
+    }
+  ],
+  "edges": [
+    { "from": "concept-marginal-gains", "to": "concept-atomic-habits", "type": "supports" },
+    { "from": "concept-identity-based", "to": "concept-atomic-habits", "type": "motivates" },
+    { "from": "concept-habit-loop", "to": "concept-atomic-habits", "type": "mechanism" },
+    { "from": "concept-implementation-intention", "to": "concept-habit-stacking", "type": "technique" },
+    { "from": "concept-habit-loop", "to": "concept-habit-stacking", "type": "enables" }
+  ],
+  "chapterIntroduces": {
+    "ch-ah-1": ["concept-atomic-habits", "concept-marginal-gains"],
+    "ch-ah-2": ["concept-identity-based"],
+    "ch-ah-3": ["concept-habit-loop"],
+    "ch-ah-5": ["concept-implementation-intention", "concept-habit-stacking"]
+  },
+  "chapterRequires": {
+    "ch-ah-3": ["concept-atomic-habits"],
+    "ch-ah-5": ["concept-habit-loop", "concept-identity-based"]
+  }
+}

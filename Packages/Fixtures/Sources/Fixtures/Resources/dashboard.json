@@ -1,0 +1,21 @@
+{
+  "dashboard": {
+    "currentStreak": 5,
+    "longestStreak": 12,
+    "todayReadingMinutes": 23,
+    "weeklyGoalMinutes": 60,
+    "weeklyReadMinutes": 35,
+    "booksStarted": 2,
+    "booksCompleted": 1,
+    "flowPoints": 1240,
+    "tier": "analyst",
+    "tierProgress": 0.62,
+    "dueReviewCount": 4,
+    "continueBook": {
+      "bookId": "b-atomic-habits",
+      "title": "Atomic Habits",
+      "lastChapterNumber": 2,
+      "cover": { "emoji": "⚛️", "color": "#2D6A4F" }
+    }
+  }
+}

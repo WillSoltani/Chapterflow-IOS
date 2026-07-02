@@ -1,0 +1,15 @@
+{
+  "streak": {
+    "currentStreak": 5,
+    "longestStreak": 12,
+    "streakShieldsHeld": 1,
+    "lastActivityDate": "2024-01-15",
+    "streakHistory": [
+      { "date": "2024-01-11", "minutesRead": 15 },
+      { "date": "2024-01-12", "minutesRead": 22 },
+      { "date": "2024-01-13", "minutesRead": 8 },
+      { "date": "2024-01-14", "minutesRead": 30 },
+      { "date": "2024-01-15", "minutesRead": 23 }
+    ]
+  }
+}

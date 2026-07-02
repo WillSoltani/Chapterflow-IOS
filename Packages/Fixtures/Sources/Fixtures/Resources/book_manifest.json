@@ -1,0 +1,59 @@
+{
+  "bookId": "b-atomic-habits",
+  "title": "Atomic Habits",
+  "author": "James Clear",
+  "categories": ["Productivity", "Psychology"],
+  "tags": ["habits", "behavior-change", "systems", "marginal-gains"],
+  "cover": { "emoji": "⚛️", "color": "#2D6A4F" },
+  "variantFamily": "EMH",
+  "status": "published",
+  "latestVersion": 3,
+  "currentPublishedVersion": 3,
+  "updatedAt": "2024-01-15T10:00:00.000Z",
+  "description": "Tiny changes, remarkable results. An easy and proven way to build good habits and break bad ones.",
+  "shortDescription": "Build good habits and break bad ones through small, consistent improvements.",
+  "totalReadingTimeMinutes": 120,
+  "chapterCount": 5,
+  "chapters": [
+    {
+      "chapterId": "ch-ah-1",
+      "number": 1,
+      "title": "The Surprising Power of Atomic Habits",
+      "readingTimeMinutes": 12,
+      "chapterKey": "atomic-habits/ch-1",
+      "quizKey": "atomic-habits/ch-1/quiz"
+    },
+    {
+      "chapterId": "ch-ah-2",
+      "number": 2,
+      "title": "How Your Habits Shape Your Identity (and Vice Versa)",
+      "readingTimeMinutes": 14,
+      "chapterKey": "atomic-habits/ch-2",
+      "quizKey": "atomic-habits/ch-2/quiz"
+    },
+    {
+      "chapterId": "ch-ah-3",
+      "number": 3,
+      "title": "How to Build Better Habits in 4 Simple Steps",
+      "readingTimeMinutes": 18,
+      "chapterKey": "atomic-habits/ch-3",
+      "quizKey": "atomic-habits/ch-3/quiz"
+    },
+    {
+      "chapterId": "ch-ah-4",
+      "number": 4,
+      "title": "The Man Who Didn't Look Right",
+      "readingTimeMinutes": 10,
+      "chapterKey": "atomic-habits/ch-4",
+      "quizKey": "atomic-habits/ch-4/quiz"
+    },
+    {
+      "chapterId": "ch-ah-5",
+      "number": 5,
+      "title": "The Best Way to Start a New Habit",
+      "readingTimeMinutes": 16,
+      "chapterKey": "atomic-habits/ch-5",
+      "quizKey": "atomic-habits/ch-5/quiz"
+    }
+  ]
+}
