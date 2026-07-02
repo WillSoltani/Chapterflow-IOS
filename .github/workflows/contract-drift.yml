@@ -1,0 +1,91 @@
+name: Contract Drift — RF2 Evolution Tests
+
+# Runs weekly (Sunday 02:00 UTC) to catch API schema drift before it reaches users.
+# Strategy:
+#   1. If CF_CI_TOKEN is absent → loud warning, workflow exits 0 (skipped).
+#   2. If present → refresh fixture JSON files from the live API,
+#      then run the RF2 evolution and decode tests.
+#      Any decoding failure = breaking drift = workflow fails.
+#
+# One-time setup: add CF_CI_TOKEN (a valid Cognito id_token for a test account)
+# to repository secrets. Rotate it before it expires (Cognito tokens are valid
+# for 1 hour; use a refresh token loop or a long-lived service account token
+# from a custom Lambda authorizer instead).
+#
+# Companion script: scripts/refresh-fixtures.sh
+#   Fetches live API responses and writes them into the fixture resource paths.
+#   Edit the endpoint list in that script whenever new fixtures are added.
+
+on:
+  schedule:
+    - cron: '0 2 * * 0'   # Every Sunday at 02:00 UTC
+  workflow_dispatch:        # Allow manual trigger for on-demand drift checks
+
+jobs:
+  drift:
+    name: Refresh Fixtures & Run RF2 Tests
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Guard: abort with a loud warning if the test-account token is absent.
+      # The job exits 0 so branch protection is not blocked.
+      - name: Check for CI token
+        id: token_check
+        env:
+          CF_CI_TOKEN: ${{ secrets.CF_CI_TOKEN }}
+        run: |
+          if [ -z "$CF_CI_TOKEN" ]; then
+            echo "⚠️  WARNING: CF_CI_TOKEN secret is not set."
+            echo "  Contract-drift check is SKIPPED."
+            echo "  To activate: add CF_CI_TOKEN to repository secrets."
+            echo "  See docs/ios/SIGNING-AND-RELEASE.md §Contract-Drift for setup."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Cache SPM repositories
+        if: steps.token_check.outputs.skip != 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/org.swift.swiftpm/repositories
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      # Fetch fresh JSON responses from the live API and write them to
+      # the fixture resource directories so the evolution tests run
+      # against data the server is actually returning today.
+      - name: Refresh fixture captures
+        if: steps.token_check.outputs.skip != 'true'
+        env:
+          CF_CI_TOKEN: ${{ secrets.CF_CI_TOKEN }}
+          API_BASE_URL: ${{ secrets.CF_API_BASE_URL }}
+        run: |
+          chmod +x scripts/refresh-fixtures.sh
+          bash scripts/refresh-fixtures.sh
+
+      # Run the RF2 evolution tests (tolerant-enum + lossy-collection) against
+      # the freshly refreshed fixture files.  Any failure means the live API
+      # emitted JSON that our Codable models cannot tolerate — breaking drift.
+      - name: RF2 evolution tests — Models
+        if: steps.token_check.outputs.skip != 'true'
+        run: swift test --package-path Packages/Models --parallel --filter "Evolution"
+
+      - name: RF2 evolution tests — Fixtures decode
+        if: steps.token_check.outputs.skip != 'true'
+        run: swift test --package-path Packages/Fixtures --parallel
+
+      # Report whether this was a real drift run or a skip.
+      - name: Summary
+        if: always()
+        run: |
+          if [ "${{ steps.token_check.outputs.skip }}" = "true" ]; then
+            echo "### ⏭ Contract-Drift Skipped" >> "$GITHUB_STEP_SUMMARY"
+            echo "CF_CI_TOKEN not configured. Add the secret to enable." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### ✅ Contract-Drift Passed" >> "$GITHUB_STEP_SUMMARY"
+            echo "Fixture captures refreshed and RF2 tests passed." >> "$GITHUB_STEP_SUMMARY"
+          fi

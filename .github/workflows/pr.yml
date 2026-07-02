@@ -1,0 +1,126 @@
+name: PR — Build, Test & Lint
+
+# Runs on every PR targeting main and on direct pushes to main.
+# Configure "build-and-test" and "lint" as required status checks
+# in Settings → Branches → Branch protection rules for `main`.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── 1. Lint ──────────────────────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - name: SwiftLint (strict)
+        # github-actions-logging emits ::error:: annotations inline in the PR diff.
+        run: swiftlint lint --strict --reporter github-actions-logging
+
+  # ── 2. Build (iOS Simulator) + Unit Tests (all local packages) ───────────
+  build-and-test:
+    name: Build & Test
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Xcode version
+        run: xcodebuild -version
+
+      # Cache bare git repos used by both xcodebuild and swift test.
+      # Key: hash of every Package.resolved in the tree.
+      - name: Cache SPM repositories
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/org.swift.swiftpm/repositories
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      # Secrets.xcconfig is gitignored; CI uses placeholder values so the
+      # project file resolves correctly. No real keys are needed for a build check.
+      - name: Create Secrets.xcconfig
+        run: cp Secrets.example.xcconfig Secrets.xcconfig
+
+      # Build the full app target for an iOS Simulator.
+      # -skipPackagePluginValidation bypasses Xcode's trust prompt for
+      #   Amplify's SmithyCodeGenerator build-tool plugin.
+      # -skipMacroValidation bypasses Xcode's macro sandbox trust prompt.
+      # CODE_SIGN_* settings disable signing (not required for simulator builds).
+      - name: Build for iOS Simulator
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project ChapterFlow.xcodeproj \
+            -scheme ChapterFlow \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            -skipPackagePluginValidation \
+            -skipMacroValidation
+
+      # All local packages declare .macOS(.v14+) for exactly this use-case:
+      # fast host-toolchain testing in CI without needing a booted simulator.
+      # AuthKit is included; its Amplify build-tool plugin runs automatically
+      # (build-tool plugins don't require interactive approval like command plugins).
+      # AppFeature is excluded: it requires macOS 15 Swift stdlib for the Tab {} API
+      # and all its constituent logic is covered by the per-module test runs below.
+      - name: Run unit tests — all local packages
+        shell: bash
+        run: |
+          set -uo pipefail
+          failed=()
+
+          packages=(
+            Models
+            CoreKit
+            Networking
+            Fixtures
+            DesignSystem
+            AIFeature
+            AuthKit
+            EngagementFeature
+            LibraryFeature
+            NotificationsFeature
+            OnboardingFeature
+            PaywallFeature
+            Persistence
+            QuizFeature
+            ReaderFeature
+            SettingsFeature
+            SocialFeature
+          )
+
+          for pkg in "${packages[@]}"; do
+            echo "──────────────── Testing $pkg ────────────────"
+            if swift test --package-path "Packages/$pkg" --parallel; then
+              echo "✓ $pkg passed"
+            else
+              echo "✗ $pkg FAILED"
+              failed+=("$pkg")
+            fi
+          done
+
+          if [ ${#failed[@]} -gt 0 ]; then
+            echo ""
+            echo "❌ Failed packages: ${failed[*]}"
+            exit 1
+          fi
+          echo ""
+          echo "✅ All packages passed"
