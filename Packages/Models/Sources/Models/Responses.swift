@@ -75,6 +75,11 @@ public struct ChapterResponse: Codable, Sendable {
 public struct QuizResponse: Codable, Sendable {
     public let quiz: QuizClientSession
     public let progress: BookProgress
+
+    public init(quiz: QuizClientSession, progress: BookProgress) {
+        self.quiz = quiz
+        self.progress = progress
+    }
 }
 
 public struct EntitlementResponse: Codable, Sendable {

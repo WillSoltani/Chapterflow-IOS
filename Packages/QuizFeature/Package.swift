@@ -3,12 +3,32 @@ import PackageDescription
 
 let package = Package(
     name: "QuizFeature",
-    platforms: [.iOS(.v18)],
+    platforms: [.iOS(.v18), .macOS(.v15)],
     products: [
         .library(name: "QuizFeature", targets: ["QuizFeature"]),
     ],
+    dependencies: [
+        .package(path: "../CoreKit"),
+        .package(path: "../Models"),
+        .package(path: "../Networking"),
+        .package(path: "../DesignSystem"),
+    ],
     targets: [
-        .target(name: "QuizFeature"),
-        .testTarget(name: "QuizFeatureTests", dependencies: ["QuizFeature"]),
+        .target(
+            name: "QuizFeature",
+            dependencies: [
+                "CoreKit",
+                "Models",
+                "Networking",
+                "DesignSystem",
+            ]
+        ),
+        .testTarget(
+            name: "QuizFeatureTests",
+            dependencies: [
+                "QuizFeature",
+                .product(name: "Networking", package: "Networking"),
+            ]
+        ),
     ]
 )
