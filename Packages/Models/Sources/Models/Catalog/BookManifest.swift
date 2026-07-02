@@ -19,6 +19,42 @@ public struct BookManifest: Codable, Sendable {
     public let shortDescription: String?
     public let totalReadingTimeMinutes: Int?
     public let chapterCount: Int?
+
+    public init(
+        bookId: String,
+        title: String,
+        author: String,
+        categories: [String],
+        tags: [String],
+        cover: Cover?,
+        variantFamily: VariantFamily,
+        status: String,
+        latestVersion: Int,
+        currentPublishedVersion: Int?,
+        updatedAt: String,
+        chapters: [BookManifestChapter],
+        description: String? = nil,
+        shortDescription: String? = nil,
+        totalReadingTimeMinutes: Int? = nil,
+        chapterCount: Int? = nil
+    ) {
+        self.bookId = bookId
+        self.title = title
+        self.author = author
+        self.categories = categories
+        self.tags = tags
+        self.cover = cover
+        self.variantFamily = variantFamily
+        self.status = status
+        self.latestVersion = latestVersion
+        self.currentPublishedVersion = currentPublishedVersion
+        self.updatedAt = updatedAt
+        self.chapters = chapters
+        self.description = description
+        self.shortDescription = shortDescription
+        self.totalReadingTimeMinutes = totalReadingTimeMinutes
+        self.chapterCount = chapterCount
+    }
 }
 
 /// A lightweight chapter entry in the book's table of contents.
@@ -33,4 +69,20 @@ public struct BookManifestChapter: Codable, Sendable, Identifiable {
     public let quizKey: String?
 
     public var id: String { chapterId }
+
+    public init(
+        chapterId: String,
+        number: Int,
+        title: String,
+        readingTimeMinutes: Int,
+        chapterKey: String?,
+        quizKey: String?
+    ) {
+        self.chapterId = chapterId
+        self.number = number
+        self.title = title
+        self.readingTimeMinutes = readingTimeMinutes
+        self.chapterKey = chapterKey
+        self.quizKey = quizKey
+    }
 }

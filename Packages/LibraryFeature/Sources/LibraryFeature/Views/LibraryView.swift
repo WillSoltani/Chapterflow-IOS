@@ -18,8 +18,20 @@ public struct LibraryView: View {
     @State private var model: LibraryModel
     @State private var router = Router()
 
-    public init(repository: any LibraryRepository) {
+    private let bookDetailRepository: any BookDetailRepository
+    private let onOpenReader: ((String, Int) -> Void)?
+    private let onShowPaywall: (() -> Void)?
+
+    public init(
+        repository: any LibraryRepository,
+        bookDetailRepository: any BookDetailRepository,
+        onOpenReader: ((String, Int) -> Void)? = nil,
+        onShowPaywall: (() -> Void)? = nil
+    ) {
         _model = State(initialValue: LibraryModel(repository: repository))
+        self.bookDetailRepository = bookDetailRepository
+        self.onOpenReader = onOpenReader
+        self.onShowPaywall = onShowPaywall
     }
 
     public var body: some View {
@@ -35,7 +47,12 @@ public struct LibraryView: View {
                 .navigationDestination(for: LibraryRoute.self) { route in
                     switch route {
                     case .bookDetail(let bookId):
-                        BookDetailPlaceholderView(bookId: bookId)
+                        BookDetailView(
+                            bookId: bookId,
+                            repository: bookDetailRepository,
+                            onOpenReader: onOpenReader,
+                            onShowPaywall: onShowPaywall
+                        )
                     }
                 }
         }
@@ -245,24 +262,24 @@ public struct LibraryView: View {
 
 #if DEBUG
 #Preview("Library — loaded") {
-    LibraryView(repository: PreviewData.loadedRepo)
+    LibraryView(repository: PreviewData.loadedRepo, bookDetailRepository: PreviewData.bookDetailInProgress)
 }
 
 #Preview("Library — empty catalog") {
-    LibraryView(repository: PreviewData.emptyRepo)
+    LibraryView(repository: PreviewData.emptyRepo, bookDetailRepository: PreviewData.bookDetailFreeLocked)
 }
 
 #Preview("Library — error") {
-    LibraryView(repository: PreviewData.errorRepo)
+    LibraryView(repository: PreviewData.errorRepo, bookDetailRepository: PreviewData.bookDetailFreeLocked)
 }
 
 #Preview("Library — dark mode") {
-    LibraryView(repository: PreviewData.loadedRepo)
+    LibraryView(repository: PreviewData.loadedRepo, bookDetailRepository: PreviewData.bookDetailInProgress)
         .preferredColorScheme(.dark)
 }
 
 #Preview("Library — XXL text") {
-    LibraryView(repository: PreviewData.loadedRepo)
+    LibraryView(repository: PreviewData.loadedRepo, bookDetailRepository: PreviewData.bookDetailInProgress)
         .dynamicTypeSize(.accessibility3)
 }
 #endif

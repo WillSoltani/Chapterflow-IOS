@@ -46,6 +46,9 @@ public final class AppModel {
     /// Shared repository for the Home and Library tabs.
     public let libraryRepository: any LibraryRepository
 
+    /// Shared repository for the Book Detail screen.
+    public let bookDetailRepository: any BookDetailRepository
+
     // MARK: - Init
 
     public init(config: AppConfig = .fromInfoPlist()) {
@@ -57,6 +60,7 @@ public final class AppModel {
         let container = try? PersistenceController.makeDefault().container
         let client = APIClient(config: config, tokenProvider: sm)
         self.libraryRepository = LiveLibraryRepository(client: client, container: container)
+        self.bookDetailRepository = LiveBookDetailRepository(client: client)
 
         #if os(iOS)
         sm.registerBackgroundRefresh()

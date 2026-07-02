@@ -126,4 +126,15 @@ public enum Endpoints {
         return try Endpoint(method: .post, path: "/book/me/saved",
                             body: Body(bookId: bookId, saved: saved))
     }
+
+    /// `GET /book/me/books/{bookId}/state` → `{ state, applicationStates }`.
+    public static func getBookState(bookId: String) -> Endpoint {
+        Endpoint(method: .get, path: "/book/me/books/\(bookId)/state", requiresAuth: true)
+    }
+
+    /// `POST /book/me/books/{bookId}/start` — start/own a book (consumes a free slot or requires Pro).
+    public static func startBook(bookId: String) throws -> Endpoint {
+        struct Body: Encodable {}
+        return try Endpoint(method: .post, path: "/book/me/books/\(bookId)/start", body: Body())
+    }
 }
