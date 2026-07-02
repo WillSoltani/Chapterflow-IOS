@@ -138,6 +138,46 @@ public enum Endpoints {
         return try Endpoint(method: .post, path: "/book/me/books/\(bookId)/start", body: Body())
     }
 
+    // MARK: - Reader
+
+    /// `PATCH /book/me/books/{bookId}/state` — advance the cursor (forward-only; gating is server-truth).
+    /// Only sends `lastReadChapterId` and `currentChapterId` — never touches locked/completed sets.
+    public static func patchBookCursor(
+        bookId: String,
+        chapterId: String
+    ) throws -> Endpoint {
+        struct Body: Encodable {
+            let lastReadChapterId: String
+            let currentChapterId: String
+        }
+        return try Endpoint(
+            method: .patch,
+            path: "/book/me/books/\(bookId)/state",
+            body: Body(lastReadChapterId: chapterId, currentChapterId: chapterId)
+        )
+    }
+
+    /// `POST /book/me/reading-sessions` — reading-session event (start / heartbeat / end).
+    /// Full session lifecycle is implemented in P2.7; this delivers heartbeats every ~30 s.
+    public static func postReadingSessionEvent(
+        event: String,
+        bookId: String,
+        chapterId: String,
+        sessionId: String?
+    ) throws -> Endpoint {
+        struct Body: Encodable {
+            let event: String
+            let bookId: String
+            let chapterId: String
+            let sessionId: String?
+        }
+        return try Endpoint(
+            method: .post,
+            path: "/book/me/reading-sessions",
+            body: Body(event: event, bookId: bookId, chapterId: chapterId, sessionId: sessionId)
+        )
+    }
+
     // MARK: - Engagement
 
     /// `GET /book/me/dashboard` → `{ dashboard: { ... } }`.

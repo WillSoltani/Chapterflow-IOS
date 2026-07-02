@@ -64,6 +64,30 @@ public final class ReaderControlsModel {
     /// block count) and then call `clearPendingAnchor()`.
     public var pendingScrollAnchor: Int?
 
+    // MARK: - Scroll progress tracking
+
+    /// The index of the topmost visible block in the scroll view.
+    /// Updated by `ReaderControlSurface` on every scroll-position change.
+    /// Used to compute `readPercent` and detect chapter end.
+    public var currentTopBlockIndex: Int = 0
+
+    /// Fraction of the chapter read (0…1), derived from scroll position.
+    /// Anchored on block indices so it survives font-size and theme changes.
+    public var readPercent: Double {
+        guard !blocks.isEmpty else { return 0 }
+        // When the last block is the topmost visible item, percent = 1.0.
+        return min(1.0, Double(currentTopBlockIndex + 1) / Double(blocks.count))
+    }
+
+    /// Estimated minutes of reading remaining, or `nil` when unavailable.
+    /// Computed from the chapter's declared reading time and current progress.
+    public var timeLeftMinutes: Int? {
+        let total = resolvedChapter.readingTimeMinutes
+        guard total > 0 else { return nil }
+        let remaining = Double(total) * (1.0 - readPercent)
+        return max(0, Int(remaining.rounded()))
+    }
+
     // MARK: - Depth hint (filled by P6.4)
 
     /// The server-recommended depth variant for this reader.

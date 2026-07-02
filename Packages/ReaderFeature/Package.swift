@@ -11,6 +11,7 @@ let package = Package(
         .package(path: "../Models"),
         .package(path: "../DesignSystem"),
         .package(path: "../Persistence"),
+        .package(path: "../Networking"),
     ],
     targets: [
         .target(
@@ -19,6 +20,7 @@ let package = Package(
                 .product(name: "Models", package: "Models"),
                 .product(name: "DesignSystem", package: "DesignSystem"),
                 .product(name: "Persistence", package: "Persistence"),
+                .product(name: "Networking", package: "Networking"),
             ]
         ),
         .testTarget(

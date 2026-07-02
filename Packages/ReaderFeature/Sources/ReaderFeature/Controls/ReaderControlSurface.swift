@@ -49,6 +49,16 @@ public struct ReaderControlSurface: View {
         ))
     }
 
+    /// Creates the control surface from an externally-owned `ReaderControlsModel`.
+    ///
+    /// Use this initialiser when `ReaderModel` (P2.4d) owns the controls model
+    /// and needs to observe `readPercent` / `currentTopBlockIndex` for progress
+    /// tracking and position save/restore.
+    @MainActor
+    public init(model: ReaderControlsModel) {
+        _model = State(initialValue: model)
+    }
+
     public var body: some View {
         @Bindable var m = model
         let appearance = ReadingAppearance(preferences: model.preferences)
@@ -112,6 +122,13 @@ public struct ReaderControlSurface: View {
             .scrollPosition(id: $scrollPositionID)
             .background(appearance.colors.pageBg)
             .readerAppearance(appearance)
+            .onChange(of: scrollPositionID) { _, newID in
+                // Push topmost-visible block index into the model so that
+                // ReaderModel can compute readPercent and save position.
+                if let idx = newID {
+                    model.currentTopBlockIndex = idx
+                }
+            }
             .onChange(of: model.pendingScrollAnchor) { _, newAnchor in
                 guard let newAnchor else { return }
                 withAnimation(.none) {
