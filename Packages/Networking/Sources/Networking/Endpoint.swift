@@ -159,4 +159,21 @@ public enum Endpoints {
     public static func getBadges() -> Endpoint {
         Endpoint(method: .get, path: "/book/me/badges", requiresAuth: true)
     }
+
+    // MARK: - Social
+
+    /// `GET /book/me/profile` → `{ profile: OwnProfile }`.
+    public static func getMyProfile() -> Endpoint {
+        Endpoint(method: .get, path: "/book/me/profile", requiresAuth: true)
+    }
+
+    /// `PATCH /book/me/settings` — persists editable profile fields (display name, avatar emoji, etc.).
+    public static func updateSettings<Body: Encodable>(_ body: Body) throws -> Endpoint {
+        try Endpoint(method: .patch, path: "/book/me/settings", body: body)
+    }
+
+    /// `GET /book/users/{userId}/profile` → `{ profile: PublicProfile }`.
+    public static func getPublicProfile(userId: String) -> Endpoint {
+        Endpoint(method: .get, path: "/book/users/\(userId)/profile", requiresAuth: true)
+    }
 }

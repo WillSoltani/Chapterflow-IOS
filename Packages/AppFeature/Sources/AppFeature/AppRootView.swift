@@ -134,6 +134,8 @@ public struct AppRootView: View {
             HomeView(repository: model.libraryRepository, bookDetailRepository: model.bookDetailRepository)
         case .library:
             LibraryView(repository: model.libraryRepository, bookDetailRepository: model.bookDetailRepository)
+        case .profile:
+            ProfileView(repository: model.socialRepository)
         default:
             PlaceholderTab(tab: tab)
         }

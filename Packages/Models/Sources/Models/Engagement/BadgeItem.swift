@@ -11,6 +11,24 @@ public struct BadgeItem: Codable, Sendable, Identifiable {
     public let icon: String?
 
     public var id: String { badgeId }
+
+    public init(
+        badgeId: String,
+        name: String,
+        description: String,
+        category: String,
+        isEarned: Bool,
+        earnedAt: String?,
+        icon: String?
+    ) {
+        self.badgeId = badgeId
+        self.name = name
+        self.description = description
+        self.category = category
+        self.isEarned = isEarned
+        self.earnedAt = earnedAt
+        self.icon = icon
+    }
 }
 
 /// Response from `GET /book/me/badges`.

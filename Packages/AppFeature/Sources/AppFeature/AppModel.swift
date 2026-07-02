@@ -4,6 +4,7 @@ import AuthKit
 import Networking
 import Persistence
 import LibraryFeature
+import SocialFeature
 
 /// The top-level observable app state that drives `AppRootView`.
 ///
@@ -49,6 +50,11 @@ public final class AppModel {
     /// Shared repository for the Book Detail screen.
     public let bookDetailRepository: any BookDetailRepository
 
+    // MARK: - Social
+
+    /// Shared repository for all of Lane S — profile, pairs, gifts, reflections, referrals.
+    public let socialRepository: any SocialRepository
+
     // MARK: - Init
 
     public init(config: AppConfig = .fromInfoPlist()) {
@@ -61,6 +67,7 @@ public final class AppModel {
         let client = APIClient(config: config, tokenProvider: sm)
         self.libraryRepository = LiveLibraryRepository(client: client, container: container)
         self.bookDetailRepository = LiveBookDetailRepository(client: client)
+        self.socialRepository = LiveSocialRepository(client: client)
 
         #if os(iOS)
         sm.registerBackgroundRefresh()
