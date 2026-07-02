@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run typecheck)",
+      "Bash(npm run test)",
+      "Bash(npm run pipeline:typecheck)",
+      "Bash(npm run pipeline:test)",
+      "mcp__xcode-tools__XcodeRead",
+      "mcp__xcode-tools__XcodeLS",
+      "mcp__xcode-tools__XcodeGrep",
+      "mcp__xcode-tools__XcodeGlob",
+      "mcp__xcode-tools__DocumentationSearch",
+      "mcp__xcode-tools__XcodeRefreshCodeIssuesInFile",
+      "mcp__xcode-tools__GetBuildLog",
+      "mcp__xcode-tools__GetTestList",
+      "mcp__xcode-tools__XcodeListNavigatorIssues"
+    ]
+  }
+}
