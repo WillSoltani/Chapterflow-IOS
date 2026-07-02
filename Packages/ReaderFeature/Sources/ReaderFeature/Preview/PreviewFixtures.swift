@@ -1,5 +1,104 @@
 #if DEBUG
+import Foundation
 import Models
+
+// MARK: - Raw Chapter fixture for ReaderControlSurface previews
+
+/// A minimal raw `Chapter` with three EMH depth variants for previewing the control surface.
+/// Created via JSON decoding so `ChapterVariantContent`'s internal init is not needed.
+let previewChapterRaw: Chapter = {
+    let json = """
+    {
+        "chapterId": "ch-ah-1",
+        "number": 1,
+        "title": "The Surprising Power of Atomic Habits",
+        "readingTimeMinutes": 12,
+        "activeVariant": "medium",
+        "availableVariants": ["easy", "medium", "hard"],
+        "content": {
+            "chapterBreakdown": {
+                "gentle": "Small habits might seem insignificant at first, but tiny **1% improvements** compound into extraordinary results over time.",
+                "direct": "1% better every day = 37x better in a year. Stop waiting for dramatic change. Start tiny.",
+                "competitive": "Your competitors are sleeping. You can outperform them with 1% gains compounding daily."
+            },
+            "keyTakeaways": [
+                {
+                    "point": {
+                        "gentle": "Tiny improvements each day create extraordinary long-term results.",
+                        "direct": "Small consistent action beats big sporadic effort. Every time.",
+                        "competitive": "Compound your edge daily. The scoreboard rewards systems, not intentions."
+                    },
+                    "moreDetails": null
+                }
+            ]
+        },
+        "contentVariants": {
+            "easy": {
+                "chapterBreakdown": {
+                    "gentle": "Small habits are the key. Even tiny 1% improvements add up over time.",
+                    "direct": "1% better daily. That's all it takes. Simple.",
+                    "competitive": "Get ahead with tiny daily wins. They add up faster than you think."
+                }
+            },
+            "medium": {
+                "chapterBreakdown": {
+                    "gentle": "Small habits might seem insignificant at first, but tiny **1% improvements** compound into extraordinary results over time.",
+                    "direct": "1% better every day = 37x better in a year. Stop waiting for dramatic change. Start tiny.",
+                    "competitive": "Your competitors are sleeping. You can outperform them with 1% gains compounding daily."
+                },
+                "keyTakeaways": [
+                    {
+                        "point": {
+                            "gentle": "Tiny improvements each day create extraordinary long-term results.",
+                            "direct": "Small consistent action beats big sporadic effort. Every time.",
+                            "competitive": "Compound your edge daily. The scoreboard rewards systems, not intentions."
+                        },
+                        "moreDetails": null
+                    }
+                ]
+            },
+            "hard": {
+                "chapterBreakdown": {
+                    "gentle": "The mathematics of marginal gains reveals a counterintuitive truth: a 1% improvement each day yields a 37.78x performance increase over a year.",
+                    "direct": "Marginal gains compound exponentially. 1% daily = 3,778% annual improvement. Most people overestimate what they can do in a day and underestimate what they can do in a year.",
+                    "competitive": "Elite performers understand that the gap between good and exceptional isn't talent — it's the relentless accumulation of marginal gains. 1% daily improvement creates a 37.78x annual multiplier."
+                },
+                "keyTakeaways": [
+                    {
+                        "point": {
+                            "gentle": "The aggregation of marginal gains: many small improvements compound into transformative change.",
+                            "direct": "Systems beat goals. Your daily habits are the actual strategy. The goal is irrelevant.",
+                            "competitive": "Identity-based habits create permanent change. You don't adopt habits; you become the person who does them."
+                        },
+                        "moreDetails": null
+                    },
+                    {
+                        "point": {
+                            "gentle": "Your outcomes are a lagging indicator of your habits.",
+                            "direct": "Focus on the system. Results follow.",
+                            "competitive": "Outcomes are lagging indicators. Lead with process metrics."
+                        },
+                        "moreDetails": null
+                    }
+                ]
+            }
+        },
+        "examples": [
+            {
+                "exampleId": "ex-ah-1-1",
+                "title": "The Exercise Habit",
+                "scenario": "You've been trying to go to the gym for years but always fall off after a few weeks.",
+                "whatToDo": ["Start with just 2 minutes of exercise per day", "Set your gym clothes out the night before"],
+                "whyItMatters": "Starting small removes the mental barrier.",
+                "contexts": ["fitness"],
+                "category": "health"
+            }
+        ]
+    }
+    """
+    // swiftlint:disable:next force_try
+    return try! JSONDecoder.chapterFlow.decode(Chapter.self, from: Data(json.utf8))
+}()
 
 // MARK: - EMH fixture (with v21Extras)
 

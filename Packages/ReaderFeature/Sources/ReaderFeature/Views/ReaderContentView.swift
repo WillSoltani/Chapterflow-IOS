@@ -13,6 +13,9 @@ import Persistence
 /// Supply `AppPreferences` to have theme, font scale, and line spacing applied
 /// reactively. The appearance tokens flow down through the SwiftUI environment
 /// so every block view updates instantly when preferences change.
+///
+/// Use `ReaderControlSurface` when you need auto-hiding controls, depth/tone
+/// switching, focus mode, or paginated reading.
 public struct ReaderContentView: View {
     private let blocks: [ReaderBlock]
     private let preferences: AppPreferences?
@@ -28,52 +31,9 @@ public struct ReaderContentView: View {
         // AppPreferences's @MainActor-isolated properties is valid.
         let appearance = preferences.map { ReadingAppearance(preferences: $0) } ?? .default
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0) {
-                ForEach(blocks.indices, id: \.self) { index in
-                    blockView(for: blocks[index])
-                        .padding(.horizontal, .cfSpacing24)
-                }
-            }
-            .padding(.vertical, .cfSpacing24)
-            // Constrain line measure to ~66ch for optimal readability on wide screens.
-            .frame(maxWidth: 680)
-            .frame(maxWidth: .infinity)
+            ReaderBlockListView(blocks: blocks, appearance: appearance)
         }
         .background(appearance.colors.pageBg)
         .readerAppearance(appearance)
-    }
-
-    // MARK: - Block dispatch
-
-    @ViewBuilder
-    private func blockView(for block: ReaderBlock) -> some View {
-        switch block {
-        case .heading(let text, let isChapterTitle):
-            HeadingBlockView(text: text, isChapterTitle: isChapterTitle)
-
-        case .paragraph(let text):
-            ParagraphBlockView(text: text)
-
-        case .bullet(let text):
-            BulletBlockView(text: text)
-
-        case .keyTakeaway(let kt):
-            KeyTakeawayBlockView(takeaway: kt)
-
-        case .example(let ex):
-            ExampleBlockView(example: ex)
-
-        case .implementationPlanItem(let item):
-            ImplementationPlanItemView(item: item)
-
-        case .recap(let recap):
-            RecapBlockView(recap: recap)
-
-        case .pullQuote(let line):
-            PullQuoteBlockView(line: line)
-
-        case .callout(let title, let body):
-            CalloutBlockView(title: title, bodyText: body)
-        }
     }
 }
