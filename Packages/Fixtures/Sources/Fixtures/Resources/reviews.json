@@ -1,0 +1,38 @@
+{
+  "cards": [
+    {
+      "cardId": "rc-ah-1-1",
+      "bookId": "b-atomic-habits",
+      "chapterId": "ch-ah-1",
+      "front": "What happens when you improve 1% each day for a year?",
+      "back": "You become approximately 37 times better. Small improvements compound into remarkable results over time.",
+      "dueAt": "2024-01-16T09:00:00.000Z",
+      "stability": 0.4,
+      "difficulty": 0.3,
+      "state": "due"
+    },
+    {
+      "cardId": "rc-ah-1-2",
+      "bookId": "b-atomic-habits",
+      "chapterId": "ch-ah-1",
+      "front": "What is the 'valley of disappointment' in habit building?",
+      "back": "The period when you're doing the work but not yet seeing visible results — because habits haven't yet reached the compounding breakthrough point. Most people give up here.",
+      "dueAt": "2024-01-17T09:00:00.000Z",
+      "stability": 0.6,
+      "difficulty": 0.5,
+      "state": "due"
+    },
+    {
+      "cardId": "rc-dw-1-1",
+      "bookId": "b-deep-work",
+      "chapterId": "ch-dw-1",
+      "front": "What is 'deep work' and why is it valuable?",
+      "back": "Deep work is focused, distraction-free effort on cognitively demanding tasks. It's valuable because it's becoming rare (due to distraction culture) while the knowledge economy increasingly rewards complex cognitive output.",
+      "dueAt": "2024-01-18T09:00:00.000Z",
+      "stability": 0.3,
+      "difficulty": 0.4,
+      "state": "new"
+    }
+  ],
+  "dueCount": 2
+}

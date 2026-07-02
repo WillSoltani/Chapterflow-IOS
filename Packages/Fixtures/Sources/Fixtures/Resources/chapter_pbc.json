@@ -1,0 +1,291 @@
+{
+  "chapter": {
+    "chapterId": "ch-dw-1",
+    "number": 1,
+    "title": "Deep Work: The New Superpower",
+    "readingTimeMinutes": 15,
+    "activeVariant": "balanced",
+    "availableVariants": ["precise", "balanced", "challenging"],
+    "content": {
+      "chapterBreakdown": {
+        "gentle": "In our distracted world, the ability to focus deeply on cognitively demanding work has become both increasingly rare and increasingly valuable. Deep work — the ability to focus without distraction on a cognitively demanding task — is the skill that will separate those who thrive from those who struggle in the knowledge economy.",
+        "direct": "Deep work: focused, distraction-free cognitive effort. Becoming rare (social media, open offices, always-on culture). Becoming valuable (knowledge economy demands complex output). Rarity + value = competitive advantage. Shallow work destroys the capacity for deep work.",
+        "competitive": "Deep work is the high-leverage skill of the knowledge economy. Rare due to distraction culture. Valuable due to cognitive complexity demands. Rarity × value = compounding competitive advantage. Eliminate shallow work. Build deep work capacity systematically."
+      },
+      "keyTakeaways": [
+        {
+          "point": {
+            "gentle": "Deep work — focusing intensely without distraction — is becoming both rarer and more valuable in our distracted world.",
+            "direct": "Deep work: rare + valuable = competitive advantage. Build the capacity intentionally.",
+            "competitive": "Deep work scarcity + premium value = compounding competitive moat. Systematize it."
+          },
+          "moreDetails": {
+            "gentle": "Many knowledge workers spend their days doing 'shallow work' — emails, meetings, social media — that feels busy but produces little real value.",
+            "direct": "Most knowledge workers default to shallow work (reactive, low-value). Deep work requires intentional design.",
+            "competitive": "Shallow work traps: email, meetings, Slack. Deep work compounds. Audit your time allocation immediately."
+          }
+        }
+      ],
+      "oneMinuteRecap": {
+        "gentle": "Deep work — focused, undistracted effort on demanding tasks — is becoming rare in our always-connected world, which makes it incredibly valuable. Those who cultivate the ability to do deep work will thrive in the knowledge economy.",
+        "direct": "Deep work is rare and valuable. Knowledge economy rewards complex cognitive output. Cultivate deep work deliberately. Eliminate shallow distractions ruthlessly.",
+        "competitive": "Deep work: rare × valuable = compounding advantage. Knowledge economy rewards complexity. Systematize deep work. Eliminate shallow work. Outperform distracted competition."
+      },
+      "activationPrompt": {
+        "gentle": "Think about your typical workday. How many hours do you spend in truly focused, uninterrupted work versus reactive tasks like email and meetings?",
+        "direct": "Audit your last workweek: calculate hours of true deep work versus shallow reactive work. What's the ratio?",
+        "competitive": "Run a time audit on last week. Quantify deep work hours vs. shallow work hours. Calculate output quality correlation. Identify top-3 deep work blockers."
+      },
+      "selfCheckPrompts": [
+        {
+          "gentle": "Can you explain what makes deep work different from regular hard work?",
+          "direct": "Define deep work and contrast it with shallow work. Give one example of each.",
+          "competitive": "Define deep work precisely. Quantify its scarcity in your industry. State its premium value."
+        }
+      ],
+      "reflectionPrompts": [
+        {
+          "gentle": "When do you feel most 'in the zone' with your work? What conditions make that possible?",
+          "direct": "What are your current barriers to deep work? Which three have the highest impact?",
+          "competitive": "Conduct a competitive analysis: how much deep work do you do versus your top competitors? Where is your relative advantage?"
+        }
+      ],
+      "importantSummary": null,
+      "summaryBullets": null,
+      "takeaways": null,
+      "practice": null
+    },
+    "contentVariants": {
+      "precise": {
+        "chapterBreakdown": {
+          "gentle": "Deep work means working with complete focus on one demanding task without distractions. It's becoming rare in today's world of phones and social media, which means people who can do it have a big advantage.",
+          "direct": "Deep work: distraction-free focus on cognitively demanding tasks. Rare in distracted culture. High value in knowledge economy.",
+          "competitive": "Deep work: cognitive focus without distraction. Rare. High-value. Competitive advantage in knowledge work."
+        },
+        "keyTakeaways": [
+          {
+            "point": {
+              "gentle": "Working without distractions on hard tasks helps you produce your best work and learn difficult skills faster.",
+              "direct": "Distraction-free focus = higher quality output + faster skill acquisition.",
+              "competitive": "Deep work = maximum output quality + accelerated skill acquisition."
+            },
+            "moreDetails": null
+          }
+        ],
+        "oneMinuteRecap": {
+          "gentle": "Deep work — focusing completely on a hard task — is rare but very valuable today. Practice it intentionally.",
+          "direct": "Deep work is rare and valuable. Build the habit intentionally.",
+          "competitive": "Deep work: rare + valuable. Build it systematically."
+        },
+        "activationPrompt": {
+          "gentle": "When is one time today you could work for 30 minutes with no interruptions?",
+          "direct": "Schedule one 30-minute deep work block today. What will you work on?",
+          "competitive": "Schedule one 30-minute deep work block today. What high-value output will you produce?"
+        },
+        "selfCheckPrompts": null,
+        "reflectionPrompts": null,
+        "importantSummary": null,
+        "summaryBullets": null,
+        "takeaways": null,
+        "practice": null
+      },
+      "balanced": {
+        "chapterBreakdown": {
+          "gentle": "In our distracted world, the ability to focus deeply on cognitively demanding work has become both increasingly rare and increasingly valuable. Deep work — the ability to focus without distraction on a cognitively demanding task — is the skill that will separate those who thrive from those who struggle in the knowledge economy.",
+          "direct": "Deep work: focused, distraction-free cognitive effort. Becoming rare (social media, open offices, always-on culture). Becoming valuable (knowledge economy demands complex output). Rarity + value = competitive advantage. Shallow work destroys the capacity for deep work.",
+          "competitive": "Deep work is the high-leverage skill of the knowledge economy. Rare due to distraction culture. Valuable due to cognitive complexity demands. Rarity × value = compounding competitive advantage. Eliminate shallow work. Build deep work capacity systematically."
+        },
+        "keyTakeaways": [
+          {
+            "point": {
+              "gentle": "Deep work — focusing intensely without distraction — is becoming both rarer and more valuable in our distracted world.",
+              "direct": "Deep work: rare + valuable = competitive advantage. Build the capacity intentionally.",
+              "competitive": "Deep work scarcity + premium value = compounding competitive moat. Systematize it."
+            },
+            "moreDetails": {
+              "gentle": "Many knowledge workers spend their days doing 'shallow work' — emails, meetings, social media — that feels busy but produces little real value.",
+              "direct": "Most knowledge workers default to shallow work (reactive, low-value). Deep work requires intentional design.",
+              "competitive": "Shallow work traps: email, meetings, Slack. Deep work compounds. Audit your time allocation immediately."
+            }
+          }
+        ],
+        "oneMinuteRecap": {
+          "gentle": "Deep work — focused, undistracted effort on demanding tasks — is becoming rare in our always-connected world, which makes it incredibly valuable. Those who cultivate the ability to do deep work will thrive in the knowledge economy.",
+          "direct": "Deep work is rare and valuable. Knowledge economy rewards complex cognitive output. Cultivate deep work deliberately. Eliminate shallow distractions ruthlessly.",
+          "competitive": "Deep work: rare × valuable = compounding advantage. Knowledge economy rewards complexity. Systematize deep work. Eliminate shallow work. Outperform distracted competition."
+        },
+        "activationPrompt": {
+          "gentle": "Think about your typical workday. How many hours do you spend in truly focused, uninterrupted work versus reactive tasks like email and meetings?",
+          "direct": "Audit your last workweek: calculate hours of true deep work versus shallow reactive work. What's the ratio?",
+          "competitive": "Run a time audit on last week. Quantify deep work hours vs. shallow work hours. Calculate output quality correlation. Identify top-3 deep work blockers."
+        },
+        "selfCheckPrompts": [
+          {
+            "gentle": "Can you explain what makes deep work different from regular hard work?",
+            "direct": "Define deep work and contrast it with shallow work. Give one example of each.",
+            "competitive": "Define deep work precisely. Quantify its scarcity in your industry. State its premium value."
+          }
+        ],
+        "reflectionPrompts": [
+          {
+            "gentle": "When do you feel most 'in the zone' with your work? What conditions make that possible?",
+            "direct": "What are your current barriers to deep work? Which three have the highest impact?",
+            "competitive": "Conduct a competitive analysis: how much deep work do you do versus your top competitors? Where is your relative advantage?"
+          }
+        ],
+        "importantSummary": null,
+        "summaryBullets": null,
+        "takeaways": null,
+        "practice": null
+      },
+      "challenging": {
+        "chapterBreakdown": {
+          "gentle": "Newport's thesis connects the declining capacity for deep work to structural changes in how knowledge work is organized. The 'metric black hole' — the difficulty of measuring knowledge worker productivity — has allowed low-value shallow work to colonize the workday. Simultaneously, the skills required by the knowledge economy (complex reasoning, creative synthesis, expert judgment) are precisely those enabled by deep work.",
+          "direct": "Newport's framework: metric black hole (unmeasurable knowledge work) + principle of least resistance (default to shallow, visible busyness) = structural underinvestment in deep work. Deep work produces: (1) rapid skill acquisition, (2) elite performance output. The cognitive ceiling is set by your deep work capacity.",
+          "competitive": "Structural analysis: metric black hole creates accountability vacuum → principle of least resistance drives shallow work colonization → deep work capacity atrophies industry-wide. This creates an arbitrage: organizations and individuals who systematize deep work gain compounding advantage. Key metrics: deep work hours/week, output quality index, skill acquisition rate."
+        },
+        "keyTakeaways": [
+          {
+            "point": {
+              "gentle": "The structural features of modern knowledge work — hard-to-measure output, always-on communication tools, and social performance of busyness — systematically crowd out the deep work that produces the most value.",
+              "direct": "Three forces undermine deep work: (1) metric black hole, (2) principle of least resistance, (3) cult of connectivity. Recognize and counter them deliberately.",
+              "competitive": "Three structural forces suppress deep work industry-wide: metric black hole, least-resistance principle, connectivity cult. Your systematic counter-strategy = sustained competitive advantage."
+            },
+            "moreDetails": {
+              "gentle": "This isn't about individual willpower — the environment is designed (often unintentionally) to fragment your attention. Understanding the structural causes helps you design systemic solutions.",
+              "direct": "This is a structural problem, not a willpower problem. Design your environment to counteract the three forces. Willpower-based solutions will fail.",
+              "competitive": "Systems beat willpower at scale. Design anti-shallow architecture: email protocols, schedule defense, output measurement. Structural solutions compound."
+            }
+          }
+        ],
+        "oneMinuteRecap": {
+          "retrieve": {
+            "gentle": "Deep work is rare and valuable because structural forces in modern work environments systematically crowd it out — emails, meetings, and the pressure to appear busy all fragment attention.",
+            "direct": "Deep work is rare (metric black hole + least resistance + connectivity cult) and valuable (knowledge economy demands). Structural counter-design required.",
+            "competitive": "Three structural suppressors: metric black hole, least-resistance principle, connectivity cult. Systematic counter-architecture creates compounding advantage."
+          },
+          "connect": {
+            "gentle": "Think about your own work environment — do you recognize any of these forces at play? How do they affect your ability to focus?",
+            "direct": "Apply the framework to your context: which of the three structural suppressors has the highest impact on your deep work capacity?",
+            "competitive": "Map the three suppressors in your specific context. Quantify their impact. Design targeted counter-measures for each."
+          },
+          "preview": {
+            "gentle": "Next we'll explore Newport's four philosophies of deep work scheduling — different ways to structure your work life around deep work.",
+            "direct": "Next: the four deep work philosophies. How to implement deep work given your specific constraints and role.",
+            "competitive": "Next: deep work scheduling philosophies. Optimize implementation for your role's constraints and competitive context."
+          }
+        },
+        "activationPrompt": {
+          "gentle": "Identify which of the three structural forces (metric black hole, least resistance, connectivity cult) most affects your ability to do deep work. What would a structural fix look like?",
+          "direct": "Run a root-cause analysis on your deep work deficit. Identify the dominant structural suppressor. Design one systemic countermeasure.",
+          "competitive": "Conduct a structural audit: score each of the three suppressors' impact on your deep work hours. Design and implement the highest-leverage systemic countermeasure within 48 hours."
+        },
+        "selfCheckPrompts": [
+          {
+            "gentle": "Can you explain Newport's 'metric black hole' concept and why it matters for deep work?",
+            "direct": "Define metric black hole, least resistance principle, and connectivity cult. How do they interact?",
+            "competitive": "Analyze how the three structural suppressors interact to create systematic deep work deficits across knowledge work industries."
+          }
+        ],
+        "reflectionPrompts": [
+          {
+            "gentle": "Which of the three structural forces is most present in your work environment? What one change would have the biggest impact?",
+            "direct": "Prioritize the three structural suppressors by impact in your context. Design countermeasures for the top two.",
+            "competitive": "Conduct a competitive intelligence exercise: how do your highest-performing competitors structure their deep work time? What can you implement immediately?"
+          }
+        ],
+        "importantSummary": null,
+        "summaryBullets": null,
+        "takeaways": null,
+        "practice": null
+      }
+    },
+    "examples": [
+      {
+        "exampleId": "ex-dw-1-1",
+        "title": "The Software Engineer",
+        "scenario": "A developer spends most of their day in Slack and code reviews, squeezing actual coding into fragmented 30-minute blocks.",
+        "whatToDo": [
+          "Block 3 hours each morning as deep work time (no Slack, no meetings)",
+          "Set Slack status to 'deep work' and batch-check messages at 12pm and 4pm",
+          "Negotiate with your team: define 'urgent' as something that can wait 4 hours"
+        ],
+        "whyItMatters": {
+          "gentle": "Programming is cognitively demanding — you need long, unbroken stretches to enter flow state, hold complex system architectures in mind, and solve hard problems.",
+          "direct": "Code quality and architecture decisions require sustained focus. Fragmented attention produces fragmented code. Deep work blocks = better output, faster.",
+          "competitive": "Complex system design requires working memory depth only achievable in deep work. Fragmented engineers produce fragmented code. Yours won't."
+        },
+        "contexts": ["software-engineering", "knowledge-work"],
+        "category": "professional"
+      }
+    ],
+    "implementationPlan": {
+      "coreSkill": {
+        "gentle": "Protecting and expanding your capacity for focused, uninterrupted work on demanding tasks.",
+        "direct": "Systematically defending deep work time against shallow work invasion.",
+        "competitive": "Building deep work capacity as a systematized, defended competitive asset."
+      },
+      "concreteAction": {
+        "gentle": "Schedule one 90-minute 'focus block' in your calendar this week where you work on your most important task with notifications off.",
+        "direct": "Schedule one 90-minute deep work block this week. Turn off all notifications. Work on your highest-value cognitive task.",
+        "competitive": "Schedule one 90-minute deep work block this week. Block calendar. Disable all notifications. Maximize output on highest-leverage cognitive task."
+      },
+      "ifThenPlans": [
+        {
+          "context": "When I sit down at my desk in the morning",
+          "plan": {
+            "gentle": "...I will start with 90 minutes of deep work before checking email or messages.",
+            "direct": "...I execute 90 minutes of deep work before touching email/Slack.",
+            "competitive": "...I deploy 90-minute deep work block. Zero interruptions. Maximum output."
+          }
+        }
+      ],
+      "twentyFourHourChallenge": {
+        "gentle": "Set aside 90 minutes today to work on something important with your phone on silent and notifications off. Notice how different it feels.",
+        "direct": "Today: one 90-minute deep work block. All notifications off. Your highest-value cognitive task only.",
+        "competitive": "Today: 90-minute deep work block. All distractions eliminated. Produce your single highest-value output. Measure output quality."
+      },
+      "weeklyPractice": {
+        "gentle": "This week, try to do one 90-minute deep work session each day. Start small and build the habit.",
+        "direct": "5 deep work sessions this week, 90 minutes each. Track completion and output quality.",
+        "competitive": "5 × 90-minute deep work blocks this week. Track hours, output quality, and key results. Baseline for improvement."
+      },
+      "friction": null,
+      "checkpoint": {
+        "gentle": "After this week: Did you complete your focus blocks? How did your most important work feel compared to normal?",
+        "direct": "Week-end review: sessions completed, output quality rating, blockers encountered.",
+        "competitive": "Week-end metrics: sessions completed, output quality score, key results produced, blockers identified and eliminated."
+      }
+    },
+    "reviewCards": [
+      {
+        "cardId": "rc-dw-1-1",
+        "front": {
+          "gentle": "What is 'deep work' and why does Newport say it's becoming more valuable?",
+          "direct": "Define deep work. Why is it simultaneously rare and valuable?",
+          "competitive": "Define deep work precisely. State its economic value proposition."
+        },
+        "back": {
+          "gentle": "Deep work is focusing intensely on a cognitively demanding task without distractions. It's becoming rare because of social media and always-on culture, but more valuable because the knowledge economy rewards complex cognitive output.",
+          "direct": "Deep work: distraction-free focus on demanding cognitive tasks. Rare: distraction culture. Valuable: knowledge economy demands complex output. Rare + valuable = competitive advantage.",
+          "competitive": "Deep work: distraction-free sustained focus on cognitively demanding tasks. Rare due to structural forces (metric black hole, least resistance, connectivity cult). Valuable because knowledge economy rewards complex output. Compounding competitive advantage."
+        },
+        "difficulty": "easy"
+      }
+    ],
+    "keyTakeawayCard": {
+      "gentle": "Deep work — focused, undistracted effort on demanding tasks — is your most valuable professional skill. Protect and practice it intentionally.",
+      "direct": "Deep work is rare, valuable, and cultivatable. Build it systematically. Guard it ruthlessly.",
+      "competitive": "Deep work = compounding competitive advantage. Rare × valuable = moat. Build systematically. Defend ruthlessly."
+    },
+    "v21Extras": null
+  },
+  "progress": {
+    "currentChapterNumber": 1,
+    "unlockedThroughChapterNumber": 2,
+    "completedChapters": [],
+    "bestScoreByChapter": {},
+    "preferredVariant": "balanced",
+    "progressRev": 1
+  }
+}

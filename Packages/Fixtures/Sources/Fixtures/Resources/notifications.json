@@ -1,0 +1,41 @@
+{
+  "notifications": [
+    {
+      "notificationId": "notif-001",
+      "type": "quiz_unlocked",
+      "title": "New quiz available!",
+      "body": "Chapter 2 of Atomic Habits is ready to quiz. Test your knowledge now.",
+      "isRead": false,
+      "createdAt": "2024-01-16T09:00:00.000Z",
+      "deepLink": "chapterflow://book/b-atomic-habits/chapter/2/quiz"
+    },
+    {
+      "notificationId": "notif-002",
+      "type": "streak_reminder",
+      "title": "Don't break your streak!",
+      "body": "You're on a 5-day streak. Read something today to keep it going.",
+      "isRead": true,
+      "createdAt": "2024-01-15T18:00:00.000Z",
+      "deepLink": "chapterflow://library"
+    },
+    {
+      "notificationId": "notif-003",
+      "type": "badge_earned",
+      "title": "Badge unlocked: Bookworm! 📚",
+      "body": "You've completed your first book. Keep exploring more titles.",
+      "isRead": false,
+      "createdAt": "2024-01-16T10:00:00.000Z",
+      "deepLink": "chapterflow://profile/badges"
+    },
+    {
+      "notificationId": "notif-004",
+      "type": "review_due",
+      "title": "4 cards due for review",
+      "body": "Your spaced repetition cards are ready. A quick review keeps knowledge fresh.",
+      "isRead": true,
+      "createdAt": "2024-01-16T08:00:00.000Z",
+      "deepLink": "chapterflow://reviews"
+    }
+  ],
+  "unreadCount": 2
+}

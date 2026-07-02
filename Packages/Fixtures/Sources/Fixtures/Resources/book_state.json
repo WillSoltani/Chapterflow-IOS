@@ -1,0 +1,19 @@
+{
+  "state": {
+    "currentChapterId": "ch-ah-2",
+    "completedChapterIds": ["ch-ah-1"],
+    "unlockedChapterIds": ["ch-ah-1", "ch-ah-2"],
+    "chapterScores": {
+      "ch-ah-1": 100
+    },
+    "chapterCompletedAt": {
+      "ch-ah-1": "2024-01-15T14:30:00.000Z"
+    },
+    "lastReadChapterId": "ch-ah-2",
+    "lastOpenedAt": "2024-01-16T09:00:00.000Z"
+  },
+  "applicationStates": {
+    "ch-ah-1": "applied",
+    "ch-ah-2": "committed"
+  }
+}

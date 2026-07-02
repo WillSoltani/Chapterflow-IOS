@@ -30,12 +30,18 @@ let package = Package(
     products: [
         .library(name: "AppFeature", targets: ["AppFeature"]),
     ],
-    dependencies: modules.map { .package(path: "../\($0)") },
+    dependencies: modules.map { .package(path: "../\($0)") } + [
+        .package(path: "../Fixtures"),
+    ],
     targets: [
         .target(
             name: "AppFeature",
             dependencies: modules.map { .product(name: $0, package: $0) }
         ),
-        .testTarget(name: "AppFeatureTests", dependencies: ["AppFeature"]),
+        // Fixtures is a preview/test-only dependency — not linked into the production target.
+        .testTarget(name: "AppFeatureTests", dependencies: [
+            "AppFeature",
+            .product(name: "Fixtures", package: "Fixtures"),
+        ]),
     ]
 )

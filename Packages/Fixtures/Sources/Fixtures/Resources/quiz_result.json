@@ -1,0 +1,29 @@
+{
+  "passed": true,
+  "scorePercent": 100,
+  "correctCount": 3,
+  "totalQuestions": 3,
+  "cooldownSeconds": 0,
+  "nextEligibleAttemptAt": null,
+  "unlockedNextChapter": true,
+  "questionResults": [
+    {
+      "questionId": "q-ah-1-1",
+      "selectedChoiceId": "c-ah-1-1-b",
+      "correctChoiceId": "c-ah-1-1-b",
+      "isCorrect": true
+    },
+    {
+      "questionId": "q-ah-1-2",
+      "selectedChoiceId": "c-ah-1-2-b",
+      "correctChoiceId": "c-ah-1-2-b",
+      "isCorrect": true
+    },
+    {
+      "questionId": "q-ah-1-3",
+      "selectedChoiceId": "c-ah-1-3-b",
+      "correctChoiceId": "c-ah-1-3-b",
+      "isCorrect": true
+    }
+  ]
+}

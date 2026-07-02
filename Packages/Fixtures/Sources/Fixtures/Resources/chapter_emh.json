@@ -1,0 +1,381 @@
+{
+  "chapter": {
+    "chapterId": "ch-ah-1",
+    "number": 1,
+    "title": "The Surprising Power of Atomic Habits",
+    "readingTimeMinutes": 12,
+    "activeVariant": "medium",
+    "availableVariants": ["easy", "medium", "hard"],
+    "content": {
+      "chapterBreakdown": {
+        "gentle": "Small habits might seem insignificant at first, but tiny 1% improvements compound into remarkable results over time. Think of it as interest on a savings account — the gains are invisible day to day, but transformative over years.",
+        "direct": "1% daily improvement = 37x better in a year. 1% daily decline = near zero. Systems beat goals. Habits are the compound interest of self-improvement.",
+        "competitive": "Marginal gains compound. Elite athletes exploit 1% edges. Your competitors are ignoring tiny improvements — that's your advantage. Stack them."
+      },
+      "keyTakeaways": [
+        {
+          "point": {
+            "gentle": "Tiny improvements each day create extraordinary long-term results through the magic of compounding.",
+            "direct": "1% better daily = 37x improvement annually. Compound habits ruthlessly.",
+            "competitive": "Compound 1% daily gains. 37x annual advantage over those who don't."
+          },
+          "moreDetails": {
+            "gentle": "The challenge is that the impact of your habits is often invisible in the short term. You need to trust the process even when results aren't visible yet.",
+            "direct": "Short-term: imperceptible. Long-term: transformative. Trust the math.",
+            "competitive": "Invisible in Q1, decisive in Y5. Run the compounding play."
+          }
+        },
+        {
+          "point": {
+            "gentle": "Your outcomes are a lagging indicator of your habits — focus on the process, not the results.",
+            "direct": "Outcomes lag habits. Fix your systems, not your goals.",
+            "competitive": "Outcomes are trailing metrics. Lead with systems. Goals are losers' obsessions."
+          },
+          "moreDetails": null
+        }
+      ],
+      "oneMinuteRecap": {
+        "gentle": "Small changes feel insignificant day to day, but through compounding they produce extraordinary results. Your habits are your future self — invest in 1% improvements and trust the process.",
+        "direct": "1% daily gains compound to 37x annual improvement. Systems over goals. Atomic habits are the building blocks of remarkable results.",
+        "competitive": "1% edge daily = 37x annual dominance. Stack marginal gains. Build atomic systems. Outcompound everyone."
+      },
+      "activationPrompt": {
+        "gentle": "Think about one tiny habit you could improve by just 1% this week — something so small it almost seems silly.",
+        "direct": "Identify one daily action where a 1% improvement is immediately achievable. Do it now.",
+        "competitive": "Pick the highest-leverage habit in your stack. Where can you shave 1% of waste or add 1% of output today?"
+      },
+      "selfCheckPrompts": [
+        {
+          "gentle": "Can you describe the compounding effect of habits in your own words?",
+          "direct": "What is the mathematical result of 1% daily improvement over 365 days?",
+          "competitive": "How do you calculate the compounding advantage of marginal gains?"
+        }
+      ],
+      "reflectionPrompts": [
+        {
+          "gentle": "Which area of your life would benefit most from a series of tiny 1% improvements?",
+          "direct": "List three habits currently costing you 1% daily. What is the annual cost?",
+          "competitive": "Map your top three habit stacks. Where is the highest compounding opportunity?"
+        }
+      ],
+      "importantSummary": null,
+      "summaryBullets": null,
+      "takeaways": null,
+      "practice": null
+    },
+    "contentVariants": {
+      "easy": {
+        "chapterBreakdown": {
+          "gentle": "Habits are like tiny seeds. Plant one tiny good habit every day and it grows into something wonderful over time.",
+          "direct": "Small habits grow big. 1% better daily = 37x better in a year.",
+          "competitive": "Stack tiny wins. They compound into massive advantages."
+        },
+        "keyTakeaways": [
+          {
+            "point": {
+              "gentle": "Tiny habits compound into big changes over time.",
+              "direct": "1% daily = 37x yearly. Do the math.",
+              "competitive": "Marginal gains compound. Start stacking."
+            },
+            "moreDetails": null
+          }
+        ],
+        "oneMinuteRecap": {
+          "gentle": "Small habits may seem tiny, but they compound into remarkable results. Focus on getting 1% better each day.",
+          "direct": "Habits compound. 1% daily improvement = 37x annual. Build systems, not goals.",
+          "competitive": "Compound 1% gains daily. 37x annual edge. Start now."
+        },
+        "activationPrompt": {
+          "gentle": "What is one tiny thing you can do today to be 1% better?",
+          "direct": "Name one habit to improve by 1% today.",
+          "competitive": "Pick your #1 leverage habit. Improve it 1% now."
+        },
+        "selfCheckPrompts": null,
+        "reflectionPrompts": null,
+        "importantSummary": null,
+        "summaryBullets": null,
+        "takeaways": null,
+        "practice": null
+      },
+      "medium": {
+        "chapterBreakdown": {
+          "gentle": "Small habits might seem insignificant at first, but tiny 1% improvements compound into remarkable results over time. Think of it as interest on a savings account — the gains are invisible day to day, but transformative over years.",
+          "direct": "1% daily improvement = 37x better in a year. 1% daily decline = near zero. Systems beat goals. Habits are the compound interest of self-improvement.",
+          "competitive": "Marginal gains compound. Elite athletes exploit 1% edges. Your competitors are ignoring tiny improvements — that's your advantage. Stack them."
+        },
+        "keyTakeaways": [
+          {
+            "point": {
+              "gentle": "Tiny improvements each day create extraordinary long-term results through the magic of compounding.",
+              "direct": "1% better daily = 37x improvement annually. Compound habits ruthlessly.",
+              "competitive": "Compound 1% daily gains. 37x annual advantage over those who don't."
+            },
+            "moreDetails": {
+              "gentle": "The challenge is that the impact of your habits is often invisible in the short term. You need to trust the process even when results aren't visible yet.",
+              "direct": "Short-term: imperceptible. Long-term: transformative. Trust the math.",
+              "competitive": "Invisible in Q1, decisive in Y5. Run the compounding play."
+            }
+          }
+        ],
+        "oneMinuteRecap": {
+          "gentle": "Small changes feel insignificant day to day, but through compounding they produce extraordinary results. Your habits are your future self — invest in 1% improvements and trust the process.",
+          "direct": "1% daily gains compound to 37x annual improvement. Systems over goals. Atomic habits are the building blocks of remarkable results.",
+          "competitive": "1% edge daily = 37x annual dominance. Stack marginal gains. Build atomic systems. Outcompound everyone."
+        },
+        "activationPrompt": {
+          "gentle": "Think about one tiny habit you could improve by just 1% this week — something so small it almost seems silly.",
+          "direct": "Identify one daily action where a 1% improvement is immediately achievable. Do it now.",
+          "competitive": "Pick the highest-leverage habit in your stack. Where can you shave 1% of waste or add 1% of output today?"
+        },
+        "selfCheckPrompts": [
+          {
+            "gentle": "Can you describe the compounding effect of habits in your own words?",
+            "direct": "What is the mathematical result of 1% daily improvement over 365 days?",
+            "competitive": "How do you calculate the compounding advantage of marginal gains?"
+          }
+        ],
+        "reflectionPrompts": [
+          {
+            "gentle": "Which area of your life would benefit most from a series of tiny 1% improvements?",
+            "direct": "List three habits currently costing you 1% daily. What is the annual cost?",
+            "competitive": "Map your top three habit stacks. Where is the highest compounding opportunity?"
+          }
+        ],
+        "importantSummary": null,
+        "summaryBullets": null,
+        "takeaways": null,
+        "practice": null
+      },
+      "hard": {
+        "chapterBreakdown": {
+          "gentle": "The mathematics of compounding reveals why atomic habits produce non-linear outcomes. Dave Brailsford's British Cycling 'aggregation of marginal gains' framework demonstrates that systematic 1% improvements across every variable compound into exponential performance advantages.",
+          "direct": "Compounding formula: (1.01)^365 = 37.78. Habits are the mechanism of compound interest applied to human performance. Dave Brailsford's marginal gains framework operationalized this. Identity-based habits vs. outcome-based habits: the former compound, the latter plateau.",
+          "competitive": "Compound advantage: (1.01)^365 = 37.78x. Brailsford's marginal gains: systematic 1% optimization across all variables. Identity-based habit formation creates durable competitive moats. Outcome-goals are lagging metrics; process-systems are leading indicators."
+        },
+        "keyTakeaways": [
+          {
+            "point": {
+              "gentle": "The compounding nature of habits means tiny improvements — when maintained consistently — produce exponential rather than linear outcomes over time.",
+              "direct": "Habits compound nonlinearly: 1% daily = 37x annually. Consistency beats intensity. Process over outcome.",
+              "competitive": "Habit compounding: 1% daily = 37x annually. Identity-based > outcome-based. Systematic marginal optimization creates compounding moats."
+            },
+            "moreDetails": {
+              "gentle": "The valley of disappointment is real: most people give up during the phase where habits haven't yet reached the 'breakthrough' threshold of compounding. The key is maintaining consistency through that invisible phase.",
+              "direct": "Expect a valley of disappointment before compounding becomes visible. The plateau of latent potential precedes all breakthroughs. Don't optimize for short-term signal.",
+              "competitive": "The valley of disappointment (latent potential phase) is where competitors quit. Exploit their impatience. Your systems compound while their goals stagnate."
+            }
+          }
+        ],
+        "oneMinuteRecap": {
+          "retrieve": {
+            "gentle": "You've learned that tiny habits compound over time, just like financial interest. 1% improvements daily lead to 37x better results in a year.",
+            "direct": "1% daily = 37x annual. Habits compound nonlinearly. Systems beat goals.",
+            "competitive": "Compound formula: (1.01)^365 = 37.78x. Marginal gains stack. Identity habits > outcome goals."
+          },
+          "connect": {
+            "gentle": "Think about a skill or behavior in your life where you've seen compounding effects before — how can you apply that same logic to your habits?",
+            "direct": "Apply the marginal gains framework: what 1% improvements can you systematize across your key performance variables?",
+            "competitive": "Map your competitive moat: which habit stacks create compounding advantages your competitors can't easily replicate?"
+          },
+          "preview": {
+            "gentle": "Next we'll explore why habits are so powerful — the habit loop — and how to use it to build new behaviors.",
+            "direct": "Next: the habit loop mechanism. How cue-routine-reward cycles automate behavior and reduce cognitive load.",
+            "competitive": "Next: habit loop architecture. Engineer cue-routine-reward cycles for maximum automaticity and minimum decision fatigue."
+          }
+        },
+        "activationPrompt": {
+          "gentle": "Design a 'marginal gains audit' for one important area of your life: list every sub-habit that contributes to your performance there, and identify three where a 1% improvement is immediately feasible.",
+          "direct": "Run a marginal gains analysis on your highest-priority goal: decompose it into component habits, score each on current performance, identify top-3 improvement levers.",
+          "competitive": "Conduct a marginal gains audit on your primary competitive arena. Decompose into variables. Rank by leverage. Implement top-3 1% improvements this week."
+        },
+        "selfCheckPrompts": [
+          {
+            "gentle": "Can you explain the valley of disappointment and why it's important to know about it?",
+            "direct": "What is the latent potential plateau, and why do most habit-building attempts fail at this stage?",
+            "competitive": "How does understanding the valley of disappointment create competitive advantage over less-informed habit-builders?"
+          }
+        ],
+        "reflectionPrompts": [
+          {
+            "gentle": "Where in your life are you currently in the valley of disappointment — working toward a goal whose compounding hasn't become visible yet?",
+            "direct": "List your current habit investments in their latent potential phase. How do you maintain consistency during this period?",
+            "competitive": "Identify which of your habit investments are in the latent potential phase. Calculate the projected compounding value at 6 and 12 months."
+          }
+        ],
+        "importantSummary": null,
+        "summaryBullets": null,
+        "takeaways": null,
+        "practice": null
+      }
+    },
+    "examples": [
+      {
+        "exampleId": "ex-ah-1-1",
+        "title": "The Exercise Habit",
+        "scenario": "You've been trying to go to the gym for years but always seem to fall off after a few weeks.",
+        "whatToDo": ["Start with just 2 minutes of exercise per day", "Set your gym clothes out the night before", "Link the habit to an existing routine (e.g. after morning coffee)"],
+        "whyItMatters": {
+          "gentle": "Starting small removes the mental barrier. Once you establish the identity of 'someone who exercises,' bigger changes naturally follow.",
+          "direct": "Tiny habits eliminate activation energy. You show up consistently → habit solidifies → scale from there.",
+          "competitive": "2 minutes daily builds the habit circuit. Once wired, scaling is frictionless. Most people never get past activation energy."
+        },
+        "contexts": ["fitness", "health", "morning-routine"],
+        "category": "health"
+      },
+      {
+        "exampleId": "ex-ah-1-2",
+        "title": "Learning a New Skill",
+        "scenario": {
+          "gentle": "You want to learn to play guitar but the thought of years of practice feels overwhelming.",
+          "direct": "You want to learn guitar. Practice feels too big to start.",
+          "competitive": "Target: guitar proficiency. Barrier: perceived scope of practice investment."
+        },
+        "whatToDo": {
+          "gentle": "Just pick up the guitar for 2 minutes after dinner. Don't worry about playing a song — just making it a daily ritual is the first win.",
+          "direct": "2-minute guitar minimum daily. Attach to existing trigger. Goal: habit formation, not skill in week 1.",
+          "competitive": "Implement 2-minute minimum daily. Stack to high-probability trigger. Compound 1% skill improvement daily from baseline."
+        },
+        "whyItMatters": "The goal isn't to practice guitar. The goal is to become the kind of person who practices guitar daily. The identity drives the behavior.",
+        "contexts": ["learning", "skill-building"],
+        "category": "learning"
+      }
+    ],
+    "implementationPlan": {
+      "coreSkill": {
+        "gentle": "Designing tiny, consistent habits that build on each other over time.",
+        "direct": "Systematically compounding 1% daily improvements across key habit targets.",
+        "competitive": "Engineering marginal-gain habit stacks that compound into outsized performance advantages."
+      },
+      "concreteAction": {
+        "gentle": "Choose one habit you want to build. Make it so small it seems almost too easy. Do it every day this week.",
+        "direct": "Select one high-leverage habit. Define the 2-minute version. Attach to existing cue. Execute daily.",
+        "competitive": "Pick your #1 leverage habit. Define minimum viable version (2 min). Stack to existing trigger. Track and compound."
+      },
+      "ifThenPlans": [
+        {
+          "context": "When I finish my morning coffee",
+          "plan": {
+            "gentle": "...I will spend 2 minutes on the habit I'm building, even if it's just setting up.",
+            "direct": "...I execute the 2-minute habit minimum. No exceptions.",
+            "competitive": "...I deploy the 2-minute habit unit. Non-negotiable. Compound starts now."
+          }
+        }
+      ],
+      "twentyFourHourChallenge": {
+        "gentle": "Choose one tiny habit to start today. Do the 2-minute version. Just show up once.",
+        "direct": "Pick one habit. Do the 2-minute version today. That's the challenge.",
+        "competitive": "Select highest-leverage habit. Execute 2-minute version within 24 hours. Document and stack."
+      },
+      "weeklyPractice": {
+        "gentle": "Each day this week, do the 2-minute version of your chosen habit. Notice how you feel after day 7.",
+        "direct": "7 consecutive days of the 2-minute habit. Track in a journal. No zeros.",
+        "competitive": "7-day execution streak. 2-minute minimum daily. Track compounding. Escalate in week 2."
+      },
+      "friction": {
+        "gentle": "It feels too small to make a difference — but that's actually the point.",
+        "direct": "Resistance to \"it's too small.\" Override: consistency > intensity in habit building.",
+        "competitive": "Ego says 2 minutes is beneath you. That's the trap. Consistency compounds. Intensity burns out."
+      },
+      "checkpoint": {
+        "gentle": "After one week: Are you showing up every day? That's the only success metric right now.",
+        "direct": "Week 1 KPI: 7/7 execution days. Not habit strength — just consistency.",
+        "competitive": "Week 1 metric: 100% execution rate. Not performance — habit circuit formation."
+      }
+    },
+    "reviewCards": [
+      {
+        "cardId": "rc-ah-1-1",
+        "front": {
+          "gentle": "What happens to your habits when you improve by just 1% each day for a whole year?",
+          "direct": "What is (1.01)^365?",
+          "competitive": "Annual compounding result of 1% daily marginal gain?"
+        },
+        "back": {
+          "gentle": "You end up 37 times better! Small daily improvements add up to extraordinary results through the power of compounding.",
+          "direct": "37.78x. Compound interest of habits. 1% daily = 37x annual.",
+          "competitive": "37.78x. (1.01)^365 = 37.78. Marginal gains compound to dominant advantage."
+        },
+        "difficulty": "easy"
+      },
+      {
+        "cardId": "rc-ah-1-2",
+        "front": {
+          "gentle": "What is the 'valley of disappointment' in habit building?",
+          "direct": "Define the latent potential plateau.",
+          "competitive": "What is the latent potential plateau and why is it a competitive advantage?"
+        },
+        "back": {
+          "gentle": "The period when you're doing the work but not yet seeing results — because habits haven't reached the compounding 'breakthrough' point yet. Most people give up here.",
+          "direct": "The pre-breakthrough phase where habit investment hasn't compounded enough to be visible. Most people quit here. Don't.",
+          "competitive": "The phase before compounding becomes visible. Most competitors quit here. Exploiting their impatience is your structural advantage."
+        },
+        "difficulty": "medium"
+      }
+    ],
+    "keyTakeawayCard": {
+      "gentle": "Tiny habits compound into remarkable results — focus on 1% improvements, trust the process, and let time do the heavy lifting.",
+      "direct": "1% daily = 37x annual. Systems beat goals. Habits are compound interest. Build systems, not targets.",
+      "competitive": "Compound 1% daily. 37x annual edge. Systems > goals. Marginal gains stack into dominance."
+    },
+    "v21Extras": {
+      "hook": "What if the key to getting 37 times better at anything in a year required only a 1% improvement each day?",
+      "counterintuition": "Most people think success requires dramatic transformations. But the science shows it's the opposite — tiny, consistent improvements beat big, inconsistent efforts every time.",
+      "tryThisNow": "Right now, think of one habit you want to build. Write down the 2-minute version of it. That's your atomic habit.",
+      "keyTakeaway": "You don't rise to the level of your goals; you fall to the level of your systems.",
+      "memorableLines": [
+        {
+          "text": "You do not rise to the level of your goals. You fall to the level of your systems.",
+          "location": "Chapter 1",
+          "why": "Reframes the entire goal-setting paradigm — systems thinking over wishful thinking."
+        },
+        {
+          "text": "Every action you take is a vote for the type of person you wish to become.",
+          "location": "Chapter 1",
+          "why": "Connects daily micro-habits to identity formation — the deepest motivational layer."
+        }
+      ],
+      "experiencePlan": {
+        "failureRecovery": {
+          "normalizingLine": "Missing a day doesn't break the habit — it's the pattern that matters.",
+          "cueQuestion": "What got in the way of your 2-minute habit yesterday?",
+          "options": ["Too busy / forgot", "Seemed too small to bother", "Felt discouraged about progress", "Other"],
+          "repairLine": "The rule is: never miss twice. One miss is an accident. Two misses is a new habit. Get back on track today."
+        },
+        "transferPrompt": {
+          "prompt": "Think of another area of your life where tiny 1% improvements could compound over time.",
+          "contexts": ["career skill development", "relationship quality", "financial saving", "creative practice", "health and fitness"]
+        },
+        "behaviorLoop": {
+          "readerPatterns": [
+            {
+              "id": "the-planner",
+              "label": "The Planner",
+              "mapsToPlanIndex": 0,
+              "mapsToExampleIndex": null
+            },
+            {
+              "id": "the-doer",
+              "label": "The Doer",
+              "mapsToPlanIndex": null,
+              "mapsToExampleIndex": 0
+            },
+            {
+              "id": "the-skeptic",
+              "label": "The Skeptic",
+              "mapsToPlanIndex": null,
+              "mapsToExampleIndex": 1
+            }
+          ]
+        }
+      }
+    }
+  },
+  "progress": {
+    "currentChapterNumber": 1,
+    "unlockedThroughChapterNumber": 1,
+    "completedChapters": [],
+    "bestScoreByChapter": {},
+    "preferredVariant": "medium",
+    "progressRev": 1
+  }
+}

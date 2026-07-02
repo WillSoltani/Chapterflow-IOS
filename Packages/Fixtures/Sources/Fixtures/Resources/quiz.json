@@ -1,0 +1,49 @@
+{
+  "quiz": {
+    "sessionId": "qs-ah-1-abc123",
+    "bookId": "b-atomic-habits",
+    "chapterNumber": 1,
+    "tone": "direct",
+    "passingScorePercent": 70,
+    "questions": [
+      {
+        "questionId": "q-ah-1-1",
+        "prompt": "If you improve 1% each day for a year, how much better do you become?",
+        "choices": [
+          { "choiceId": "c-ah-1-1-a", "text": "About 4x better" },
+          { "choiceId": "c-ah-1-1-b", "text": "About 37x better" },
+          { "choiceId": "c-ah-1-1-c", "text": "About 365x better" },
+          { "choiceId": "c-ah-1-1-d", "text": "About 100x better" }
+        ]
+      },
+      {
+        "questionId": "q-ah-1-2",
+        "stem": "What is the 'valley of disappointment' in the context of habit formation?",
+        "choices": [
+          { "choiceId": "c-ah-1-2-a", "text": "The period when a habit becomes too boring to continue" },
+          { "choiceId": "c-ah-1-2-b", "text": "The initial phase of habit formation before results become visible" },
+          { "choiceId": "c-ah-1-2-c", "text": "The moment when you realize your goals were too ambitious" },
+          { "choiceId": "c-ah-1-2-d", "text": "The drop in motivation after achieving a goal" }
+        ]
+      },
+      {
+        "questionId": "q-ah-1-3",
+        "prompt": "According to Atomic Habits, what is more effective for long-term success?",
+        "choices": [
+          { "choiceId": "c-ah-1-3-a", "text": "Setting ambitious goals and working backward from them" },
+          { "choiceId": "c-ah-1-3-b", "text": "Building systems and processes that support your desired outcomes" },
+          { "choiceId": "c-ah-1-3-c", "text": "Focusing on motivation and willpower" },
+          { "choiceId": "c-ah-1-3-d", "text": "Making large, dramatic changes quickly" }
+        ]
+      }
+    ]
+  },
+  "progress": {
+    "currentChapterNumber": 1,
+    "unlockedThroughChapterNumber": 1,
+    "completedChapters": [],
+    "bestScoreByChapter": {},
+    "preferredVariant": "medium",
+    "progressRev": 1
+  }
+}

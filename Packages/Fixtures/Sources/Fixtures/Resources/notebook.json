@@ -1,0 +1,54 @@
+{
+  "entries": [
+    {
+      "entryId": "ne-001",
+      "bookId": "b-atomic-habits",
+      "chapterId": "ch-ah-1",
+      "type": "note",
+      "content": "1% improvements compound to 37x better in a year. Apply this to my morning routine first.",
+      "quote": null,
+      "createdAt": "2024-01-15T14:30:00.000Z",
+      "updatedAt": "2024-01-15T14:30:00.000Z"
+    },
+    {
+      "entryId": "ne-002",
+      "bookId": "b-atomic-habits",
+      "chapterId": "ch-ah-1",
+      "type": "highlight",
+      "content": null,
+      "quote": "You do not rise to the level of your goals. You fall to the level of your systems.",
+      "createdAt": "2024-01-15T14:35:00.000Z",
+      "updatedAt": "2024-01-15T14:35:00.000Z"
+    },
+    {
+      "entryId": "ne-003",
+      "bookId": "b-atomic-habits",
+      "chapterId": "ch-ah-1",
+      "type": "commitment",
+      "content": "I will do the 2-minute version of my reading habit every day after my morning coffee.",
+      "quote": null,
+      "createdAt": "2024-01-15T15:00:00.000Z",
+      "updatedAt": "2024-01-15T15:00:00.000Z"
+    },
+    {
+      "entryId": "ne-004",
+      "bookId": "b-deep-work",
+      "chapterId": "ch-dw-1",
+      "type": "reflection",
+      "content": "I spend way too much time in Slack. Need to block 3 hours of deep work every morning.",
+      "quote": null,
+      "createdAt": "2024-01-16T10:00:00.000Z",
+      "updatedAt": "2024-01-16T10:00:00.000Z"
+    },
+    {
+      "entryId": "ne-005",
+      "bookId": "b-atomic-habits",
+      "chapterId": "ch-ah-2",
+      "type": "bookmark",
+      "content": null,
+      "quote": "Every action you take is a vote for the type of person you wish to become.",
+      "createdAt": "2024-01-16T11:00:00.000Z",
+      "updatedAt": "2024-01-16T11:00:00.000Z"
+    }
+  ]
+}
