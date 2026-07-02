@@ -141,6 +141,65 @@ struct SessionManagerTests {
         #expect(session.authState == .signedOut)
         #expect(store.load() == nil)
     }
+
+    // MARK: validToken() — proactive refresh (RF: transparent Amplify refresh)
+
+    @Test("validToken() returns the cached id_token when it is fresh")
+    func validTokenReturnsCachedWhenFresh() async throws {
+        let store = InMemoryTokenStore(tokens: makeTokens(expiresIn: 3_600))
+        let session = SessionManager(tokenStore: store, refresher: StubTokenRefresher(shouldFail: true))
+        let token = try await session.validToken()
+        // Fresh token — no refresh triggered despite a failing refresher.
+        #expect(token == "test-id-token")
+    }
+
+    @Test("validToken() proactively refreshes when token is near-expiry (<5 min)")
+    func validTokenProactivelyRefreshesNearExpiry() async throws {
+        // 60 seconds left — well inside the 5-minute window.
+        let store = InMemoryTokenStore(tokens: makeTokens(expiresIn: 60))
+        let session = SessionManager(tokenStore: store, refresher: StubTokenRefresher())
+        let token = try await session.validToken()
+        #expect(token == "stub-id-token", "should return the refreshed token")
+        #expect(store.load()?.idToken == "stub-id-token", "store must hold the new token")
+    }
+
+    @Test("validToken() proactively refreshes an already-expired token")
+    func validTokenRefreshesExpiredToken() async throws {
+        let store = InMemoryTokenStore(tokens: makeTokens(expiresIn: -60))
+        let session = SessionManager(tokenStore: store, refresher: StubTokenRefresher())
+        let token = try await session.validToken()
+        #expect(token == "stub-id-token")
+    }
+
+    @Test("validToken() falls back to stale token when proactive refresh fails")
+    func validTokenFallsBackOnRefreshFailure() async throws {
+        // 60 s left — refresh triggered but fails. Must return old token
+        // so the 401 retry path (server-side) can still drive refresh().
+        let store = InMemoryTokenStore(tokens: makeTokens(expiresIn: 60))
+        let session = SessionManager(tokenStore: store, refresher: StubTokenRefresher(shouldFail: true))
+        let token = try await session.validToken()
+        #expect(token == "test-id-token")
+    }
+
+    @Test("validToken() returns nil when no tokens are stored (unauthenticated)")
+    func validTokenNilWhenEmpty() async throws {
+        let store = InMemoryTokenStore()
+        let session = SessionManager(tokenStore: store)
+        let token = try await session.validToken()
+        #expect(token == nil)
+    }
+
+    // MARK: Sign-out keychain cleanup (RF4)
+
+    @Test("signOut clears TokenStore and authState — no credentials left behind")
+    func signOutLeavesEmptyKeychain() async {
+        let store = InMemoryTokenStore(tokens: makeTokens())
+        let session = SessionManager(tokenStore: store)
+        #expect(store.load() != nil)
+        await session.signOut()
+        #expect(store.load() == nil, "TokenStore must be empty after sign-out")
+        #expect(session.authState == .signedOut)
+    }
 }
 
 // MARK: - UserProfile JWT parsing

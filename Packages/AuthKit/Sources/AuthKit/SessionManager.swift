@@ -205,7 +205,13 @@ extension SessionManager: TokenRefreshing {
 extension SessionManager: TokenProviding {
 
     public func validToken() async throws -> String? {
-        guard let tokens = tokenStore.load(), !tokens.isExpired() else { return nil }
+        guard let tokens = tokenStore.load() else { return nil }
+        // Proactively refresh when within 5 minutes of expiry to avoid a
+        // predictable 401 round-trip. On failure, fall through and return
+        // the existing token — the server's 401 will still drive refresh().
+        if tokens.isNearlyExpired() {
+            do { return try await performRefresh().idToken } catch {}
+        }
         return tokens.idToken
     }
 
