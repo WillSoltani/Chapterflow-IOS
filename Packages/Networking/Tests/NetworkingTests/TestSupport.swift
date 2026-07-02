@@ -135,6 +135,24 @@ enum TestFactory {
         return (client, provider)
     }
 
+    /// An APIClient wired with an observer (for breadcrumb/observer tests).
+    static func clientWithObserver(
+        observer: any APIClientObserver,
+        token: String? = "initial-token",
+        maxRetries: Int = 0
+    ) -> (APIClient, FakeTokenProvider) {
+        let provider = FakeTokenProvider(token: token)
+        let client = APIClient(
+            baseURL: URL(string: "https://api.chapterflow.test")!,
+            tokenProvider: provider,
+            session: session(),
+            observer: observer,
+            maxRetries: maxRetries,
+            retryBaseDelay: .zero
+        )
+        return (client, provider)
+    }
+
     /// Encodes an API error envelope body.
     static func errorEnvelope(
         code: String,
@@ -146,6 +164,35 @@ enum TestFactory {
         if let requestId { error["requestId"] = requestId }
         if let reauth { error["details"] = ["reauth": reauth] }
         return try! JSONSerialization.data(withJSONObject: ["error": error])
+    }
+}
+
+// MARK: - Spy observer
+
+/// Records all ``APIClientObserver`` callbacks without side effects.
+final class SpyAPIClientObserver: APIClientObserver, @unchecked Sendable {
+    struct CompletedCall: Sendable {
+        let method: String
+        let path: String
+        let status: Int
+        let requestId: String?
+    }
+
+    private let lock = NSLock()
+    private var _completed: [CompletedCall] = []
+    private var _failed: Int = 0
+
+    var completed: [CompletedCall] { lock.withLock { _completed } }
+    var failedCount: Int { lock.withLock { _failed } }
+
+    func requestCompleted(method: String, path: String, status: Int, requestId: String?) {
+        lock.withLock {
+            _completed.append(.init(method: method, path: path, status: status, requestId: requestId))
+        }
+    }
+
+    func requestFailed(method: String, path: String, error: any Error) {
+        lock.withLock { _failed += 1 }
     }
 }
 

@@ -31,7 +31,7 @@ public protocol AnalyticsTransport: Sendable {
 // MARK: - Wire models
 
 /// One analytics event as sent to the backend.
-struct AnalyticsWireEvent: Encodable, Sendable, Equatable {
+struct AnalyticsWireEvent: Codable, Sendable, Equatable {
     let name: String
     let properties: [String: String]
     let timestamp: Date
@@ -46,6 +46,14 @@ struct AnalyticsTrackBatch: Encodable, Sendable {
 
 /// The production `AnalyticsClient`: buffers events and flushes them in batches,
 /// never throwing to callers. Honors an analytics opt-out.
+///
+/// When initialised with a `diskQueue`, events are persisted to disk immediately
+/// on every `track()` call and survive process kills / crashes. On next launch,
+/// call `flush()` early in the app lifecycle to drain any residual events from
+/// the previous session.
+///
+/// When `diskQueue` is `nil` (the default), the client uses an in-memory buffer —
+/// suitable for tests and SwiftUI Previews.
 public actor DefaultAnalyticsClient: AnalyticsClient {
     /// Relative API paths for the two analytics endpoints.
     enum Path {
@@ -57,8 +65,11 @@ public actor DefaultAnalyticsClient: AnalyticsClient {
     private let batchSize: Int
     private let now: @Sendable () -> Date
     private let log = AppLog(category: .analytics)
+    // Disk-backed queue for durability. nil = in-memory only (tests/previews).
+    private let diskQueue: DiskQueue?
 
-    private var buffer: [AnalyticsWireEvent] = []
+    // In-memory fallback used when diskQueue is nil.
+    private var memoryBuffer: [AnalyticsWireEvent] = []
     private var optedOut: Bool
 
     private let encoder: JSONEncoder = {
@@ -67,6 +78,8 @@ public actor DefaultAnalyticsClient: AnalyticsClient {
         return e
     }()
 
+    /// Public initializer with in-memory buffering only. Use ``makeDurable(transport:batchSize:optedOut:)``
+    /// for the disk-backed production path.
     public init(
         transport: AnalyticsTransport,
         batchSize: Int = 20,
@@ -77,9 +90,54 @@ public actor DefaultAnalyticsClient: AnalyticsClient {
         self.batchSize = max(1, batchSize)
         self.optedOut = optedOut
         self.now = now
+        self.diskQueue = nil
     }
 
-    // MARK: AnalyticsClient (non-throwing, fire-and-forget)
+    /// Internal initializer for tests: allows injecting a `DiskQueue` directly
+    /// (`DiskQueue` is internal so it cannot appear in a `public` signature).
+    init(
+        transport: AnalyticsTransport,
+        batchSize: Int = 20,
+        optedOut: Bool = false,
+        now: @escaping @Sendable () -> Date = { Date() },
+        diskQueue: DiskQueue?
+    ) {
+        self.transport = transport
+        self.batchSize = max(1, batchSize)
+        self.optedOut = optedOut
+        self.now = now
+        self.diskQueue = diskQueue
+    }
+
+    // MARK: - Factory
+
+    /// Creates a production client backed by a disk queue in Application Support.
+    ///
+    /// The queue file survives process kills and crashes. Call `flush()` early in
+    /// the app lifecycle to drain any events from the previous session.
+    public static func makeDurable(
+        transport: AnalyticsTransport,
+        batchSize: Int = 20,
+        optedOut: Bool = false
+    ) -> DefaultAnalyticsClient {
+        let queue: DiskQueue? = {
+            let fm = FileManager.default
+            guard let appSupport = fm.urls(
+                for: .applicationSupportDirectory, in: .userDomainMask
+            ).first else { return nil }
+            let dir = appSupport.appendingPathComponent("com.chapterflow", isDirectory: true)
+            try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+            return DiskQueue(fileURL: dir.appendingPathComponent("analytics_queue.json"))
+        }()
+        return DefaultAnalyticsClient(
+            transport: transport,
+            batchSize: batchSize,
+            optedOut: optedOut,
+            diskQueue: queue
+        )
+    }
+
+    // MARK: - AnalyticsClient (non-throwing, fire-and-forget)
 
     public nonisolated func track(_ event: AnalyticsEvent) {
         Task { await self.record(event) }
@@ -89,38 +147,65 @@ public actor DefaultAnalyticsClient: AnalyticsClient {
         Task { await self.deliverBeacon(name: name, properties: properties) }
     }
 
-    // MARK: Opt-out
+    // MARK: - Opt-out
 
-    /// Toggles analytics collection. When opting out, any buffered events are
-    /// discarded so nothing already queued is sent.
+    /// Toggles analytics collection. When opting out, buffered events (memory
+    /// and disk) are discarded so nothing already queued is sent.
     public func setOptedOut(_ value: Bool) {
         optedOut = value
-        if value { buffer.removeAll() }
+        if value {
+            memoryBuffer.removeAll()
+            Task { _ = try? await diskQueue?.clear() }
+        }
     }
 
-    // MARK: Internal async core (also the seam used by tests)
+    // MARK: - Internal async core (also the seam used by tests)
 
-    /// Buffers an event, flushing automatically once the batch is full.
+    /// Records an event, persisting to disk immediately (when a disk queue is
+    /// configured) and auto-flushing once the batch size is reached.
     func record(_ event: AnalyticsEvent) async {
         guard !optedOut else { return }
-        buffer.append(
-            AnalyticsWireEvent(name: event.name, properties: event.properties, timestamp: now())
+        let wireEvent = AnalyticsWireEvent(
+            name: event.name,
+            properties: event.properties,
+            timestamp: now()
         )
-        if buffer.count >= batchSize {
-            await flush()
+
+        if let diskQueue {
+            do {
+                let count = try await diskQueue.enqueue([wireEvent])
+                if count >= batchSize { await flush() }
+            } catch {
+                log.error("disk enqueue failed: \(error.localizedDescription)")
+            }
+        } else {
+            memoryBuffer.append(wireEvent)
+            if memoryBuffer.count >= batchSize { await flush() }
         }
     }
 
     public func flush() async {
-        guard !buffer.isEmpty else { return }
-        let batch = buffer
-        buffer.removeAll()
-        do {
-            let payload = try encoder.encode(AnalyticsTrackBatch(events: batch))
-            try await transport.send(path: Path.track, payload: payload)
-        } catch {
-            // Best-effort: drop the batch, but never surface the failure.
-            log.error("track flush dropped \(batch.count) event(s): \(error.localizedDescription)")
+        if let diskQueue {
+            let batch = await diskQueue.dequeueAll()
+            guard !batch.isEmpty else { return }
+            do {
+                let payload = try encoder.encode(AnalyticsTrackBatch(events: batch))
+                try await transport.send(path: Path.track, payload: payload)
+            } catch {
+                // Re-queue on send failure so events survive until next launch.
+                try? await diskQueue.enqueue(batch)
+                log.error("track flush re-queued \(batch.count) event(s): \(error.localizedDescription)")
+            }
+        } else {
+            guard !memoryBuffer.isEmpty else { return }
+            let batch = memoryBuffer
+            memoryBuffer.removeAll()
+            do {
+                let payload = try encoder.encode(AnalyticsTrackBatch(events: batch))
+                try await transport.send(path: Path.track, payload: payload)
+            } catch {
+                log.error("track flush dropped \(batch.count) event(s): \(error.localizedDescription)")
+            }
         }
     }
 
@@ -135,8 +220,13 @@ public actor DefaultAnalyticsClient: AnalyticsClient {
         }
     }
 
-    /// Current number of buffered events (test/diagnostic seam).
-    var bufferedCount: Int { buffer.count }
+    /// Current number of in-memory buffered events (test seam for memory path).
+    var bufferedCount: Int { memoryBuffer.count }
+
+    /// Number of events currently persisted on disk (available when disk-backed).
+    func diskQueueCount() async -> Int {
+        await diskQueue?.count ?? 0
+    }
 }
 
 // MARK: - URLSession transport

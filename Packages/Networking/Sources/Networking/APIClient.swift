@@ -21,6 +21,8 @@ public protocol APIClientProtocol: Sendable {
 /// - Resilience: one automatic token refresh + retry on `401 unauthenticated`;
 ///   exponential backoff (up to `maxRetries`) on `.verifierUnavailable` and
 ///   transient `URLError`s; surface `Retry-After` on `429`.
+/// - Observability: calls `observer` after every HTTP exchange with method, path,
+///   status, and the server `requestId` (never bodies or tokens).
 ///
 /// It is an `actor` so its (small) mutable configuration and the refresh/retry
 /// bookkeeping are isolated; the heavy lifting is a `URLSession` call.
@@ -29,6 +31,7 @@ public actor APIClient: APIClientProtocol {
     private let session: URLSession
     private let tokenProvider: TokenProviding
     private let logger: RequestLogging?
+    private let observer: (any APIClientObserver)?
     private let maxRetries: Int
     private let retryBaseDelay: Duration
 
@@ -38,6 +41,7 @@ public actor APIClient: APIClientProtocol {
     ///   - tokenProvider: supplies/refreshes the Cognito `id_token`.
     ///   - session: the URLSession (injectable for stubbed tests).
     ///   - logger: optional debug request logger.
+    ///   - observer: optional observer for breadcrumbs / tracing (no PII).
     ///   - maxRetries: max backoff retries for transient failures.
     ///   - retryBaseDelay: base delay for exponential backoff (tests pass `.zero`).
     public init(
@@ -45,6 +49,7 @@ public actor APIClient: APIClientProtocol {
         tokenProvider: TokenProviding,
         session: URLSession = .shared,
         logger: RequestLogging? = nil,
+        observer: (any APIClientObserver)? = nil,
         maxRetries: Int = 3,
         retryBaseDelay: Duration = .milliseconds(300)
     ) {
@@ -52,6 +57,7 @@ public actor APIClient: APIClientProtocol {
         self.tokenProvider = tokenProvider
         self.session = session
         self.logger = logger
+        self.observer = observer
         self.maxRetries = maxRetries
         self.retryBaseDelay = retryBaseDelay
     }
@@ -62,6 +68,7 @@ public actor APIClient: APIClientProtocol {
         tokenProvider: TokenProviding,
         session: URLSession = .shared,
         logger: RequestLogging? = nil,
+        observer: (any APIClientObserver)? = nil,
         maxRetries: Int = 3,
         retryBaseDelay: Duration = .milliseconds(300)
     ) {
@@ -73,6 +80,7 @@ public actor APIClient: APIClientProtocol {
             tokenProvider: tokenProvider,
             session: session,
             logger: logger,
+            observer: observer,
             maxRetries: maxRetries,
             retryBaseDelay: retryBaseDelay
         )
@@ -96,6 +104,7 @@ public actor APIClient: APIClientProtocol {
                 logger?.logResponse(http, data: data, for: request)
 
                 if (200..<300).contains(http.statusCode) {
+                    notifyCompleted(request: request, status: http.statusCode, requestId: nil)
                     return try decode(data)
                 }
 
@@ -104,6 +113,10 @@ public actor APIClient: APIClientProtocol {
                     data: data,
                     retryAfter: Self.retryAfter(from: http)
                 )
+                // Extract requestId from the error envelope before retrying,
+                // so the breadcrumb can be joined to the backend log entry.
+                let requestId = extractRequestId(from: data)
+                notifyCompleted(request: request, status: http.statusCode, requestId: requestId)
 
                 // One-time refresh + retry when the token was rejected.
                 if case .unauthenticated = error, endpoint.requiresAuth, !didRefreshToken {
@@ -136,6 +149,7 @@ public actor APIClient: APIClientProtocol {
                 throw error
             } catch let urlError as URLError {
                 logger?.logFailure(urlError, for: request)
+                notifyFailed(request: request, error: urlError)
                 if urlError.code == .cancelled {
                     throw CancellationError()
                 }
@@ -147,6 +161,28 @@ public actor APIClient: APIClientProtocol {
                 throw AppError.offline
             }
         }
+    }
+
+    // MARK: - Observer hooks
+
+    private func notifyCompleted(request: URLRequest, status: Int, requestId: String?) {
+        guard let observer else { return }
+        let method = request.httpMethod ?? ""
+        // Use path only — no query string that might carry PII.
+        let path = request.url?.path ?? ""
+        observer.requestCompleted(method: method, path: path, status: status, requestId: requestId)
+    }
+
+    private func notifyFailed(request: URLRequest, error: any Error) {
+        guard let observer else { return }
+        let method = request.httpMethod ?? ""
+        let path = request.url?.path ?? ""
+        observer.requestFailed(method: method, path: path, error: error)
+    }
+
+    private func extractRequestId(from data: Data) -> String? {
+        let envelope = try? JSONCoding.decoder.decode(APIErrorEnvelope.self, from: data)
+        return envelope?.error.requestId
     }
 
     // MARK: - Request building
