@@ -44,67 +44,68 @@ public protocol TokenStoring: Sendable {
 
 // MARK: - TokenStore
 
-/// Keychain-backed token store. Thread-safe: the Security framework serialises
-/// its own operations, and this type is a value with no mutable state.
+/// Keychain-backed token store that persists the Cognito token triple.
+///
+/// ## Token Ownership
+/// `TokenStore` is a **read-mostly mirror** of the Amplify session. In production,
+/// the ONLY component that writes to this store is `AuthService`, which does so after
+/// every Amplify auth event: sign-in, token refresh, and sign-out. No other code path
+/// may call `save(_:)` in production.
+///
+/// Extensions must NOT call `save(_:)` or `delete()` — they read only the cached
+/// `idToken` via `load()` for authenticated requests.
+///
+/// ## Keychain Security
+/// Items use `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`:
+/// - Available after first device unlock (required for BGTask background refresh).
+/// - Never synced to iCloud Keychain or migrated to new devices.
+/// - Items are scoped to the App Group access group so the main app and its
+///   extensions share a single Keychain item. The `keychain-access-groups`
+///   entitlement must list the same group.
+///
+/// Thread-safety: `save/load/delete` are individually thread-safe (Security framework
+/// serialises its operations). All call sites are `@MainActor`, so no additional
+/// synchronisation is needed.
 public struct TokenStore: TokenStoring, Sendable {
-    private let service: String
+    /// The Keychain configuration — exposed so callers can verify security
+    /// attributes (accessibility, App Group) without real Keychain access in tests.
+    public let configuration: KeychainConfiguration
     private let account: String
 
+    // Uses SystemKeychain for actual Keychain operations so all queries include
+    // the App Group and correct accessibility attribute without code duplication.
+    private let keychain: SystemKeychain
+
     public init(
-        service: String = "com.chapterflow.ios",
+        configuration: KeychainConfiguration = .default,
         account: String = "auth.tokens"
     ) {
-        self.service = service
+        self.configuration = configuration
         self.account = account
+        self.keychain = SystemKeychain(configuration: configuration)
     }
 
     public func save(_ tokens: StoredTokens) throws {
         let data = try JSONEncoder().encode(tokens)
-        SecItemDelete([
-            kSecClass: kSecClassGenericPassword,
-            kSecAttrService: service,
-            kSecAttrAccount: account,
-        ] as CFDictionary)
-        let status = SecItemAdd([
-            kSecClass: kSecClassGenericPassword,
-            kSecAttrService: service,
-            kSecAttrAccount: account,
-            kSecValueData: data,
-            kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
-        ] as CFDictionary, nil)
-        guard status == errSecSuccess else {
-            throw TokenStoreError.writeFailed(status)
-        }
+        try keychain.set(data, for: account)
     }
 
     public func load() -> StoredTokens? {
-        var result: AnyObject?
-        let status = SecItemCopyMatching([
-            kSecClass: kSecClassGenericPassword,
-            kSecAttrService: service,
-            kSecAttrAccount: account,
-            kSecReturnData: true,
-            kSecMatchLimit: kSecMatchLimitOne,
-        ] as CFDictionary, &result)
-        guard status == errSecSuccess, let data = result as? Data else { return nil }
+        guard let data = try? keychain.data(for: account) else { return nil }
         return try? JSONDecoder().decode(StoredTokens.self, from: data)
     }
 
     public func delete() throws {
-        let status = SecItemDelete([
-            kSecClass: kSecClassGenericPassword,
-            kSecAttrService: service,
-            kSecAttrAccount: account,
-        ] as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else {
-            throw TokenStoreError.deleteFailed(status)
-        }
+        try keychain.remove(account)
     }
 }
 
 // MARK: - InMemoryTokenStore
 
 /// A non-persistent, thread-safe token store for use in tests and Previews.
+///
+/// The real `TokenStore` calls `SecItem*` APIs that require a keychain-access-group
+/// entitlement unavailable in bare test bundles. Use this instead.
 public final class InMemoryTokenStore: TokenStoring, @unchecked Sendable {
     private let lock = NSLock()
     private var _tokens: StoredTokens?
@@ -124,11 +125,4 @@ public final class InMemoryTokenStore: TokenStoring, @unchecked Sendable {
     public func delete() throws {
         lock.withLock { _tokens = nil }
     }
-}
-
-// MARK: - Errors
-
-public enum TokenStoreError: Error, Sendable {
-    case writeFailed(OSStatus)
-    case deleteFailed(OSStatus)
 }

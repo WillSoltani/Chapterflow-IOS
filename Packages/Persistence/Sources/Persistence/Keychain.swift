@@ -18,15 +18,16 @@ public enum KeychainAccessibility: Sendable {
 public struct KeychainConfiguration: Sendable {
     /// The `kSecAttrService` used to namespace items.
     public var service: String
-    /// The shared keychain access group (nil = the app's default group). Set this to a
-    /// keychain-sharing group listed in entitlements to share tokens with extensions.
+    /// The Keychain access group for sharing tokens with app extensions and widgets.
+    /// Set to the App Group identifier so extensions can read the token for authenticated
+    /// requests. Must also be listed in the `keychain-access-groups` entitlement.
     public var accessGroup: String?
     /// The accessibility class applied to written items.
     public var accessibility: KeychainAccessibility
 
     public init(
         service: String = "com.chapterflow.tokens",
-        accessGroup: String? = nil,
+        accessGroup: String? = AppGroup.identifier,
         accessibility: KeychainAccessibility = .afterFirstUnlockThisDeviceOnly
     ) {
         self.service = service
@@ -35,7 +36,16 @@ public struct KeychainConfiguration: Sendable {
     }
 
     /// The default token store configuration.
-    public static let `default` = KeychainConfiguration()
+    ///
+    /// Uses `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` so tokens survive
+    /// device reboots (required for background BGTask refresh) but never migrate to
+    /// new devices via iCloud Keychain backup. The App Group access group allows
+    /// the main app and its extensions to share the same token item.
+    public static let `default` = KeychainConfiguration(
+        service: "com.chapterflow.tokens",
+        accessGroup: AppGroup.identifier,
+        accessibility: .afterFirstUnlockThisDeviceOnly
+    )
 }
 
 /// A backing store for the token triple. `SystemKeychain` is the production
@@ -124,20 +134,22 @@ struct SystemKeychain: KeychainStoring, Sendable {
 
 /// An in-memory ``KeychainStoring`` fake for tests and previews.
 ///
-/// Access is serialized by the owning ``TokenStore`` actor, so the mutable dictionary
-/// is safe despite the `@unchecked Sendable` conformance.
+/// Mutations are protected by an `NSLock` so this can be used from any thread
+/// without external serialisation. Use this whenever the real `SecItem` API is
+/// unavailable (e.g. test bundles without the `keychain-access-groups` entitlement).
 final class InMemoryKeychain: KeychainStoring, @unchecked Sendable {
+    private let lock = NSLock()
     private var storage: [String: Data] = [:]
 
     func set(_ data: Data, for account: String) throws {
-        storage[account] = data
+        lock.withLock { storage[account] = data }
     }
 
     func data(for account: String) throws -> Data? {
-        storage[account]
+        lock.withLock { storage[account] }
     }
 
     func remove(_ account: String) throws {
-        storage[account] = nil
+        lock.withLock { storage[account] = nil }
     }
 }

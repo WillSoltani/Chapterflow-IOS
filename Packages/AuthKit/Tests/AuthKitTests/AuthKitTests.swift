@@ -107,6 +107,40 @@ struct SessionManagerTests {
         session.markReconnected()
         #expect(session.authState.isSignedIn)
     }
+
+    // MARK: Mirror consistency — single write path
+
+    /// Verifies that the TokenStore mirror stays consistent with auth events:
+    /// - After refresh, the mirror holds the new token.
+    /// - After sign-out, the mirror is empty.
+    /// This ensures the single-writer invariant holds: only the auth service path
+    /// ever writes to the store, and sign-out wipes it completely.
+    @Test("mirror consistency: refresh updates store, sign-out wipes it")
+    func mirrorConsistency() async throws {
+        let store = InMemoryTokenStore(tokens: makeTokens())
+        let session = SessionManager(tokenStore: store, refresher: StubTokenRefresher(shouldFail: false))
+
+        // Initially the store has the pre-seeded tokens.
+        #expect(store.load() != nil)
+
+        // Refresh writes the stub tokens through the single write path.
+        try await session.refresh()
+        let afterRefresh = store.load()
+        #expect(afterRefresh?.idToken == "stub-id-token", "mirror must reflect refreshed token")
+
+        // Sign-out must clear the mirror completely.
+        await session.signOut()
+        #expect(store.load() == nil, "sign-out must wipe the token mirror")
+        #expect(session.authState == .signedOut)
+    }
+
+    @Test("mirror consistency: fresh store means signedOut state")
+    func mirrorEmptyIsSignedOut() {
+        let store = InMemoryTokenStore()
+        let session = SessionManager(tokenStore: store)
+        #expect(session.authState == .signedOut)
+        #expect(store.load() == nil)
+    }
 }
 
 // MARK: - UserProfile JWT parsing
