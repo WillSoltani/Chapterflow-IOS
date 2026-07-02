@@ -2,6 +2,7 @@ import SwiftUI
 import Models
 import DesignSystem
 import CoreKit
+import AIFeature
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -14,17 +15,20 @@ public struct HomeView: View {
     @State private var router = Router()
 
     private let bookDetailRepository: any BookDetailRepository
+    private let aiRepository: (any AIRepository)?
     private let onOpenReader: ((String, Int) -> Void)?
     private let onShowPaywall: (() -> Void)?
 
     public init(
         repository: any LibraryRepository,
         bookDetailRepository: any BookDetailRepository,
+        aiRepository: (any AIRepository)? = nil,
         onOpenReader: ((String, Int) -> Void)? = nil,
         onShowPaywall: (() -> Void)? = nil
     ) {
         _model = State(initialValue: HomeModel(repository: repository))
         self.bookDetailRepository = bookDetailRepository
+        self.aiRepository = aiRepository
         self.onOpenReader = onOpenReader
         self.onShowPaywall = onShowPaywall
     }
@@ -43,6 +47,7 @@ public struct HomeView: View {
                         BookDetailView(
                             bookId: bookId,
                             repository: bookDetailRepository,
+                            aiRepository: aiRepository,
                             onOpenReader: onOpenReader,
                             onShowPaywall: onShowPaywall
                         )

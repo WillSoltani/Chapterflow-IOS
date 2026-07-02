@@ -131,9 +131,17 @@ public struct AppRootView: View {
     private func tabContent(for tab: AppTab) -> some View {
         switch tab {
         case .home:
-            HomeView(repository: model.libraryRepository, bookDetailRepository: model.bookDetailRepository)
+            HomeView(
+                repository: model.libraryRepository,
+                bookDetailRepository: model.bookDetailRepository,
+                aiRepository: model.aiRepository
+            )
         case .library:
-            LibraryView(repository: model.libraryRepository, bookDetailRepository: model.bookDetailRepository)
+            LibraryView(
+                repository: model.libraryRepository,
+                bookDetailRepository: model.bookDetailRepository,
+                aiRepository: model.aiRepository
+            )
         case .profile:
             ProfileView(repository: model.socialRepository)
         default:

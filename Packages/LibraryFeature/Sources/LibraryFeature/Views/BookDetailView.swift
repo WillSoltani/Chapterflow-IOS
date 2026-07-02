@@ -2,6 +2,7 @@ import SwiftUI
 import Models
 import DesignSystem
 import CoreKit
+import AIFeature
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -18,10 +19,15 @@ import UIKit
 public struct BookDetailView: View {
 
     @State private var model: BookDetailModel
+    @State private var showAskSheet = false
+    @State private var askModel: AskTheBookModel?
+
+    private let aiRepository: (any AIRepository)?
 
     public init(
         bookId: String,
         repository: any BookDetailRepository,
+        aiRepository: (any AIRepository)? = nil,
         onOpenReader: ((String, Int) -> Void)? = nil,
         onShowPaywall: (() -> Void)? = nil
     ) {
@@ -29,6 +35,7 @@ public struct BookDetailView: View {
         m.onOpenReader = onOpenReader
         m.onShowPaywall = onShowPaywall
         _model = State(initialValue: m)
+        self.aiRepository = aiRepository
     }
 
     public var body: some View {
@@ -37,6 +44,12 @@ public struct BookDetailView: View {
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
+            .toolbar { askToolbarButton }
+            .sheet(isPresented: $showAskSheet) {
+                if let askModel {
+                    AskTheBookSheet(model: askModel)
+                }
+            }
             .task { await model.fetch() }
     }
 
@@ -305,6 +318,37 @@ public struct BookDetailView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(Color.cfAccent)
         }
+    }
+
+    // MARK: - Ask the book toolbar
+
+    @ToolbarContentBuilder
+    private var askToolbarButton: some ToolbarContent {
+        if aiRepository != nil {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    presentAskSheet(selectionContext: nil)
+                } label: {
+                    Label("Ask", systemImage: "sparkles")
+                }
+                .accessibilityLabel("Ask the book a question")
+            }
+        }
+    }
+
+    private func presentAskSheet(selectionContext: String?) {
+        guard let aiRepository else { return }
+        let am = AskTheBookModel(
+            bookId: model.bookId,
+            repository: aiRepository,
+            selectionContext: selectionContext
+        )
+        am.onJumpToChapter = { chapterNumber in
+            showAskSheet = false
+            model.onOpenReader?(model.bookId, chapterNumber)
+        }
+        askModel = am
+        showAskSheet = true
     }
 
     // MARK: - Haptics

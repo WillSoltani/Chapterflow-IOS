@@ -13,6 +13,7 @@ let package = Package(
         .package(path: "../Networking"),
         .package(path: "../DesignSystem"),
         .package(path: "../Persistence"),
+        .package(path: "../AIFeature"),
         .package(path: "../Fixtures"),
     ],
     targets: [
@@ -24,6 +25,7 @@ let package = Package(
                 "Networking",
                 "DesignSystem",
                 "Persistence",
+                .product(name: "AIFeature", package: "AIFeature"),
             ]
         ),
         // Fixtures is a preview/test-only dependency — not linked into the production target.

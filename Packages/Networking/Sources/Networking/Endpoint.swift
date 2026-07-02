@@ -216,4 +216,31 @@ public enum Endpoints {
     public static func getPublicProfile(userId: String) -> Endpoint {
         Endpoint(method: .get, path: "/book/users/\(userId)/profile", requiresAuth: true)
     }
+    /// `POST /book/books/{bookId}/ask` — AI Q&A (daily-limited).
+    ///
+    /// Returns `{ answer, citations, remainingQuestions? }`.
+    ///
+    /// - Parameters:
+    ///   - bookId: The book being asked about.
+    ///   - question: The user's question text.
+    ///   - selectionContext: Optional passage the user highlighted in the reader;
+    ///     grounds the answer in that excerpt.
+    ///   - tone: Optional reading-tone preference string (`gentle`/`direct`/`competitive`).
+    public static func askBook(
+        bookId: String,
+        question: String,
+        selectionContext: String? = nil,
+        tone: String? = nil
+    ) throws -> Endpoint {
+        struct Body: Encodable {
+            let question: String
+            let context: String?
+            let tone: String?
+        }
+        return try Endpoint(
+            method: .post,
+            path: "/book/books/\(bookId)/ask",
+            body: Body(question: question, context: selectionContext, tone: tone)
+        )
+    }
 }
