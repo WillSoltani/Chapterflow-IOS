@@ -1,8 +1,11 @@
-/// Placeholder public entry point for the LibraryFeature module.
+/// LibraryFeature — Home + Library tabs for ChapterFlow.
 ///
-/// This module is intentionally empty for now; it compiles and exposes a single
-/// public symbol so downstream modules can link against it.
+/// Public surface:
+/// - ``LibraryRepository`` protocol + ``LiveLibraryRepository`` + ``FakeLibraryRepository``
+/// - ``HomeView`` / ``LibraryView`` — the two tab-root views
+/// - ``BookCoverView``, ``ProgressRingView``, ``BookCardView`` — reusable components
+/// - ``LibraryRoute`` — navigation destinations
 public enum LibraryFeature {
-    /// The name of this module. Useful as a smoke-test symbol.
+    /// Module name for smoke-test assertions.
     public static let moduleName = "LibraryFeature"
 }

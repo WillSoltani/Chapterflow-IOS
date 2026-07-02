@@ -106,19 +106,19 @@ public struct AppRootView: View {
     private var mainTabView: some View {
         TabView(selection: $model.selectedTab) {
             Tab("Home", systemImage: "house", value: AppTab.home) {
-                HomeTab(displayName: model.displayName)
+                tabContent(for: .home)
             }
             Tab("Library", systemImage: "books.vertical", value: AppTab.library) {
-                PlaceholderTab(tab: .library)
+                tabContent(for: .library)
             }
             Tab("Reviews", systemImage: "star", value: AppTab.reviews) {
-                PlaceholderTab(tab: .reviews)
+                tabContent(for: .reviews)
             }
             Tab("Profile", systemImage: "person.crop.circle", value: AppTab.profile) {
-                PlaceholderTab(tab: .profile)
+                tabContent(for: .profile)
             }
             Tab("Settings", systemImage: "gearshape", value: AppTab.settings) {
-                PlaceholderTab(tab: .settings)
+                tabContent(for: .settings)
             }
         }
         .tabViewStyle(.sidebarAdaptable)
@@ -131,30 +131,11 @@ public struct AppRootView: View {
     private func tabContent(for tab: AppTab) -> some View {
         switch tab {
         case .home:
-            HomeTab(displayName: model.displayName)
+            HomeView(repository: model.libraryRepository)
+        case .library:
+            LibraryView(repository: model.libraryRepository)
         default:
             PlaceholderTab(tab: tab)
-        }
-    }
-}
-
-// MARK: - Home tab
-
-private struct HomeTab: View {
-    let displayName: String
-
-    var body: some View {
-        NavigationStack {
-            ContentUnavailableView {
-                Label("Home", systemImage: "house.fill")
-            } description: {
-                if displayName.isEmpty {
-                    Text("Home is coming soon.")
-                } else {
-                    Text("Welcome, \(displayName).")
-                }
-            }
-            .navigationTitle("Home")
         }
     }
 }

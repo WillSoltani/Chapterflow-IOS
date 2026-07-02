@@ -3,12 +3,36 @@ import PackageDescription
 
 let package = Package(
     name: "LibraryFeature",
-    platforms: [.iOS(.v18)],
+    platforms: [.iOS(.v18), .macOS(.v14)],
     products: [
         .library(name: "LibraryFeature", targets: ["LibraryFeature"]),
     ],
+    dependencies: [
+        .package(path: "../CoreKit"),
+        .package(path: "../Models"),
+        .package(path: "../Networking"),
+        .package(path: "../DesignSystem"),
+        .package(path: "../Persistence"),
+        .package(path: "../Fixtures"),
+    ],
     targets: [
-        .target(name: "LibraryFeature"),
-        .testTarget(name: "LibraryFeatureTests", dependencies: ["LibraryFeature"]),
+        .target(
+            name: "LibraryFeature",
+            dependencies: [
+                "CoreKit",
+                "Models",
+                "Networking",
+                "DesignSystem",
+                "Persistence",
+            ]
+        ),
+        // Fixtures is a preview/test-only dependency — not linked into the production target.
+        .testTarget(
+            name: "LibraryFeatureTests",
+            dependencies: [
+                "LibraryFeature",
+                .product(name: "Fixtures", package: "Fixtures"),
+            ]
+        ),
     ]
 )

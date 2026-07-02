@@ -1,6 +1,9 @@
 import SwiftUI
 import CoreKit
 import AuthKit
+import Networking
+import Persistence
+import LibraryFeature
 
 /// The top-level observable app state that drives `AppRootView`.
 ///
@@ -9,6 +12,7 @@ import AuthKit
 /// - Expose `authService` to `AuthFlowView` for the sign-in/sign-up forms.
 /// - Track the user's display name resolved from the Cognito id_token JWT.
 /// - Own the currently selected tab and per-tab `Router` navigation stacks.
+/// - Vend the shared `LibraryRepository` consumed by `HomeView` and `LibraryView`.
 /// - Parse incoming deep-link URLs and route them to the correct tab.
 @Observable
 @MainActor
@@ -37,14 +41,25 @@ public final class AppModel {
     public let profileRouter  = Router()
     public let settingsRouter = Router()
 
+    // MARK: - Library
+
+    /// Shared repository for the Home and Library tabs.
+    public let libraryRepository: any LibraryRepository
+
     // MARK: - Init
 
     public init(config: AppConfig = .fromInfoPlist()) {
         let svc = AuthService(config: config)
         self.authService = svc
-        self.session = SessionManager(authService: svc)
+        let sm = SessionManager(authService: svc)
+        self.session = sm
+
+        let container = try? PersistenceController.makeDefault().container
+        let client = APIClient(config: config, tokenProvider: sm)
+        self.libraryRepository = LiveLibraryRepository(client: client, container: container)
+
         #if os(iOS)
-        session.registerBackgroundRefresh()
+        sm.registerBackgroundRefresh()
         #endif
         #if DEBUG
         // `--demo-tab=library` (etc.) lets simulator runs jump to a specific tab.

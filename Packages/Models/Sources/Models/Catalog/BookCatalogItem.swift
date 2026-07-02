@@ -15,6 +15,32 @@ public struct BookCatalogItem: Codable, Sendable, Identifiable, Equatable {
     public let updatedAt: String
 
     public var id: String { bookId }
+
+    public init(
+        bookId: String,
+        title: String,
+        author: String,
+        categories: [String],
+        tags: [String],
+        cover: Cover?,
+        variantFamily: VariantFamily,
+        status: String,
+        latestVersion: Int,
+        currentPublishedVersion: Int?,
+        updatedAt: String
+    ) {
+        self.bookId = bookId
+        self.title = title
+        self.author = author
+        self.categories = categories
+        self.tags = tags
+        self.cover = cover
+        self.variantFamily = variantFamily
+        self.status = status
+        self.latestVersion = latestVersion
+        self.currentPublishedVersion = currentPublishedVersion
+        self.updatedAt = updatedAt
+    }
 }
 
 /// The visual cover for a book — an emoji with a gradient background color.
