@@ -6,7 +6,8 @@ import Models
 /// The canonical reading order follows the P2.4 master spec:
 /// title → hook → counterintuition → breakdown → key takeaways →
 /// examples → tryThisNow → memorable lines → v21 key takeaway →
-/// implementation plan → recap → activation → self-check → reflection
+/// implementation plan → recap → activation → self-check → reflection →
+/// experience plan (failure recovery → transfer prompt → behavior loop)
 ///
 /// Every optional section is silently omitted when absent — no empty blocks
 /// are ever emitted.
@@ -30,6 +31,7 @@ public struct ReaderContentBuilder: Sendable {
         appendPractice(chapter, to: &blocks)
         appendRecap(chapter, to: &blocks)
         appendPrompts(chapter, to: &blocks)
+        appendExperiencePlan(chapter.v21Extras, chapter: chapter, to: &blocks)
 
         return blocks
     }
@@ -41,10 +43,10 @@ public struct ReaderContentBuilder: Sendable {
         to blocks: inout [ReaderBlock]
     ) {
         if let hook = extras?.hook, !hook.isEmpty {
-            blocks.append(.callout(title: "Hook", body: hook))
+            blocks.append(.hookBanner(hook))
         }
         if let ci = extras?.counterintuition, !ci.isEmpty {
-            blocks.append(.callout(title: "Counterintuition", body: ci))
+            blocks.append(.counterintuitionCallout(ci))
         }
     }
 
@@ -81,13 +83,13 @@ public struct ReaderContentBuilder: Sendable {
         to blocks: inout [ReaderBlock]
     ) {
         if let ttn = extras?.tryThisNow, !ttn.isEmpty {
-            blocks.append(.callout(title: "Try This Now", body: ttn))
+            blocks.append(.tryThisNowDirective(ttn))
         }
         if let lines = extras?.memorableLines {
             lines.filter { !$0.text.isEmpty }.forEach { blocks.append(.pullQuote($0)) }
         }
         if let kt = extras?.keyTakeaway, !kt.isEmpty {
-            blocks.append(.callout(title: "Key Takeaway", body: kt))
+            blocks.append(.v21KeyTakeawayCard(kt))
         }
     }
 
@@ -143,5 +145,24 @@ public struct ReaderContentBuilder: Sendable {
         if let w = plan.weeklyPractice, !w.isEmpty { blocks.append(.bullet(w)) }
         if let f = plan.friction, !f.isEmpty { blocks.append(.callout(title: "Common Friction", body: f)) }
         if let ch = plan.checkpoint, !ch.isEmpty { blocks.append(.callout(title: "Checkpoint", body: ch)) }
+    }
+
+    private func appendExperiencePlan(
+        _ extras: V21ChapterExtras?,
+        chapter: ResolvedChapter,
+        to blocks: inout [ReaderBlock]
+    ) {
+        guard let plan = extras?.experiencePlan else { return }
+
+        if let recovery = plan.failureRecovery {
+            blocks.append(.failureRecoveryBlock(recovery))
+        }
+        if let transfer = plan.transferPrompt {
+            blocks.append(.transferPromptBlock(transfer))
+        }
+        if let loop = plan.behaviorLoop, !loop.readerPatterns.isEmpty {
+            let ifThenPlans = chapter.implementationPlan?.ifThenPlans ?? []
+            blocks.append(.behaviorLoopBlock(loop, examples: chapter.examples, ifThenPlans: ifThenPlans))
+        }
     }
 }

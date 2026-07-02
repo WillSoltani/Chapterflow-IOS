@@ -36,7 +36,27 @@ public enum ReaderBlock: Sendable {
 
     /// An elegant pull-quote from the chapter's memorable lines.
     case pullQuote(MemorableLine)
-    /// A highlighted callout box with a title and body (hook, tryThisNow,
-    /// activation prompt, 24-hour challenge, etc.).
+    /// A highlighted callout box with a title and body (24-hour challenge,
+    /// activation prompt, common friction, checkpoint, etc.).
     case callout(title: String, body: String)
+
+    // MARK: - v21 Premium Chrome
+
+    /// The chapter's attention-grabbing hook banner rendered above the narrative.
+    case hookBanner(String)
+    /// A counterintuition callout — the "twist" that reframes the reader's assumption.
+    case counterintuitionCallout(String)
+    /// A directive "Try This Now" action block.
+    case tryThisNowDirective(String)
+    /// The v21 chapter-level key takeaway card (a single string summary).
+    case v21KeyTakeawayCard(String)
+
+    // MARK: - v21 Experience Plan
+
+    /// Failure-recovery guidance: normalising line, cue question, options, and repair.
+    case failureRecoveryBlock(FailureRecovery)
+    /// A transfer prompt encouraging the reader to apply the concept in new contexts.
+    case transferPromptBlock(TransferPrompt)
+    /// An interactive behavior-loop selector: reader archetypes that map to examples/plans.
+    case behaviorLoopBlock(BehaviorLoop, examples: [ResolvedExample], ifThenPlans: [ResolvedIfThenPlan])
 }

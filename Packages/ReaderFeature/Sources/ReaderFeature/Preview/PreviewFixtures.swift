@@ -191,7 +191,43 @@ let previewChapterEMH: ResolvedChapter = ResolvedChapter(
                 why: nil
             ),
         ],
-        experiencePlan: nil
+        experiencePlan: V21ExperiencePlan(
+            failureRecovery: FailureRecovery(
+                normalizingLine: "It happens to almost everyone — you start strong, then life intervenes and the habit disappears for a few days.",
+                cueQuestion: "When you notice you've broken the streak, which of these sounds most like your situation?",
+                options: [
+                    "I forgot and it slipped past me without noticing.",
+                    "I tried but the habit felt too big that day.",
+                    "I was dealing with something stressful and deprioritised it.",
+                    "I got it done but told myself it didn't count because it wasn't 'real' effort.",
+                ],
+                repairLine: "Miss once — never twice. One missed day is an accident. Two is the start of a new habit."
+            ),
+            transferPrompt: TransferPrompt(
+                prompt: "You've applied this to building a habit — where else in your life does the 1% principle apply?",
+                contexts: ["Learning a language", "Building a writing practice", "Career growth", "Fitness", "Relationships"]
+            ),
+            behaviorLoop: BehaviorLoop(readerPatterns: [
+                ReaderPattern(
+                    id: "the-planner",
+                    label: "The Planner",
+                    mapsToPlanIndex: 0,
+                    mapsToExampleIndex: nil
+                ),
+                ReaderPattern(
+                    id: "the-doer",
+                    label: "The Doer",
+                    mapsToPlanIndex: nil,
+                    mapsToExampleIndex: 0
+                ),
+                ReaderPattern(
+                    id: "the-doubter",
+                    label: "The Doubter",
+                    mapsToPlanIndex: nil,
+                    mapsToExampleIndex: 1
+                ),
+            ])
+        )
     ),
     reviewCards: [],
     keyTakeawayCard: "Tiny habits compound into remarkable results.",
