@@ -25,8 +25,7 @@ public final class CachedKeyValue {
 
 // MARK: - Schema & migration scaffold
 
-/// The current versioned schema. Features add their `@Model` types here (or pass a
-/// custom model list to ``PersistenceController``) as the app grows.
+/// V1: initial schema — key/value cache only.
 public enum PersistenceSchemaV1: VersionedSchema {
     public static var versionIdentifier: Schema.Version { Schema.Version(1, 0, 0) }
 
@@ -35,16 +34,24 @@ public enum PersistenceSchemaV1: VersionedSchema {
     }
 }
 
-/// Migration plan scaffold. New versioned schemas and lightweight/custom
-/// ``MigrationStage``s are appended here as the model set evolves.
+/// V2: adds reader annotations (highlights, notes, bookmarks) and the offline upload outbox.
+public enum PersistenceSchemaV2: VersionedSchema {
+    public static var versionIdentifier: Schema.Version { Schema.Version(2, 0, 0) }
+
+    public static var models: [any PersistentModel.Type] {
+        [CachedKeyValue.self, LocalAnnotation.self, PendingAnnotationUpload.self]
+    }
+}
+
+/// Migration plan. Lightweight migration from V1 → V2 adds the two annotation models
+/// with no field renames or transformations, so SwiftData handles it automatically.
 public enum PersistenceMigrationPlan: SchemaMigrationPlan {
     public static var schemas: [any VersionedSchema.Type] {
-        [PersistenceSchemaV1.self]
+        [PersistenceSchemaV1.self, PersistenceSchemaV2.self]
     }
 
     public static var stages: [MigrationStage] {
-        // No migrations yet — v1 is the initial schema.
-        []
+        [.lightweight(fromVersion: PersistenceSchemaV1.self, toVersion: PersistenceSchemaV2.self)]
     }
 }
 
@@ -87,7 +94,7 @@ public struct PersistenceController: Sendable {
     ///   - migrationPlan: Optional migration plan; pass `PersistenceMigrationPlan.self`
     ///     when the model set matches the versioned schema.
     public init(
-        models: [any PersistentModel.Type] = PersistenceSchemaV1.models,
+        models: [any PersistentModel.Type] = PersistenceSchemaV2.models,
         storage: StorageMode = .appGroup,
         migrationPlan: (any SchemaMigrationPlan.Type)? = nil
     ) throws {
@@ -134,10 +141,10 @@ public struct PersistenceController: Sendable {
         self.container = container
     }
 
-    /// Convenience: the default core schema with its migration plan.
+    /// Convenience: the default core schema (V2) with its migration plan.
     public static func makeDefault(storage: StorageMode = .appGroup) throws -> PersistenceController {
         try PersistenceController(
-            models: PersistenceSchemaV1.models,
+            models: PersistenceSchemaV2.models,
             storage: storage,
             migrationPlan: PersistenceMigrationPlan.self
         )

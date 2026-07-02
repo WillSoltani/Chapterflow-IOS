@@ -60,6 +60,16 @@ public final class ReaderModel {
     /// Called when the user taps "Ask about this". Wired to P6.1 AI by the host.
     public var onAsk: (() -> Void)?
 
+    /// Called when the user taps "Ask about this" on a specific highlighted passage.
+    /// Receives the selected block text as context for the AI query.
+    public var onAskAboutSelection: ((String) -> Void)?
+
+    // MARK: - Annotation
+
+    /// The annotation model for highlights, notes, and bookmarks.
+    /// `nil` when no `annotationRepository` was provided at init.
+    public private(set) var annotationModel: AnnotationModel?
+
     // MARK: - Configuration
 
     public let bookId: String
@@ -69,6 +79,7 @@ public final class ReaderModel {
     // MARK: - Internal
 
     @ObservationIgnored private let repository: any ReaderRepository
+    @ObservationIgnored private let annotationRepository: (any AnnotationRepository)?
     @ObservationIgnored private let preferences: AppPreferences
     @ObservationIgnored private let store: KeyValueStore
 
@@ -97,7 +108,8 @@ public final class ReaderModel {
         variantFamily: VariantFamily,
         repository: any ReaderRepository,
         preferences: AppPreferences,
-        store: KeyValueStore = KeyValueStore()
+        store: KeyValueStore = KeyValueStore(),
+        annotationRepository: (any AnnotationRepository)? = nil
     ) {
         self.bookId = bookId
         self.chapterNumber = chapterNumber
@@ -105,6 +117,7 @@ public final class ReaderModel {
         self.repository = repository
         self.preferences = preferences
         self.store = store
+        self.annotationRepository = annotationRepository
     }
 
     // MARK: - Lifecycle
@@ -212,6 +225,22 @@ public final class ReaderModel {
             if let saved = repository.loadScrollPosition(bookId: bookId, chapterNumber: chapterNumber),
                saved > 0 {
                 controlsModel.pendingScrollAnchor = min(saved, controlsModel.blocks.count - 1)
+            }
+
+            // Set up annotation model if a repository was provided.
+            if let annotationRepo = annotationRepository {
+                let annModel = AnnotationModel(
+                    bookId: bookId,
+                    chapterId: chapter.chapterId,
+                    variantKey: controlsModel.selectedVariant.rawValue,
+                    toneKey: controlsModel.selectedTone.rawValue,
+                    repository: annotationRepo
+                )
+                annModel.onAskAboutSelection = { [weak self] text in
+                    self?.onAskAboutSelection?(text)
+                }
+                self.annotationModel = annModel
+                Task { await annModel.load() }
             }
 
             phase = .loaded(controlsModel)

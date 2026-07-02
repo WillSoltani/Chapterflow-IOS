@@ -115,7 +115,7 @@ struct PersistenceControllerTests {
     @Test("boots an in-memory container with the sample @Model and round-trips a record")
     func containerBoots() throws {
         let controller = try PersistenceController(
-            models: PersistenceSchemaV1.models,
+            models: PersistenceSchemaV2.models,
             storage: .inMemory,
             migrationPlan: PersistenceMigrationPlan.self
         )
@@ -131,7 +131,7 @@ struct PersistenceControllerTests {
 
     @Test("background store inserts and counts off the main actor")
     func backgroundStore() async throws {
-        let controller = try PersistenceController(models: PersistenceSchemaV1.models, storage: .inMemory)
+        let controller = try PersistenceController(models: PersistenceSchemaV2.models, storage: .inMemory)
         let background = controller.backgroundStore()
 
         try await background.insert(CachedKeyValue(key: "k", value: "v"))
@@ -139,11 +139,34 @@ struct PersistenceControllerTests {
         #expect(count == 1)
     }
 
-    @Test("migration plan scaffold is well-formed")
+    @Test("LocalAnnotation round-trips in-memory")
+    @MainActor
+    func localAnnotationRoundTrip() throws {
+        let controller = try PersistenceController(models: PersistenceSchemaV2.models, storage: .inMemory)
+        let context = controller.mainContext
+
+        let ann = LocalAnnotation(
+            bookId: "book-1",
+            chapterId: "ch-1",
+            type: "highlight",
+            colorRaw: "yellow",
+            snippet: "Hello"
+        )
+        context.insert(ann)
+        try context.save()
+
+        let fetched = try context.fetch(FetchDescriptor<LocalAnnotation>())
+        #expect(fetched.count == 1)
+        #expect(fetched.first?.type == "highlight")
+        #expect(fetched.first?.colorRaw == "yellow")
+    }
+
+    @Test("migration plan is well-formed with V1 → V2 stage")
     func migrationPlan() {
-        #expect(PersistenceMigrationPlan.schemas.count == 1)
-        #expect(PersistenceMigrationPlan.stages.isEmpty)
+        #expect(PersistenceMigrationPlan.schemas.count == 2)
+        #expect(PersistenceMigrationPlan.stages.count == 1)
         #expect(PersistenceSchemaV1.versionIdentifier == Schema.Version(1, 0, 0))
+        #expect(PersistenceSchemaV2.versionIdentifier == Schema.Version(2, 0, 0))
     }
 }
 

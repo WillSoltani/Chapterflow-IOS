@@ -24,6 +24,9 @@ public struct ReaderControlSurface: View {
     @State private var scrollPositionID: Int?
     @State private var paginatedPage = 0
 
+    /// When non-nil, highlights, notes, and bookmarks are enabled for this chapter.
+    var annotationModel: AnnotationModel?
+
     /// Creates the control surface for a chapter.
     ///
     /// - Parameters:
@@ -51,12 +54,17 @@ public struct ReaderControlSurface: View {
 
     /// Creates the control surface from an externally-owned `ReaderControlsModel`.
     ///
-    /// Use this initialiser when `ReaderModel` (P2.4d) owns the controls model
-    /// and needs to observe `readPercent` / `currentTopBlockIndex` for progress
-    /// tracking and position save/restore.
+    /// Use this initialiser when `ReaderModel` owns the controls model and needs
+    /// to observe `readPercent` / `currentTopBlockIndex` for progress tracking.
+    ///
+    /// - Parameters:
+    ///   - model: The externally-owned controls model.
+    ///   - annotationModel: Optional annotation model. When non-nil, all blocks
+    ///     support long-press highlights, notes, and bookmarks.
     @MainActor
-    public init(model: ReaderControlsModel) {
+    public init(model: ReaderControlsModel, annotationModel: AnnotationModel? = nil) {
         _model = State(initialValue: model)
+        self.annotationModel = annotationModel
     }
 
     public var body: some View {
@@ -92,6 +100,32 @@ public struct ReaderControlSurface: View {
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
         }
+        .sheet(
+            isPresented: Binding(
+                get: { annotationModel?.isShowingNoteEditor ?? false },
+                set: { annotationModel?.isShowingNoteEditor = $0 }
+            )
+        ) {
+            if let ann = annotationModel {
+                NoteEditorView(model: ann)
+                    .presentationDetents([.medium])
+                    .presentationDragIndicator(.visible)
+            }
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { annotationModel?.isShowingAnnotationsList ?? false },
+                set: { annotationModel?.isShowingAnnotationsList = $0 }
+            )
+        ) {
+            if let ann = annotationModel {
+                AnnotationsListView(model: ann, onJumpToBlock: { blockIndex in
+                    model.pendingScrollAnchor = blockIndex
+                })
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+            }
+        }
     }
 
     // MARK: - Content area
@@ -115,16 +149,25 @@ public struct ReaderControlSurface: View {
     }
 
     private func scrollContent(appearance: ReadingAppearance) -> some View {
-        ScrollViewReader { proxy in
+        let currentVariant = model.selectedVariant.rawValue
+        let currentTone = model.selectedTone.rawValue
+
+        return ScrollViewReader { proxy in
             ScrollView {
-                ReaderBlockListView(blocks: model.blocks, appearance: appearance)
+                ReaderBlockListView(
+                    blocks: model.blocks,
+                    appearance: appearance,
+                    annotationModel: annotationModel,
+                    switchToVariantTone: { [model] vk, tk in
+                        model.switchVariant(VariantKey(rawValue: vk), currentTopIndex: model.currentTopBlockIndex)
+                        model.switchTone(ToneKey(rawValue: tk), currentTopIndex: model.currentTopBlockIndex)
+                    }
+                )
             }
             .scrollPosition(id: $scrollPositionID)
             .background(appearance.colors.pageBg)
             .readerAppearance(appearance)
             .onChange(of: scrollPositionID) { _, newID in
-                // Push topmost-visible block index into the model so that
-                // ReaderModel can compute readPercent and save position.
                 if let idx = newID {
                     model.currentTopBlockIndex = idx
                 }
@@ -135,6 +178,12 @@ public struct ReaderControlSurface: View {
                     proxy.scrollTo(newAnchor, anchor: .top)
                 }
                 model.clearPendingAnchor()
+            }
+            .onChange(of: currentVariant) { _, vk in
+                annotationModel?.updateVariantTone(variant: vk, tone: currentTone)
+            }
+            .onChange(of: currentTone) { _, tk in
+                annotationModel?.updateVariantTone(variant: currentVariant, tone: tk)
             }
         }
     }

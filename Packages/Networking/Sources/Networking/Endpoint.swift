@@ -216,6 +216,26 @@ public enum Endpoints {
     public static func getPublicProfile(userId: String) -> Endpoint {
         Endpoint(method: .get, path: "/book/users/\(userId)/profile", requiresAuth: true)
     }
+    // MARK: - Notebook
+
+    /// `POST /book/me/notebook` — create a highlight, note, or bookmark entry.
+    public static func postNotebookEntry(_ body: NotebookEntryRequest) throws -> Endpoint {
+        try Endpoint(method: .post, path: "/book/me/notebook", body: body)
+    }
+
+    /// `GET /book/me/notebook` — list notebook entries, optionally filtered by book/chapter.
+    public static func getNotebook(bookId: String? = nil, chapterId: String? = nil) -> Endpoint {
+        var query: [URLQueryItem] = []
+        if let bookId { query.append(URLQueryItem(name: "bookId", value: bookId)) }
+        if let chapterId { query.append(URLQueryItem(name: "chapterId", value: chapterId)) }
+        return Endpoint(method: .get, path: "/book/me/notebook", query: query)
+    }
+
+    /// `DELETE /book/me/notebook/{entryId}` — remove a notebook entry.
+    public static func deleteNotebookEntry(entryId: String) -> Endpoint {
+        Endpoint(method: .delete, path: "/book/me/notebook/\(entryId)")
+    }
+
     /// `POST /book/books/{bookId}/ask` — AI Q&A (daily-limited).
     ///
     /// Returns `{ answer, citations, remainingQuestions? }`.
