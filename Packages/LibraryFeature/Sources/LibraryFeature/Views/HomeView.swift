@@ -13,8 +13,20 @@ public struct HomeView: View {
     @State private var model: HomeModel
     @State private var router = Router()
 
-    public init(repository: any LibraryRepository) {
+    private let bookDetailRepository: any BookDetailRepository
+    private let onOpenReader: ((String, Int) -> Void)?
+    private let onShowPaywall: (() -> Void)?
+
+    public init(
+        repository: any LibraryRepository,
+        bookDetailRepository: any BookDetailRepository,
+        onOpenReader: ((String, Int) -> Void)? = nil,
+        onShowPaywall: (() -> Void)? = nil
+    ) {
         _model = State(initialValue: HomeModel(repository: repository))
+        self.bookDetailRepository = bookDetailRepository
+        self.onOpenReader = onOpenReader
+        self.onShowPaywall = onShowPaywall
     }
 
     public var body: some View {
@@ -28,7 +40,12 @@ public struct HomeView: View {
                 .navigationDestination(for: LibraryRoute.self) { route in
                     switch route {
                     case .bookDetail(let bookId):
-                        BookDetailPlaceholderView(bookId: bookId)
+                        BookDetailView(
+                            bookId: bookId,
+                            repository: bookDetailRepository,
+                            onOpenReader: onOpenReader,
+                            onShowPaywall: onShowPaywall
+                        )
                     }
                 }
         }
@@ -199,24 +216,24 @@ public struct HomeView: View {
 
 #if DEBUG
 #Preview("Home — loaded") {
-    HomeView(repository: PreviewData.loadedRepo)
+    HomeView(repository: PreviewData.loadedRepo, bookDetailRepository: PreviewData.bookDetailInProgress)
 }
 
 #Preview("Home — empty") {
-    HomeView(repository: PreviewData.emptyRepo)
+    HomeView(repository: PreviewData.emptyRepo, bookDetailRepository: PreviewData.bookDetailFreeLocked)
 }
 
 #Preview("Home — error") {
-    HomeView(repository: PreviewData.errorRepo)
+    HomeView(repository: PreviewData.errorRepo, bookDetailRepository: PreviewData.bookDetailFreeLocked)
 }
 
 #Preview("Home — dark mode") {
-    HomeView(repository: PreviewData.loadedRepo)
+    HomeView(repository: PreviewData.loadedRepo, bookDetailRepository: PreviewData.bookDetailInProgress)
         .preferredColorScheme(.dark)
 }
 
 #Preview("Home — XXL text") {
-    HomeView(repository: PreviewData.loadedRepo)
+    HomeView(repository: PreviewData.loadedRepo, bookDetailRepository: PreviewData.bookDetailInProgress)
         .dynamicTypeSize(.accessibility3)
 }
 #endif

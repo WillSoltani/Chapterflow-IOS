@@ -28,6 +28,32 @@ public struct Entitlement: Codable, Sendable {
     public let cancelAtPeriodEnd: Bool?
     public let licenseKey: String?
     public let licenseExpiresAt: String?
+
+    public init(
+        plan: Plan,
+        proStatus: String?,
+        proSource: String?,
+        freeBookSlots: Int,
+        unlockedBookIds: [String],
+        unlockedBooksCount: Int,
+        remainingFreeStarts: Int,
+        currentPeriodEnd: String?,
+        cancelAtPeriodEnd: Bool?,
+        licenseKey: String?,
+        licenseExpiresAt: String?
+    ) {
+        self.plan = plan
+        self.proStatus = proStatus
+        self.proSource = proSource
+        self.freeBookSlots = freeBookSlots
+        self.unlockedBookIds = unlockedBookIds
+        self.unlockedBooksCount = unlockedBooksCount
+        self.remainingFreeStarts = remainingFreeStarts
+        self.currentPeriodEnd = currentPeriodEnd
+        self.cancelAtPeriodEnd = cancelAtPeriodEnd
+        self.licenseKey = licenseKey
+        self.licenseExpiresAt = licenseExpiresAt
+    }
 }
 
 // MARK: - Plan RawRepresentable + Codable

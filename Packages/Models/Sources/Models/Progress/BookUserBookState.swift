@@ -10,6 +10,24 @@ public struct BookUserBookState: Codable, Sendable {
     public let chapterCompletedAt: [String: String]
     public let lastReadChapterId: String?
     public let lastOpenedAt: String?
+
+    public init(
+        currentChapterId: String?,
+        completedChapterIds: [String],
+        unlockedChapterIds: [String],
+        chapterScores: [String: Int],
+        chapterCompletedAt: [String: String],
+        lastReadChapterId: String?,
+        lastOpenedAt: String?
+    ) {
+        self.currentChapterId = currentChapterId
+        self.completedChapterIds = completedChapterIds
+        self.unlockedChapterIds = unlockedChapterIds
+        self.chapterScores = chapterScores
+        self.chapterCompletedAt = chapterCompletedAt
+        self.lastReadChapterId = lastReadChapterId
+        self.lastOpenedAt = lastOpenedAt
+    }
 }
 
 /// Per-chapter "applied" state — whether the user committed to or applied a chapter's plan.
@@ -64,4 +82,9 @@ extension ChapterApplicationState: CaseIterable {
 public struct BookStateResponse: Codable, Sendable {
     public let state: BookUserBookState
     public let applicationStates: [String: ChapterApplicationState]?
+
+    public init(state: BookUserBookState, applicationStates: [String: ChapterApplicationState]?) {
+        self.state = state
+        self.applicationStates = applicationStates
+    }
 }

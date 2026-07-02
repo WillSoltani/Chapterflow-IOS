@@ -131,9 +131,9 @@ public struct AppRootView: View {
     private func tabContent(for tab: AppTab) -> some View {
         switch tab {
         case .home:
-            HomeView(repository: model.libraryRepository)
+            HomeView(repository: model.libraryRepository, bookDetailRepository: model.bookDetailRepository)
         case .library:
-            LibraryView(repository: model.libraryRepository)
+            LibraryView(repository: model.libraryRepository, bookDetailRepository: model.bookDetailRepository)
         default:
             PlaceholderTab(tab: tab)
         }

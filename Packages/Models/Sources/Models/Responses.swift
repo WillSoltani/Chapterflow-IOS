@@ -80,6 +80,11 @@ public struct QuizResponse: Codable, Sendable {
 public struct EntitlementResponse: Codable, Sendable {
     public let entitlement: Entitlement
     public let paywall: Paywall?
+
+    public init(entitlement: Entitlement, paywall: Paywall?) {
+        self.entitlement = entitlement
+        self.paywall = paywall
+    }
 }
 
 public struct BookStateResponseEnvelope: Codable, Sendable {
