@@ -212,6 +212,7 @@ public struct DesignSystemGallery: View {
         Section("Buttons") {
             VStack(spacing: .cfSpacing12) {
                 Group {
+#if swift(>=6.1)
                     if #available(iOS 26, macOS 26, *) {
                         Button("Glass Button") {}
                             .buttonStyle(.glass)
@@ -223,8 +224,15 @@ public struct DesignSystemGallery: View {
                             .tint(.cfAccent)
                         Button("Bordered Prominent") {}
                             .buttonStyle(.borderedProminent)
-                            .tint(.cfAccent)
                     }
+#else
+                    Button("Bordered Button") {}
+                        .buttonStyle(.bordered)
+                        .tint(.cfAccent)
+                    Button("Bordered Prominent") {}
+                        .buttonStyle(.borderedProminent)
+                        .tint(.cfAccent)
+#endif
                 }
                 Button("Destructive", role: .destructive) {}
                     .buttonStyle(.bordered)

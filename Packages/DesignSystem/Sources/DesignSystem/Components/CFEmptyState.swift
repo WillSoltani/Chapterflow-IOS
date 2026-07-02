@@ -35,6 +35,8 @@ public struct CFEmptyState: View {
         } actions: {
             if let action, let label = actionLabel {
                 Group {
+                    // .glass ButtonStyle ships with iOS 26 SDK (Xcode 26 / Swift 6.1+).
+#if swift(>=6.1)
                     if #available(iOS 26, macOS 26, *) {
                         Button(label, action: action)
                             .buttonStyle(.glass)
@@ -43,6 +45,11 @@ public struct CFEmptyState: View {
                             .buttonStyle(.bordered)
                             .tint(.cfAccent)
                     }
+#else
+                    Button(label, action: action)
+                        .buttonStyle(.bordered)
+                        .tint(.cfAccent)
+#endif
                 }
             }
         }
