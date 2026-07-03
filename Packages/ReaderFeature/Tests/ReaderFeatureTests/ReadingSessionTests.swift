@@ -25,6 +25,47 @@ struct ReadingSessionTests {
         )
     }
 
+    // Polls until model.phase exits .loading, or records a timeout failure.
+    private func waitUntilLoaded(_ model: ReaderModel, timeout: Duration = .seconds(5)) async throws {
+        let start = ContinuousClock().now
+        while case .loading = model.phase {
+            if ContinuousClock().now - start > timeout {
+                Issue.record("timed out waiting for model to load")
+                return
+            }
+            try await Task.sleep(for: .milliseconds(5))
+            await Task.yield()
+        }
+    }
+
+    // Polls until startReadingSession has been called.
+    // startReadingSession is awaited after phase = .loaded inside performLoad, so
+    // this is the correct signal that load fully completed including session setup.
+    private func waitUntilSessionStarted(_ fake: FakeReaderRepository, timeout: Duration = .seconds(5)) async throws {
+        let start = ContinuousClock().now
+        while fake.startSessionCalls.isEmpty {
+            if ContinuousClock().now - start > timeout {
+                Issue.record("timed out waiting for session start")
+                return
+            }
+            try await Task.sleep(for: .milliseconds(5))
+            await Task.yield()
+        }
+    }
+
+    // Polls until endReadingSession has been called.
+    private func waitUntilSessionEnded(_ fake: FakeReaderRepository, timeout: Duration = .seconds(5)) async throws {
+        let start = ContinuousClock().now
+        while fake.endSessionCalls.isEmpty {
+            if ContinuousClock().now - start > timeout {
+                Issue.record("timed out waiting for session end")
+                return
+            }
+            try await Task.sleep(for: .milliseconds(5))
+            await Task.yield()
+        }
+    }
+
     // MARK: - Session start
 
     @Test("startReadingSession is called after a successful load")
@@ -32,7 +73,7 @@ struct ReadingSessionTests {
         let fake = FakeReaderRepository()
         let model = makeModel(repo: fake)
         model.load()
-        try await Task.sleep(for: .milliseconds(100))
+        try await waitUntilSessionStarted(fake)
 
         #expect(!fake.startSessionCalls.isEmpty)
         #expect(fake.startSessionCalls.first?.bookId == "test-book")
@@ -44,7 +85,7 @@ struct ReadingSessionTests {
         fake.startSessionId = "test-session-42"
         let model = makeModel(repo: fake)
         model.load()
-        try await Task.sleep(for: .milliseconds(100))
+        try await waitUntilSessionStarted(fake)
 
         // Session should be started with our injected id.
         #expect(fake.startSessionCalls.count == 1)
@@ -67,7 +108,8 @@ struct ReadingSessionTests {
         )
         let model = makeModel(repo: fake)
         model.load()
-        try await Task.sleep(for: .milliseconds(100))
+        // Wait for the load attempt to resolve — it will transition to .failed, not .loaded.
+        try await waitUntilLoaded(model)
 
         #expect(fake.startSessionCalls.isEmpty)
     }
@@ -79,10 +121,11 @@ struct ReadingSessionTests {
         let fake = FakeReaderRepository()
         let model = makeModel(repo: fake)
         model.load()
-        try await Task.sleep(for: .milliseconds(100))
+        // Ensure startReadingSession has completed (phase = .loaded AND session set up).
+        try await waitUntilSessionStarted(fake)
 
         model.onDisappear()
-        try await Task.sleep(for: .milliseconds(50))
+        try await waitUntilSessionEnded(fake)
 
         #expect(!fake.endSessionCalls.isEmpty)
         #expect(fake.endSessionCalls.first?.bookId == "test-book")
@@ -93,8 +136,10 @@ struct ReadingSessionTests {
         let fake = FakeReaderRepository()
         let model = makeModel(repo: fake)
 
+        // Phase is still .loading — onDisappear's `if case .loaded` block never executes,
+        // so no endReadingSession Task is enqueued.
         model.onDisappear()
-        try await Task.sleep(for: .milliseconds(50))
+        await Task.yield()
 
         #expect(fake.endSessionCalls.isEmpty)
     }

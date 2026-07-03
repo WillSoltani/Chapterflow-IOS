@@ -25,6 +25,47 @@ struct TwoAxisCompletionTests {
         )
     }
 
+    // Polls until model.phase exits .loading, or records a timeout failure.
+    private func waitUntilLoaded(_ model: ReaderModel, timeout: Duration = .seconds(5)) async throws {
+        let start = ContinuousClock().now
+        while case .loading = model.phase {
+            if ContinuousClock().now - start > timeout {
+                Issue.record("timed out waiting for model to load")
+                return
+            }
+            try await Task.sleep(for: .milliseconds(5))
+            await Task.yield()
+        }
+    }
+
+    // Polls until the book-state fetch task has run (getBookState was called).
+    // The book-state task fires after phase becomes .loaded, so this is needed
+    // whenever a test asserts on applicationState remaining .none.
+    private func waitUntilBookStateFetched(_ fake: FakeReaderRepository, timeout: Duration = .seconds(5)) async throws {
+        let start = ContinuousClock().now
+        while fake.getBookStateCalls == 0 {
+            if ContinuousClock().now - start > timeout {
+                Issue.record("timed out waiting for book-state fetch")
+                return
+            }
+            try await Task.sleep(for: .milliseconds(5))
+            await Task.yield()
+        }
+    }
+
+    // Polls until applicationState leaves .none — used when a test expects a non-default value.
+    private func waitUntilApplicationStateSet(_ model: ReaderModel, timeout: Duration = .seconds(5)) async throws {
+        let start = ContinuousClock().now
+        while model.applicationState == .none {
+            if ContinuousClock().now - start > timeout {
+                Issue.record("timed out waiting for applicationState to be set")
+                return
+            }
+            try await Task.sleep(for: .milliseconds(5))
+            await Task.yield()
+        }
+    }
+
     // MARK: - Knowledge axis
 
     @Test("isKnowledgeComplete is false when completedChapters is empty")
@@ -33,7 +74,7 @@ struct TwoAxisCompletionTests {
         // Default fixture has completedChapters: []
         let model = makeModel(repo: fake)
         model.load()
-        try await Task.sleep(for: .milliseconds(100))
+        try await waitUntilLoaded(model)
         #expect(!model.isKnowledgeComplete)
     }
 
@@ -77,7 +118,9 @@ struct TwoAxisCompletionTests {
 
         let model = makeModel(chapterNumber: 1, repo: fake)
         model.load()
-        try await Task.sleep(for: .milliseconds(100))
+        // isKnowledgeComplete is set before phase transitions to .loaded, so
+        // waiting for load to complete is sufficient.
+        try await waitUntilLoaded(model)
 
         #expect(model.isKnowledgeComplete)
     }
@@ -87,10 +130,9 @@ struct TwoAxisCompletionTests {
         let fake = FakeReaderRepository()
         let model = makeModel(repo: fake)
         model.load()
-        try await Task.sleep(for: .milliseconds(100))
+        try await waitUntilLoaded(model)
 
-        // Simulate completed state.
-        // It resets when load() clears it.
+        // load() synchronously resets isKnowledgeComplete before spawning the new task.
         model.load()
         #expect(!model.isKnowledgeComplete)
     }
@@ -121,8 +163,8 @@ struct TwoAxisCompletionTests {
 
         let model = makeModel(repo: fake)
         model.load()
-        // Give async book state fetch time to complete.
-        try await Task.sleep(for: .milliseconds(200))
+        // Poll until the book-state task resolves to a non-.none value.
+        try await waitUntilApplicationStateSet(model)
 
         #expect(model.applicationState == .committed)
     }
@@ -145,7 +187,9 @@ struct TwoAxisCompletionTests {
 
         let model = makeModel(repo: fake)
         model.load()
-        try await Task.sleep(for: .milliseconds(200))
+        // Wait until getBookState has been called so the task has run to completion.
+        // The result stays .none because the chapter key is absent.
+        try await waitUntilBookStateFetched(fake)
 
         #expect(model.applicationState == .none)
     }
@@ -157,9 +201,9 @@ struct TwoAxisCompletionTests {
 
         let model = makeModel(repo: fake)
         model.load()
-        try await Task.sleep(for: .milliseconds(200))
+        // Wait until getBookState has been attempted (error is swallowed; state stays .none).
+        try await waitUntilBookStateFetched(fake)
 
-        // Error is suppressed; application state stays .none.
         #expect(model.applicationState == .none)
     }
 
