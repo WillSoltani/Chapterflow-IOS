@@ -34,6 +34,10 @@ public final class FakeReaderRepository: ReaderRepository, @unchecked Sendable {
     /// Recorded calls to `endReadingSession`.
     public private(set) var endSessionCalls: [SessionEventCall] = []
 
+    /// Number of times `getBookState` has been called — used in tests to poll
+    /// for book-state task completion without a fixed sleep.
+    public private(set) var getBookStateCalls: Int = 0
+
     public struct HeartbeatCall: Sendable {
         public let bookId: String
         public let chapterId: String
@@ -90,6 +94,7 @@ public final class FakeReaderRepository: ReaderRepository, @unchecked Sendable {
     }
 
     public func getBookState(bookId: String) async throws -> BookStateResponse {
+        getBookStateCalls += 1
         switch bookStateResponse {
         case .success(let r): return r
         case .failure(let e): throw e
