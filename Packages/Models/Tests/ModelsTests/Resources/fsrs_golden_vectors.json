@@ -1,0 +1,171 @@
+{
+  "description": "FSRS-5 golden test vectors. Derived from the ChapterFlow server's fsrs.ts implementation (app/app/api/book/_lib/fsrs.ts). The Swift FSRSScheduler must reproduce these values exactly so client and server schedules cannot drift.",
+  "serverSource": "app/app/api/book/_lib/fsrs.ts",
+  "params": {
+    "w": [0.4072, 1.1829, 3.1262, 15.4722, 7.2102, 0.5316, 1.0651, 0.0589, 1.5330, 0.1670, 1.0019, 1.9395, 0.1100, 0.2939, 2.2697, 0.2315, 2.9898, 0.5163, 0.6571],
+    "desiredRetention": 0.9,
+    "decay": -0.5
+  },
+  "vectors": [
+    {
+      "id": "new-again",
+      "description": "New card rated Again (1) — enters learning state, lapses++",
+      "input": {
+        "state": "new",
+        "stability": 0.0,
+        "difficulty": 0.0,
+        "reps": 0,
+        "lapses": 0,
+        "elapsedDays": 0.0
+      },
+      "grade": 1,
+      "expected": {
+        "stability": 0.41,
+        "difficulty": 7.21,
+        "scheduledDays": 1,
+        "newState": "learning",
+        "lapses": 1
+      }
+    },
+    {
+      "id": "new-hard",
+      "description": "New card rated Hard (2)",
+      "input": {
+        "state": "new",
+        "stability": 0.0,
+        "difficulty": 0.0,
+        "reps": 0,
+        "lapses": 0,
+        "elapsedDays": 0.0
+      },
+      "grade": 2,
+      "expected": {
+        "stability": 1.18,
+        "difficulty": 6.51,
+        "scheduledDays": 1,
+        "newState": "review",
+        "lapses": 0
+      }
+    },
+    {
+      "id": "new-good",
+      "description": "New card rated Good (3)",
+      "input": {
+        "state": "new",
+        "stability": 0.0,
+        "difficulty": 0.0,
+        "reps": 0,
+        "lapses": 0,
+        "elapsedDays": 0.0
+      },
+      "grade": 3,
+      "expected": {
+        "stability": 3.13,
+        "difficulty": 5.31,
+        "scheduledDays": 3,
+        "newState": "review",
+        "lapses": 0
+      }
+    },
+    {
+      "id": "new-easy",
+      "description": "New card rated Easy (4)",
+      "input": {
+        "state": "new",
+        "stability": 0.0,
+        "difficulty": 0.0,
+        "reps": 0,
+        "lapses": 0,
+        "elapsedDays": 0.0
+      },
+      "grade": 4,
+      "expected": {
+        "stability": 15.47,
+        "difficulty": 3.28,
+        "scheduledDays": 15,
+        "newState": "review",
+        "lapses": 0
+      }
+    },
+    {
+      "id": "review-good-elapsed0",
+      "description": "Review card (s=20, d=5) rated Good at elapsed=0 (r=1.0) — stability unchanged",
+      "input": {
+        "state": "review",
+        "stability": 20.0,
+        "difficulty": 5.0,
+        "reps": 3,
+        "lapses": 0,
+        "elapsedDays": 0.0
+      },
+      "grade": 3,
+      "expected": {
+        "stability": 20.0,
+        "difficulty": 4.9,
+        "scheduledDays": 20,
+        "newState": "review",
+        "lapses": 0
+      }
+    },
+    {
+      "id": "review-good-elapsed-eq-stability",
+      "description": "Review card (s=10, d=5) rated Good at elapsed=10 (r=0.9) — clean growth",
+      "input": {
+        "state": "review",
+        "stability": 10.0,
+        "difficulty": 5.0,
+        "reps": 4,
+        "lapses": 0,
+        "elapsedDays": 10.0
+      },
+      "grade": 3,
+      "expected": {
+        "stability": 29.94,
+        "difficulty": 4.9,
+        "scheduledDays": 30,
+        "newState": "review",
+        "lapses": 0
+      }
+    },
+    {
+      "id": "review-hard-elapsed-eq-stability",
+      "description": "Review card (s=10, d=6) rated Hard at elapsed=10 (r=0.9) — hard penalty applies",
+      "input": {
+        "state": "review",
+        "stability": 10.0,
+        "difficulty": 6.0,
+        "reps": 4,
+        "lapses": 0,
+        "elapsedDays": 10.0
+      },
+      "grade": 2,
+      "expected": {
+        "stability": 13.85,
+        "difficulty": 6.84,
+        "scheduledDays": 14,
+        "newState": "review",
+        "lapses": 0
+      }
+    },
+    {
+      "id": "stale-lapse-c4",
+      "description": "C4 invariant: stale card (s=2, d=1) rated Again at elapsed=365 — stability clamped to prior, not increased",
+      "input": {
+        "state": "review",
+        "stability": 2.0,
+        "difficulty": 1.0,
+        "reps": 4,
+        "lapses": 0,
+        "elapsedDays": 365.0
+      },
+      "grade": 1,
+      "expected": {
+        "stability": 2.0,
+        "difficulty": 3.14,
+        "scheduledDays": 2,
+        "newState": "relearning",
+        "lapses": 1
+      }
+    }
+  ]
+}

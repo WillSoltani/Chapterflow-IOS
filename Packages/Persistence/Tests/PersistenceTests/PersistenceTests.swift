@@ -161,12 +161,36 @@ struct PersistenceControllerTests {
         #expect(fetched.first?.colorRaw == "yellow")
     }
 
-    @Test("migration plan is well-formed with V1 → V2 stage")
+    @Test("migration plan is well-formed with V1 → V2 → V3 stages")
     func migrationPlan() {
-        #expect(PersistenceMigrationPlan.schemas.count == 2)
-        #expect(PersistenceMigrationPlan.stages.count == 1)
+        #expect(PersistenceMigrationPlan.schemas.count == 3)
+        #expect(PersistenceMigrationPlan.stages.count == 2)
         #expect(PersistenceSchemaV1.versionIdentifier == Schema.Version(1, 0, 0))
         #expect(PersistenceSchemaV2.versionIdentifier == Schema.Version(2, 0, 0))
+        #expect(PersistenceSchemaV3.versionIdentifier == Schema.Version(3, 0, 0))
+    }
+
+    @Test("PendingReviewGrade round-trips in-memory")
+    @MainActor
+    func pendingReviewGradeRoundTrip() throws {
+        let controller = try PersistenceController(models: PersistenceSchemaV3.models, storage: .inMemory)
+        let context = controller.mainContext
+
+        let grade = PendingReviewGrade(
+            cardId: "card-1",
+            rating: 3,
+            reviewedAt: "2026-01-01T00:00:00Z",
+            optimisticStability: 5.0,
+            optimisticDifficulty: 4.5,
+            optimisticDueAt: "2026-01-04T00:00:00Z"
+        )
+        context.insert(grade)
+        try context.save()
+
+        let fetched = try context.fetch(FetchDescriptor<PendingReviewGrade>())
+        #expect(fetched.count == 1)
+        #expect(fetched.first?.cardId == "card-1")
+        #expect(fetched.first?.rating == 3)
     }
 }
 

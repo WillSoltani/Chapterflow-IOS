@@ -221,6 +221,34 @@ public enum Endpoints {
         Endpoint(method: .get, path: "/book/me/badges", requiresAuth: true)
     }
 
+    // MARK: - Reviews (FSRS spaced repetition)
+
+    /// `GET /book/me/reviews` → `{ cards: [...], count: Int }` — cards due today.
+    ///
+    /// - Parameter limit: Maximum cards to return (server cap 50, default 20).
+    /// - Parameter bookId: Optional filter to a single book's cards.
+    public static func getReviews(limit: Int = 20, bookId: String? = nil) -> Endpoint {
+        var query: [URLQueryItem] = []
+        if limit != 20 { query.append(URLQueryItem(name: "limit", value: "\(min(limit, 50))")) }
+        if let bookId { query.append(URLQueryItem(name: "bookId", value: bookId)) }
+        return Endpoint(method: .get, path: "/book/me/reviews", query: query, requiresAuth: true)
+    }
+
+    /// `POST /book/me/reviews/{cardId}` → `{ card: FsrsCard }` — submit a review grade.
+    ///
+    /// - Parameters:
+    ///   - cardId: The card being graded.
+    ///   - rating: FSRS rating 1=Again, 2=Hard, 3=Good, 4=Easy.
+    public static func gradeReviewCard(cardId: String, rating: Int) throws -> Endpoint {
+        struct Body: Encodable { let rating: Int }
+        let encoded = cardId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? cardId
+        return try Endpoint(
+            method: .post,
+            path: "/book/me/reviews/\(encoded)",
+            body: Body(rating: rating)
+        )
+    }
+
     /// `POST /book/me/tier` → `{ tier: { ... } }` — compute and return the user's current tier state.
     ///
     /// The server evaluates the user's metrics (loops completed, average quiz score,

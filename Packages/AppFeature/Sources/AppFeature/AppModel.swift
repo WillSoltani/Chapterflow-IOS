@@ -8,6 +8,7 @@ import SocialFeature
 import AIFeature
 import ReaderFeature
 import QuizFeature
+import EngagementFeature
 
 /// The top-level observable app state that drives `AppRootView`.
 ///
@@ -72,6 +73,11 @@ public final class AppModel {
     /// `nil` when the persistence container couldn't be initialised (edge case).
     public let annotationRepository: (any AnnotationRepository)?
 
+    // MARK: - Reviews
+
+    /// Shared repository for the FSRS spaced-repetition Reviews tab.
+    public let reviewsRepository: ReviewsRepository
+
     // MARK: - Audio
 
     /// Shared user preferences (persisted to App Group UserDefaults).
@@ -101,6 +107,8 @@ public final class AppModel {
         } else {
             self.annotationRepository = nil
         }
+
+        self.reviewsRepository = ReviewsRepository(apiClient: client, modelContainer: container)
 
         let prefs = AppPreferences()
         self.preferences = prefs

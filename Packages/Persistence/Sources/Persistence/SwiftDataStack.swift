@@ -43,15 +43,26 @@ public enum PersistenceSchemaV2: VersionedSchema {
     }
 }
 
-/// Migration plan. Lightweight migration from V1 → V2 adds the two annotation models
-/// with no field renames or transformations, so SwiftData handles it automatically.
+/// V3: adds the offline outbox for FSRS review grades (P5.9).
+public enum PersistenceSchemaV3: VersionedSchema {
+    public static var versionIdentifier: Schema.Version { Schema.Version(3, 0, 0) }
+
+    public static var models: [any PersistentModel.Type] {
+        [CachedKeyValue.self, LocalAnnotation.self, PendingAnnotationUpload.self, PendingReviewGrade.self]
+    }
+}
+
+/// Migration plan. Lightweight migrations require no field renames or transformations.
 public enum PersistenceMigrationPlan: SchemaMigrationPlan {
     public static var schemas: [any VersionedSchema.Type] {
-        [PersistenceSchemaV1.self, PersistenceSchemaV2.self]
+        [PersistenceSchemaV1.self, PersistenceSchemaV2.self, PersistenceSchemaV3.self]
     }
 
     public static var stages: [MigrationStage] {
-        [.lightweight(fromVersion: PersistenceSchemaV1.self, toVersion: PersistenceSchemaV2.self)]
+        [
+            .lightweight(fromVersion: PersistenceSchemaV1.self, toVersion: PersistenceSchemaV2.self),
+            .lightweight(fromVersion: PersistenceSchemaV2.self, toVersion: PersistenceSchemaV3.self),
+        ]
     }
 }
 
@@ -141,10 +152,10 @@ public struct PersistenceController: Sendable {
         self.container = container
     }
 
-    /// Convenience: the default core schema (V2) with its migration plan.
+    /// Convenience: the default core schema (V3) with its migration plan.
     public static func makeDefault(storage: StorageMode = .appGroup) throws -> PersistenceController {
         try PersistenceController(
-            models: PersistenceSchemaV2.models,
+            models: PersistenceSchemaV3.models,
             storage: storage,
             migrationPlan: PersistenceMigrationPlan.self
         )
