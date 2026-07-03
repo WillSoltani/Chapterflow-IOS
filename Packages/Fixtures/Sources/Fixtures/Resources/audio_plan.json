@@ -1,0 +1,36 @@
+{
+  "plan": {
+    "bookId": "b-atomic-habits",
+    "chapterNumber": 1,
+    "chapterTitle": "The Surprising Power of Atomic Habits",
+    "bookTitle": "Atomic Habits",
+    "coverEmoji": "⚛️",
+    "coverColor": "#3B82F6",
+    "segments": [
+      {
+        "segmentId": "b-atomic-habits-ch1-greeting",
+        "kind": "greeting",
+        "url": "https://audio.example.com/b-atomic-habits-ch1-greeting.mp3",
+        "durationSeconds": 12.5
+      },
+      {
+        "segmentId": "b-atomic-habits-ch1-body-1",
+        "kind": "body",
+        "url": "https://audio.example.com/b-atomic-habits-ch1-body-1.mp3",
+        "durationSeconds": 187.3
+      },
+      {
+        "segmentId": "b-atomic-habits-ch1-body-2",
+        "kind": "body",
+        "url": "https://audio.example.com/b-atomic-habits-ch1-body-2.mp3",
+        "durationSeconds": 154.2
+      },
+      {
+        "segmentId": "b-atomic-habits-ch1-takeaway",
+        "kind": "takeaway",
+        "url": "https://audio.example.com/b-atomic-habits-ch1-takeaway.mp3",
+        "durationSeconds": 45.8
+      }
+    ]
+  }
+}

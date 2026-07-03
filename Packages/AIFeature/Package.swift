@@ -24,6 +24,11 @@ let package = Package(
                 .product(name: "Networking", package: "Networking"),
                 .product(name: "DesignSystem", package: "DesignSystem"),
                 .product(name: "Persistence", package: "Persistence"),
+            ],
+            linkerSettings: [
+                .linkedFramework("AVFoundation", .when(platforms: [.iOS])),
+                .linkedFramework("MediaPlayer", .when(platforms: [.iOS])),
+                .linkedFramework("AVKit", .when(platforms: [.iOS])),
             ]
         ),
         .testTarget(
