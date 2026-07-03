@@ -263,4 +263,52 @@ public enum Endpoints {
             body: Body(question: question, context: selectionContext, tone: tone)
         )
     }
+
+    // MARK: - Audio narration
+
+    /// `GET /book/books/{bookId}/chapters/{n}/audio`
+    /// → `{ plan: AudioNarrationPlan }`.
+    ///
+    /// Returns a personalised segment plan (greeting + body + takeaway segments),
+    /// each with a short-lived presigned asset URL. Re-fetch on expiry.
+    public static func getAudioPlan(bookId: String, chapterNumber: Int) -> Endpoint {
+        Endpoint(
+            method: .get,
+            path: "/book/books/\(bookId)/chapters/\(chapterNumber)/audio",
+            requiresAuth: true
+        )
+    }
+
+    /// `POST /book/me/reading-sessions` — audio listening session event.
+    ///
+    /// Mirrors `postReadingSessionEvent` but carries a `source: "audio"` field
+    /// so the backend can count listening time toward reading sessions/streak.
+    public static func postAudioSessionEvent(
+        event: String,
+        bookId: String,
+        chapterNumber: Int,
+        sessionId: String?,
+        listeningSeconds: Double?
+    ) throws -> Endpoint {
+        struct Body: Encodable {
+            let event: String
+            let bookId: String
+            let chapterNumber: Int
+            let sessionId: String?
+            let listeningSeconds: Double?
+            let source: String
+        }
+        return try Endpoint(
+            method: .post,
+            path: "/book/me/reading-sessions",
+            body: Body(
+                event: event,
+                bookId: bookId,
+                chapterNumber: chapterNumber,
+                sessionId: sessionId,
+                listeningSeconds: listeningSeconds,
+                source: "audio"
+            )
+        )
+    }
 }

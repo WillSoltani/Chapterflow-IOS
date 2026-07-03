@@ -59,6 +59,10 @@ public struct PreviewDependencies: Sendable {
 
     public let notificationsResponse: NotificationsResponse
 
+    // MARK: - Audio narration
+
+    public let audioPlan: AudioNarrationPlan
+
     // MARK: - Concept graph
 
     public let conceptGraph: ConceptGraph
@@ -106,6 +110,7 @@ public struct PreviewDependencies: Sendable {
         notebook: NotebookResponse = Fixtures.notebook,
         reviews: ReviewsResponse = Fixtures.reviews,
         notificationsResponse: NotificationsResponse = Fixtures.notificationsResponse,
+        audioPlan: AudioNarrationPlan = Fixtures.audioPlan,
         conceptGraph: ConceptGraph = Fixtures.conceptGraph,
         progressOverview: ProgressOverviewResponse = Fixtures.progressOverview,
         savedBookIds: [String] = Fixtures.savedBookIds
@@ -128,6 +133,7 @@ public struct PreviewDependencies: Sendable {
         self.notebook = notebook
         self.reviews = reviews
         self.notificationsResponse = notificationsResponse
+        self.audioPlan = audioPlan
         self.conceptGraph = conceptGraph
         self.progressOverview = progressOverview
         self.savedBookIds = savedBookIds
