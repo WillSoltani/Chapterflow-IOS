@@ -15,17 +15,22 @@ private enum CacheKey {
     static let streak = "engagement.streak"
     static let progress = "engagement.progress"
     static let badges = "engagement.badges"
+    static let flowPoints = "engagement.flowPoints"
+    static let shop = "engagement.shop"
 }
 
 // MARK: - EngagementRepository
 
-/// The single read path for all engagement data: dashboard, streak, flow-points, tier, and badges.
+/// The single read path for all engagement data: dashboard, streak, flow-points, tier, badges, and shop.
 ///
 /// P5.2–P5.13 depend on this actor to access the endpoints it aggregates:
 /// - `GET /book/me/dashboard`
 /// - `GET /book/me/streak`
 /// - `GET /book/me/progress`
 /// - `GET /book/me/badges`
+/// - `GET /book/me/flow-points` (P5.4 — balance, ledger, equipped cosmetics)
+/// - `GET /book/me/shop` (P5.4 — rewards and cosmetics catalogue)
+/// - `POST /book/me/flow-points/redeem` (P5.4 — buy/equip)
 ///
 /// ### Cache strategy
 /// Every fetch checks an in-memory store first (fast, session-scoped), then a
@@ -53,12 +58,16 @@ public actor EngagementRepository {
     private var memStreak: MemEntry<StreakState>?
     private var memProgress: MemEntry<[ProgressOverviewItem]>?
     private var memBadges: MemEntry<[BadgeItem]>?
+    private var memFlowPoints: MemEntry<FlowPointsResponse>?
+    private var memShop: MemEntry<ShopResponse>?
 
     // TTLs
     private let dashboardTTL: TimeInterval = 5 * 60
     private let streakTTL: TimeInterval = 10 * 60
     private let progressTTL: TimeInterval = 5 * 60
     private let badgesTTL: TimeInterval = 10 * 60
+    private let flowPointsTTL: TimeInterval = 2 * 60
+    private let shopTTL: TimeInterval = 5 * 60
 
     // MARK: Init
 
@@ -164,6 +173,74 @@ public actor EngagementRepository {
         }
     }
 
+    // MARK: - Public: Flow Points
+
+    /// Fetches the detailed flow-points state: balance, transaction ledger, and equipped cosmetics.
+    ///
+    /// Uses a 2-minute in-memory TTL; falls back to disk cache when offline.
+    public func fetchFlowPoints(forceRefresh: Bool = false) async throws -> FlowPointsResponse {
+        if !forceRefresh, let entry = memFlowPoints, !entry.isStale(ttl: flowPointsTTL) {
+            return entry.value
+        }
+        do {
+            let resp: FlowPointsResponse = try await apiClient.send(Endpoints.getFlowPoints())
+            memFlowPoints = MemEntry(value: resp, storedAt: Date())
+            persistToDisk(key: CacheKey.flowPoints, encodable: resp)
+            return resp
+        } catch AppError.offline {
+            if let cached: FlowPointsResponse = loadFromDisk(key: CacheKey.flowPoints) {
+                memFlowPoints = MemEntry(value: cached, storedAt: Date())
+                return cached
+            }
+            if let entry = memFlowPoints { return entry.value }
+            throw AppError.offline
+        }
+    }
+
+    // MARK: - Public: Shop
+
+    /// Fetches the shop catalogue of rewards and cosmetics.
+    ///
+    /// Uses a 5-minute in-memory TTL; falls back to disk cache when offline.
+    public func fetchShop(forceRefresh: Bool = false) async throws -> ShopResponse {
+        if !forceRefresh, let entry = memShop, !entry.isStale(ttl: shopTTL) {
+            return entry.value
+        }
+        do {
+            let resp: ShopResponse = try await apiClient.send(Endpoints.getShop())
+            memShop = MemEntry(value: resp, storedAt: Date())
+            persistToDisk(key: CacheKey.shop, encodable: resp)
+            return resp
+        } catch AppError.offline {
+            if let cached: ShopResponse = loadFromDisk(key: CacheKey.shop) {
+                memShop = MemEntry(value: cached, storedAt: Date())
+                return cached
+            }
+            if let entry = memShop { return entry.value }
+            throw AppError.offline
+        }
+    }
+
+    // MARK: - Public: Redeem
+
+    /// Redeems a shop item (buy or equip).
+    ///
+    /// - Parameters:
+    ///   - itemId: The shop item to act on.
+    ///   - action: `nil` = buy (costs flow points); `"equip"` = activate an
+    ///     already-owned cosmetic (no cost). The server is authoritative.
+    ///
+    /// On success, both the flow-points and shop caches are invalidated so the
+    /// next fetch reflects the server's updated state.
+    public func redeemItem(itemId: String, action: String?) async throws -> RedeemFlowPointsResponse {
+        let endpoint = try Endpoints.redeemFlowPoints(itemId: itemId, action: action)
+        let response: RedeemFlowPointsResponse = try await apiClient.send(endpoint)
+        // Invalidate caches so the next fetch gets fresh ownership + balance data.
+        memFlowPoints = nil
+        memShop = nil
+        return response
+    }
+
     // MARK: - Public: Accessors derived from last-known state
 
     public var currentDashboard: Dashboard? { memDashboard?.value }
@@ -174,6 +251,12 @@ public actor EngagementRepository {
     public var flowPointsBalance: Int? { memDashboard?.value.flowPoints }
     public var tier: String? { memDashboard?.value.tier }
     public var tierProgress: Double? { memDashboard?.value.tierProgress }
+
+    /// The cosmetics currently equipped by the user, from the most recent flow-points fetch.
+    ///
+    /// `nil` before the first successful `fetchFlowPoints` call.
+    /// Profile and Reader features read this to apply active themes and frames.
+    public var currentEquippedCosmetics: EquippedCosmetics? { memFlowPoints?.value.equippedCosmetics }
 
     // MARK: - Loop-completion refresh
 
@@ -196,6 +279,8 @@ public actor EngagementRepository {
         memStreak = nil
         memProgress = nil
         memBadges = nil
+        memFlowPoints = nil
+        memShop = nil
     }
 
     // MARK: - Disk cache helpers (run on actor executor)
