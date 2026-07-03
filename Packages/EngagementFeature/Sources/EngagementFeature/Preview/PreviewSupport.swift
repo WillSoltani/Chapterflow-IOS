@@ -53,24 +53,51 @@ extension StreakState {
         currentStreak: 14,
         longestStreak: 21,
         streakShieldsHeld: 2,
-        lastActivityDate: "2026-07-01",
-        streakHistory: [
-            StreakDay(date: "2026-06-19", minutesRead: 0),
-            StreakDay(date: "2026-06-20", minutesRead: 18),
-            StreakDay(date: "2026-06-21", minutesRead: 22),
-            StreakDay(date: "2026-06-22", minutesRead: 0),
-            StreakDay(date: "2026-06-23", minutesRead: 35),
-            StreakDay(date: "2026-06-24", minutesRead: 15),
-            StreakDay(date: "2026-06-25", minutesRead: 28),
-            StreakDay(date: "2026-06-26", minutesRead: 10),
-            StreakDay(date: "2026-06-27", minutesRead: 40),
-            StreakDay(date: "2026-06-28", minutesRead: 25),
-            StreakDay(date: "2026-06-29", minutesRead: 20),
-            StreakDay(date: "2026-06-30", minutesRead: 30),
-            StreakDay(date: "2026-07-01", minutesRead: 45),
-            StreakDay(date: "2026-07-02", minutesRead: 25),
-        ]
+        lastActivityDate: "2026-07-02",
+        streakHistory: nil,
+        consistencyLast30: Self.previewConsistencyDays(activeToday: true),
+        milestonesReached: [7, 14]
     )
+
+    static let previewAtRisk = StreakState(
+        currentStreak: 5,
+        longestStreak: 21,
+        streakShieldsHeld: 1,
+        lastActivityDate: "2026-07-01",
+        streakHistory: nil,
+        consistencyLast30: Self.previewConsistencyDays(activeToday: false),
+        milestonesReached: []
+    )
+
+    static let previewNoStreak = StreakState(
+        currentStreak: 0,
+        longestStreak: 7,
+        streakShieldsHeld: 0,
+        lastActivityDate: nil,
+        streakHistory: nil,
+        consistencyLast30: [],
+        milestonesReached: []
+    )
+
+    private static func previewConsistencyDays(activeToday: Bool) -> [StreakDay] {
+        let base = [
+            0, 18, 22, 0, 35, 15, 28, 0, 10, 40,
+            25, 20, 30, 0, 45, 12, 8, 33, 0, 27,
+            19, 42, 0, 15, 38, 24, 11, 0, 30, activeToday ? 25 : 0,
+        ]
+        return base.enumerated().map { index, minutes in
+            // Compute date strings relative to 2026-07-02 (today in fixtures)
+            let dayOffset = index - 29
+            var comps = DateComponents()
+            comps.year = 2026; comps.month = 7; comps.day = 2
+            let base = Calendar.current.date(from: comps) ?? Date()
+            let date = Calendar.current.date(byAdding: .day, value: dayOffset, to: base) ?? base
+            let f = DateFormatter()
+            f.locale = Locale(identifier: "en_US_POSIX")
+            f.dateFormat = "yyyy-MM-dd"
+            return StreakDay(date: f.string(from: date), minutesRead: minutes)
+        }
+    }
 }
 
 extension Array where Element == ProgressOverviewItem {
@@ -89,10 +116,22 @@ extension Array where Element == ProgressOverviewItem {
 extension EngagementRepository {
     /// An `EngagementRepository` pre-loaded with preview fixture data (no network, no disk).
     static var preview: EngagementRepository {
-        let dashboard = Dashboard.preview
-        let streak = StreakState.preview
-        let progress: [ProgressOverviewItem] = .preview
+        makePreviewRepository(streak: .preview)
+    }
 
+    /// Repository where the streak has not been updated today (at-risk scenario).
+    static var previewAtRisk: EngagementRepository {
+        makePreviewRepository(streak: .previewAtRisk)
+    }
+
+    /// Repository where the user has no active streak.
+    static var previewNoStreak: EngagementRepository {
+        makePreviewRepository(streak: .previewNoStreak)
+    }
+
+    private static func makePreviewRepository(streak: StreakState) -> EngagementRepository {
+        let dashboard = Dashboard.preview
+        let progress: [ProgressOverviewItem] = .preview
         let client = PreviewAPIClient { endpoint in
             switch endpoint.path {
             case "/book/me/dashboard":
