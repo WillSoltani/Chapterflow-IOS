@@ -15,6 +15,12 @@
 /// - ``StreakView`` — 30-day heatmap, shields, milestone ladder, at-risk banner
 /// - ``StreakModel`` — `@Observable` view model; fires one-per-day streak celebrations
 /// - ``HeatmapDay`` — a single day entry for the heatmap grid
+///
+/// Public API added in P5.3:
+/// - ``BadgesView`` — earned/locked badge grid with track filtering
+/// - ``BadgesModel`` — `@Observable` view model; detects newly earned badges and routes them
+///   through ``CelebrationPresenter``
+/// - ``AchievementTrack`` — display enum for the four badge tracks (mastery/consistency/exploration/hidden)
 public enum EngagementFeature {
     public static let moduleName = "EngagementFeature"
 }

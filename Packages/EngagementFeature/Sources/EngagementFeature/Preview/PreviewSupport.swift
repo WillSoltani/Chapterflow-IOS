@@ -111,6 +111,34 @@ extension Array where Element == ProgressOverviewItem {
     ]
 }
 
+extension Array where Element == BadgeItem {
+    static let preview: [BadgeItem] = [
+        // Mastery track — earned
+        BadgeItem(badgeId: "m-first-chapter", name: "First Chapter", description: "Read your very first chapter.", category: "mastery", isEarned: true, earnedAt: "2026-05-10T09:00:00Z", icon: "📖"),
+        BadgeItem(badgeId: "m-deep-thinker", name: "Deep Thinker", description: "Complete 5 books end-to-end.", category: "mastery", isEarned: true, earnedAt: "2026-06-15T14:30:00Z", icon: "🧠"),
+        // Mastery track — locked with progress
+        BadgeItem(badgeId: "m-polymath", name: "Polymath", description: "Complete 10 books across 5 categories.", category: "mastery", isEarned: false, earnedAt: nil, icon: "🎓", progress: 6, target: 10),
+        BadgeItem(badgeId: "m-scholar", name: "Scholar", description: "Answer 500 quiz questions correctly.", category: "mastery", isEarned: false, earnedAt: nil, icon: "🔬", progress: 312, target: 500),
+
+        // Consistency track — earned
+        BadgeItem(badgeId: "c-7-day", name: "Week Warrior", description: "Maintain a 7-day reading streak.", category: "consistency", isEarned: true, earnedAt: "2026-06-01T08:00:00Z", icon: "🔥"),
+        // Consistency track — locked with progress
+        BadgeItem(badgeId: "c-30-day", name: "Monthly Master", description: "Maintain a 30-day reading streak.", category: "consistency", isEarned: false, earnedAt: nil, icon: "📅", progress: 14, target: 30),
+        BadgeItem(badgeId: "c-100-day", name: "Centurion", description: "Maintain a 100-day reading streak.", category: "consistency", isEarned: false, earnedAt: nil, icon: "💯", progress: 14, target: 100),
+
+        // Exploration track — earned
+        BadgeItem(badgeId: "e-genre-hopper", name: "Genre Hopper", description: "Read books from 3 different categories.", category: "exploration", isEarned: true, earnedAt: "2026-06-20T11:00:00Z", icon: "🗺️"),
+        // Exploration track — locked
+        BadgeItem(badgeId: "e-world-reader", name: "World Reader", description: "Read books from 8 different categories.", category: "exploration", isEarned: false, earnedAt: nil, icon: "🌍", progress: 4, target: 8),
+
+        // Hidden track — earned (reveal all details)
+        BadgeItem(badgeId: "h-night-owl", name: "Night Owl", description: "Read past midnight 5 times.", category: "hidden", isEarned: true, earnedAt: "2026-06-28T00:15:00Z", icon: "🦉"),
+        // Hidden track — locked (stay mysterious)
+        BadgeItem(badgeId: "h-secret-1", name: "???", description: "Secret criteria.", category: "hidden", isEarned: false, earnedAt: nil, icon: nil),
+        BadgeItem(badgeId: "h-secret-2", name: "???", description: "Secret criteria.", category: "hidden", isEarned: false, earnedAt: nil, icon: nil),
+    ]
+}
+
 // MARK: - Preview EngagementRepository
 
 extension EngagementRepository {
@@ -132,6 +160,7 @@ extension EngagementRepository {
     private static func makePreviewRepository(streak: StreakState) -> EngagementRepository {
         let dashboard = Dashboard.preview
         let progress: [ProgressOverviewItem] = .preview
+        let badges: [BadgeItem] = .preview
         let client = PreviewAPIClient { endpoint in
             switch endpoint.path {
             case "/book/me/dashboard":
@@ -140,10 +169,35 @@ extension EngagementRepository {
                 return try JSONCoding.encoder.encode(StreakResponse(streak: streak))
             case "/book/me/progress":
                 return try JSONCoding.encoder.encode(ProgressOverviewResponse(progress: progress))
+            case "/book/me/badges":
+                return try JSONCoding.encoder.encode(BadgesResponse(badges: badges))
             default:
                 throw AppError.notFound
             }
         }
+        return EngagementRepository(apiClient: client, modelContainer: nil)
+    }
+}
+
+// MARK: - Preview BadgesModel
+
+extension BadgesModel {
+    /// A `BadgesModel` pre-loaded with fixture badges (no network, no disk).
+    static var preview: BadgesModel {
+        BadgesModel(repository: .preview, presenter: nil)
+    }
+
+    /// A `BadgesModel` in the error state for previewing the error UI.
+    @MainActor static var previewError: BadgesModel {
+        let model = BadgesModel(repository: .previewOffline, presenter: nil)
+        return model
+    }
+}
+
+extension EngagementRepository {
+    /// An `EngagementRepository` that always throws `.offline` — for error previews.
+    static var previewOffline: EngagementRepository {
+        let client = PreviewAPIClient { _ in throw AppError.offline }
         return EngagementRepository(apiClient: client, modelContainer: nil)
     }
 }
