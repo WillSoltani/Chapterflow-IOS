@@ -11,17 +11,20 @@ public actor FakeLibraryRepository: LibraryRepository {
     private var progressStub: ProgressOverviewResponse
     private var savedStub: [String]
     private let forcedError: AppError?
+    private let searchIndexStub: SearchIndexResponse?
 
     public init(
         catalog: [BookCatalogItem] = [],
         progress: ProgressOverviewResponse = ProgressOverviewResponse(progress: []),
         savedBookIds: [String] = [],
-        error: AppError? = nil
+        error: AppError? = nil,
+        searchIndex: SearchIndexResponse? = nil
     ) {
         self.catalogStub = catalog
         self.progressStub = progress
         self.savedStub = savedBookIds
         self.forcedError = error
+        self.searchIndexStub = searchIndex
     }
 
     // MARK: - LibraryRepository
@@ -49,5 +52,23 @@ public actor FakeLibraryRepository: LibraryRepository {
             savedStub.removeAll { $0 == bookId }
         }
         return savedStub
+    }
+
+    public func getSearchIndex() async throws -> SearchIndexResponse {
+        if let e = forcedError { throw e }
+        if let stub = searchIndexStub { return stub }
+        // Build a minimal index from the catalog stub (no chapters) as fallback.
+        let books = catalogStub.map { book in
+            SearchIndexBook(
+                bookId: book.bookId,
+                title: book.title,
+                author: book.author,
+                categories: book.categories,
+                tags: book.tags,
+                cover: book.cover,
+                chapters: []
+            )
+        }
+        return SearchIndexResponse(books: books)
     }
 }

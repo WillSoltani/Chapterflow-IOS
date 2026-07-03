@@ -3,6 +3,7 @@ import Models
 import DesignSystem
 import CoreKit
 import AIFeature
+import Persistence
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -14,6 +15,7 @@ public struct HomeView: View {
     @State private var model: HomeModel
     @State private var router = Router()
 
+    private let repository: any LibraryRepository
     private let bookDetailRepository: any BookDetailRepository
     private let aiRepository: (any AIRepository)?
     private let onOpenReader: ((String, Int, VariantFamily) -> Void)?
@@ -27,6 +29,7 @@ public struct HomeView: View {
         onShowPaywall: (() -> Void)? = nil
     ) {
         _model = State(initialValue: HomeModel(repository: repository))
+        self.repository = repository
         self.bookDetailRepository = bookDetailRepository
         self.aiRepository = aiRepository
         self.onOpenReader = onOpenReader
@@ -41,6 +44,7 @@ public struct HomeView: View {
                 .navigationBarTitleDisplayMode(.large)
                 #endif
                 .refreshable { await model.fetch() }
+                .toolbar { searchToolbarItem }
                 .navigationDestination(for: LibraryRoute.self) { route in
                     switch route {
                     case .bookDetail(let bookId):
@@ -51,10 +55,45 @@ public struct HomeView: View {
                             onOpenReader: onOpenReader,
                             onShowPaywall: onShowPaywall
                         )
+                    case .globalSearch:
+                        GlobalSearchView(
+                            repository: repository,
+                            onOpenBook: { bookId in
+                                router.push(LibraryRoute.bookDetail(bookId: bookId))
+                            },
+                            onOpenChapter: { bookId, _ in
+                                router.push(LibraryRoute.bookDetail(bookId: bookId))
+                            }
+                        )
                     }
                 }
         }
         .task { await model.fetch() }
+    }
+
+    // MARK: - Toolbar
+
+    @ToolbarContentBuilder
+    private var searchToolbarItem: some ToolbarContent {
+        #if os(iOS)
+        ToolbarItem(placement: .navigationBarTrailing) {
+            Button {
+                router.push(LibraryRoute.globalSearch)
+            } label: {
+                Image(systemName: "magnifyingglass")
+                    .accessibilityLabel("Search books and chapters")
+            }
+        }
+        #else
+        ToolbarItem(placement: .automatic) {
+            Button {
+                router.push(LibraryRoute.globalSearch)
+            } label: {
+                Image(systemName: "magnifyingglass")
+                    .accessibilityLabel("Search books and chapters")
+            }
+        }
+        #endif
     }
 
     // MARK: - Content

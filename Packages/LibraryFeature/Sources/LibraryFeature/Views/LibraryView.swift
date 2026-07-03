@@ -3,6 +3,7 @@ import Models
 import DesignSystem
 import CoreKit
 import AIFeature
+import Persistence
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -10,7 +11,8 @@ import UIKit
 /// The Library tab: a searchable, filterable catalog of all books.
 ///
 /// Supports:
-/// - Full-text search across title, author, and tags.
+/// - Full-text search across title, author, and tags (inline filter).
+/// - Global search (books + chapters) via the search button → ``GlobalSearchView``.
 /// - Category chip filters.
 /// - A "Saved" toggle to show only bookmarked books.
 /// - Long-press / context-menu: save, start reading.
@@ -19,6 +21,7 @@ public struct LibraryView: View {
     @State private var model: LibraryModel
     @State private var router = Router()
 
+    private let repository: any LibraryRepository
     private let bookDetailRepository: any BookDetailRepository
     private let aiRepository: (any AIRepository)?
     private let onOpenReader: ((String, Int, VariantFamily) -> Void)?
@@ -32,6 +35,7 @@ public struct LibraryView: View {
         onShowPaywall: (() -> Void)? = nil
     ) {
         _model = State(initialValue: LibraryModel(repository: repository))
+        self.repository = repository
         self.bookDetailRepository = bookDetailRepository
         self.aiRepository = aiRepository
         self.onOpenReader = onOpenReader
@@ -45,7 +49,7 @@ public struct LibraryView: View {
                 #if os(iOS)
                 .navigationBarTitleDisplayMode(.large)
                 #endif
-                .searchable(text: $model.searchQuery, prompt: "Search books, authors, tags…")
+                .searchable(text: $model.searchQuery, prompt: "Filter books, authors, tags…")
                 .toolbar { toolbarContent }
                 .refreshable { await model.fetch() }
                 .navigationDestination(for: LibraryRoute.self) { route in
@@ -57,6 +61,16 @@ public struct LibraryView: View {
                             aiRepository: aiRepository,
                             onOpenReader: onOpenReader,
                             onShowPaywall: onShowPaywall
+                        )
+                    case .globalSearch:
+                        GlobalSearchView(
+                            repository: repository,
+                            onOpenBook: { bookId in
+                                router.push(LibraryRoute.bookDetail(bookId: bookId))
+                            },
+                            onOpenChapter: { bookId, _ in
+                                router.push(LibraryRoute.bookDetail(bookId: bookId))
+                            }
                         )
                     }
                 }
@@ -187,6 +201,25 @@ public struct LibraryView: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
+        #if os(iOS)
+        ToolbarItem(placement: .navigationBarLeading) {
+            Button {
+                router.push(LibraryRoute.globalSearch)
+            } label: {
+                Image(systemName: "magnifyingglass")
+                    .accessibilityLabel("Global search: books and chapters")
+            }
+        }
+        #else
+        ToolbarItem(placement: .automatic) {
+            Button {
+                router.push(LibraryRoute.globalSearch)
+            } label: {
+                Image(systemName: "magnifyingglass")
+                    .accessibilityLabel("Global search: books and chapters")
+            }
+        }
+        #endif
         ToolbarItem(placement: .automatic) {
             if model.loadState == .loading {
                 ProgressView()
