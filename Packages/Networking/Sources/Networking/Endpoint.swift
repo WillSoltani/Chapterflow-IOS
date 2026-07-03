@@ -273,6 +273,35 @@ public enum Endpoints {
         Endpoint(method: .get, path: "/book/me/profile", requiresAuth: true)
     }
 
+    /// `GET /book/me/gifts/{code}` — preview a gift before claiming.
+    ///
+    /// Returns the gift details (type, sender, status, expiry) so the UI can
+    /// show a preview screen before the user commits to claiming.
+    /// Throws `.notFound` when the code does not exist.
+    public static func getGift(code: String) -> Endpoint {
+        Endpoint(method: .get, path: "/book/me/gifts/\(code)", requiresAuth: true)
+    }
+
+    /// `POST /book/me/gifts/{code}/claim` — claim a gift code.
+    ///
+    /// The server activates the entitlement. Always re-fetch entitlements after
+    /// success — never grant Pro client-side.
+    /// Throws `.server(code: "gift_already_claimed", ...)` if redeemed.
+    /// Throws `.server(code: "gift_expired", ...)` if the code is expired.
+    public static func claimGift(code: String) throws -> Endpoint {
+        struct Body: Encodable {}
+        return try Endpoint(method: .post, path: "/book/me/gifts/\(code)/claim", body: Body())
+    }
+
+    /// `POST /book/me/gifts` — create a new shareable gift code.
+    ///
+    /// - Parameter giftType: The product to gift (e.g. `"pro_week"`).
+    /// Returns the newly created `Gift` containing the unique share code.
+    public static func createGift(giftType: String) throws -> Endpoint {
+        struct Body: Encodable { let giftType: String }
+        return try Endpoint(method: .post, path: "/book/me/gifts", body: Body(giftType: giftType))
+    }
+
     /// `PATCH /book/me/settings` — persists editable profile fields (display name, avatar emoji, etc.).
     public static func updateSettings<Body: Encodable>(_ body: Body) throws -> Endpoint {
         try Endpoint(method: .patch, path: "/book/me/settings", body: body)

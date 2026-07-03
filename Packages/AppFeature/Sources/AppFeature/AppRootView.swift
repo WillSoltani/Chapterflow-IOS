@@ -145,6 +145,20 @@ public struct AppRootView: View {
         )) {
             PaywallView(model: model.makePaywallModel(context: model.paywallContext))
         }
+        // Gift-claim sheet — presented when a chapterflow://gift/{code} deep link
+        // lands or the user taps "Redeem Gift Code" from the Profile tab.
+        .sheet(isPresented: Binding(
+            get: { model.pendingGiftCode != nil },
+            set: { if !$0 { model.pendingGiftCode = nil } }
+        )) {
+            if let code = model.pendingGiftCode {
+                GiftClaimView(
+                    code: code,
+                    repository: model.socialRepository,
+                    onClaimed: { model.pendingGiftCode = nil }
+                )
+            }
+        }
     }
 
     // MARK: - Tab content

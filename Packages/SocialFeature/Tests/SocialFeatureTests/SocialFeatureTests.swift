@@ -331,7 +331,7 @@ struct FakeSocialRepositoryTests {
     }
 }
 
-// MARK: - Endpoints tests
+// MARK: - Social endpoint tests
 
 @Suite("SocialEndpoints")
 struct SocialEndpointsTests {

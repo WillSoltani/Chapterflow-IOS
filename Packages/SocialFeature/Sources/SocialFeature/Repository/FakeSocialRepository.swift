@@ -12,6 +12,8 @@ public actor FakeSocialRepository: SocialRepository {
     private var badges: [BadgeItem]
     private var publicProfiles: [String: PublicProfile]
     private var pairs: [ReadingPair]
+    private var gifts: [String: Gift]
+    private var giftCodeCounter: Int = 0
     private let forcedError: AppError?
 
     /// Every `UpdateSettingsBody` that `updateSettings` has been called with, in order.
@@ -28,12 +30,14 @@ public actor FakeSocialRepository: SocialRepository {
         badges: [BadgeItem] = BadgeItem.previewList,
         publicProfiles: [String: PublicProfile] = [:],
         pairs: [ReadingPair] = [],
+        gifts: [String: Gift] = [:],
         error: AppError? = nil
     ) {
         self.profile = profile
         self.badges = badges
         self.publicProfiles = publicProfiles
         self.pairs = pairs
+        self.gifts = gifts
         self.forcedError = error
     }
 
@@ -114,5 +118,63 @@ public actor FakeSocialRepository: SocialRepository {
     public func nudgePartner(partnerId: String) async throws {
         if let err = forcedError { throw err }
         recordedNudges.append(partnerId)
+    }
+
+    // MARK: - Gifts
+
+    public func getGift(code: String) async throws -> Gift {
+        if let err = forcedError { throw err }
+        guard let gift = gifts[code] else {
+            throw AppError.notFound
+        }
+        return gift
+    }
+
+    public func claimGift(code: String) async throws -> GiftClaimResult {
+        if let err = forcedError { throw err }
+        guard let gift = gifts[code] else {
+            throw AppError.notFound
+        }
+        switch gift.status {
+        case .claimed:
+            throw AppError.server(
+                code: "gift_already_claimed",
+                message: "This gift has already been redeemed.",
+                requestId: nil
+            )
+        case .expired:
+            throw AppError.server(
+                code: "gift_expired",
+                message: "This gift code has expired.",
+                requestId: nil
+            )
+        case .pending, .unknown:
+            let claimed = Gift(
+                code: gift.code,
+                giftType: gift.giftType,
+                senderDisplayName: gift.senderDisplayName,
+                status: .claimed,
+                createdAt: gift.createdAt,
+                expiresAt: gift.expiresAt
+            )
+            gifts[code] = claimed
+            return GiftClaimResult(gift: claimed, message: "Pro access activated for 7 days!")
+        }
+    }
+
+    public func createGift(giftType: String) async throws -> Gift {
+        if let err = forcedError { throw err }
+        giftCodeCounter += 1
+        let code = "GIFT\(String(format: "%04d", giftCodeCounter))"
+        let gift = Gift(
+            code: code,
+            giftType: giftType,
+            senderDisplayName: profile.displayName,
+            status: .pending,
+            createdAt: nil,
+            expiresAt: nil
+        )
+        gifts[code] = gift
+        return gift
     }
 }

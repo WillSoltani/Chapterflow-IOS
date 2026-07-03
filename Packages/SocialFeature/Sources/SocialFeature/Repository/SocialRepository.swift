@@ -66,4 +66,25 @@ public protocol SocialRepository: Sendable {
     /// Maps to `POST /book/me/pairs/{partnerId}/nudge`.
     /// - Throws: `.rateLimited` when the server enforces a cooldown.
     func nudgePartner(partnerId: String) async throws
+
+    // MARK: - Gifts
+
+    /// Fetches a gift by code for preview — shows type, sender, and expiry
+    /// before the user commits to claiming.
+    ///
+    /// Maps to `GET /book/me/gifts/{code}`.
+    /// Throws `AppError.notFound` when the code does not exist.
+    func getGift(code: String) async throws -> Gift
+
+    /// Claims a gift code, activating the entitlement server-side.
+    ///
+    /// Maps to `POST /book/me/gifts/{code}/claim`.
+    /// After a successful claim, re-fetch entitlements — never grant Pro client-side.
+    func claimGift(code: String) async throws -> GiftClaimResult
+
+    /// Creates a new shareable gift code.
+    ///
+    /// Maps to `POST /book/me/gifts`.
+    /// - Parameter giftType: The product to gift (e.g. `"pro_week"`).
+    func createGift(giftType: String) async throws -> Gift
 }

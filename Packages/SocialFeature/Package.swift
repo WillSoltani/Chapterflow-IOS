@@ -29,6 +29,7 @@ let package = Package(
             dependencies: [
                 "SocialFeature",
                 "Networking",
+                "CoreKit",
             ]
         ),
     ]

@@ -16,8 +16,9 @@ public struct ProfileView: View {
 
     @State private var model: ProfileModel
     @State private var editProfilePresented = false
+    @State private var giftSendPresented = false
+    @State private var giftClaimPresented = false
 
-    /// Repository stored separately so it can be passed to child views.
     private let repository: any SocialRepository
 
     /// Non-empty when a pair deep link was received; drives the accept sheet.
@@ -49,6 +50,12 @@ public struct ProfileView: View {
                         AcceptInviteView(model: deepLinkPairsModel, initialCode: pendingPairAcceptCode)
                             .onDisappear { pendingPairAcceptCode = "" }
                     }
+                }
+                .sheet(isPresented: $giftSendPresented) {
+                    GiftSendView(repository: repository)
+                }
+                .sheet(isPresented: $giftClaimPresented) {
+                    GiftClaimView(repository: repository)
                 }
         }
         .task { await model.load() }
@@ -100,6 +107,12 @@ public struct ProfileView: View {
                     .padding(.horizontal, .cfSpacing16)
 
                 readingPartnersRow
+
+                giftsSection
+
+                Divider()
+                    .padding(.horizontal, .cfSpacing16)
+
                 editRow
             }
             .padding(.horizontal, .cfSpacing16)
@@ -256,6 +269,44 @@ public struct ProfileView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Reading Partners")
+    }
+
+    // MARK: - Gifts section
+
+    private var giftsSection: some View {
+        VStack(spacing: .cfSpacing8) {
+            actionRow(
+                icon: "gift",
+                label: "Gift Pro to a Friend",
+                action: { giftSendPresented = true }
+            )
+            actionRow(
+                icon: "ticket",
+                label: "Redeem Gift Code",
+                action: { giftClaimPresented = true }
+            )
+        }
+    }
+
+    private func actionRow(icon: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Image(systemName: icon)
+                    .foregroundStyle(Color.cfAccent)
+                    .frame(width: .cfIconSmall)
+                Text(label)
+                    .font(.cfBody)
+                    .foregroundStyle(Color.cfLabel)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.cfCaption)
+                    .foregroundStyle(Color.cfTertiaryLabel)
+            }
+            .padding(.cfSpacing16)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: .cfRadius16))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 
     // MARK: - Edit profile row
