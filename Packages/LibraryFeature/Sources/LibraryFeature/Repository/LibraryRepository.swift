@@ -17,4 +17,10 @@ public protocol LibraryRepository: Sendable {
 
     /// Saves or un-saves a book and returns the updated saved ID list.
     func toggleSaved(bookId: String, saved: Bool) async throws -> [String]
+
+    /// Returns the full search index (books + chapter titles) for global search.
+    ///
+    /// Implementations cache this index locally. When offline and no cache is
+    /// available, callers should fall back to the catalog (no chapter search).
+    func getSearchIndex() async throws -> SearchIndexResponse
 }

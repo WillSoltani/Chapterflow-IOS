@@ -78,6 +78,13 @@ public enum Endpoints {
         Endpoint(method: .get, path: "/book/books", requiresAuth: false)
     }
 
+    /// `GET /book/search-index` → `{ books: [{bookId, title, author, categories, tags, chapters}] }`.
+    /// Returns the full search index with per-book chapter titles for client-side filtering.
+    /// Public and cacheable — does not require auth.
+    public static func getSearchIndex() -> Endpoint {
+        Endpoint(method: .get, path: "/book/search-index", requiresAuth: false)
+    }
+
     /// `GET /book/books/{bookId}` → book detail + manifest.
     public static func getBook(id: String) -> Endpoint {
         Endpoint(method: .get, path: "/book/books/\(id)", requiresAuth: true)

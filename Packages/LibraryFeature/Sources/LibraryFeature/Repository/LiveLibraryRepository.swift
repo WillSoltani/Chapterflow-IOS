@@ -12,7 +12,9 @@ public actor LiveLibraryRepository: LibraryRepository {
     private let container: ModelContainer?
 
     private static let catalogCacheKey = "library.catalog.v1"
+    private static let searchIndexCacheKey = "library.searchIndex.v1"
     private static let cacheTTL: TimeInterval = 300
+    private static let searchIndexTTL: TimeInterval = 1800 // 30 min — heavier payload
 
     public init(client: any APIClientProtocol, container: ModelContainer? = nil) {
         self.client = client
@@ -82,5 +84,64 @@ public actor LiveLibraryRepository: LibraryRepository {
         let endpoint = try Endpoints.toggleSaved(bookId: bookId, saved: saved)
         let response: SavedBooksResponse = try await client.send(endpoint)
         return response.savedBookIds
+    }
+
+    // MARK: - Search index
+
+    public func getSearchIndex() async throws -> SearchIndexResponse {
+        // Try stale-while-revalidate: return cached data immediately if present
+        // (even if expired), then refresh in background. If no cache at all,
+        // fetch synchronously so the caller gets real data.
+        if let cached = try loadCachedSearchIndex(allowStale: false) {
+            return cached
+        }
+        // Check for stale cache — serve it while hiding the network error.
+        if let stale = try loadCachedSearchIndex(allowStale: true) {
+            Task { try? await fetchAndCacheSearchIndex() }
+            return stale
+        }
+        return try await fetchAndCacheSearchIndex()
+    }
+
+    private func loadCachedSearchIndex(allowStale: Bool) throws -> SearchIndexResponse? {
+        guard let container else { return nil }
+        let ctx = ModelContext(container)
+        let key = Self.searchIndexCacheKey
+        let descriptor = FetchDescriptor<CachedKeyValue>(
+            predicate: #Predicate { $0.key == key }
+        )
+        guard let record = try ctx.fetch(descriptor).first else { return nil }
+        if !allowStale {
+            let age = Date().timeIntervalSince(record.updatedAt)
+            guard age < Self.searchIndexTTL else { return nil }
+        }
+        guard let data = record.value.data(using: .utf8) else { return nil }
+        return try? JSONCoding.decoder.decode(SearchIndexResponse.self, from: data)
+    }
+
+    @discardableResult
+    private func fetchAndCacheSearchIndex() async throws -> SearchIndexResponse {
+        let response: SearchIndexResponse = try await client.send(Endpoints.getSearchIndex())
+        if let container {
+            try storeSearchIndex(response, in: container)
+        }
+        return response
+    }
+
+    private func storeSearchIndex(_ response: SearchIndexResponse, in container: ModelContainer) throws {
+        let ctx = ModelContext(container)
+        let key = Self.searchIndexCacheKey
+        let descriptor = FetchDescriptor<CachedKeyValue>(
+            predicate: #Predicate { $0.key == key }
+        )
+        let encoded = try JSONCoding.encoder.encode(response)
+        let value = String(data: encoded, encoding: .utf8) ?? ""
+        if let existing = try ctx.fetch(descriptor).first {
+            existing.value = value
+            existing.updatedAt = Date()
+        } else {
+            ctx.insert(CachedKeyValue(key: key, value: value))
+        }
+        try ctx.save()
     }
 }
