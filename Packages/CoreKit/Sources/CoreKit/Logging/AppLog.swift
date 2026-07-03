@@ -22,6 +22,7 @@ public struct AppLog: Sendable {
         case sync
         case ui
         case notifications
+        case billing
     }
 
     private let logger: os.Logger

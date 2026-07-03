@@ -16,13 +16,28 @@ public struct AppConfig: Sendable, Equatable {
     /// (the default in Debug builds and when the key is absent from Info.plist).
     public let sentryDSN: String
 
+    // MARK: - StoreKit 2 product IDs
+
+    /// App Store product ID for the monthly auto-renewable subscription.
+    /// Set via `SK_MONTHLY_PRODUCT_ID` in the xcconfig / Secrets.xcconfig.
+    public let storeKitMonthlyProductID: String
+    /// App Store product ID for the annual auto-renewable subscription.
+    /// Set via `SK_ANNUAL_PRODUCT_ID` in the xcconfig / Secrets.xcconfig.
+    public let storeKitAnnualProductID: String
+    /// App Store product ID for the optional annual-upfront (non-renewing) product.
+    /// Leave empty in xcconfig to omit this tier from the paywall.
+    public let storeKitAnnualUpfrontProductID: String
+
     public init(
         apiBaseURL: String,
         cognitoRegion: String,
         cognitoUserPoolID: String,
         cognitoClientID: String,
         cognitoDomain: String = "",
-        sentryDSN: String = ""
+        sentryDSN: String = "",
+        storeKitMonthlyProductID: String = "",
+        storeKitAnnualProductID: String = "",
+        storeKitAnnualUpfrontProductID: String = ""
     ) {
         self.apiBaseURL = apiBaseURL
         self.cognitoRegion = cognitoRegion
@@ -30,6 +45,9 @@ public struct AppConfig: Sendable, Equatable {
         self.cognitoClientID = cognitoClientID
         self.cognitoDomain = cognitoDomain
         self.sentryDSN = sentryDSN
+        self.storeKitMonthlyProductID = storeKitMonthlyProductID
+        self.storeKitAnnualProductID = storeKitAnnualProductID
+        self.storeKitAnnualUpfrontProductID = storeKitAnnualUpfrontProductID
     }
 
     /// Info.plist keys that carry the xcconfig-injected values.
@@ -42,6 +60,9 @@ public struct AppConfig: Sendable, Equatable {
         /// Key injected from `SENTRY_DSN` xcconfig variable. Leave empty in
         /// Debug xcconfig to keep Sentry off during local development.
         public static let sentryDSN = "SentryDSN"
+        public static let storeKitMonthlyProductID = "SKMonthlyProductID"
+        public static let storeKitAnnualProductID = "SKAnnualProductID"
+        public static let storeKitAnnualUpfrontProductID = "SKAnnualUpfrontProductID"
     }
 
     /// Reads configuration from the given bundle's Info.plist.
@@ -58,7 +79,10 @@ public struct AppConfig: Sendable, Equatable {
             cognitoUserPoolID: value(InfoKey.cognitoUserPoolID),
             cognitoClientID: value(InfoKey.cognitoClientID),
             cognitoDomain: value(InfoKey.cognitoDomain),
-            sentryDSN: value(InfoKey.sentryDSN)
+            sentryDSN: value(InfoKey.sentryDSN),
+            storeKitMonthlyProductID: value(InfoKey.storeKitMonthlyProductID),
+            storeKitAnnualProductID: value(InfoKey.storeKitAnnualProductID),
+            storeKitAnnualUpfrontProductID: value(InfoKey.storeKitAnnualUpfrontProductID)
         )
     }
 }
