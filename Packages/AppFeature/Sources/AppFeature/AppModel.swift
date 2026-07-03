@@ -9,6 +9,7 @@ import AIFeature
 import ReaderFeature
 import QuizFeature
 import EngagementFeature
+import PaywallFeature
 
 /// The top-level observable app state that drives `AppRootView`.
 ///
@@ -18,6 +19,7 @@ import EngagementFeature
 /// - Track the user's display name resolved from the Cognito id_token JWT.
 /// - Own the currently selected tab and per-tab `Router` navigation stacks.
 /// - Vend the shared `LibraryRepository` consumed by `HomeView` and `LibraryView`.
+/// - Own `EntitlementService` (subscription gating) and `StoreKitService`.
 /// - Parse incoming deep-link URLs and route them to the correct tab.
 @Observable
 @MainActor
@@ -91,6 +93,25 @@ public final class AppModel {
     /// Shared audio player model — owns the AVQueuePlayer and session for the entire app.
     public let audioPlayerModel: AudioPlayerModel
 
+    // MARK: - Subscription / Paywall
+
+    /// StoreKit 2 service — shared with `EntitlementService` and `PaywallModel`.
+    public let storeKitService: StoreKitService
+
+    /// Single source of truth for Pro access throughout the app.
+    public let entitlementService: EntitlementService
+
+    /// Whether the paywall sheet is currently presented.
+    public var showPaywall: Bool = false
+
+    /// Context that controls the copy shown inside the paywall.
+    public var paywallContext: PaywallContext = .settings
+
+    // MARK: - Internal
+
+    /// Retained so `makePaywallModel(context:)` can build `PaywallModel` without re-creating the client.
+    private let apiClient: any APIClientProtocol
+
     // MARK: - Init
 
     public init(config: AppConfig = .fromInfoPlist()) {
@@ -101,6 +122,7 @@ public final class AppModel {
 
         let container = try? PersistenceController.makeDefault().container
         let client = APIClient(config: config, tokenProvider: sm)
+        self.apiClient = client
         self.libraryRepository = LiveLibraryRepository(client: client, container: container)
         self.bookDetailRepository = LiveBookDetailRepository(client: client)
         self.socialRepository = LiveSocialRepository(client: client)
@@ -121,6 +143,11 @@ public final class AppModel {
         let audioPlayer = AudioPlayer(repository: audioRepo)
         self.audioPlayerModel = AudioPlayerModel(player: audioPlayer, preferences: prefs)
 
+        let skConfig = StoreKitConfig.from(config)
+        let sks = StoreKitService(apiClient: client, config: skConfig)
+        self.storeKitService = sks
+        self.entitlementService = EntitlementService(storeKitService: sks, apiClient: client)
+
         #if os(iOS)
         sm.registerBackgroundRefresh()
         #endif
@@ -135,9 +162,27 @@ public final class AppModel {
 
     // MARK: - Lifecycle
 
-    /// Configures Amplify and starts the auth-events listener. Call once at launch.
+    /// Configures Amplify, starts auth-events listener, and begins entitlement refresh.
+    /// Call once at launch.
     public func configure() throws {
         try session.configure()
+        entitlementService.start()
+    }
+
+    // MARK: - Paywall factory
+
+    /// Creates a fresh `PaywallModel` for the given context.
+    /// Called by `AppRootView` each time the paywall sheet is presented.
+    public func makePaywallModel(context: PaywallContext) -> PaywallModel {
+        PaywallModel(storeKitService: storeKitService, apiClient: apiClient, context: context)
+    }
+
+    /// Opens the App Store subscription management page.
+    public func openManageSubscriptions() {
+        #if canImport(UIKit)
+        guard let url = URL(string: "https://apps.apple.com/account/subscriptions") else { return }
+        Task { await UIApplication.shared.open(url) }
+        #endif
     }
 
     // MARK: - Display name

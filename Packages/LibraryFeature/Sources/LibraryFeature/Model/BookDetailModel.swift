@@ -100,6 +100,9 @@ public final class BookDetailModel {
         return Double(completedChapterCount) / Double(totalChapters)
     }
 
+    /// How many free book starts the user has remaining. Zero before entitlement loads.
+    public var freeStartsLeft: Int { entitlement?.remainingFreeStarts ?? 0 }
+
     /// Reading-time sum for the whole book (minutes).
     public var totalReadingMinutes: Int {
         manifest?.chapters.reduce(0) { $0 + $1.readingTimeMinutes } ?? 0

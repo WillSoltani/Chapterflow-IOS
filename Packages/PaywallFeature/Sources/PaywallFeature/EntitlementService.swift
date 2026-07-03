@@ -89,6 +89,25 @@ public final class EntitlementService {
         foregroundListenerTask?.cancel()
     }
 
+    // MARK: - Plan detail accessors
+
+    /// The end of the current billing period; `nil` when not on a Pro plan.
+    ///
+    /// Parses the server's ISO-8601 string (with or without fractional seconds).
+    public var currentPeriodEnd: Date? {
+        guard let str = backendEntitlement?.currentPeriodEnd else { return nil }
+        let withFrac = ISO8601DateFormatter()
+        withFrac.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = withFrac.date(from: str) { return d }
+        return ISO8601DateFormatter().date(from: str)
+    }
+
+    /// `true` when the Pro subscription is set to cancel at period end; `nil` when not on Pro.
+    public var cancelAtPeriodEnd: Bool? { backendEntitlement?.cancelAtPeriodEnd }
+
+    /// How many free book starts remain. Zero when the entitlement is not yet loaded.
+    public var remainingFreeStarts: Int { backendEntitlement?.remainingFreeStarts ?? 0 }
+
     // MARK: - Gating queries
 
     /// `true` if the given book is accessible without consuming a free start.

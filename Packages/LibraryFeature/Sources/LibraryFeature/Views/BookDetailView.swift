@@ -192,29 +192,39 @@ public struct BookDetailView: View {
     // MARK: - Primary action
 
     private var primaryActionSection: some View {
-        Button {
-            triggerHaptic()
-            Task { await model.performPrimaryAction() }
-        } label: {
-            HStack {
-                if model.isStarting {
-                    ProgressView()
-                        .progressViewStyle(.circular)
-                        .tint(.white)
-                        .scaleEffect(0.8)
-                } else {
-                    Text(primaryActionLabel)
-                        .font(.cfHeadline)
+        VStack(spacing: .cfSpacing4) {
+            Button {
+                triggerHaptic()
+                Task { await model.performPrimaryAction() }
+            } label: {
+                HStack {
+                    if model.isStarting {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(.white)
+                            .scaleEffect(0.8)
+                    } else {
+                        Text(primaryActionLabel)
+                            .font(.cfHeadline)
+                    }
                 }
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(primaryActionBackground, in: RoundedRectangle(cornerRadius: .cfRadius12, style: .continuous))
+                .foregroundStyle(primaryActionForeground)
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 50)
-            .background(primaryActionBackground, in: RoundedRectangle(cornerRadius: .cfRadius12, style: .continuous))
-            .foregroundStyle(primaryActionForeground)
+            .disabled(model.primaryAction == .disabled || model.isStarting)
+            .padding(.horizontal, .cfSpacing16)
+            .accessibilityLabel(primaryActionLabel)
+
+            if model.primaryAction == .startReading, model.freeStartsLeft > 0 {
+                let count = model.freeStartsLeft
+                Text(count == 1 ? "1 free start remaining" : "\(count) free starts remaining")
+                    .font(.cfCaption2)
+                    .foregroundStyle(Color.cfSecondaryLabel)
+                    .accessibilityLabel("\(count) free book \(count == 1 ? "start" : "starts") remaining")
+            }
         }
-        .disabled(model.primaryAction == .disabled || model.isStarting)
-        .padding(.horizontal, .cfSpacing16)
-        .accessibilityLabel(primaryActionLabel)
     }
 
     // MARK: - Listen
