@@ -52,16 +52,28 @@ public enum PersistenceSchemaV3: VersionedSchema {
     }
 }
 
+/// V4: adds offline outbox for commitment creates/updates (P5.10).
+public enum PersistenceSchemaV4: VersionedSchema {
+    public static var versionIdentifier: Schema.Version { Schema.Version(4, 0, 0) }
+
+    public static var models: [any PersistentModel.Type] {
+        [CachedKeyValue.self, LocalAnnotation.self, PendingAnnotationUpload.self,
+         PendingReviewGrade.self, PendingCommitmentUpload.self]
+    }
+}
+
 /// Migration plan. Lightweight migrations require no field renames or transformations.
 public enum PersistenceMigrationPlan: SchemaMigrationPlan {
     public static var schemas: [any VersionedSchema.Type] {
-        [PersistenceSchemaV1.self, PersistenceSchemaV2.self, PersistenceSchemaV3.self]
+        [PersistenceSchemaV1.self, PersistenceSchemaV2.self,
+         PersistenceSchemaV3.self, PersistenceSchemaV4.self]
     }
 
     public static var stages: [MigrationStage] {
         [
             .lightweight(fromVersion: PersistenceSchemaV1.self, toVersion: PersistenceSchemaV2.self),
             .lightweight(fromVersion: PersistenceSchemaV2.self, toVersion: PersistenceSchemaV3.self),
+            .lightweight(fromVersion: PersistenceSchemaV3.self, toVersion: PersistenceSchemaV4.self),
         ]
     }
 }
@@ -105,7 +117,7 @@ public struct PersistenceController: Sendable {
     ///   - migrationPlan: Optional migration plan; pass `PersistenceMigrationPlan.self`
     ///     when the model set matches the versioned schema.
     public init(
-        models: [any PersistentModel.Type] = PersistenceSchemaV2.models,
+        models: [any PersistentModel.Type] = PersistenceSchemaV4.models,
         storage: StorageMode = .appGroup,
         migrationPlan: (any SchemaMigrationPlan.Type)? = nil
     ) throws {
@@ -152,10 +164,10 @@ public struct PersistenceController: Sendable {
         self.container = container
     }
 
-    /// Convenience: the default core schema (V3) with its migration plan.
+    /// Convenience: the default core schema (V4) with its migration plan.
     public static func makeDefault(storage: StorageMode = .appGroup) throws -> PersistenceController {
         try PersistenceController(
-            models: PersistenceSchemaV3.models,
+            models: PersistenceSchemaV4.models,
             storage: storage,
             migrationPlan: PersistenceMigrationPlan.self
         )

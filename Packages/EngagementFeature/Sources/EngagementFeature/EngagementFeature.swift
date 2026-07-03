@@ -70,6 +70,14 @@
 /// - ``SavedBooksModel`` — `@Observable` view model; saved-book IDs + catalog, offline-first
 /// - ``SavedShelfView`` — three-column grid of saved books with cover + context-menu unsave
 /// - ``NotebookRepository`` — actor; GET/PATCH/DELETE notebook entries; offline outbox via CachedKeyValue
+///
+/// Public API added in P5.10:
+/// - ``CommitmentsView`` — list of active/done if-then commitments with overdue reflection CTA
+/// - ``CreateCommitmentView`` — modal sheet for composing a new if-then plan with 3/7-day follow-up
+/// - ``CommitmentReflectionView`` — follow-up modal: outcome selection + free-text reflection
+/// - ``CommitmentsModel`` — `@Observable` view model owning load/create/reflect lifecycle
+/// - ``CommitmentRepository`` — actor; GET|POST /book/me/commitments, GET|PATCH /{id};
+///   schedules UNCalendarNotificationTrigger for follow-up; offline outbox via PendingCommitmentUpload
 public enum EngagementFeature {
     public static let moduleName = "EngagementFeature"
 }
