@@ -393,9 +393,172 @@ struct PaywallModelTests {
         #expect(model.purchaseState != .restoring)
         #expect(model.errorMessage != nil)
     }
+
+    @Test("context defaults to settings")
+    func contextDefaults() {
+        let model = PaywallModel(
+            storeKitService: StubStoreKitService(),
+            apiClient: MockAPIClient()
+        )
+        #expect(model.context == .settings)
+    }
+
+    @Test("context is set from init")
+    func contextFromInit() {
+        let model = PaywallModel(
+            storeKitService: StubStoreKitService(),
+            apiClient: MockAPIClient(),
+            context: .bookDetail(bookTitle: "Thinking Fast and Slow")
+        )
+        #expect(model.context == .bookDetail(bookTitle: "Thinking Fast and Slow"))
+    }
+
+    @Test("selectProduct updates selectedProductID")
+    func selectProduct() {
+        let model = PaywallModel(
+            storeKitService: StubStoreKitService(),
+            apiClient: MockAPIClient()
+        )
+        model.selectProduct("com.cf.annual")
+        #expect(model.selectedProductID == "com.cf.annual")
+    }
+
+    @Test("selectProduct replaces previous selection")
+    func selectProductReplaces() {
+        let model = PaywallModel(
+            storeKitService: StubStoreKitService(),
+            apiClient: MockAPIClient()
+        )
+        model.selectProduct("com.cf.annual")
+        model.selectProduct("com.cf.monthly")
+        #expect(model.selectedProductID == "com.cf.monthly")
+    }
+
+    @Test("annualSavingsPercent returns nil when products are empty")
+    func savingsPercentNoProducts() {
+        let model = PaywallModel(
+            storeKitService: StubStoreKitService(),
+            apiClient: MockAPIClient()
+        )
+        #expect(model.annualSavingsPercent == nil)
+    }
+
+    @Test("annualSavingsPercent returns nil when priceDecimalValue is missing")
+    func savingsPercentNoPriceValue() {
+        let model = PaywallModel(
+            storeKitService: StubStoreKitService(),
+            apiClient: MockAPIClient(),
+            initialProductInfos: [
+                StoreProductInfo(id: "a", displayName: "Annual", displayPrice: "$49.99",
+                                 periodLabel: "year", isPopular: true),
+                StoreProductInfo(id: "b", displayName: "Monthly", displayPrice: "$5.99",
+                                 periodLabel: "month", isPopular: false)
+            ]
+        )
+        #expect(model.annualSavingsPercent == nil)
+    }
+
+    @Test("annualSavingsPercent computes correct percentage")
+    func savingsPercentComputed() {
+        // Monthly: $5.99 × 12 = $71.88 vs Annual: $49.99 → save ~30%
+        let model = PaywallModel(
+            storeKitService: StubStoreKitService(),
+            apiClient: MockAPIClient(),
+            initialProductInfos: [
+                StoreProductInfo(id: "a", displayName: "Annual", displayPrice: "$49.99",
+                                 periodLabel: "year", isPopular: true, priceDecimalValue: 49.99),
+                StoreProductInfo(id: "b", displayName: "Monthly", displayPrice: "$5.99",
+                                 periodLabel: "month", isPopular: false, priceDecimalValue: 5.99)
+            ]
+        )
+        let pct = model.annualSavingsPercent
+        #expect(pct != nil)
+        // $71.88 - $49.99 = $21.89 / $71.88 ≈ 30%
+        #expect((pct ?? 0) > 20)
+        #expect((pct ?? 0) < 45)
+    }
+
+    @Test("PurchaseState success case has correct productID")
+    func purchaseStateSuccessEquality() {
+        let stateA = PurchaseState.success(productID: "com.cf.annual")
+        let stateB = PurchaseState.success(productID: "com.cf.annual")
+        let stateC = PurchaseState.success(productID: "com.cf.monthly")
+        #expect(stateA == stateB)
+        #expect(stateA != stateC)
+    }
+
+    @Test("PurchaseState success isInProgress is false")
+    func purchaseStateSuccessNotInProgress() {
+        #expect(!PurchaseState.success(productID: "x").isInProgress)
+    }
+
+    @Test("onAppear uses analytics noop by default")
+    func onAppearNoopAnalytics() async {
+        let model = PaywallModel(
+            storeKitService: StubStoreKitService(),
+            apiClient: MockAPIClient(),
+            context: .bookDetail(bookTitle: "Test Book")
+        )
+        // Should not crash — NoopAnalyticsClient swallows events silently
+        await model.onAppear()
+    }
+
+    @Test("onAppear with spy analytics records paywallViewed event")
+    func onAppearTracksAnalytics() async {
+        let spy = SpyAnalyticsClient()
+        let model = PaywallModel(
+            storeKitService: StubStoreKitService(),
+            apiClient: MockAPIClient(),
+            analytics: spy,
+            context: .lockedFeature(featureName: "Concept Graph")
+        )
+        await model.onAppear()
+        let events = await spy.trackedEvents
+        #expect(events.contains(.paywallViewed(source: "locked_feature")))
+    }
+
+    @Test("serverBenefits is nil initially")
+    func serverBenefitsInitiallyNil() {
+        let model = PaywallModel(
+            storeKitService: StubStoreKitService(),
+            apiClient: MockAPIClient()
+        )
+        #expect(model.serverBenefits == nil)
+    }
+
+    @Test("inject sets serverBenefits")
+    func injectServerBenefits() {
+        let model = PaywallModel(
+            storeKitService: StubStoreKitService(),
+            apiClient: MockAPIClient()
+        )
+        model.inject(
+            productInfos: [],
+            status: .notSubscribed,
+            serverBenefits: ["Benefit A", "Benefit B"]
+        )
+        #expect(model.serverBenefits == ["Benefit A", "Benefit B"])
+    }
 }
 
 // MARK: - Test stubs
+
+/// Records all `track(_:)` calls for assertion in tests.
+actor SpyAnalyticsClient: AnalyticsClient {
+    private(set) var trackedEvents: [AnalyticsEvent] = []
+
+    nonisolated func track(_ event: AnalyticsEvent) {
+        Task { await self.append(event) }
+    }
+
+    nonisolated func beacon(_ name: String, properties: [String: String]) {}
+
+    func flush() async {}
+
+    private func append(_ event: AnalyticsEvent) {
+        trackedEvents.append(event)
+    }
+}
 
 /// A minimal actor conforming to `StoreKitServicing` for use in unit tests.
 private actor StubStoreKitService: StoreKitServicing {
