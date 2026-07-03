@@ -31,4 +31,39 @@ public protocol SocialRepository: Sendable {
     ///
     /// Maps to `GET /book/users/{userId}/profile`.
     func getPublicProfile(userId: String) async throws -> PublicProfile
+
+    // MARK: - Reading pairs
+
+    /// Returns all active and pending reading pairs for the authenticated user.
+    ///
+    /// Maps to `GET /book/me/pairs`.
+    func getPairs() async throws -> [ReadingPair]
+
+    /// Creates a new invite and returns its code + shareable Universal Link.
+    ///
+    /// Maps to `POST /book/me/pairs/invite`.
+    func createInvite() async throws -> PairInvite
+
+    /// Accepts a reading-pair invite by code.
+    ///
+    /// Maps to `POST /book/me/pairs/accept/{code}`.
+    /// - Returns: The newly created `ReadingPair`.
+    /// - Throws: `.notFound` for an unknown code, `.server` for expired codes.
+    func acceptInvite(code: String) async throws -> ReadingPair
+
+    /// Fetches a single pair by the partner's user ID.
+    ///
+    /// Maps to `GET /book/me/pairs/{partnerId}`.
+    func getPair(partnerId: String) async throws -> ReadingPair
+
+    /// Ends the reading partnership with the given partner (server-side delete).
+    ///
+    /// Maps to `DELETE /book/me/pairs/{partnerId}`.
+    func deletePair(partnerId: String) async throws
+
+    /// Sends a nudge notification to the partner.
+    ///
+    /// Maps to `POST /book/me/pairs/{partnerId}/nudge`.
+    /// - Throws: `.rateLimited` when the server enforces a cooldown.
+    func nudgePartner(partnerId: String) async throws
 }

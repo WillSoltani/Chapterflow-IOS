@@ -11,20 +11,29 @@ public actor FakeSocialRepository: SocialRepository {
     private var profile: OwnProfile
     private var badges: [BadgeItem]
     private var publicProfiles: [String: PublicProfile]
+    private var pairs: [ReadingPair]
     private let forcedError: AppError?
 
     /// Every `UpdateSettingsBody` that `updateSettings` has been called with, in order.
     public private(set) var recordedUpdates: [UpdateSettingsBody] = []
 
+    /// Partner IDs that have been nudged (for test assertions).
+    public private(set) var recordedNudges: [String] = []
+
+    /// Partner IDs that have been deleted (for test assertions).
+    public private(set) var recordedDeletes: [String] = []
+
     public init(
         profile: OwnProfile = OwnProfile.preview,
         badges: [BadgeItem] = BadgeItem.previewList,
         publicProfiles: [String: PublicProfile] = [:],
+        pairs: [ReadingPair] = [],
         error: AppError? = nil
     ) {
         self.profile = profile
         self.badges = badges
         self.publicProfiles = publicProfiles
+        self.pairs = pairs
         self.forcedError = error
     }
 
@@ -66,5 +75,44 @@ public actor FakeSocialRepository: SocialRepository {
     public func getPublicProfile(userId: String) async throws -> PublicProfile {
         if let err = forcedError { throw err }
         return publicProfiles[userId] ?? PublicProfile.preview(userId: userId)
+    }
+
+    // MARK: - Reading pairs
+
+    public func getPairs() async throws -> [ReadingPair] {
+        if let err = forcedError { throw err }
+        return pairs
+    }
+
+    public func createInvite() async throws -> PairInvite {
+        if let err = forcedError { throw err }
+        return PairInvite(
+            code: "FAKE-CODE-1234",
+            inviteLink: "https://chapterflow.app/pair/accept/FAKE-CODE-1234",
+            expiresAt: "2026-07-10T00:00:00Z"
+        )
+    }
+
+    public func acceptInvite(code: String) async throws -> ReadingPair {
+        if let err = forcedError { throw err }
+        let newPair = ReadingPair.preview(partnerId: "accepted-\(code)")
+        pairs.append(newPair)
+        return newPair
+    }
+
+    public func getPair(partnerId: String) async throws -> ReadingPair {
+        if let err = forcedError { throw err }
+        return pairs.first { $0.partnerId == partnerId } ?? .preview(partnerId: partnerId)
+    }
+
+    public func deletePair(partnerId: String) async throws {
+        if let err = forcedError { throw err }
+        recordedDeletes.append(partnerId)
+        pairs.removeAll { $0.partnerId == partnerId }
+    }
+
+    public func nudgePartner(partnerId: String) async throws {
+        if let err = forcedError { throw err }
+        recordedNudges.append(partnerId)
     }
 }

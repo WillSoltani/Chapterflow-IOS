@@ -6,14 +6,31 @@ import CoreKit
 /// The authenticated user's own profile tab.
 ///
 /// Shows display name, avatar, tier, engagement stats, equipped cosmetics,
-/// a badge preview, and an "Edit Profile" entry point.
+/// a badge preview, an "Edit Profile" entry point, and a navigation link to
+/// the Reading Partners (pairs) screen.
+///
+/// - Parameter pendingPairAcceptCode: A binding set by ``AppModel`` when the app
+///   opens via a `chapterflow://pair/accept/{code}` Universal Link. Non-empty
+///   triggers the ``AcceptInviteView`` sheet immediately.
 public struct ProfileView: View {
 
     @State private var model: ProfileModel
     @State private var editProfilePresented = false
 
-    public init(repository: any SocialRepository) {
+    /// Repository stored separately so it can be passed to child views.
+    private let repository: any SocialRepository
+
+    /// Non-empty when a pair deep link was received; drives the accept sheet.
+    @Binding private var pendingPairAcceptCode: String
+
+    /// Lightweight model for the deep-link accept flow (separate from PairsView's model).
+    @State private var deepLinkPairsModel: PairsModel
+
+    public init(repository: any SocialRepository, pendingPairAcceptCode: Binding<String> = .constant("")) {
+        self.repository = repository
         _model = State(initialValue: ProfileModel(repository: repository))
+        _deepLinkPairsModel = State(initialValue: PairsModel(repository: repository))
+        _pendingPairAcceptCode = pendingPairAcceptCode
     }
 
     public var body: some View {
@@ -27,8 +44,23 @@ public struct ProfileView: View {
                 .sheet(isPresented: $editProfilePresented) {
                     EditProfileView(model: model)
                 }
+                .sheet(isPresented: showDeepLinkAcceptSheet) {
+                    NavigationStack {
+                        AcceptInviteView(model: deepLinkPairsModel, initialCode: pendingPairAcceptCode)
+                            .onDisappear { pendingPairAcceptCode = "" }
+                    }
+                }
         }
         .task { await model.load() }
+    }
+
+    // MARK: - Deep-link sheet binding
+
+    private var showDeepLinkAcceptSheet: Binding<Bool> {
+        Binding(
+            get: { !pendingPairAcceptCode.isEmpty },
+            set: { if !$0 { pendingPairAcceptCode = "" } }
+        )
     }
 
     // MARK: - Content states
@@ -67,6 +99,7 @@ public struct ProfileView: View {
                 Divider()
                     .padding(.horizontal, .cfSpacing16)
 
+                readingPartnersRow
                 editRow
             }
             .padding(.horizontal, .cfSpacing16)
@@ -198,6 +231,31 @@ public struct ProfileView: View {
                 badgeCount: profile.badgeCount
             )
         }
+    }
+
+    // MARK: - Reading partners row
+
+    private var readingPartnersRow: some View {
+        NavigationLink {
+            PairsView(repository: repository)
+        } label: {
+            HStack {
+                Image(systemName: "person.2")
+                    .foregroundStyle(Color.cfAccent)
+                    .frame(width: .cfIconSmall)
+                Text("Reading Partners")
+                    .font(.cfBody)
+                    .foregroundStyle(Color.cfLabel)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.cfCaption)
+                    .foregroundStyle(Color.cfTertiaryLabel)
+            }
+            .padding(.cfSpacing16)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: .cfRadius16))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Reading Partners")
     }
 
     // MARK: - Edit profile row

@@ -444,4 +444,39 @@ public enum Endpoints {
             )
         )
     }
+
+    // MARK: - Reading Pairs
+
+    /// `GET /book/me/pairs` → `{ pairs: [...] }`.
+    public static func getPairs() -> Endpoint {
+        Endpoint(method: .get, path: "/book/me/pairs", requiresAuth: true)
+    }
+
+    /// `POST /book/me/pairs/invite` → `{ code, inviteLink, expiresAt }`.
+    public static func createPairInvite() throws -> Endpoint {
+        struct Body: Encodable {}
+        return try Endpoint(method: .post, path: "/book/me/pairs/invite", body: Body())
+    }
+
+    /// `POST /book/me/pairs/accept/{code}` → `{ pair }`.
+    public static func acceptPairInvite(code: String) throws -> Endpoint {
+        struct Body: Encodable {}
+        return try Endpoint(method: .post, path: "/book/me/pairs/accept/\(code)", body: Body())
+    }
+
+    /// `GET /book/me/pairs/{partnerId}` → `{ pair }`.
+    public static func getPair(partnerId: String) -> Endpoint {
+        Endpoint(method: .get, path: "/book/me/pairs/\(partnerId)", requiresAuth: true)
+    }
+
+    /// `DELETE /book/me/pairs/{partnerId}` — end the partnership.
+    public static func deletePair(partnerId: String) -> Endpoint {
+        Endpoint(method: .delete, path: "/book/me/pairs/\(partnerId)", requiresAuth: true)
+    }
+
+    /// `POST /book/me/pairs/{partnerId}/nudge` — send a nudge notification.
+    public static func nudgePartner(partnerId: String) throws -> Endpoint {
+        struct Body: Encodable {}
+        return try Endpoint(method: .post, path: "/book/me/pairs/\(partnerId)/nudge", body: Body())
+    }
 }
