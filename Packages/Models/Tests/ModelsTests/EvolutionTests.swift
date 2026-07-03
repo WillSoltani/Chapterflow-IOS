@@ -461,6 +461,62 @@ struct ShopResponseLossyTests {
     }
 }
 
+// MARK: - TierKey tolerance
+
+@Suite("TierKey server evolution")
+struct TierKeyEvolutionTests {
+
+    @Test("known tiers decode correctly from JSON")
+    func knownTiersDecodeCorrectly() throws {
+        let data = json(#"["reader","analyst","synthesizer","polymath","luminary"]"#)
+        let tiers = try JSONDecoder.chapterFlow.decode([TierKey].self, from: data)
+        #expect(tiers.count == 5)
+        #expect(tiers[0] == .reader)
+        #expect(tiers[1] == .analyst)
+        #expect(tiers[2] == .synthesizer)
+        #expect(tiers[3] == .polymath)
+        #expect(tiers[4] == .luminary)
+    }
+
+    @Test("unknown tier decodes to .unknown, not throws")
+    func unknownTierDecodesGracefully() throws {
+        let data = json(#"["analyst","oracle","luminary"]"#)
+        let tiers = try JSONDecoder.chapterFlow.decode([TierKey].self, from: data)
+        #expect(tiers.count == 3)
+        #expect(tiers[0] == .analyst)
+        #expect(tiers[1] == .unknown("oracle"))
+        #expect(tiers[2] == .luminary)
+    }
+
+    @Test("unknown TierKey round-trips through rawValue")
+    func unknownRawValue() {
+        let key = TierKey(rawValue: "sage")
+        #expect(key == .unknown("sage"))
+        #expect(key.rawValue == "sage")
+    }
+
+    @Test("allCases excludes .unknown")
+    func allCasesKnownOnly() {
+        let hasUnknown = TierKey.allCases.contains {
+            if case .unknown = $0 { return true }
+            return false
+        }
+        #expect(!hasUnknown)
+        #expect(TierKey.allCases.count == 5)
+    }
+
+    @Test("TierResponse with unknown tier decodes without crashing")
+    func tierResponseWithUnknownTierDecodes() throws {
+        let data = json(#"{"tier":{"currentTier":"oracle","nextTier":null,"overallProgress":0.9,"recentlyPromoted":false,"previousTier":null}}"#)
+        let resp = try JSONDecoder.chapterFlow.decode(TierResponse.self, from: data)
+        if case .unknown(let raw) = resp.tier.currentTier {
+            #expect(raw == "oracle")
+        } else {
+            Issue.record("Expected .unknown tier from unrecognised tier name")
+        }
+    }
+}
+
 // MARK: - ISO-8601 date tolerance
 
 @Suite("Date decoding tolerance")

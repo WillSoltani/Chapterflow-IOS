@@ -221,6 +221,16 @@ public enum Endpoints {
         Endpoint(method: .get, path: "/book/me/badges", requiresAuth: true)
     }
 
+    /// `POST /book/me/tier` → `{ tier: { ... } }` — compute and return the user's current tier state.
+    ///
+    /// The server evaluates the user's metrics (loops completed, average quiz score,
+    /// categories explored) and returns the full tier breakdown. The response includes
+    /// `recentlyPromoted: true` when the user just advanced a tier.
+    public static func postTier() throws -> Endpoint {
+        struct Body: Encodable {}
+        return try Endpoint(method: .post, path: "/book/me/tier", body: Body())
+    }
+
     // MARK: - Social
 
     /// `GET /book/me/profile` → `{ profile: OwnProfile }`.

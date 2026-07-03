@@ -30,6 +30,11 @@
 /// - ``EngagementRepository.fetchShop(forceRefresh:)`` — shop catalogue
 /// - ``EngagementRepository.redeemItem(itemId:action:)`` — buy or equip (server-authoritative)
 /// - ``EngagementRepository.currentEquippedCosmetics`` — active theme/frame for Profile and Reader
+///
+/// Public API added in P5.5:
+/// - ``TierView`` — current tier, per-metric progress (loops/score/categories), tier-ladder mini-map
+/// - ``TierModel`` — `@Observable` view model; fires a one-per-tier `.tierUp` celebration
+/// - ``EngagementRepository.fetchTier(forceRefresh:)`` — detailed tier state from `POST /book/me/tier`
 public enum EngagementFeature {
     public static let moduleName = "EngagementFeature"
 }
