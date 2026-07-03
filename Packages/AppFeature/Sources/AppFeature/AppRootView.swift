@@ -103,6 +103,9 @@ public struct AppRootView: View {
     /// Five-tab shell using the iOS 18 `Tab { }` API with `.sidebarAdaptable`
     /// so iPad gets a collapsible sidebar and iPhone/Mac get a native tab bar
     /// (which receives the Liquid Glass treatment automatically on iOS/macOS 26+).
+    ///
+    /// `MiniPlayerBar` floats above the Liquid Glass tab bar via `.safeAreaInset(edge: .bottom)`
+    /// and persists while the user navigates between tabs and pushes/pops screens.
     private var mainTabView: some View {
         TabView(selection: $model.selectedTab) {
             Tab("Home", systemImage: "house", value: AppTab.home) {
@@ -123,6 +126,21 @@ public struct AppRootView: View {
         }
         .tabViewStyle(.sidebarAdaptable)
         .tint(.cfAccent)
+        // Inject the shared player model so any descendant view can access it
+        // via @Environment(\.audioPlayerModel).
+        .environment(\.audioPlayerModel, model.audioPlayerModel)
+        // Float the mini-player above the Liquid Glass tab bar.
+        // Hidden with zero height when nothing is playing — no gap appears.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if model.audioPlayerModel.hasActiveItem {
+                MiniPlayerBar(model: model.audioPlayerModel)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .animation(
+                        .spring(response: 0.4, dampingFraction: 0.85),
+                        value: model.audioPlayerModel.hasActiveItem
+                    )
+            }
+        }
     }
 
     // MARK: - Tab content

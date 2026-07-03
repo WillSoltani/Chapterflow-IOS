@@ -24,6 +24,10 @@ public struct BookDetailView: View {
 
     private let aiRepository: (any AIRepository)?
 
+    /// Shared audio player injected from the composition root.
+    /// `nil` in previews that don't inject it — listen affordance hides gracefully.
+    @Environment(\.audioPlayerModel) private var audioPlayerModel
+
     public init(
         bookId: String,
         repository: any BookDetailRepository,
@@ -87,6 +91,12 @@ public struct BookDetailView: View {
                 }
                 depthToneRow
                     .padding(.top, .cfSpacing16)
+                // TODO(P6.2): The listen button below is the entry point for chapter audio narration.
+                // In a future task (P2.x), this should be surfaced per-chapter in the reader toolbar
+                // and in ChapterRowView so any unlocked chapter can be listened to directly.
+                if audioPlayerModel != nil {
+                    listenRow
+                }
                 chapterListSection
                     .padding(.top, .cfSpacing8)
             }
@@ -259,6 +269,61 @@ public struct BookDetailView: View {
             .buttonStyle(.plain)
             Divider().padding(.leading, .cfSpacing16)
         }
+    }
+
+    // MARK: - Listen row
+
+    /// A "Listen to First Chapter" affordance that starts audio narration via the
+    /// shared `AudioPlayerModel`. Visible only when the model is injected from the shell.
+    ///
+    /// Tapping loads the first unlocked chapter's audio URL and begins playback;
+    /// the persistent `MiniPlayerBar` in `AppRootView` then surfaces the session.
+    private var listenRow: some View {
+        VStack(spacing: 0) {
+            Button {
+                guard let manifest = model.manifest,
+                      let audioPlayer = audioPlayerModel else { return }
+                // Start from the first unlocked chapter; fall back to chapter 1 if
+                // the book hasn't been started yet (audio is always available).
+                let firstChapter = manifest.chapters
+                    .first { model.isUnlocked($0) } ?? manifest.chapters.first
+                guard let chapter = firstChapter else { return }
+                let request = AudioPlaybackRequest(
+                    bookId: manifest.bookId,
+                    bookTitle: manifest.title,
+                    bookAuthor: manifest.author,
+                    chapterNumber: chapter.number,
+                    chapterTitle: chapter.title,
+                    cover: manifest.cover,
+                    totalChapters: manifest.chapters.count
+                )
+                Task { @MainActor in
+                    await audioPlayer.loadAndPlay(request)
+                }
+            } label: {
+                HStack {
+                    Label("Listen to Chapter \(listenChapterNumber)", systemImage: "headphones")
+                        .font(.cfSubheadline)
+                        .foregroundStyle(Color.cfLabel)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.cfCaption)
+                        .foregroundStyle(Color.cfTertiaryLabel)
+                }
+                .padding(.horizontal, .cfSpacing16)
+                .padding(.vertical, .cfSpacing12)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Listen to chapter \(listenChapterNumber) audio narration")
+            .accessibilityHint("Starts audio playback in the background")
+            Divider().padding(.leading, .cfSpacing16)
+        }
+    }
+
+    private var listenChapterNumber: Int {
+        guard let manifest = model.manifest else { return 1 }
+        return (manifest.chapters.first { model.isUnlocked($0) } ?? manifest.chapters.first)?.number ?? 1
     }
 
     // MARK: - Chapter list

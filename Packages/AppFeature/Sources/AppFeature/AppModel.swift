@@ -15,6 +15,7 @@ import AIFeature
 /// - Track the user's display name resolved from the Cognito id_token JWT.
 /// - Own the currently selected tab and per-tab `Router` navigation stacks.
 /// - Vend the shared `LibraryRepository` consumed by `HomeView` and `LibraryView`.
+/// - Own the shared `AudioPlayerModel` (single instance, survives tab changes).
 /// - Parse incoming deep-link URLs and route them to the correct tab.
 @Observable
 @MainActor
@@ -55,10 +56,18 @@ public final class AppModel {
 
     /// Shared repository for all of Lane S — profile, pairs, gifts, reflections, referrals.
     public let socialRepository: any SocialRepository
+
     // MARK: - AI
 
     /// Shared repository for the "Ask the book" feature.
     public let aiRepository: any AIRepository
+
+    /// Shared audio player model — the single, long-lived player that persists
+    /// across tab switches and navigation stack pushes/pops.
+    ///
+    /// Injected into the view hierarchy via `.environment(\.audioPlayerModel, audioPlayerModel)`
+    /// so any view can start or observe playback without prop-drilling.
+    public let audioPlayerModel: AudioPlayerModel
 
     // MARK: - Init
 
@@ -74,6 +83,7 @@ public final class AppModel {
         self.bookDetailRepository = LiveBookDetailRepository(client: client)
         self.socialRepository = LiveSocialRepository(client: client)
         self.aiRepository = LiveAIRepository(client: client)
+        self.audioPlayerModel = AudioPlayerModel(repository: LiveAudioRepository(client: client))
 
         #if os(iOS)
         sm.registerBackgroundRefresh()
@@ -89,9 +99,12 @@ public final class AppModel {
 
     // MARK: - Lifecycle
 
-    /// Configures Amplify and starts the auth-events listener. Call once at launch.
+    /// Configures Amplify, activates the AVAudioSession, and wires up lock-screen
+    /// controls. Call once at app launch.
     public func configure() throws {
         try session.configure()
+        audioPlayerModel.activateAudioSession()
+        audioPlayerModel.setupRemoteCommands()
     }
 
     // MARK: - Display name

@@ -241,6 +241,13 @@ public enum Endpoints {
         Endpoint(method: .get, path: "/book/books/\(bookId)/concept-graph", requiresAuth: true)
     }
 
+    /// `GET /book/books/{bookId}/chapters/{n}/audio` → `{ url }`.
+    ///
+    /// Returns a signed, time-limited S3 URL for the chapter's audio narration file.
+    public static func getChapterAudio(bookId: String, chapterNumber: Int) -> Endpoint {
+        Endpoint(method: .get, path: "/book/books/\(bookId)/chapters/\(chapterNumber)/audio", requiresAuth: true)
+    }
+
     /// `POST /book/books/{bookId}/ask` — AI Q&A (daily-limited).
     ///
     /// Returns `{ answer, citations, remainingQuestions? }`.
