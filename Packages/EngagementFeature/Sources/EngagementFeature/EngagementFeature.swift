@@ -10,6 +10,11 @@
 /// - ``CelebrationEvent`` — typed reward moments features enqueue
 /// - ``CelebrationPresenter`` — single source of truth; serialises a queue into one sequence
 /// - ``CelebrationView`` — full-screen overlay; mount once at a feature root
+///
+/// Public API added in P5.2:
+/// - ``StreakView`` — 30-day heatmap, shields, milestone ladder, at-risk banner
+/// - ``StreakModel`` — `@Observable` view model; fires one-per-day streak celebrations
+/// - ``HeatmapDay`` — a single day entry for the heatmap grid
 public enum EngagementFeature {
     public static let moduleName = "EngagementFeature"
 }
