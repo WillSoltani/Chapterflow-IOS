@@ -40,6 +40,12 @@ public final class AppModel {
 
     public var selectedTab: AppTab = .home
 
+    // MARK: - Gift deep-link state
+
+    /// Set when a `chapterflow://gift/{code}` deep link lands; cleared when the
+    /// claim sheet is dismissed. `AppRootView` watches this and presents the sheet.
+    public var pendingGiftCode: String?
+
     // MARK: - Per-tab routers
 
     public let homeRouter     = Router()
@@ -227,8 +233,9 @@ public final class AppModel {
         case .pairAccept(let code):
             pendingPairAcceptCode = code
             selectedTab = .profile
-        case .gift:
+        case .gift(let code):
             selectedTab = .profile
+            pendingGiftCode = code
         case .unknown:
             break
         }

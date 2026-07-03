@@ -193,6 +193,40 @@ extension ReadingPair {
     }
 }
 
+// MARK: - Gift preview fixtures
+
+extension Gift {
+    /// A pending gift ready to be claimed.
+    public static let previewPending = Gift(
+        code: "GIFT0001",
+        giftType: "pro_week",
+        senderDisplayName: "Alice Reader",
+        status: .pending,
+        createdAt: "2026-07-03T10:00:00Z",
+        expiresAt: "2026-07-10T10:00:00Z"
+    )
+
+    /// A gift that has already been redeemed.
+    public static let previewClaimed = Gift(
+        code: "CLMD0001",
+        giftType: "pro_week",
+        senderDisplayName: "Bob",
+        status: .claimed,
+        createdAt: "2026-06-01T09:00:00Z",
+        expiresAt: nil
+    )
+
+    /// A gift that has expired.
+    public static let previewExpired = Gift(
+        code: "EXPD0001",
+        giftType: "pro_week",
+        senderDisplayName: nil,
+        status: .expired,
+        createdAt: "2026-06-01T09:00:00Z",
+        expiresAt: "2026-06-08T09:00:00Z"
+    )
+}
+
 // MARK: - FakeSocialRepository preview helpers
 
 extension FakeSocialRepository {
@@ -202,6 +236,24 @@ extension FakeSocialRepository {
             profile: .preview,
             badges: BadgeItem.previewList,
             publicProfiles: ["user-partner": .preview()]
+        )
+    }
+
+    /// Repository with a pending gift for claim-flow previews.
+    public static var withPendingGift: FakeSocialRepository {
+        FakeSocialRepository(
+            profile: .preview,
+            badges: BadgeItem.previewList,
+            gifts: ["GIFT0001": .previewPending]
+        )
+    }
+
+    /// Repository with an already-claimed gift (triggers the "already redeemed" error).
+    public static var withClaimedGift: FakeSocialRepository {
+        FakeSocialRepository(
+            profile: .preview,
+            badges: BadgeItem.previewList,
+            gifts: ["CLMD0001": .previewClaimed]
         )
     }
 

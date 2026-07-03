@@ -75,4 +75,23 @@ public actor LiveSocialRepository: SocialRepository {
         let endpoint = try Endpoints.nudgePartner(partnerId: partnerId)
         let _: PairAckResponse = try await client.send(endpoint)
     }
+
+    // MARK: - Gifts
+
+    public func getGift(code: String) async throws -> Gift {
+        let response: GiftPreviewResponse = try await client.send(Endpoints.getGift(code: code))
+        return response.gift
+    }
+
+    public func claimGift(code: String) async throws -> GiftClaimResult {
+        let endpoint = try Endpoints.claimGift(code: code)
+        let response: GiftClaimResponse = try await client.send(endpoint)
+        return GiftClaimResult(gift: response.gift, message: response.message)
+    }
+
+    public func createGift(giftType: String) async throws -> Gift {
+        let endpoint = try Endpoints.createGift(giftType: giftType)
+        let response: CreateGiftResponse = try await client.send(endpoint)
+        return response.gift
+    }
 }
