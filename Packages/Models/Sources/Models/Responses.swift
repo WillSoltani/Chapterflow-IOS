@@ -106,3 +106,41 @@ public struct BookStateResponseEnvelope: Codable, Sendable {
     public let state: BookUserBookState
     public let applicationStates: [String: ChapterApplicationState]?
 }
+
+// MARK: - Flow-Points Shop
+
+/// Response wrapper for `GET /book/me/shop`.
+///
+/// Decodes `items` lossily so one malformed shop item never corrupts the list.
+public struct ShopResponse: Codable, Sendable {
+    public let items: [ShopItem]
+
+    public init(items: [ShopItem]) {
+        self.items = items
+    }
+
+    private enum CodingKeys: String, CodingKey { case items }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.items = try container.decodeLossy(ShopItem.self, forKey: .items)
+    }
+}
+
+/// Response from `POST /book/me/flow-points/redeem`.
+///
+/// The server is authoritative: reflect this state in the UI, never grant locally.
+public struct RedeemFlowPointsResponse: Codable, Sendable {
+    /// Updated balance after the redemption.
+    public let balance: Int
+    /// The item that was redeemed/equipped, reflecting its new `isOwned` and `isEquipped` state.
+    public let item: ShopItem?
+    /// Updated equipped cosmetics after an equip action.
+    public let equippedCosmetics: EquippedCosmetics?
+
+    public init(balance: Int, item: ShopItem?, equippedCosmetics: EquippedCosmetics?) {
+        self.balance = balance
+        self.item = item
+        self.equippedCosmetics = equippedCosmetics
+    }
+}

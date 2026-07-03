@@ -190,9 +190,30 @@ public enum Endpoints {
         Endpoint(method: .get, path: "/book/me/streak", requiresAuth: true)
     }
 
-    /// `GET /book/me/flow-points` → `{ balance: Int }`.
+    /// `GET /book/me/flow-points` → `{ balance, ledger?, equippedCosmetics? }`.
     public static func getFlowPoints() -> Endpoint {
         Endpoint(method: .get, path: "/book/me/flow-points", requiresAuth: true)
+    }
+
+    /// `GET /book/me/shop` → `{ items: [...] }` — rewards and cosmetics available to purchase.
+    public static func getShop() -> Endpoint {
+        Endpoint(method: .get, path: "/book/me/shop", requiresAuth: true)
+    }
+
+    /// `POST /book/me/flow-points/redeem` → `{ balance, item?, equippedCosmetics? }`.
+    ///
+    /// - Parameter action: `nil`/omitted to buy the item (costs flow points); `"equip"` to
+    ///   activate an already-owned cosmetic without spending points.
+    public static func redeemFlowPoints(itemId: String, action: String? = nil) throws -> Endpoint {
+        struct Body: Encodable {
+            let itemId: String
+            let action: String?
+        }
+        return try Endpoint(
+            method: .post,
+            path: "/book/me/flow-points/redeem",
+            body: Body(itemId: itemId, action: action)
+        )
     }
 
     /// `GET /book/me/badges` → `{ badges: [...] }`.

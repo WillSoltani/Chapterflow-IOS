@@ -309,6 +309,158 @@ struct EdgeTypeEvolutionTests {
     }
 }
 
+// MARK: - FlowLedgerEntryType tolerance
+
+@Suite("FlowLedgerEntryType server evolution")
+struct FlowLedgerEntryTypeEvolutionTests {
+
+    private func entry(type typeStr: String) -> Data {
+        Data(#"{"id":"e1","type":"\#(typeStr)","amount":50,"description":"Test","createdAt":"2024-01-01T00:00:00Z"}"#.utf8)
+    }
+
+    @Test("unknown type decodes to .unknown, not throws")
+    func unknownType() throws {
+        let e = try JSONDecoder.chapterFlow.decode(FlowLedgerEntry.self, from: entry(type: "bonus_multiplier"))
+        #expect(e.type == .unknown("bonus_multiplier"))
+    }
+
+    @Test("known type earn_daily decodes correctly")
+    func knownEarnDaily() throws {
+        let e = try JSONDecoder.chapterFlow.decode(FlowLedgerEntry.self, from: entry(type: "earn_daily"))
+        #expect(e.type == .earnDaily)
+    }
+
+    @Test("known type redeem decodes correctly")
+    func knownRedeem() throws {
+        let e = try JSONDecoder.chapterFlow.decode(FlowLedgerEntry.self, from: entry(type: "redeem"))
+        #expect(e.type == .redeem)
+    }
+
+    @Test("allCases excludes .unknown")
+    func allCasesKnownOnly() {
+        let hasUnknown = FlowLedgerEntryType.allCases.contains {
+            if case .unknown = $0 { return true }
+            return false
+        }
+        #expect(!hasUnknown)
+        #expect(FlowLedgerEntryType.allCases.count == 6)
+    }
+}
+
+// MARK: - ShopItemKind tolerance
+
+@Suite("ShopItemKind server evolution")
+struct ShopItemKindEvolutionTests {
+
+    private func item(kind kindStr: String) -> Data {
+        Data(#"{"id":"i1","kind":"\#(kindStr)","name":"Test","description":"Desc","cost":100,"isOwned":false,"isEquipped":null,"previewColor":null}"#.utf8)
+    }
+
+    @Test("unknown kind decodes to .unknown, not throws")
+    func unknownKind() throws {
+        let i = try JSONDecoder.chapterFlow.decode(ShopItem.self, from: item(kind: "avatar_border"))
+        #expect(i.kind == .unknown("avatar_border"))
+    }
+
+    @Test("unknown kind isCosmetic returns false (safe fallback)")
+    func unknownIsCosmetic() {
+        #expect(ShopItemKind.unknown("x").isCosmetic == false)
+    }
+
+    @Test("known kinds decode correctly")
+    func knownKinds() throws {
+        let bonus = try JSONDecoder.chapterFlow.decode(ShopItem.self, from: item(kind: "bonus_book_unlock"))
+        #expect(bonus.kind == .bonusBookUnlock)
+        #expect(bonus.kind.isCosmetic == false)
+
+        let theme = try JSONDecoder.chapterFlow.decode(ShopItem.self, from: item(kind: "theme"))
+        #expect(theme.kind == .theme)
+        #expect(theme.kind.isCosmetic == true)
+    }
+
+    @Test("allCases excludes .unknown")
+    func allCasesKnownOnly() {
+        let hasUnknown = ShopItemKind.allCases.contains {
+            if case .unknown = $0 { return true }
+            return false
+        }
+        #expect(!hasUnknown)
+        #expect(ShopItemKind.allCases.count == 6)
+    }
+}
+
+// MARK: - FlowPointsResponse tolerant decoding
+
+@Suite("FlowPointsResponse tolerant decoding")
+struct FlowPointsResponseTests {
+
+    @Test("balance-only response decodes (ledger absent)")
+    func balanceOnly() throws {
+        let data = Data(#"{"balance":1250}"#.utf8)
+        let resp = try JSONDecoder.chapterFlow.decode(FlowPointsResponse.self, from: data)
+        #expect(resp.balance == 1250)
+        #expect(resp.ledger == nil)
+        #expect(resp.equippedCosmetics == nil)
+    }
+
+    @Test("response with ledger decodes lossily")
+    func withLedger() throws {
+        let data = Data(#"""
+        {
+            "balance": 800,
+            "ledger": [
+                {"id":"e1","type":"earn_daily","amount":50,"description":"Daily","createdAt":"2024-01-01T00:00:00Z"},
+                null,
+                {"id":"e2","type":"redeem","amount":-100,"description":"Shop","createdAt":"2024-01-02T00:00:00Z"}
+            ]
+        }
+        """#.utf8)
+        let resp = try JSONDecoder.chapterFlow.decode(FlowPointsResponse.self, from: data)
+        #expect(resp.balance == 800)
+        // null element dropped; 2 valid entries survive
+        #expect(resp.ledger?.count == 2)
+    }
+
+    @Test("unknown ledger entry type survives lossy decode")
+    func unknownLedgerEntryType() throws {
+        let data = Data(#"""
+        {
+            "balance": 500,
+            "ledger": [
+                {"id":"e1","type":"future_bonus","amount":200,"description":"New event","createdAt":"2024-01-01T00:00:00Z"}
+            ]
+        }
+        """#.utf8)
+        let resp = try JSONDecoder.chapterFlow.decode(FlowPointsResponse.self, from: data)
+        #expect(resp.ledger?.count == 1)
+        #expect(resp.ledger?.first?.type == .unknown("future_bonus"))
+    }
+}
+
+// MARK: - ShopResponse lossy decoding
+
+@Suite("ShopResponse lossy decoding")
+struct ShopResponseLossyTests {
+
+    private let goodItem = #"{"id":"i1","kind":"theme","name":"Dark","description":"Dark theme","cost":500,"isOwned":false,"isEquipped":null,"previewColor":null}"#
+
+    @Test("null element in items is dropped; rest survive")
+    func nullItemDropped() throws {
+        let data = Data(#"{"items":[\#(goodItem),null,\#(goodItem)]}"#.utf8)
+        let resp = try JSONDecoder.chapterFlow.decode(ShopResponse.self, from: data)
+        #expect(resp.items.count == 2)
+    }
+
+    @Test("item with unknown kind survives in the list")
+    func unknownKindSurvives() throws {
+        let futureItem = #"{"id":"i2","kind":"holographic_skin","name":"Holo","description":"Future","cost":999,"isOwned":false,"isEquipped":null,"previewColor":null}"#
+        let data = Data(#"{"items":[\#(goodItem),\#(futureItem)]}"#.utf8)
+        let resp = try JSONDecoder.chapterFlow.decode(ShopResponse.self, from: data)
+        #expect(resp.items.count == 2)
+        #expect(resp.items[1].kind == .unknown("holographic_skin"))
+    }
+}
+
 // MARK: - ISO-8601 date tolerance
 
 @Suite("Date decoding tolerance")

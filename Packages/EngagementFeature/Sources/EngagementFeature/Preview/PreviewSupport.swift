@@ -139,6 +139,36 @@ extension Array where Element == BadgeItem {
     ]
 }
 
+// MARK: - Flow Points fixtures
+
+extension Array where Element == FlowLedgerEntry {
+    static let preview: [FlowLedgerEntry] = [
+        FlowLedgerEntry(id: "le-1", type: .earnDaily, amount: 50, description: "Daily reading goal", createdAt: "2026-07-03T08:00:00Z"),
+        FlowLedgerEntry(id: "le-2", type: .earnQuiz, amount: 100, description: "Quiz passed: Atomic Habits Ch. 7", createdAt: "2026-07-02T20:15:00Z"),
+        FlowLedgerEntry(id: "le-3", type: .earnStreak, amount: 75, description: "14-day streak bonus", createdAt: "2026-07-02T08:00:00Z"),
+        FlowLedgerEntry(id: "le-4", type: .redeem, amount: -250, description: "Purchased: Bonus Book Unlock", createdAt: "2026-06-30T14:22:00Z"),
+        FlowLedgerEntry(id: "le-5", type: .earnMilestone, amount: 200, description: "Milestone: 7 books started", createdAt: "2026-06-28T09:00:00Z"),
+        FlowLedgerEntry(id: "le-6", type: .earnDaily, amount: 50, description: "Daily reading goal", createdAt: "2026-06-27T08:00:00Z"),
+    ]
+}
+
+extension Array where Element == ShopItem {
+    static let previewRewards: [ShopItem] = [
+        ShopItem(id: "shop-1", kind: .bonusBookUnlock, name: "Bonus Book Unlock", description: "Add an extra book to your library beyond your free tier.", cost: 250, isOwned: false, isEquipped: nil, previewColor: nil),
+        ShopItem(id: "shop-2", kind: .proPass7d, name: "7-Day Pro Pass", description: "Unlock all Pro features for one week.", cost: 1_500, isOwned: false, isEquipped: nil, previewColor: nil),
+        ShopItem(id: "shop-3", kind: .proPass30d, name: "30-Day Pro Pass", description: "Unlock all Pro features for a full month.", cost: 5_000, isOwned: false, isEquipped: nil, previewColor: nil),
+    ]
+
+    static let previewCosmetics: [ShopItem] = [
+        ShopItem(id: "theme-1", kind: .theme, name: "Midnight Blue", description: "Deep navy reading theme for late-night sessions.", cost: 500, isOwned: true, isEquipped: true, previewColor: "#1A3B6E"),
+        ShopItem(id: "theme-2", kind: .theme, name: "Warm Sepia", description: "Classic sepia tones easy on the eyes.", cost: 400, isOwned: true, isEquipped: false, previewColor: "#C8A77E"),
+        ShopItem(id: "frame-1", kind: .frame, name: "Gold Frame", description: "Elegant gold border for your profile.", cost: 300, isOwned: false, isEquipped: nil, previewColor: "#FFD700"),
+        ShopItem(id: "season-1", kind: .seasonal, name: "Summer Splash", description: "Limited-time summer theme. ☀️", cost: 750, isOwned: false, isEquipped: nil, previewColor: "#FF8C00"),
+    ]
+
+    static let previewShopItems: [ShopItem] = previewRewards + previewCosmetics
+}
+
 // MARK: - Preview EngagementRepository
 
 extension EngagementRepository {
@@ -161,6 +191,9 @@ extension EngagementRepository {
         let dashboard = Dashboard.preview
         let progress: [ProgressOverviewItem] = .preview
         let badges: [BadgeItem] = .preview
+        let ledger: [FlowLedgerEntry] = .preview
+        let shopItems: [ShopItem] = .previewShopItems
+        let equipped = EquippedCosmetics(themeId: "theme-1", frameId: nil)
         let client = PreviewAPIClient { endpoint in
             switch endpoint.path {
             case "/book/me/dashboard":
@@ -171,11 +204,56 @@ extension EngagementRepository {
                 return try JSONCoding.encoder.encode(ProgressOverviewResponse(progress: progress))
             case "/book/me/badges":
                 return try JSONCoding.encoder.encode(BadgesResponse(badges: badges))
+            case "/book/me/flow-points":
+                return try JSONCoding.encoder.encode(
+                    FlowPointsResponse(balance: dashboard.flowPoints, ledger: ledger, equippedCosmetics: equipped)
+                )
+            case "/book/me/shop":
+                return try JSONCoding.encoder.encode(ShopResponse(items: shopItems))
+            case "/book/me/flow-points/redeem":
+                // Simulate a successful redeem: return updated balance and first shop item
+                return try JSONCoding.encoder.encode(
+                    RedeemFlowPointsResponse(balance: dashboard.flowPoints - 250, item: shopItems.first, equippedCosmetics: equipped)
+                )
             default:
                 throw AppError.notFound
             }
         }
         return EngagementRepository(apiClient: client, modelContainer: nil)
+    }
+}
+
+// MARK: - Preview FlowPointsModel
+
+extension FlowPointsModel {
+    /// Pre-loaded with fixture balance, ledger, and shop (no network).
+    @MainActor static var preview: FlowPointsModel {
+        FlowPointsModel(repository: .preview)
+    }
+
+    /// Empty ledger variant.
+    @MainActor static var previewEmpty: FlowPointsModel {
+        let client = PreviewAPIClient { endpoint in
+            switch endpoint.path {
+            case "/book/me/flow-points":
+                return try JSONCoding.encoder.encode(
+                    FlowPointsResponse(balance: 0, ledger: [], equippedCosmetics: nil)
+                )
+            case "/book/me/shop":
+                return try JSONCoding.encoder.encode(ShopResponse(items: []))
+            default:
+                throw AppError.notFound
+            }
+        }
+        let repo = EngagementRepository(apiClient: client, modelContainer: nil)
+        return FlowPointsModel(repository: repo)
+    }
+
+    /// Starts on the Shop tab.
+    @MainActor static var previewShop: FlowPointsModel {
+        let model = FlowPointsModel(repository: .preview)
+        model.selectedTab = .shop
+        return model
     }
 }
 

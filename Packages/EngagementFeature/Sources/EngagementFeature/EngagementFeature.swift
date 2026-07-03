@@ -21,6 +21,15 @@
 /// - ``BadgesModel`` — `@Observable` view model; detects newly earned badges and routes them
 ///   through ``CelebrationPresenter``
 /// - ``AchievementTrack`` — display enum for the four badge tracks (mastery/consistency/exploration/hidden)
+///
+/// Public API added in P5.4:
+/// - ``FlowPointsView`` — balance hero, transaction ledger, and shop with buy/equip
+/// - ``FlowPointsModel`` — `@Observable` view model for the economy screen
+/// - ``ShopItemAction`` — action enum driving shop item buttons (buy/equip/owned/equipped)
+/// - ``EngagementRepository.fetchFlowPoints(forceRefresh:)`` — balance + ledger + equipped cosmetics
+/// - ``EngagementRepository.fetchShop(forceRefresh:)`` — shop catalogue
+/// - ``EngagementRepository.redeemItem(itemId:action:)`` — buy or equip (server-authoritative)
+/// - ``EngagementRepository.currentEquippedCosmetics`` — active theme/frame for Profile and Reader
 public enum EngagementFeature {
     public static let moduleName = "EngagementFeature"
 }
