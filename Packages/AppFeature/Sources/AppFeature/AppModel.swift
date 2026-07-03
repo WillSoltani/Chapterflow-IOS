@@ -55,10 +55,19 @@ public final class AppModel {
 
     /// Shared repository for all of Lane S — profile, pairs, gifts, reflections, referrals.
     public let socialRepository: any SocialRepository
+
     // MARK: - AI
 
     /// Shared repository for the "Ask the book" feature.
     public let aiRepository: any AIRepository
+
+    // MARK: - Audio
+
+    /// Shared user preferences (persisted to App Group UserDefaults).
+    public let preferences: AppPreferences
+
+    /// Shared audio player model — owns the AVQueuePlayer and session for the entire app.
+    public let audioPlayerModel: AudioPlayerModel
 
     // MARK: - Init
 
@@ -74,6 +83,12 @@ public final class AppModel {
         self.bookDetailRepository = LiveBookDetailRepository(client: client)
         self.socialRepository = LiveSocialRepository(client: client)
         self.aiRepository = LiveAIRepository(client: client)
+
+        let prefs = AppPreferences()
+        self.preferences = prefs
+        let audioRepo = LiveAudioRepository(client: client)
+        let audioPlayer = AudioPlayer(repository: audioRepo)
+        self.audioPlayerModel = AudioPlayerModel(player: audioPlayer, preferences: prefs)
 
         #if os(iOS)
         sm.registerBackgroundRefresh()
