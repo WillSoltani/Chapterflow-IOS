@@ -7,6 +7,21 @@ public protocol APIClientProtocol: Sendable {
     /// Sends the endpoint and decodes a success body directly into `T`.
     /// Throws an `AppError` on any failure.
     func send<T: Decodable & Sendable>(_ endpoint: Endpoint) async throws -> T
+
+    /// Sends the endpoint, decodes the success body into `T`, and also returns
+    /// the server-clock `Date` from the HTTP `Date` response header (or `nil`
+    /// when absent). Use the server date to anchor countdowns to server time
+    /// instead of device time — important when the device clock may be skewed.
+    func sendWithServerDate<T: Decodable & Sendable>(_ endpoint: Endpoint) async throws -> (T, Date?)
+}
+
+// Default implementation: delegates to `send` and returns nil for the date.
+// Used by MockAPIClient and any test double that only implements `send`.
+public extension APIClientProtocol {
+    func sendWithServerDate<T: Decodable & Sendable>(_ endpoint: Endpoint) async throws -> (T, Date?) {
+        let result: T = try await send(endpoint)
+        return (result, nil)
+    }
 }
 
 /// A typed, async API client for the ChapterFlow REST API.
@@ -86,7 +101,23 @@ public actor APIClient: APIClientProtocol {
         )
     }
 
+    // MARK: - APIClientProtocol
+
     public func send<T: Decodable & Sendable>(_ endpoint: Endpoint) async throws -> T {
+        let (result, _): (T, HTTPURLResponse) = try await performRequest(endpoint)
+        return result
+    }
+
+    public func sendWithServerDate<T: Decodable & Sendable>(_ endpoint: Endpoint) async throws -> (T, Date?) {
+        let (result, http): (T, HTTPURLResponse) = try await performRequest(endpoint)
+        return (result, Self.serverDate(from: http))
+    }
+
+    // MARK: - Core request loop
+
+    /// Runs the full retry/refresh loop and returns the decoded value plus the
+    /// final `HTTPURLResponse` (for callers that want response headers).
+    private func performRequest<T: Decodable & Sendable>(_ endpoint: Endpoint) async throws -> (T, HTTPURLResponse) {
         var backoffAttempt = 0
         var didRefreshToken = false
         var didStepUp = false
@@ -105,7 +136,8 @@ public actor APIClient: APIClientProtocol {
 
                 if (200..<300).contains(http.statusCode) {
                     notifyCompleted(request: request, status: http.statusCode, requestId: nil)
-                    return try decode(data)
+                    let decoded: T = try decode(data)
+                    return (decoded, http)
                 }
 
                 let error = ErrorMapper.map(
@@ -247,6 +279,17 @@ public actor APIClient: APIClientProtocol {
         // The header may be a number of seconds or an HTTP date; we support the
         // (far more common) seconds form.
         return TimeInterval(value.trimmingCharacters(in: .whitespaces))
+    }
+
+    /// Parses the RFC 1123 `Date` header from an HTTP response.
+    /// Returns `nil` when the header is absent or unparseable.
+    private static func serverDate(from response: HTTPURLResponse) -> Date? {
+        guard let value = response.value(forHTTPHeaderField: "Date") else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss zzz"
+        formatter.timeZone = TimeZone(identifier: "GMT")
+        return formatter.date(from: value)
     }
 
     private static func isTransient(_ error: URLError) -> Bool {

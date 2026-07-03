@@ -43,6 +43,15 @@
 /// - ``JourneyDetailModel`` — `@Observable` view model for a single journey's progress
 /// - ``JourneysRepository`` — data layer for `GET /book/books/journeys`,
 ///   `GET /book/me/journeys/{id}`, `POST /book/me/journeys/{id}/start`
+///
+/// Public API added in P5.7:
+/// - ``SeasonalEventView`` — active event card with live server-time countdown, join CTA,
+///   daily + total progress bars, completion banner, and empty/error states
+/// - ``SeasonalEventModel`` — `@Observable` view model; maintains a 1 Hz countdown loop
+///   anchored to server time (via HTTP `Date` header offset) and routes completion through
+///   ``CelebrationPresenter``
+/// - ``SeasonalEventRepository`` — actor-based data layer for `GET /book/events/active`,
+///   `POST /book/me/events/{id}/join`, `GET|POST /book/me/events/{id}/progress`
 public enum EngagementFeature {
     public static let moduleName = "EngagementFeature"
 }
