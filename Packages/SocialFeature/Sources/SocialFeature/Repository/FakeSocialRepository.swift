@@ -1,3 +1,4 @@
+import Foundation
 import Models
 import CoreKit
 
@@ -14,6 +15,9 @@ public actor FakeSocialRepository: SocialRepository {
     private var pairs: [ReadingPair]
     private var gifts: [String: Gift]
     private var giftCodeCounter: Int = 0
+    private var serverReflections: [String: [String: [ChapterReflection]]] = [:]  // bookId → chapterN.string → [reflection]
+    private var pendingReflections: [PendingReflectionItem] = []
+    private var reflectionIdCounter: Int = 0
     private let forcedError: AppError?
 
     /// Every `UpdateSettingsBody` that `updateSettings` has been called with, in order.
@@ -31,6 +35,7 @@ public actor FakeSocialRepository: SocialRepository {
         publicProfiles: [String: PublicProfile] = [:],
         pairs: [ReadingPair] = [],
         gifts: [String: Gift] = [:],
+        serverReflections: [String: [String: [ChapterReflection]]] = [:],
         error: AppError? = nil
     ) {
         self.profile = profile
@@ -38,6 +43,7 @@ public actor FakeSocialRepository: SocialRepository {
         self.publicProfiles = publicProfiles
         self.pairs = pairs
         self.gifts = gifts
+        self.serverReflections = serverReflections
         self.forcedError = error
     }
 
@@ -176,5 +182,67 @@ public actor FakeSocialRepository: SocialRepository {
         )
         gifts[code] = gift
         return gift
+    }
+
+    // MARK: - Reflections
+
+    public func getReflections(bookId: String, chapterN: Int) async throws -> [ChapterReflection] {
+        if let err = forcedError { throw err }
+        return serverReflections[bookId]?["\(chapterN)"] ?? []
+    }
+
+    public func getPendingReflections(bookId: String, chapterN: Int) async -> [PendingReflectionItem] {
+        pendingReflections.filter { $0.bookId == bookId && $0.chapterN == chapterN }
+    }
+
+    public func postReflection(bookId: String, chapterN: Int, text: String) async -> PendingReflectionItem {
+        reflectionIdCounter += 1
+        var item = PendingReflectionItem(
+            localId: "local-\(reflectionIdCounter)",
+            bookId: bookId,
+            chapterN: chapterN,
+            text: text,
+            createdAt: Date()
+        )
+        // Fake always "syncs" immediately (no forced offline here — the error affects reads only).
+        if forcedError == nil {
+            item.syncState = .synced
+            item.serverReflectionId = "server-\(reflectionIdCounter)"
+            // Also add to serverReflections so getReflections picks it up.
+            let reflection = ChapterReflection(
+                reflectionId: item.serverReflectionId!,
+                bookId: bookId,
+                chapterN: chapterN,
+                text: text,
+                createdAt: item.createdAt
+            )
+            if serverReflections[bookId] == nil { serverReflections[bookId] = [:] }
+            let key = "\(chapterN)"
+            serverReflections[bookId]![key, default: []].append(reflection)
+        }
+        pendingReflections.append(item)
+        return item
+    }
+
+    public func requestFeedback(
+        bookId: String,
+        chapterN: Int,
+        serverReflectionId: String
+    ) async throws -> String {
+        if let err = forcedError { throw err }
+        return "Great reflection! Your insight about this chapter shows real depth of understanding. Keep exploring these ideas as you continue reading."
+    }
+
+    public func queueFeedbackForPending(localId: String) async -> PendingReflectionItem? {
+        guard let idx = pendingReflections.firstIndex(where: { $0.localId == localId }) else {
+            return nil
+        }
+        pendingReflections[idx].feedbackState = .pending
+        return pendingReflections[idx]
+    }
+
+    public func syncPendingReflections(bookId: String, chapterN: Int) async -> [PendingReflectionItem] {
+        // Fake: everything is already synced; just return pending list.
+        return pendingReflections.filter { $0.bookId == bookId && $0.chapterN == chapterN }
     }
 }
