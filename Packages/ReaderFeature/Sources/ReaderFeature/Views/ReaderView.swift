@@ -90,7 +90,10 @@ public struct ReaderView: View {
                     timeLeftMinutes: controlsModel.timeLeftMinutes
                 )
 
-                ReaderControlSurface(model: controlsModel)
+                ReaderControlSurface(
+                model: controlsModel,
+                annotationModel: readerModel.annotationModel
+            )
             }
 
             if readerModel.showQuizCTA {
