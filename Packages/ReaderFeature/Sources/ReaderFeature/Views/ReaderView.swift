@@ -11,7 +11,8 @@ import UIKit
 ///
 /// Create a `ReaderModel` and pass it to this view. Wire `readerModel.onTakeQuiz`,
 /// `readerModel.onListen`, and `readerModel.onAsk` from the host to connect the
-/// quiz, audio, and AI flows.
+/// quiz, audio, and AI flows. Wire `readerModel.onLoopComplete` and
+/// `readerModel.onContinueToNextChapter` to handle loop completion.
 public struct ReaderView: View {
     @State private var readerModel: ReaderModel
     @State private var didFireEndHaptic = false
@@ -82,6 +83,7 @@ public struct ReaderView: View {
 
     private func loadedView(controlsModel: ReaderControlsModel) -> some View {
         let appearance = ReadingAppearance(preferences: controlsModel.preferences)
+        let chapterTitle = controlsModel.resolvedChapter.title
 
         return ZStack(alignment: .bottom) {
             VStack(spacing: 0) {
@@ -90,15 +92,29 @@ public struct ReaderView: View {
                     timeLeftMinutes: controlsModel.timeLeftMinutes
                 )
 
+                // Two-axis completion badges — shown when at least one axis is active.
+                if readerModel.isKnowledgeComplete || readerModel.applicationState != .none {
+                    HStack {
+                        ChapterCompletionBadgesView(
+                            isKnowledgeComplete: readerModel.isKnowledgeComplete,
+                            applicationState: readerModel.applicationState
+                        )
+                        Spacer()
+                    }
+                    .padding(.horizontal, .cfSpacing16)
+                    .padding(.vertical, .cfSpacing8)
+                    .background(appearance.colors.pageBg)
+                }
+
                 ReaderControlSurface(
-                model: controlsModel,
-                annotationModel: readerModel.annotationModel
-            )
+                    model: controlsModel,
+                    annotationModel: readerModel.annotationModel
+                )
             }
 
-            if readerModel.showQuizCTA {
+            if readerModel.showQuizCTA && !readerModel.isLoopComplete {
                 ChapterEndCTA(
-                    chapterTitle: controlsModel.resolvedChapter.title,
+                    chapterTitle: chapterTitle,
                     onTakeQuiz: readerModel.onTakeQuiz,
                     onListen: readerModel.onListen,
                     onAsk: readerModel.onAsk
@@ -107,6 +123,17 @@ public struct ReaderView: View {
         }
         .background(appearance.colors.pageBg)
         .animation(.spring(duration: 0.35), value: readerModel.showQuizCTA)
+        .animation(.spring(duration: 0.35), value: readerModel.isLoopComplete)
+        .overlay {
+            if readerModel.isLoopComplete {
+                LoopCompletionOverlay(
+                    chapterTitle: chapterTitle,
+                    onContinue: readerModel.onContinueToNextChapter,
+                    onDismiss: { readerModel.dismissLoopComplete() }
+                )
+                .transition(.opacity)
+            }
+        }
         .onChange(of: controlsModel.currentTopBlockIndex) { _, newIndex in
             readerModel.didScrollToBlock(
                 newIndex,
@@ -115,7 +142,6 @@ public struct ReaderView: View {
             )
         }
         .onChange(of: readerModel.isAtChapterEnd) { _, atEnd in
-            // Haptic tick when the user first reaches the end of the chapter.
             if atEnd, !didFireEndHaptic {
                 didFireEndHaptic = true
                 hapticTick()
@@ -185,6 +211,25 @@ private extension View {
         preferences: prefs
     ))
     .dynamicTypeSize(.accessibility3)
+}
+
+#Preview("Reader — loop complete") {
+    let prefs = AppPreferences(defaults: UserDefaults(suiteName: "preview.reader.loop"))
+    let repo = FakeReaderRepository()
+    let model = ReaderModel(
+        bookId: "atomic-habits",
+        chapterNumber: 1,
+        variantFamily: .emh,
+        repository: repo,
+        preferences: prefs
+    )
+    model.onContinueToNextChapter = {}
+    // Trigger the overlay in a task after view appears.
+    return ReaderView(readerModel: model)
+        .task {
+            try? await Task.sleep(for: .seconds(1))
+            model.notifyLoopComplete()
+        }
 }
 
 #Preview("Reader — error state") {
