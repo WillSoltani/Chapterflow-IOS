@@ -430,7 +430,7 @@ struct BookDetailModelTests {
 
         var receivedBookId: String?
         var receivedChapter: Int?
-        model.onOpenReader = { bookId, chapter in
+        model.onOpenReader = { bookId, chapter, _ in
             receivedBookId = bookId
             receivedChapter = chapter
         }
@@ -451,7 +451,7 @@ struct BookDetailModelTests {
         await model.fetch()
 
         var openedBookId: String?
-        model.onOpenReader = { bookId, _ in openedBookId = bookId }
+        model.onOpenReader = { bookId, _, _ in openedBookId = bookId }
         await model.performPrimaryAction()
         #expect(openedBookId == "b-atomic-habits")
     }

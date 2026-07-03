@@ -30,7 +30,7 @@ public struct BookDetailView: View {
         bookId: String,
         repository: any BookDetailRepository,
         aiRepository: (any AIRepository)? = nil,
-        onOpenReader: ((String, Int) -> Void)? = nil,
+        onOpenReader: ((String, Int, VariantFamily) -> Void)? = nil,
         onShowPaywall: (() -> Void)? = nil
     ) {
         let m = BookDetailModel(bookId: bookId, repository: repository)
@@ -371,7 +371,7 @@ public struct BookDetailView: View {
         )
         am.onJumpToChapter = { chapterNumber in
             showAskSheet = false
-            model.onOpenReader?(model.bookId, chapterNumber)
+            model.onOpenReader?(model.bookId, chapterNumber, model.manifest?.variantFamily ?? .emh)
         }
         askModel = am
         showAskSheet = true

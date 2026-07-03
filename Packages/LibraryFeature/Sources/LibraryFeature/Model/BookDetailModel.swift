@@ -58,8 +58,8 @@ public final class BookDetailModel {
     // MARK: - Navigation callbacks (injected from AppFeature)
 
     /// Called when the user taps Start/Continue and the book can be opened.
-    /// Arguments: (bookId, chapterNumber).
-    public var onOpenReader: ((String, Int) -> Void)?
+    /// Arguments: (bookId, chapterNumber, variantFamily).
+    public var onOpenReader: ((String, Int, VariantFamily) -> Void)?
     /// Called when the user taps Start but has no access — show the paywall.
     public var onShowPaywall: (() -> Void)?
 
@@ -188,7 +188,7 @@ public final class BookDetailModel {
             onShowPaywall?()
 
         case .continueReading:
-            onOpenReader?(bookId, currentChapterNumber)
+            onOpenReader?(bookId, currentChapterNumber, manifest?.variantFamily ?? .emh)
 
         case .startReading:
             isStarting = true
@@ -199,7 +199,7 @@ public final class BookDetailModel {
                 bookState = stateResponse.state
                 applicationStates = stateResponse.applicationStates ?? [:]
                 // Navigate to the first unlocked chapter (typically ch. 1).
-                onOpenReader?(bookId, currentChapterNumber)
+                onOpenReader?(bookId, currentChapterNumber, manifest?.variantFamily ?? .emh)
             } catch let appErr as AppError {
                 startError = appErr.errorDescription ?? appErr.code
             } catch {
@@ -214,6 +214,6 @@ public final class BookDetailModel {
     /// Navigates to an unlocked chapter; no-ops for locked ones.
     public func tapChapter(_ chapter: BookManifestChapter) {
         guard isUnlocked(chapter) else { return }
-        onOpenReader?(bookId, chapter.number)
+        onOpenReader?(bookId, chapter.number, manifest?.variantFamily ?? .emh)
     }
 }
