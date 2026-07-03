@@ -3,12 +3,29 @@ import PackageDescription
 
 let package = Package(
     name: "NotificationsFeature",
-    platforms: [.iOS(.v18)],
+    // macOS added so tests run on the host toolchain; shipping target is iOS.
+    platforms: [.iOS(.v18), .macOS(.v14)],
     products: [
         .library(name: "NotificationsFeature", targets: ["NotificationsFeature"]),
     ],
+    dependencies: [
+        .package(path: "../CoreKit"),
+        .package(path: "../DesignSystem"),
+    ],
     targets: [
-        .target(name: "NotificationsFeature"),
-        .testTarget(name: "NotificationsFeatureTests", dependencies: ["NotificationsFeature"]),
+        .target(
+            name: "NotificationsFeature",
+            dependencies: [
+                .product(name: "CoreKit", package: "CoreKit"),
+                .product(name: "DesignSystem", package: "DesignSystem"),
+            ]
+        ),
+        .testTarget(
+            name: "NotificationsFeatureTests",
+            dependencies: [
+                "NotificationsFeature",
+                .product(name: "CoreKit", package: "CoreKit"),
+            ]
+        ),
     ]
 )
