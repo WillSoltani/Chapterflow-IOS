@@ -20,4 +20,11 @@ public protocol AIRepository: Sendable {
         selectionContext: String?,
         tone: String?
     ) async throws -> BookAskResponse
+
+    /// Fetches the concept dependency graph for a book.
+    ///
+    /// - Parameter bookId: The book whose concept graph is requested.
+    /// - Returns: The full ``ConceptGraph`` (concepts, edges, chapter mappings).
+    /// - Throws: `AppError.offline` when there is no network; other `AppError` cases for failures.
+    func conceptGraph(bookId: String) async throws -> ConceptGraph
 }

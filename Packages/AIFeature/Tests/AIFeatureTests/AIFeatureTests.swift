@@ -3,6 +3,7 @@ import Foundation
 @testable import AIFeature
 import CoreKit
 import Networking
+import Models
 
 // MARK: - AskTheBookModel tests
 
@@ -319,5 +320,9 @@ actor CapturingAIRepository: AIRepository {
     ) async throws -> BookAskResponse {
         lastCall = Call(bookId: bookId, question: question, selectionContext: selectionContext, tone: tone)
         return FakeAIRepository.sampleResponse
+    }
+
+    func conceptGraph(bookId: String) async throws -> ConceptGraph {
+        FakeAIRepository.sampleConceptGraph
     }
 }

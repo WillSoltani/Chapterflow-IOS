@@ -236,6 +236,11 @@ public enum Endpoints {
         Endpoint(method: .delete, path: "/book/me/notebook/\(entryId)")
     }
 
+    /// `GET /book/books/{bookId}/concept-graph` → `{ concepts, edges, chapterIntroduces, chapterRequires }`.
+    public static func getConceptGraph(bookId: String) -> Endpoint {
+        Endpoint(method: .get, path: "/book/books/\(bookId)/concept-graph", requiresAuth: true)
+    }
+
     /// `POST /book/books/{bookId}/ask` — AI Q&A (daily-limited).
     ///
     /// Returns `{ answer, citations, remainingQuestions? }`.
