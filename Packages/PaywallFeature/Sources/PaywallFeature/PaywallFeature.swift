@@ -1,6 +1,8 @@
 /// PaywallFeature — StoreKit 2 service, entitlement model, and paywall UI.
 ///
 /// Public surface:
+/// - `EntitlementService` (`@Observable @MainActor`) — single source of truth for access
+/// - `LockReason` — typed reason why a book/feature is locked (needsPro / needsFreeSlotOrPro / lockedBehindQuiz)
 /// - `StoreKitService` (actor) — purchases, Transaction.updates listener, backend verify
 /// - `StoreKitServicing` — protocol abstraction for testing
 /// - `StoreKitConfig` — product IDs read from `AppConfig`
