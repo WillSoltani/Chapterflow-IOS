@@ -1,8 +1,12 @@
-/// Placeholder public entry point for the NotificationsFeature module.
-///
-/// This module is intentionally empty for now; it compiles and exposes a single
-/// public symbol so downstream modules can link against it.
+// NotificationsFeature — permission priming, authorization, and denied recovery.
+//
+// Wiring:
+//   1. Create `NotificationAuthorizer(analytics:)` at app startup (one instance).
+//   2. Create `NotificationPrimingCoordinator(authorizer:analytics:)` on the model.
+//   3. At a value moment, call `await coordinator.suggest(trigger:)`.
+//   4. Present `NotificationPrimingView` when `coordinator.isPrimingVisible == true`.
+//   5. When status is `.denied`, present `NotificationDeniedView` for recovery.
+//   6. P9.1 (APNs) calls `authorizer.requestAuthorization()` through the coordinator.
 public enum NotificationsFeature {
-    /// The name of this module. Useful as a smoke-test symbol.
     public static let moduleName = "NotificationsFeature"
 }
