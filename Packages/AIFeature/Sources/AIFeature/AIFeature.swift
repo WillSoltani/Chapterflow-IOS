@@ -9,6 +9,11 @@
 /// - ``FakeAIRepository`` — test/preview fake.
 /// - ``AskMessage`` — an in-memory Q&A exchange.
 /// - ``BookAskResponse`` — the server response model.
+/// - ``ConceptGraphView`` — the interactive concept dependency graph (P6.3).
+/// - ``ConceptGraphModel`` — observable view model for the graph; keep alive in presenting view state.
+/// - ``ConceptDetailSheet`` — bottom sheet for a selected concept node.
+/// - ``GraphAnalyzer`` — pure graph traversal utilities (prerequisite chain, chapter analysis).
+/// - ``GraphLayout`` — layered layout engine.
 public enum AIFeature {
     public static let moduleName = "AIFeature"
 }

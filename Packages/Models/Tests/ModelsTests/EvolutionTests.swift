@@ -264,6 +264,51 @@ struct NotificationsLossyTests {
     }
 }
 
+// MARK: - EdgeType tolerance
+
+@Suite("EdgeType server evolution")
+struct EdgeTypeEvolutionTests {
+
+    @Test("known prerequisite type decodes correctly")
+    func knownPrerequisite() throws {
+        let data = json(#"{"from":"a","to":"b","type":"prerequisite"}"#)
+        let edge = try JSONDecoder.chapterFlow.decode(ConceptEdge.self, from: data)
+        #expect(edge.edgeType == .prerequisite)
+        #expect(edge.from == "a")
+        #expect(edge.to == "b")
+    }
+
+    @Test("unknown edge type decodes to .unknown, not throws")
+    func unknownEdgeType() throws {
+        let data = json(#"{"from":"a","to":"b","type":"related_concept"}"#)
+        let edge = try JSONDecoder.chapterFlow.decode(ConceptEdge.self, from: data)
+        #expect(edge.edgeType == .unknown("related_concept"))
+    }
+
+    @Test("array of edges with mixed known/unknown types all survive")
+    func mixedEdgeTypes() throws {
+        let data = json(#"[{"from":"a","to":"b","type":"prerequisite"},{"from":"b","to":"c","type":"future_type"},{"from":"c","to":"d","type":"prerequisite"}]"#)
+        let edges = try JSONDecoder.chapterFlow.decode([ConceptEdge].self, from: data)
+        #expect(edges.count == 3)
+        #expect(edges[0].edgeType == .prerequisite)
+        #expect(edges[1].edgeType == .unknown("future_type"))
+        #expect(edges[2].edgeType == .prerequisite)
+    }
+
+    @Test("ConceptGraph with unknown edge type decodes without crashing")
+    func conceptGraphWithUnknownEdge() throws {
+        let data = json(#"{"concepts":[{"id":"c1","label":"Habit Loop","introducedIn":"ch1","summary":"The loop."}],"edges":[{"from":"c1","to":"c2","type":"associates_with"}],"chapterIntroduces":null,"chapterRequires":null}"#)
+        let graph = try JSONDecoder.chapterFlow.decode(ConceptGraph.self, from: data)
+        #expect(graph.concepts.count == 1)
+        #expect(graph.edges.count == 1)
+        if case .unknown(let raw) = graph.edges[0].edgeType {
+            #expect(raw == "associates_with")
+        } else {
+            Issue.record("Expected .unknown edge type")
+        }
+    }
+}
+
 // MARK: - ISO-8601 date tolerance
 
 @Suite("Date decoding tolerance")
