@@ -267,6 +267,14 @@ public enum Endpoints {
         Endpoint(method: .delete, path: "/book/me/notebook/\(entryId)")
     }
 
+    /// `PATCH /book/me/notebook/{entryId}` — update content and/or tags.
+    public static func patchNotebookEntry(
+        entryId: String,
+        body: NotebookUpdateRequest
+    ) throws -> Endpoint {
+        try Endpoint(method: .patch, path: "/book/me/notebook/\(entryId)", body: body)
+    }
+
     // MARK: - Seasonal Events
 
     /// `GET /book/events/active` → `{ event: SeasonalEvent | null }`.

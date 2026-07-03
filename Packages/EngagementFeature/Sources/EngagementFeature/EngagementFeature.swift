@@ -52,6 +52,13 @@
 ///   ``CelebrationPresenter``
 /// - ``SeasonalEventRepository`` — actor-based data layer for `GET /book/events/active`,
 ///   `POST /book/me/events/{id}/join`, `GET|POST /book/me/events/{id}/progress`
+///
+/// Public API added in P5.8:
+/// - ``NotebookHubView`` — unified, searchable, tag-filterable notebook + saved-books hub
+/// - ``NotebookModel`` — `@Observable` view model; search/filter/edit/delete; offline-first
+/// - ``SavedBooksModel`` — `@Observable` view model; saved-book IDs + catalog, offline-first
+/// - ``SavedShelfView`` — three-column grid of saved books with cover + context-menu unsave
+/// - ``NotebookRepository`` — actor; GET/PATCH/DELETE notebook entries; offline outbox via CachedKeyValue
 public enum EngagementFeature {
     public static let moduleName = "EngagementFeature"
 }
