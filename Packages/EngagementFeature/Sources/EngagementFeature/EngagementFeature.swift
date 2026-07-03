@@ -44,6 +44,17 @@
 /// - ``JourneysRepository`` — data layer for `GET /book/books/journeys`,
 ///   `GET /book/me/journeys/{id}`, `POST /book/me/journeys/{id}/start`
 ///
+/// Public API added in P5.9:
+/// - ``ReviewsView`` — hub: due-count hero, start session CTA, offline pending badge
+/// - ``ReviewSessionView`` — full-screen session: card front → back flip → Again/Hard/Good/Easy grades
+/// - ``ReviewsModel`` — `@Observable` view model; owns load and session state machines
+/// - ``ReviewsRepository`` — actor data layer: `GET /book/me/reviews`, `POST /book/me/reviews/{cardId}`,
+///   in-memory + SwiftData cache, offline outbox via ``PendingReviewGrade``
+/// - ``ReviewNotificationScheduler`` — actor; schedules one UNCalendarNotificationTrigger per due batch
+/// - ``FSRSScheduler`` — pure FSRS-5 port (19 weights); deterministic scheduling for offline use
+/// - ``FSRSGrade`` — `again / hard / good / easy` with `localizedTitle` and `intervalHint`
+/// - ``FSRSScheduleInput`` / ``FSRSScheduleResult`` — input/output types for the scheduler
+///
 /// Public API added in P5.7:
 /// - ``SeasonalEventView`` — active event card with live server-time countdown, join CTA,
 ///   daily + total progress bars, completion banner, and empty/error states
