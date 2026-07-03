@@ -29,6 +29,9 @@ public enum CelebrationEvent: Sendable {
 
     /// A reflective "insight spark" prompt surfaced after completing a chapter.
     case insightSpark(prompt: String)
+
+    /// All books in a multi-book journey were completed.
+    case journeyComplete(title: String)
 }
 
 // MARK: - Equatable
@@ -51,6 +54,8 @@ extension CelebrationEvent: Equatable {
             return a.badgeId == b.badgeId
         case (.insightSpark(let a), .insightSpark(let b)):
             return a == b
+        case (.journeyComplete(let a), .journeyComplete(let b)):
+            return a == b
         default:
             return false
         }
@@ -70,6 +75,7 @@ extension CelebrationEvent {
         case .tierUp:               return "star.fill"
         case .badgeEarned:          return "medal.fill"
         case .insightSpark:         return "lightbulb.fill"
+        case .journeyComplete:      return "trophy.fill"
         }
     }
 
@@ -90,6 +96,8 @@ extension CelebrationEvent {
             return b.name
         case .insightSpark:
             return "Insight Spark"
+        case .journeyComplete(let title):
+            return "Journey Complete"
         }
     }
 
@@ -113,13 +121,15 @@ extension CelebrationEvent {
             return b.description
         case .insightSpark(let p):
             return p
+        case .journeyComplete(let title):
+            return "You finished \u{201C}\(title)\u{201D}."
         }
     }
 
     /// Whether this event warrants confetti (off when Reduce Motion is enabled).
     var wantsConfetti: Bool {
         switch self {
-        case .loopComplete, .tierUp, .streakMilestone, .badgeEarned:
+        case .loopComplete, .tierUp, .streakMilestone, .badgeEarned, .journeyComplete:
             return true
         case .flowPointsGained, .streakIncrement, .insightSpark:
             return false
@@ -136,6 +146,7 @@ extension CelebrationEvent {
         case .tierUp:           return 3.5
         case .badgeEarned:      return 3.0
         case .insightSpark:     return 5.0
+        case .journeyComplete:  return 4.0
         }
     }
 }

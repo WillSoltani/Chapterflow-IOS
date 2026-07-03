@@ -127,6 +127,35 @@ public struct ShopResponse: Codable, Sendable {
     }
 }
 
+// MARK: - Journeys
+
+/// Response from `GET /book/books/journeys`.
+/// Decodes the `journeys` array lossily — one malformed journey is dropped and
+/// logged while the rest of the collection survives.
+public struct JourneysListResponse: Codable, Sendable {
+    public let journeys: [JourneyCatalogItem]
+
+    public init(journeys: [JourneyCatalogItem]) {
+        self.journeys = journeys
+    }
+
+    private enum CodingKeys: String, CodingKey { case journeys }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.journeys = try container.decodeLossy(JourneyCatalogItem.self, forKey: .journeys)
+    }
+}
+
+/// Response from `GET /book/me/journeys/{id}` and `POST /book/me/journeys/{id}/start`.
+public struct UserJourneyResponse: Codable, Sendable {
+    public let journey: UserJourney
+
+    public init(journey: UserJourney) {
+        self.journey = journey
+    }
+}
+
 /// Response from `POST /book/me/flow-points/redeem`.
 ///
 /// The server is authoritative: reflect this state in the UI, never grant locally.
