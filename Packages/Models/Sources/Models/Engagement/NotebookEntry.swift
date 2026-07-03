@@ -59,6 +59,8 @@ extension NotebookEntryType: CaseIterable {
 /// A single entry in the user's notebook (note, bookmark, highlight, etc.).
 ///
 /// Returned within `GET /book/me/notebook`.
+/// Context fields (`bookTitle`, `chapterTitle`, `chapterNumber`, `tags`) are
+/// optional — the server may omit them on older API versions; views degrade gracefully.
 public struct NotebookEntry: Codable, Sendable, Identifiable {
     public let entryId: String
     public let bookId: String
@@ -70,8 +72,47 @@ public struct NotebookEntry: Codable, Sendable, Identifiable {
     public let quote: String?
     public let createdAt: String
     public let updatedAt: String
+    // MARK: Context fields (optional; server may add these in future or current version)
+    public let bookTitle: String?
+    public let chapterTitle: String?
+    public let chapterNumber: Int?
+    /// User-defined tags for filtering/organisation.
+    public let tags: [String]?
 
     public var id: String { entryId }
+
+    /// All non-empty trimmed tags, or an empty array when `tags` is nil.
+    public var effectiveTags: [String] {
+        tags?.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty } ?? []
+    }
+
+    public init(
+        entryId: String,
+        bookId: String,
+        chapterId: String?,
+        type: NotebookEntryType,
+        content: String?,
+        quote: String?,
+        createdAt: String,
+        updatedAt: String,
+        bookTitle: String? = nil,
+        chapterTitle: String? = nil,
+        chapterNumber: Int? = nil,
+        tags: [String]? = nil
+    ) {
+        self.entryId = entryId
+        self.bookId = bookId
+        self.chapterId = chapterId
+        self.type = type
+        self.content = content
+        self.quote = quote
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+        self.bookTitle = bookTitle
+        self.chapterTitle = chapterTitle
+        self.chapterNumber = chapterNumber
+        self.tags = tags
+    }
 }
 
 // MARK: - NotebookResponse

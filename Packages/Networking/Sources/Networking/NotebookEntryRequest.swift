@@ -84,3 +84,32 @@ public struct NotebookDeleteResponse: Codable, Sendable {
         self.deleted = deleted
     }
 }
+
+// MARK: - NotebookUpdateRequest
+
+/// Request body for `PATCH /book/me/notebook/{entryId}`.
+///
+/// Partial update — only the fields present in the payload are mutated server-side.
+public struct NotebookUpdateRequest: Codable, Sendable {
+    /// Updated text content (notes, reflections, commitments).
+    public let content: String?
+    /// Updated tag list. Pass an empty array to clear all tags.
+    public let tags: [String]?
+
+    public init(content: String? = nil, tags: [String]? = nil) {
+        self.content = content
+        self.tags = tags
+    }
+}
+
+/// Response from `PATCH /book/me/notebook/{entryId}` — the updated entry.
+public struct NotebookUpdateResponse: Codable, Sendable {
+    public let entry: NotebookUpdateEntry
+
+    public struct NotebookUpdateEntry: Codable, Sendable {
+        public let entryId: String
+        public let content: String?
+        public let tags: [String]?
+        public let updatedAt: String
+    }
+}
