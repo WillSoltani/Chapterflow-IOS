@@ -75,7 +75,7 @@ public struct CelebrationView: View {
 #if canImport(UIKit)
         let style: UIImpactFeedbackGenerator.FeedbackStyle
         switch event {
-        case .loopComplete, .tierUp, .streakMilestone, .badgeEarned, .journeyComplete:
+        case .loopComplete, .tierUp, .streakMilestone, .badgeEarned, .journeyComplete, .eventComplete:
             style = .heavy
         case .streakIncrement:
             style = .medium

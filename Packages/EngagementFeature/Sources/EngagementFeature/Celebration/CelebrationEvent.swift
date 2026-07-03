@@ -32,6 +32,9 @@ public enum CelebrationEvent: Sendable {
 
     /// All books in a multi-book journey were completed.
     case journeyComplete(title: String)
+
+    /// A seasonal event was completed and a badge was awarded.
+    case eventComplete(eventTitle: String, badge: BadgeItem?)
 }
 
 // MARK: - Equatable
@@ -56,6 +59,8 @@ extension CelebrationEvent: Equatable {
             return a == b
         case (.journeyComplete(let a), .journeyComplete(let b)):
             return a == b
+        case (.eventComplete(let a1, let a2), .eventComplete(let b1, let b2)):
+            return a1 == b1 && a2?.badgeId == b2?.badgeId
         default:
             return false
         }
@@ -76,6 +81,7 @@ extension CelebrationEvent {
         case .badgeEarned:          return "medal.fill"
         case .insightSpark:         return "lightbulb.fill"
         case .journeyComplete:      return "trophy.fill"
+        case .eventComplete:        return "star.circle.fill"
         }
     }
 
@@ -96,8 +102,10 @@ extension CelebrationEvent {
             return b.name
         case .insightSpark:
             return "Insight Spark"
-        case .journeyComplete(let title):
+        case .journeyComplete:
             return "Journey Complete"
+        case .eventComplete(let title, _):
+            return "Event Complete — \(title)"
         }
     }
 
@@ -123,13 +131,18 @@ extension CelebrationEvent {
             return p
         case .journeyComplete(let title):
             return "You finished \u{201C}\(title)\u{201D}."
+        case .eventComplete(_, let badge):
+            if let badge {
+                return "You earned the \u{201C}\(badge.name)\u{201D} badge."
+            }
+            return "You finished the event. Well done!"
         }
     }
 
     /// Whether this event warrants confetti (off when Reduce Motion is enabled).
     var wantsConfetti: Bool {
         switch self {
-        case .loopComplete, .tierUp, .streakMilestone, .badgeEarned, .journeyComplete:
+        case .loopComplete, .tierUp, .streakMilestone, .badgeEarned, .journeyComplete, .eventComplete:
             return true
         case .flowPointsGained, .streakIncrement, .insightSpark:
             return false
@@ -147,6 +160,7 @@ extension CelebrationEvent {
         case .badgeEarned:      return 3.0
         case .insightSpark:     return 5.0
         case .journeyComplete:  return 4.0
+        case .eventComplete:    return 4.0
         }
     }
 }

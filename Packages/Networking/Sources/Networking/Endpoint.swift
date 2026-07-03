@@ -267,6 +267,31 @@ public enum Endpoints {
         Endpoint(method: .delete, path: "/book/me/notebook/\(entryId)")
     }
 
+    // MARK: - Seasonal Events
+
+    /// `GET /book/events/active` → `{ event: SeasonalEvent | null }`.
+    public static func getActiveEvent() -> Endpoint {
+        Endpoint(method: .get, path: "/book/events/active", requiresAuth: true)
+    }
+
+    /// `POST /book/me/events/{eventId}/join` — join the active event.
+    public static func joinEvent(eventId: String) throws -> Endpoint {
+        struct Body: Encodable {}
+        return try Endpoint(method: .post, path: "/book/me/events/\(eventId)/join", body: Body())
+    }
+
+    /// `GET /book/me/events/{eventId}/progress` → `{ progress: EventProgress }`.
+    public static func getEventProgress(eventId: String) -> Endpoint {
+        Endpoint(method: .get, path: "/book/me/events/\(eventId)/progress", requiresAuth: true)
+    }
+
+    /// `POST /book/me/events/{eventId}/progress` → `{ progress: EventProgress }`.
+    /// Sent after a chapter completes to let the server record the updated count.
+    public static func postEventProgress(eventId: String) throws -> Endpoint {
+        struct Body: Encodable {}
+        return try Endpoint(method: .post, path: "/book/me/events/\(eventId)/progress", body: Body())
+    }
+
     // MARK: - Journeys
 
     /// `GET /book/books/journeys` → `{ journeys: [...] }` — all available journey paths.
