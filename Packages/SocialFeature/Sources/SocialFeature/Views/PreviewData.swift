@@ -1,4 +1,5 @@
 #if DEBUG
+import Foundation
 import Models
 
 // MARK: - OwnProfile preview fixtures
@@ -269,6 +270,54 @@ extension FakeSocialRepository {
             badges: BadgeItem.previewList,
             publicProfiles: ["user-partner": .preview()],
             pairs: [.previewActive, .previewPending, .previewExpired]
+        )
+    }
+
+    /// Repository seeded with reflections for reflections-screen previews.
+    public static var reflectionsPreview: FakeSocialRepository {
+        let reflections = [
+            ChapterReflection(
+                reflectionId: "r1",
+                bookId: "atomic-habits",
+                chapterN: 3,
+                text: "The habit loop diagram clicked for me — cue, routine, reward. I've been running on autopilot and never realised how many cues are controlling my day.",
+                createdAt: Date(timeIntervalSinceNow: -86400 * 3),
+                feedbackText: "You've noticed something fundamental: awareness is the first step to change. The habit loop reveals that most of our behaviour is triggered before we even think about it. Recognising your cues is already a powerful shift."
+            ),
+            ChapterReflection(
+                reflectionId: "r2",
+                bookId: "atomic-habits",
+                chapterN: 3,
+                text: "I want to try habit stacking — link my new reading habit to my morning coffee.",
+                createdAt: Date(timeIntervalSinceNow: -86400),
+                feedbackText: nil
+            ),
+        ]
+        return FakeSocialRepository(
+            profile: .preview,
+            badges: BadgeItem.previewList,
+            serverReflections: ["atomic-habits": ["3": reflections]]
+        )
+    }
+}
+
+// MARK: - ChapterReflection preview fixtures
+
+extension ChapterReflection {
+    public static func preview(
+        id: String = "r-preview",
+        bookId: String = "atomic-habits",
+        chapterN: Int = 3,
+        text: String = "A short preview reflection for tests and snapshots.",
+        feedbackText: String? = nil
+    ) -> ChapterReflection {
+        ChapterReflection(
+            reflectionId: id,
+            bookId: bookId,
+            chapterN: chapterN,
+            text: text,
+            createdAt: Date(timeIntervalSinceNow: -3600),
+            feedbackText: feedbackText
         )
     }
 }
