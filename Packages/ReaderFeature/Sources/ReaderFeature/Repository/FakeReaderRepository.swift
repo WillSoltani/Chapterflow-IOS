@@ -16,11 +16,35 @@ public final class FakeReaderRepository: ReaderRepository, @unchecked Sendable {
     /// Chapter to return from `getChapter`. Override to inject errors.
     public var chapterResponse: Result<ChapterResponse, Error>
 
+    /// Book state to return from `getBookState`. Override to inject specific states.
+    public var bookStateResponse: Result<BookStateResponse, Error>
+
+    /// The sessionId returned by `startReadingSession` (nil simulates server failure).
+    public var startSessionId: String? = "fake-session-id"
+
     /// Recorded calls to `patchBookCursor` for assertion in unit tests.
     public private(set) var patchCursorCalls: [(bookId: String, chapterId: String)] = []
 
+    /// Recorded calls to `startReadingSession`.
+    public private(set) var startSessionCalls: [(bookId: String, chapterId: String)] = []
+
     /// Recorded calls to `postReadingHeartbeat`.
-    public private(set) var heartbeatCalls: [(bookId: String, chapterId: String)] = []
+    public private(set) var heartbeatCalls: [HeartbeatCall] = []
+
+    /// Recorded calls to `endReadingSession`.
+    public private(set) var endSessionCalls: [SessionEventCall] = []
+
+    public struct HeartbeatCall: Sendable {
+        public let bookId: String
+        public let chapterId: String
+        public let sessionId: String?
+    }
+
+    public struct SessionEventCall: Sendable {
+        public let bookId: String
+        public let chapterId: String
+        public let sessionId: String?
+    }
 
     /// In-memory position storage keyed by `"\(bookId).\(chapterNumber)"`.
     private var positions: [String: Int] = [:]
@@ -30,11 +54,13 @@ public final class FakeReaderRepository: ReaderRepository, @unchecked Sendable {
     /// Creates a fake repository that returns the built-in EMH chapter fixture.
     public init() {
         self.chapterResponse = .success(Self.makePreviewResponse())
+        self.bookStateResponse = .success(Self.makeDefaultBookState())
     }
 
     /// Creates a fake repository with a custom response.
     public init(chapterResponse: Result<ChapterResponse, Error>) {
         self.chapterResponse = chapterResponse
+        self.bookStateResponse = .success(Self.makeDefaultBookState())
     }
 
     // MARK: - ReaderRepository
@@ -50,8 +76,24 @@ public final class FakeReaderRepository: ReaderRepository, @unchecked Sendable {
         patchCursorCalls.append((bookId: bookId, chapterId: chapterId))
     }
 
-    public func postReadingHeartbeat(bookId: String, chapterId: String) async {
-        heartbeatCalls.append((bookId: bookId, chapterId: chapterId))
+    public func startReadingSession(bookId: String, chapterId: String) async -> String? {
+        startSessionCalls.append((bookId: bookId, chapterId: chapterId))
+        return startSessionId
+    }
+
+    public func postReadingHeartbeat(bookId: String, chapterId: String, sessionId: String?) async {
+        heartbeatCalls.append(HeartbeatCall(bookId: bookId, chapterId: chapterId, sessionId: sessionId))
+    }
+
+    public func endReadingSession(bookId: String, chapterId: String, sessionId: String?) async {
+        endSessionCalls.append(SessionEventCall(bookId: bookId, chapterId: chapterId, sessionId: sessionId))
+    }
+
+    public func getBookState(bookId: String) async throws -> BookStateResponse {
+        switch bookStateResponse {
+        case .success(let r): return r
+        case .failure(let e): throw e
+        }
     }
 
     public func saveScrollPosition(bookId: String, chapterNumber: Int, blockIndex: Int) {
@@ -62,7 +104,7 @@ public final class FakeReaderRepository: ReaderRepository, @unchecked Sendable {
         positions["\(bookId).\(chapterNumber)"]
     }
 
-    // MARK: - Preview fixture
+    // MARK: - Preview fixtures
 
     private static func makePreviewResponse() -> ChapterResponse {
         let json = """
@@ -138,6 +180,21 @@ public final class FakeReaderRepository: ReaderRepository, @unchecked Sendable {
         """
         // swiftlint:disable:next force_try
         return try! JSONDecoder.chapterFlow.decode(ChapterResponse.self, from: Data(json.utf8))
+    }
+
+    private static func makeDefaultBookState() -> BookStateResponse {
+        BookStateResponse(
+            state: BookUserBookState(
+                currentChapterId: "ch-ah-1",
+                completedChapterIds: [],
+                unlockedChapterIds: ["ch-ah-1"],
+                chapterScores: [:],
+                chapterCompletedAt: [:],
+                lastReadChapterId: nil,
+                lastOpenedAt: nil
+            ),
+            applicationStates: [:]
+        )
     }
 }
 #endif

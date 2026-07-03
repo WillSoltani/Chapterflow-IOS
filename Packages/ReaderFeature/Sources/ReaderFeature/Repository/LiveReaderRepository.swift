@@ -30,26 +30,60 @@ public struct LiveReaderRepository: ReaderRepository, @unchecked Sendable {
 
     public func patchBookCursor(bookId: String, chapterId: String) async throws {
         let endpoint = try Endpoints.patchBookCursor(bookId: bookId, chapterId: chapterId)
-        // Decode the state response; result is not needed by the caller.
         let _: BookStateResponse = try await client.send(endpoint)
     }
 
-    // MARK: - Session heartbeat (fire-and-forget)
+    // MARK: - Session lifecycle
 
-    public func postReadingHeartbeat(bookId: String, chapterId: String) async {
+    public func startReadingSession(bookId: String, chapterId: String) async -> String? {
+        do {
+            let endpoint = try Endpoints.postReadingSessionEvent(
+                event: "start",
+                bookId: bookId,
+                chapterId: chapterId,
+                sessionId: nil
+            )
+            let response: ReadingSessionResponse = try await client.send(endpoint)
+            return response.sessionId
+        } catch {
+            logger.debug("Reading session start failed (suppressed): \(error.localizedDescription)")
+            return nil
+        }
+    }
+
+    public func postReadingHeartbeat(bookId: String, chapterId: String, sessionId: String?) async {
         do {
             let endpoint = try Endpoints.postReadingSessionEvent(
                 event: "heartbeat",
                 bookId: bookId,
                 chapterId: chapterId,
-                sessionId: nil
+                sessionId: sessionId
             )
-            // P2.7 will add a proper session-lifecycle response model.
-            // For now accept any decodable response without using the result.
             let _: ReadingSessionResponse = try await client.send(endpoint)
         } catch {
             logger.debug("Reading heartbeat failed (suppressed): \(error.localizedDescription)")
         }
+    }
+
+    public func endReadingSession(bookId: String, chapterId: String, sessionId: String?) async {
+        do {
+            let endpoint = try Endpoints.postReadingSessionEvent(
+                event: "end",
+                bookId: bookId,
+                chapterId: chapterId,
+                sessionId: sessionId
+            )
+            let _: ReadingSessionResponse = try await client.send(endpoint)
+        } catch {
+            logger.debug("Reading session end failed (suppressed): \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - Book state
+
+    public func getBookState(bookId: String) async throws -> BookStateResponse {
+        let endpoint = Endpoints.getBookState(bookId: bookId)
+        return try await client.send(endpoint)
     }
 
     // MARK: - Position persistence
@@ -71,10 +105,9 @@ public struct LiveReaderRepository: ReaderRepository, @unchecked Sendable {
     }
 }
 
-// MARK: - Minimal response types
+// MARK: - Response types
 
-/// Minimal response from `POST /book/me/reading-sessions`.
-/// Full session lifecycle (sessionId, start/end) is implemented in P2.7.
+/// Response from `POST /book/me/reading-sessions`.
 struct ReadingSessionResponse: Decodable, Sendable {
     let sessionId: String?
 }

@@ -148,6 +148,20 @@ public actor EngagementRepository {
     public var tier: String? { memDashboard?.value.tier }
     public var tierProgress: Double? { memDashboard?.value.tierProgress }
 
+    // MARK: - Loop-completion refresh
+
+    /// Force-refreshes streak, dashboard, and progress after a quiz pass.
+    ///
+    /// The server updates these values server-side as part of the quiz-pass pipeline;
+    /// this call pulls the fresh state so the UI reflects the new streak, flow-points,
+    /// and tier immediately after the loop-completion celebration.
+    ///
+    /// Returns the refreshed snapshot, or throws if the network is unavailable and
+    /// no cached data exists.
+    public func refreshAfterLoopComplete() async throws -> DashboardSnapshot {
+        return try await fetchDashboardSnapshot(forceRefresh: true)
+    }
+
     // MARK: - Cache invalidation
 
     public func invalidateAll() {
