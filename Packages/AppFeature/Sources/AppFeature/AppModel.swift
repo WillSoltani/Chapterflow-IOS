@@ -6,6 +6,8 @@ import Persistence
 import LibraryFeature
 import SocialFeature
 import AIFeature
+import ReaderFeature
+import QuizFeature
 
 /// The top-level observable app state that drives `AppRootView`.
 ///
@@ -61,6 +63,15 @@ public final class AppModel {
     /// Shared repository for the "Ask the book" feature.
     public let aiRepository: any AIRepository
 
+    // MARK: - Reader / Quiz / Annotation
+
+    /// Shared repository for the reading experience.
+    public let readerRepository: any ReaderRepository
+    /// Shared repository for chapter quizzes.
+    public let quizRepository: any QuizRepository
+    /// `nil` when the persistence container couldn't be initialised (edge case).
+    public let annotationRepository: (any AnnotationRepository)?
+
     // MARK: - Audio
 
     /// Shared user preferences (persisted to App Group UserDefaults).
@@ -83,6 +94,13 @@ public final class AppModel {
         self.bookDetailRepository = LiveBookDetailRepository(client: client)
         self.socialRepository = LiveSocialRepository(client: client)
         self.aiRepository = LiveAIRepository(client: client)
+        self.readerRepository = LiveReaderRepository(client: client)
+        self.quizRepository = LiveQuizRepository(client: client)
+        if let container {
+            self.annotationRepository = LiveAnnotationRepository(container: container, apiClient: client)
+        } else {
+            self.annotationRepository = nil
+        }
 
         let prefs = AppPreferences()
         self.preferences = prefs

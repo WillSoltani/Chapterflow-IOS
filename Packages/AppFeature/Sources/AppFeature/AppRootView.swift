@@ -26,6 +26,7 @@ import SettingsFeature
 /// - `.reauthRequired` → main `TabView` + `ReauthView` sheet (blocking)
 public struct AppRootView: View {
     @State private var model: AppModel
+    @State private var readingFlow: ReadingFlow?
 
     public init(config: AppConfig = .fromInfoPlist()) {
         _model = State(initialValue: AppModel(config: config))
@@ -128,6 +129,16 @@ public struct AppRootView: View {
             MiniPlayerBar()
                 .environment(model.audioPlayerModel)
         }
+        .fullScreenCover(item: $readingFlow) { flow in
+            ReadingFlowView(
+                flow: flow,
+                readerRepository: model.readerRepository,
+                quizRepository: model.quizRepository,
+                annotationRepository: model.annotationRepository,
+                preferences: model.preferences,
+                onDismiss: { readingFlow = nil }
+            )
+        }
     }
 
     // MARK: - Tab content
@@ -139,13 +150,27 @@ public struct AppRootView: View {
             HomeView(
                 repository: model.libraryRepository,
                 bookDetailRepository: model.bookDetailRepository,
-                aiRepository: model.aiRepository
+                aiRepository: model.aiRepository,
+                onOpenReader: { bookId, chapterNumber, variantFamily in
+                    readingFlow = ReadingFlow(
+                        bookId: bookId,
+                        chapterNumber: chapterNumber,
+                        variantFamily: variantFamily
+                    )
+                }
             )
         case .library:
             LibraryView(
                 repository: model.libraryRepository,
                 bookDetailRepository: model.bookDetailRepository,
-                aiRepository: model.aiRepository
+                aiRepository: model.aiRepository,
+                onOpenReader: { bookId, chapterNumber, variantFamily in
+                    readingFlow = ReadingFlow(
+                        bookId: bookId,
+                        chapterNumber: chapterNumber,
+                        variantFamily: variantFamily
+                    )
+                }
             )
         case .profile:
             ProfileView(repository: model.socialRepository)

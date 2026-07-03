@@ -16,14 +16,14 @@ public struct HomeView: View {
 
     private let bookDetailRepository: any BookDetailRepository
     private let aiRepository: (any AIRepository)?
-    private let onOpenReader: ((String, Int) -> Void)?
+    private let onOpenReader: ((String, Int, VariantFamily) -> Void)?
     private let onShowPaywall: (() -> Void)?
 
     public init(
         repository: any LibraryRepository,
         bookDetailRepository: any BookDetailRepository,
         aiRepository: (any AIRepository)? = nil,
-        onOpenReader: ((String, Int) -> Void)? = nil,
+        onOpenReader: ((String, Int, VariantFamily) -> Void)? = nil,
         onShowPaywall: (() -> Void)? = nil
     ) {
         _model = State(initialValue: HomeModel(repository: repository))
