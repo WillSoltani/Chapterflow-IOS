@@ -17,6 +17,7 @@ private enum CacheKey {
     static let badges = "engagement.badges"
     static let flowPoints = "engagement.flowPoints"
     static let shop = "engagement.shop"
+    static let tier = "engagement.tier"
 }
 
 // MARK: - EngagementRepository
@@ -60,6 +61,7 @@ public actor EngagementRepository {
     private var memBadges: MemEntry<[BadgeItem]>?
     private var memFlowPoints: MemEntry<FlowPointsResponse>?
     private var memShop: MemEntry<ShopResponse>?
+    private var memTier: MemEntry<TierState>?
 
     // TTLs
     private let dashboardTTL: TimeInterval = 5 * 60
@@ -68,6 +70,7 @@ public actor EngagementRepository {
     private let badgesTTL: TimeInterval = 10 * 60
     private let flowPointsTTL: TimeInterval = 2 * 60
     private let shopTTL: TimeInterval = 5 * 60
+    private let tierTTL: TimeInterval = 5 * 60
 
     // MARK: Init
 
@@ -221,6 +224,36 @@ public actor EngagementRepository {
         }
     }
 
+    // MARK: - Public: Tier
+
+    /// Fetches the user's current tier state from `POST /book/me/tier`.
+    ///
+    /// The server evaluates the user's metrics and returns the full tier breakdown.
+    /// When `recentlyPromoted` is `true` in the response, the caller should fire
+    /// a `.tierUp` celebration through `CelebrationPresenter`.
+    ///
+    /// Results are cached for 5 minutes; force-refresh to pick up promotion events.
+    public func fetchTier(forceRefresh: Bool = false) async throws -> TierState {
+        if !forceRefresh, let entry = memTier, !entry.isStale(ttl: tierTTL) {
+            return entry.value
+        }
+        do {
+            let endpoint = try Endpoints.postTier()
+            let resp: TierResponse = try await apiClient.send(endpoint)
+            let value = resp.tier
+            memTier = MemEntry(value: value, storedAt: Date())
+            persistToDisk(key: CacheKey.tier, encodable: resp)
+            return value
+        } catch AppError.offline {
+            if let cached: TierResponse = loadFromDisk(key: CacheKey.tier) {
+                memTier = MemEntry(value: cached.tier, storedAt: Date())
+                return cached.tier
+            }
+            if let entry = memTier { return entry.value }
+            throw AppError.offline
+        }
+    }
+
     // MARK: - Public: Redeem
 
     /// Redeems a shop item (buy or equip).
@@ -281,6 +314,7 @@ public actor EngagementRepository {
         memBadges = nil
         memFlowPoints = nil
         memShop = nil
+        memTier = nil
     }
 
     // MARK: - Disk cache helpers (run on actor executor)

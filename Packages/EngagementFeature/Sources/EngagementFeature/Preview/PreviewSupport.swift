@@ -169,6 +169,67 @@ extension Array where Element == ShopItem {
     static let previewShopItems: [ShopItem] = previewRewards + previewCosmetics
 }
 
+// MARK: - TierState preview fixtures
+
+extension TierState {
+    static let previewAnalyst = TierState(
+        currentTier: .analyst,
+        nextTier: .synthesizer,
+        overallProgress: 0.62,
+        metrics: TierProgressDetail(
+            loopsCompleted: 18,
+            loopsTarget: 30,
+            averageQuizScore: 74,
+            quizScoreTarget: 80,
+            categoriesExplored: 2,
+            categoriesTarget: 3
+        ),
+        recentlyPromoted: false,
+        previousTier: nil
+    )
+
+    static let previewLuminary = TierState(
+        currentTier: .luminary,
+        nextTier: nil,
+        overallProgress: 1.0,
+        metrics: nil,
+        recentlyPromoted: false,
+        previousTier: nil
+    )
+
+    static let previewReader = TierState(
+        currentTier: .reader,
+        nextTier: .analyst,
+        overallProgress: 0.20,
+        metrics: TierProgressDetail(
+            loopsCompleted: 3,
+            loopsTarget: 15,
+            averageQuizScore: 65,
+            quizScoreTarget: 70,
+            categoriesExplored: 1,
+            categoriesTarget: 2
+        ),
+        recentlyPromoted: false,
+        previousTier: nil
+    )
+
+    static let previewPromoted = TierState(
+        currentTier: .analyst,
+        nextTier: .synthesizer,
+        overallProgress: 0.05,
+        metrics: TierProgressDetail(
+            loopsCompleted: 1,
+            loopsTarget: 30,
+            averageQuizScore: 80,
+            quizScoreTarget: 80,
+            categoriesExplored: 2,
+            categoriesTarget: 3
+        ),
+        recentlyPromoted: true,
+        previousTier: .reader
+    )
+}
+
 // MARK: - Preview EngagementRepository
 
 extension EngagementRepository {
@@ -185,6 +246,26 @@ extension EngagementRepository {
     /// Repository where the user has no active streak.
     static var previewNoStreak: EngagementRepository {
         makePreviewRepository(streak: .previewNoStreak)
+    }
+
+    /// Repository pre-loaded with Analyst tier data for `TierView` previews.
+    static var previewTierAnalyst: EngagementRepository {
+        makeTierPreviewRepository(tier: .previewAnalyst)
+    }
+
+    /// Repository pre-loaded with Luminary tier data for `TierView` previews.
+    static var previewTierLuminary: EngagementRepository {
+        makeTierPreviewRepository(tier: .previewLuminary)
+    }
+
+    /// Repository pre-loaded with Reader tier data for `TierView` previews.
+    static var previewTierReader: EngagementRepository {
+        makeTierPreviewRepository(tier: .previewReader)
+    }
+
+    /// Repository that simulates a freshly promoted user for `TierView` previews.
+    static var previewTierPromoted: EngagementRepository {
+        makeTierPreviewRepository(tier: .previewPromoted)
     }
 
     private static func makePreviewRepository(streak: StreakState) -> EngagementRepository {
@@ -215,6 +296,20 @@ extension EngagementRepository {
                 return try JSONCoding.encoder.encode(
                     RedeemFlowPointsResponse(balance: dashboard.flowPoints - 250, item: shopItems.first, equippedCosmetics: equipped)
                 )
+            case "/book/me/tier":
+                return try JSONCoding.encoder.encode(TierResponse(tier: .previewAnalyst))
+            default:
+                throw AppError.notFound
+            }
+        }
+        return EngagementRepository(apiClient: client, modelContainer: nil)
+    }
+
+    private static func makeTierPreviewRepository(tier: TierState) -> EngagementRepository {
+        let client = PreviewAPIClient { endpoint in
+            switch endpoint.path {
+            case "/book/me/tier":
+                return try JSONCoding.encoder.encode(TierResponse(tier: tier))
             default:
                 throw AppError.notFound
             }
