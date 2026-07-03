@@ -139,6 +139,12 @@ public struct AppRootView: View {
                 onDismiss: { readingFlow = nil }
             )
         }
+        .sheet(isPresented: Binding(
+            get: { model.showPaywall },
+            set: { model.showPaywall = $0 }
+        )) {
+            PaywallView(model: model.makePaywallModel(context: model.paywallContext))
+        }
     }
 
     // MARK: - Tab content
@@ -157,6 +163,10 @@ public struct AppRootView: View {
                         chapterNumber: chapterNumber,
                         variantFamily: variantFamily
                     )
+                },
+                onShowPaywall: {
+                    model.paywallContext = .lockedFeature(featureName: "Book")
+                    model.showPaywall = true
                 }
             )
         case .library:
@@ -170,31 +180,30 @@ public struct AppRootView: View {
                         chapterNumber: chapterNumber,
                         variantFamily: variantFamily
                     )
+                },
+                onShowPaywall: {
+                    model.paywallContext = .lockedFeature(featureName: "Book")
+                    model.showPaywall = true
                 }
             )
         case .profile:
             ProfileView(repository: model.socialRepository)
         case .reviews:
             ReviewsView(model: ReviewsModel(repository: model.reviewsRepository))
-        default:
-            PlaceholderTab(tab: tab)
-        }
-    }
-}
-
-// MARK: - Placeholder tab
-
-private struct PlaceholderTab: View {
-    let tab: AppTab
-
-    var body: some View {
-        NavigationStack {
-            ContentUnavailableView(
-                tab.title,
-                systemImage: tab.filledSystemImage,
-                description: Text("\(tab.title) is coming soon.")
+        case .settings:
+            SettingsView(
+                isPro: model.entitlementService.isPro,
+                remainingFreeStarts: model.entitlementService.remainingFreeStarts,
+                currentPeriodEnd: model.entitlementService.currentPeriodEnd,
+                cancelAtPeriodEnd: model.entitlementService.cancelAtPeriodEnd,
+                onShowPaywall: {
+                    model.paywallContext = .settings
+                    model.showPaywall = true
+                },
+                onManageSubscription: {
+                    model.openManageSubscriptions()
+                }
             )
-            .navigationTitle(tab.title)
         }
     }
 }
