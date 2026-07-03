@@ -161,13 +161,14 @@ struct PersistenceControllerTests {
         #expect(fetched.first?.colorRaw == "yellow")
     }
 
-    @Test("migration plan is well-formed with V1 → V2 → V3 stages")
+    @Test("migration plan is well-formed with V1 → V2 → V3 → V4 stages")
     func migrationPlan() {
-        #expect(PersistenceMigrationPlan.schemas.count == 3)
-        #expect(PersistenceMigrationPlan.stages.count == 2)
+        #expect(PersistenceMigrationPlan.schemas.count == 4)
+        #expect(PersistenceMigrationPlan.stages.count == 3)
         #expect(PersistenceSchemaV1.versionIdentifier == Schema.Version(1, 0, 0))
         #expect(PersistenceSchemaV2.versionIdentifier == Schema.Version(2, 0, 0))
         #expect(PersistenceSchemaV3.versionIdentifier == Schema.Version(3, 0, 0))
+        #expect(PersistenceSchemaV4.versionIdentifier == Schema.Version(4, 0, 0))
     }
 
     @Test("PendingReviewGrade round-trips in-memory")
