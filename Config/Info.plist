@@ -20,6 +20,12 @@
 	<string>$(COGNITO_DOMAIN)</string>
 	<key>SentryDSN</key>
 	<string>$(SENTRY_DSN)</string>
+	<key>SKMonthlyProductID</key>
+	<string>$(SK_MONTHLY_PRODUCT_ID)</string>
+	<key>SKAnnualProductID</key>
+	<string>$(SK_ANNUAL_PRODUCT_ID)</string>
+	<key>SKAnnualUpfrontProductID</key>
+	<string>$(SK_ANNUAL_UPFRONT_PRODUCT_ID)</string>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.chapterflow.ios.tokenRefresh</string>

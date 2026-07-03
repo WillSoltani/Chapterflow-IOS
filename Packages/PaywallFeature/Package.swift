@@ -3,12 +3,34 @@ import PackageDescription
 
 let package = Package(
     name: "PaywallFeature",
-    platforms: [.iOS(.v18)],
+    platforms: [.iOS(.v18), .macOS(.v15)],
     products: [
         .library(name: "PaywallFeature", targets: ["PaywallFeature"]),
     ],
+    dependencies: [
+        .package(path: "../CoreKit"),
+        .package(path: "../Models"),
+        .package(path: "../Networking"),
+        .package(path: "../DesignSystem"),
+        .package(path: "../Fixtures"),
+    ],
     targets: [
-        .target(name: "PaywallFeature"),
-        .testTarget(name: "PaywallFeatureTests", dependencies: ["PaywallFeature"]),
+        .target(
+            name: "PaywallFeature",
+            dependencies: [
+                "CoreKit",
+                "Models",
+                "Networking",
+                "DesignSystem",
+            ]
+        ),
+        .testTarget(
+            name: "PaywallFeatureTests",
+            dependencies: [
+                "PaywallFeature",
+                "CoreKit",
+                .product(name: "Fixtures", package: "Fixtures"),
+            ]
+        ),
     ]
 )

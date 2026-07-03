@@ -5,6 +5,6 @@ import Testing
 struct PaywallFeatureTests {
     @Test("module exposes its name")
     func moduleName() {
-        #expect(PaywallFeature.moduleName == "PaywallFeature")
+        #expect(PaywallFeatureModule.moduleName == "PaywallFeature")
     }
 }
