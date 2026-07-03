@@ -175,7 +175,7 @@ public struct PersistenceController: Sendable {
         self.container = container
     }
 
-    /// Convenience: the default core schema (V4) with its migration plan.
+    /// Convenience: the default core schema (V5) with its migration plan.
     public static func makeDefault(storage: StorageMode = .appGroup) throws -> PersistenceController {
         try PersistenceController(
             models: PersistenceSchemaV5.models,
