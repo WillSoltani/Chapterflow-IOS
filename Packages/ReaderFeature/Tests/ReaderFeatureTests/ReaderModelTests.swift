@@ -281,4 +281,94 @@ struct ReaderModelTests {
         // Zero heartbeats in tests (30 s hasn't elapsed).
         #expect(fake.heartbeatCalls.isEmpty)
     }
+
+    // MARK: - Depth recommendation (P6.4)
+
+    @Test("confident recommendation sets recommendedVariant on controls model")
+    func confidentRecommendationSetsVariant() async throws {
+        let model = makeModel()
+        let rec = DepthRecommendation(recommendedDepth: .medium, confidence: 0.85)
+        model.fetchDepthRecommendation = { _ in rec }
+        model.load()
+        await Task.yield()
+        try await Task.sleep(for: .milliseconds(100))
+
+        guard case .loaded(let controls) = model.phase else {
+            Issue.record("Expected .loaded phase"); return
+        }
+        #expect(controls.recommendedVariant == .medium)
+    }
+
+    @Test("confident recommendation sets recommendedRationale on controls model")
+    func confidentRecommendationSetsRationale() async throws {
+        let model = makeModel()
+        let rec = DepthRecommendation(recommendedDepth: .medium, confidence: 0.9)
+        model.fetchDepthRecommendation = { _ in rec }
+        model.load()
+        await Task.yield()
+        try await Task.sleep(for: .milliseconds(100))
+
+        guard case .loaded(let controls) = model.phase else {
+            Issue.record("Expected .loaded phase"); return
+        }
+        #expect(controls.recommendedRationale != nil)
+        #expect(!(controls.recommendedRationale ?? "").isEmpty)
+    }
+
+    @Test("low-confidence recommendation does not set recommendedVariant")
+    func lowConfidenceDoesNotSetVariant() async throws {
+        let model = makeModel()
+        let rec = DepthRecommendation(recommendedDepth: .hard, confidence: 0.4)
+        model.fetchDepthRecommendation = { _ in rec }
+        model.load()
+        await Task.yield()
+        try await Task.sleep(for: .milliseconds(100))
+
+        guard case .loaded(let controls) = model.phase else {
+            Issue.record("Expected .loaded phase"); return
+        }
+        #expect(controls.recommendedVariant == nil)
+    }
+
+    @Test("nil recommendedDepth does not set recommendedVariant")
+    func nilDepthDoesNotSetVariant() async throws {
+        let model = makeModel()
+        let rec = DepthRecommendation(recommendedDepth: nil, confidence: 0.9)
+        model.fetchDepthRecommendation = { _ in rec }
+        model.load()
+        await Task.yield()
+        try await Task.sleep(for: .milliseconds(100))
+
+        guard case .loaded(let controls) = model.phase else {
+            Issue.record("Expected .loaded phase"); return
+        }
+        #expect(controls.recommendedVariant == nil)
+    }
+
+    @Test("recommendation error does not affect phase")
+    func recommendationErrorDoesNotAffectPhase() async throws {
+        let model = makeModel()
+        model.fetchDepthRecommendation = { _ in throw URLError(.notConnectedToInternet) }
+        model.load()
+        await Task.yield()
+        try await Task.sleep(for: .milliseconds(100))
+
+        if case .loaded = model.phase { } else {
+            Issue.record("Expected .loaded despite recommendation error, got \(model.phase)")
+        }
+    }
+
+    @Test("no recommendation when fetchDepthRecommendation is nil")
+    func noRecommendationWhenNotWired() async throws {
+        let model = makeModel()
+        // fetchDepthRecommendation defaults to nil — no closure set
+        model.load()
+        await Task.yield()
+        try await Task.sleep(for: .milliseconds(100))
+
+        guard case .loaded(let controls) = model.phase else {
+            Issue.record("Expected .loaded phase"); return
+        }
+        #expect(controls.recommendedVariant == nil)
+    }
 }

@@ -95,6 +95,15 @@ public final class ReaderModel {
     /// Receives the selected block text as context for the AI query.
     public var onAskAboutSelection: ((String) -> Void)?
 
+    /// Async closure that fetches the depth recommendation for `bookId`.
+    ///
+    /// Injected by the host (AppFeature) using `LiveAIRepository`. When non-nil, the model
+    /// fires this after the chapter loads and sets `recommendedVariant` / `recommendedRationale`
+    /// on the controls model if the recommendation is confident and the variant is available.
+    ///
+    /// Failures are silently swallowed — the recommendation is optional chrome.
+    public var fetchDepthRecommendation: ((String) async throws -> DepthRecommendation)?
+
     // MARK: - Annotation
 
     /// The annotation model for highlights, notes, and bookmarks.
@@ -131,6 +140,7 @@ public final class ReaderModel {
     @ObservationIgnored private var loadTask: Task<Void, Never>?
     @ObservationIgnored private var heartbeatTask: Task<Void, Never>?
     @ObservationIgnored private var bookStateTask: Task<Void, Never>?
+    @ObservationIgnored private var recommendationTask: Task<Void, Never>?
 
     /// readPercent threshold above which chapter-end state triggers.
     public static let chapterEndThreshold: Double = 0.95
@@ -169,6 +179,7 @@ public final class ReaderModel {
     public func load() {
         loadTask?.cancel()
         bookStateTask?.cancel()
+        recommendationTask?.cancel()
         phase = .loading
         readPercent = 0
         isAtChapterEnd = false
@@ -188,6 +199,7 @@ public final class ReaderModel {
         stopHeartbeats()
         loadTask?.cancel()
         bookStateTask?.cancel()
+        recommendationTask?.cancel()
         if case .loaded(let controlsModel) = phase {
             let chapterId = controlsModel.resolvedChapter.chapterId
             let bId = bookId
@@ -336,6 +348,9 @@ public final class ReaderModel {
             // Fetch book state for the application axis (best-effort, does not block).
             fetchBookState(chapterId: chapterId)
 
+            // Fetch depth recommendation (best-effort, does not block loading).
+            applyDepthRecommendation(to: controlsModel)
+
         } catch is CancellationError {
             // Cancelled — phase remains loading; the next load() call will retry.
         } catch {
@@ -353,6 +368,32 @@ public final class ReaderModel {
             guard let stateResponse = try? await repo.getBookState(bookId: bId) else { return }
             guard !Task.isCancelled else { return }
             self.applicationState = stateResponse.applicationStates?[chapterId] ?? .none
+        }
+    }
+
+    /// Fires a best-effort depth-recommendation fetch and writes the result onto the
+    /// controls model when the recommendation is confident and available.
+    ///
+    /// Failures are silently swallowed — the recommendation is optional UI chrome.
+    private func applyDepthRecommendation(to controlsModel: ReaderControlsModel) {
+        guard fetchDepthRecommendation != nil else { return }
+        recommendationTask?.cancel()
+        let bId = bookId
+        let family = variantFamily
+        recommendationTask = Task { [weak self] in
+            guard let self else { return }
+            guard let fetch = self.fetchDepthRecommendation else { return }
+            do {
+                let rec = try await fetch(bId)
+                guard !Task.isCancelled else { return }
+                guard rec.isConfident,
+                      let depth = rec.recommendedDepth,
+                      controlsModel.availableVariants.contains(depth) else { return }
+                controlsModel.recommendedVariant = depth
+                controlsModel.recommendedRationale = rec.rationale(variantFamily: family)
+            } catch {
+                // Best-effort — silently ignore recommendation failures.
+            }
         }
     }
 

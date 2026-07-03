@@ -325,4 +325,8 @@ actor CapturingAIRepository: AIRepository {
     func conceptGraph(bookId: String) async throws -> ConceptGraph {
         FakeAIRepository.sampleConceptGraph
     }
+
+    func depthRecommendation(bookId: String) async throws -> DepthRecommendation {
+        FakeAIRepository.sampleDepthRecommendation
+    }
 }

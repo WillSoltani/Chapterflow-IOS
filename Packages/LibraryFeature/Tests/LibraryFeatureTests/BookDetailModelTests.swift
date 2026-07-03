@@ -456,6 +456,79 @@ struct BookDetailModelTests {
         #expect(openedBookId == "b-atomic-habits")
     }
 
+    // MARK: - Depth recommendation (P6.4)
+
+    @Test("depthRecommendation is nil before fetch")
+    func depthRecommendationNilBeforeFetch() {
+        let model = BookDetailModel(bookId: "b-atomic-habits", repository: FakeBookDetailRepository(
+            manifest: Self.manifest,
+            entitlement: Self.proEntitlement()
+        ))
+        #expect(model.depthRecommendation == nil)
+    }
+
+    @Test("depthRecommendation is nil when fetchDepthRecommendation is not wired")
+    func depthRecommendationNilWhenNotWired() async throws {
+        let repo = FakeBookDetailRepository(
+            manifest: Self.manifest,
+            state: Self.inProgressState,
+            entitlement: Self.proEntitlement()
+        )
+        let model = BookDetailModel(bookId: "b-atomic-habits", repository: repo)
+        await model.fetch()
+        // No closure wired — recommendation stays nil
+        #expect(model.depthRecommendation == nil)
+    }
+
+    @Test("depthRecommendation is set when confident recommendation is returned")
+    func depthRecommendationSetOnConfidentResponse() async throws {
+        let repo = FakeBookDetailRepository(
+            manifest: Self.manifest,
+            state: Self.inProgressState,
+            entitlement: Self.proEntitlement()
+        )
+        let model = BookDetailModel(bookId: "b-atomic-habits", repository: repo)
+        let expected = DepthRecommendation(recommendedDepth: .medium, confidence: 0.85)
+        model.fetchDepthRecommendation = { _ in expected }
+        await model.fetch()
+        // Give the background task time to complete.
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(model.depthRecommendation?.recommendedDepth == .medium)
+        #expect(model.depthRecommendation?.isConfident == true)
+    }
+
+    @Test("depthRecommendation stays nil for low-confidence response")
+    func depthRecommendationNilOnLowConfidence() async throws {
+        let repo = FakeBookDetailRepository(
+            manifest: Self.manifest,
+            state: Self.inProgressState,
+            entitlement: Self.proEntitlement()
+        )
+        let model = BookDetailModel(bookId: "b-atomic-habits", repository: repo)
+        let lowConf = DepthRecommendation(recommendedDepth: .hard, confidence: 0.4)
+        model.fetchDepthRecommendation = { _ in lowConf }
+        await model.fetch()
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(model.depthRecommendation == nil)
+    }
+
+    @Test("depthRecommendation error does not affect loadState")
+    func depthRecommendationErrorDoesNotAffectLoadState() async throws {
+        let repo = FakeBookDetailRepository(
+            manifest: Self.manifest,
+            state: Self.inProgressState,
+            entitlement: Self.proEntitlement()
+        )
+        let model = BookDetailModel(bookId: "b-atomic-habits", repository: repo)
+        model.fetchDepthRecommendation = { _ in throw AppError.offline }
+        await model.fetch()
+        try await Task.sleep(for: .milliseconds(50))
+        if case .loaded = model.loadState { } else {
+            Issue.record("Expected .loaded despite recommendation error, got \(model.loadState)")
+        }
+        #expect(model.depthRecommendation == nil)
+    }
+
     @Test("performPrimaryAction .startReading sets startError on repository failure")
     func performStartReadingSetsStartErrorOnFailure() async {
         let repo = FakeBookDetailRepository(

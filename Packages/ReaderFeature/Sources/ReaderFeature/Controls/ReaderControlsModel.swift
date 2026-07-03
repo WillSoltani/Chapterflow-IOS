@@ -88,12 +88,15 @@ public final class ReaderControlsModel {
         return max(0, Int(remaining.rounded()))
     }
 
-    // MARK: - Depth hint (filled by P6.4)
+    // MARK: - Depth hint (P6.4)
 
     /// The server-recommended depth variant for this reader.
-    /// `nil` hides the hint slot. Set by the host after loading
-    /// `GET /book/me/books/{bookId}/depth-recommendation`.
+    /// `nil` hides the hint slot. Set by `ReaderModel` after loading the depth recommendation.
     public var recommendedVariant: VariantKey?
+
+    /// One-line rationale explaining the depth recommendation.
+    /// Only meaningful when `recommendedVariant` is non-nil.
+    public var recommendedRationale: String?
 
     // MARK: - Init
 
@@ -218,15 +221,7 @@ public final class ReaderControlsModel {
 
     /// Human-readable display label for a depth variant.
     public func displayName(for variant: VariantKey) -> String {
-        switch variant {
-        case .easy:        return "Easy"
-        case .medium:      return "Medium"
-        case .hard:        return "Hard"
-        case .precise:     return "Precise"
-        case .balanced:    return "Balanced"
-        case .challenging: return "Challenging"
-        case .unknown:     return ""
-        }
+        variant.displayName
     }
 
     /// Human-readable display label for a tone.

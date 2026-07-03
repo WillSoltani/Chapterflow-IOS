@@ -55,6 +55,12 @@ public final class BookDetailModel {
     /// Non-nil when a start action failed.
     public private(set) var startError: String?
 
+    /// The server's depth recommendation for this book.
+    ///
+    /// `nil` until loaded or when `fetchDepthRecommendation` is not wired.
+    /// Only show this in the UI when `depthRecommendation?.isConfident == true`.
+    public private(set) var depthRecommendation: DepthRecommendation?
+
     // MARK: - Navigation callbacks (injected from AppFeature)
 
     /// Called when the user taps Start/Continue and the book can be opened.
@@ -63,11 +69,18 @@ public final class BookDetailModel {
     /// Called when the user taps Start but has no access — show the paywall.
     public var onShowPaywall: (() -> Void)?
 
+    /// Async closure that fetches a depth recommendation for `bookId`.
+    ///
+    /// Wired by the host (`BookDetailView`) using the `AIRepository`. Failures are
+    /// silently swallowed — the recommendation is optional UI chrome.
+    public var fetchDepthRecommendation: ((String) async throws -> DepthRecommendation)?
+
     // MARK: - Private
 
     public let bookId: String
     private let repository: any BookDetailRepository
     private let evaluator = EntitlementEvaluator()
+    @MainActor private var recommendationTask: Task<Void, Never>?
 
     // MARK: - Init
 
@@ -174,10 +187,35 @@ public final class BookDetailModel {
             self.bookState = stateResponse?.state
             self.applicationStates = stateResponse?.applicationStates ?? [:]
             self.loadState = .loaded
+
+            // Fire depth recommendation fetch (best-effort, non-blocking).
+            loadDepthRecommendation()
+
         } catch let appErr as AppError {
             loadState = .error(appErr.errorDescription ?? appErr.code)
         } catch {
             loadState = .error(error.localizedDescription)
+        }
+    }
+
+    /// Fires a best-effort depth recommendation fetch and stores the result.
+    ///
+    /// Only stores the recommendation when confidence is sufficient; silently
+    /// discards errors and low-confidence responses.
+    private func loadDepthRecommendation() {
+        guard fetchDepthRecommendation != nil else { return }
+        recommendationTask?.cancel()
+        let bId = bookId
+        recommendationTask = Task { [weak self] in
+            guard let self else { return }
+            guard let fetch = self.fetchDepthRecommendation else { return }
+            do {
+                let rec = try await fetch(bId)
+                guard !Task.isCancelled else { return }
+                self.depthRecommendation = rec.isConfident ? rec : nil
+            } catch {
+                // Best-effort — recommendation failure never affects the main view state.
+            }
         }
     }
 

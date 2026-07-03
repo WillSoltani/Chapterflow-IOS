@@ -318,6 +318,17 @@ public enum Endpoints {
         )
     }
 
+    // MARK: - AI / Depth recommendation
+
+    /// `GET /book/me/books/{bookId}/depth-recommendation`
+    /// → `{ recommendedDepth, confidence }`.
+    ///
+    /// Returns an adaptive reading-depth recommendation based on the user's
+    /// engagement history. Confidence < 0.7 should be treated as "no suggestion".
+    public static func getDepthRecommendation(bookId: String) -> Endpoint {
+        Endpoint(method: .get, path: "/book/me/books/\(bookId)/depth-recommendation", requiresAuth: true)
+    }
+
     // MARK: - Audio narration
 
     /// `GET /book/books/{bookId}/chapters/{n}/audio`
