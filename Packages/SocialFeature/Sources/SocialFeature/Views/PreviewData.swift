@@ -139,6 +139,60 @@ extension BadgeItem {
     ]
 }
 
+// MARK: - ReadingPair preview fixtures
+
+extension ReadingPair {
+    public static let previewActive = ReadingPair(
+        partnerId: "user-bob",
+        partnerDisplayName: "Bob Smith",
+        partnerAvatarUrl: nil,
+        partnerAvatarEmoji: "📚",
+        partnerTier: .analyst,
+        partnerCurrentStreak: 7,
+        partnerBooksFinished: 4,
+        status: .active,
+        pairedAt: "2024-03-01T00:00:00Z"
+    )
+
+    public static let previewPending = ReadingPair(
+        partnerId: "user-carol-pending",
+        partnerDisplayName: "Carol",
+        partnerAvatarUrl: nil,
+        partnerAvatarEmoji: "✨",
+        partnerTier: .reader,
+        partnerCurrentStreak: 0,
+        partnerBooksFinished: 0,
+        status: .pending,
+        pairedAt: nil
+    )
+
+    public static let previewExpired = ReadingPair(
+        partnerId: "user-dave-expired",
+        partnerDisplayName: "Dave",
+        partnerAvatarUrl: nil,
+        partnerAvatarEmoji: "📖",
+        partnerTier: .reader,
+        partnerCurrentStreak: 0,
+        partnerBooksFinished: 0,
+        status: .expired,
+        pairedAt: nil
+    )
+
+    public static func preview(partnerId: String, displayName: String? = nil) -> ReadingPair {
+        ReadingPair(
+            partnerId: partnerId,
+            partnerDisplayName: displayName ?? "Partner \(partnerId.prefix(4).uppercased())",
+            partnerAvatarUrl: nil,
+            partnerAvatarEmoji: "🤝",
+            partnerTier: .analyst,
+            partnerCurrentStreak: 5,
+            partnerBooksFinished: 3,
+            status: .active,
+            pairedAt: "2024-04-01T00:00:00Z"
+        )
+    }
+}
+
 // MARK: - FakeSocialRepository preview helpers
 
 extension FakeSocialRepository {
@@ -154,6 +208,16 @@ extension FakeSocialRepository {
     /// Repository in error state (every call throws `.offline`).
     public static var errored: FakeSocialRepository {
         FakeSocialRepository(error: .offline)
+    }
+
+    /// Repository seeded with multiple reading pairs for pairs-screen previews.
+    public static var withPairs: FakeSocialRepository {
+        FakeSocialRepository(
+            profile: .preview,
+            badges: BadgeItem.previewList,
+            publicProfiles: ["user-partner": .preview()],
+            pairs: [.previewActive, .previewPending, .previewExpired]
+        )
     }
 }
 #endif

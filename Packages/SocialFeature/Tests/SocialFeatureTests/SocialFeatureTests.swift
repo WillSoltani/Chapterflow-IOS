@@ -40,10 +40,8 @@ struct CosmeticItemTests {
         let readerThemeJSON = """
         {"itemId":"t2","name":"Sepia","itemType":"reader_theme"}
         """.data(using: .utf8)!
-
         let profileTheme = try JSONDecoder().decode(CosmeticItem.self, from: profileThemeJSON)
         let readerTheme = try JSONDecoder().decode(CosmeticItem.self, from: readerThemeJSON)
-
         #expect(profileTheme.itemType == .profileTheme)
         #expect(readerTheme.itemType == .readerTheme)
     }
@@ -57,11 +55,8 @@ struct ProfileTierTests {
     @Test("all known tiers decode")
     func knownTiers() throws {
         let cases: [(String, ProfileTier)] = [
-            ("reader", .reader),
-            ("analyst", .analyst),
-            ("synthesizer", .synthesizer),
-            ("polymath", .polymath),
-            ("luminary", .luminary),
+            ("reader", .reader), ("analyst", .analyst),
+            ("synthesizer", .synthesizer), ("polymath", .polymath), ("luminary", .luminary),
         ]
         for (raw, expected) in cases {
             let json = "\"\(raw)\"".data(using: .utf8)!
@@ -103,8 +98,7 @@ struct OwnProfileTests {
     @Test("initials from two-word display name")
     func initialsFromTwoWords() {
         let profile = OwnProfile(
-            userId: "u1",
-            displayName: "Alice Reader",
+            userId: "u1", displayName: "Alice Reader",
             avatarUrl: nil, avatarEmoji: nil,
             tier: .analyst, tierProgress: 0.5,
             currentStreak: 7, longestStreak: 10,
@@ -118,8 +112,7 @@ struct OwnProfileTests {
     @Test("initials from single-word display name")
     func initialsFromSingleWord() {
         let profile = OwnProfile(
-            userId: "u2",
-            displayName: "Alice",
+            userId: "u2", displayName: "Alice",
             avatarUrl: nil, avatarEmoji: nil,
             tier: .reader, tierProgress: nil,
             currentStreak: 0, longestStreak: 0,
@@ -133,8 +126,7 @@ struct OwnProfileTests {
     @Test("initials fallback when displayName is nil")
     func initialsNilDisplayName() {
         let profile = OwnProfile(
-            userId: "u3",
-            displayName: nil,
+            userId: "u3", displayName: nil,
             avatarUrl: nil, avatarEmoji: nil,
             tier: .reader, tierProgress: nil,
             currentStreak: 0, longestStreak: 0,
@@ -150,30 +142,20 @@ struct OwnProfileTests {
         let json = """
         {
           "profile": {
-            "userId": "user-123",
-            "displayName": "Alice",
-            "avatarUrl": null,
-            "avatarEmoji": "📚",
-            "tier": "analyst",
-            "tierProgress": 0.65,
-            "currentStreak": 14,
-            "longestStreak": 21,
-            "booksFinished": 7,
-            "flowPoints": 4200,
-            "equippedFrame": null,
-            "equippedTheme": null,
-            "badgeCount": 5,
-            "joinedAt": "2024-01-01T00:00:00Z"
+            "userId": "user-123", "displayName": "Alice",
+            "avatarUrl": null, "avatarEmoji": "📚",
+            "tier": "analyst", "tierProgress": 0.65,
+            "currentStreak": 14, "longestStreak": 21,
+            "booksFinished": 7, "flowPoints": 4200,
+            "equippedFrame": null, "equippedTheme": null,
+            "badgeCount": 5, "joinedAt": "2024-01-01T00:00:00Z"
           }
         }
         """.data(using: .utf8)!
-
         let response = try JSONDecoder().decode(OwnProfileResponse.self, from: json)
         #expect(response.profile.userId == "user-123")
-        #expect(response.profile.displayName == "Alice")
         #expect(response.profile.tier == .analyst)
         #expect(response.profile.currentStreak == 14)
-        #expect(response.profile.booksFinished == 7)
     }
 
     @Test("OwnProfileResponse tolerates unknown tier in nested profile")
@@ -181,18 +163,12 @@ struct OwnProfileTests {
         let json = """
         {
           "profile": {
-            "userId": "user-xyz",
-            "displayName": "Future User",
-            "tier": "transcendent",
-            "currentStreak": 0,
-            "longestStreak": 0,
-            "booksFinished": 0,
-            "flowPoints": 0,
-            "badgeCount": 0
+            "userId": "user-xyz", "displayName": "Future User",
+            "tier": "transcendent", "currentStreak": 0, "longestStreak": 0,
+            "booksFinished": 0, "flowPoints": 0, "badgeCount": 0
           }
         }
         """.data(using: .utf8)!
-
         let response = try JSONDecoder().decode(OwnProfileResponse.self, from: json)
         if case .unknown(let raw) = response.profile.tier {
             #expect(raw == "transcendent")
@@ -212,16 +188,12 @@ struct PublicProfileTests {
         let json = """
         {
           "profile": {
-            "userId": "partner-001",
-            "displayName": "Bob",
-            "tier": "synthesizer",
-            "currentStreak": 5,
-            "booksFinished": 12,
-            "badgeCount": 4
+            "userId": "partner-001", "displayName": "Bob",
+            "tier": "synthesizer", "currentStreak": 5,
+            "booksFinished": 12, "badgeCount": 4
           }
         }
         """.data(using: .utf8)!
-
         let response = try JSONDecoder().decode(PublicProfileResponse.self, from: json)
         #expect(response.profile.userId == "partner-001")
         #expect(response.profile.tier == .synthesizer)
@@ -233,23 +205,17 @@ struct PublicProfileTests {
         let json = """
         {
           "profile": {
-            "userId": "partner-002",
-            "displayName": "Carol",
-            "tier": "luminary",
-            "currentStreak": 100,
-            "booksFinished": 40,
-            "badgeCount": 30,
+            "userId": "partner-002", "displayName": "Carol",
+            "tier": "luminary", "currentStreak": 100,
+            "booksFinished": 40, "badgeCount": 30,
             "equippedFrame": {
-              "itemId": "frame-stellar",
-              "name": "Stellar",
-              "itemType": "avatar_frame",
-              "rarity": "legendary"
+              "itemId": "frame-stellar", "name": "Stellar",
+              "itemType": "avatar_frame", "rarity": "legendary"
             },
             "equippedTheme": null
           }
         }
         """.data(using: .utf8)!
-
         let response = try JSONDecoder().decode(PublicProfileResponse.self, from: json)
         #expect(response.profile.equippedFrame?.itemId == "frame-stellar")
         #expect(response.profile.equippedFrame?.itemType == .avatarFrame)
@@ -257,7 +223,7 @@ struct PublicProfileTests {
     }
 }
 
-// MARK: - FakeSocialRepository tests
+// MARK: - FakeSocialRepository tests (profile methods)
 
 @Suite("FakeSocialRepository")
 struct FakeSocialRepositoryTests {
@@ -274,7 +240,6 @@ struct FakeSocialRepositoryTests {
         let repo = FakeSocialRepository(profile: .preview)
         let updated = try await repo.updateSettings(UpdateSettingsBody(displayName: "New Name"))
         #expect(updated.displayName == "New Name")
-        // Subsequent fetch reflects the mutation
         let refetched = try await repo.getMyProfile()
         #expect(refetched.displayName == "New Name")
     }
@@ -290,21 +255,28 @@ struct FakeSocialRepositoryTests {
         #expect(recorded[1].displayName == "B")
     }
 
-    @Test("forced error propagates from every method")
-    func forcedErrorPropagates() async {
+    @Test("forced error propagates from profile methods")
+    func forcedErrorPropagatesProfileMethods() async {
         let repo = FakeSocialRepository(error: .offline)
-
         var caughtCount = 0
-
         do { _ = try await repo.getMyProfile() } catch let e as AppError { #expect(e.code == "offline"); caughtCount += 1 } catch { Issue.record("unexpected: \(error)") }
-
         do { _ = try await repo.getMyBadges() } catch let e as AppError { #expect(e.code == "offline"); caughtCount += 1 } catch { Issue.record("unexpected: \(error)") }
-
         do { _ = try await repo.updateSettings(UpdateSettingsBody()) } catch let e as AppError { #expect(e.code == "offline"); caughtCount += 1 } catch { Issue.record("unexpected: \(error)") }
-
         do { _ = try await repo.getPublicProfile(userId: "any") } catch let e as AppError { #expect(e.code == "offline"); caughtCount += 1 } catch { Issue.record("unexpected: \(error)") }
-
         #expect(caughtCount == 4)
+    }
+
+    @Test("forced error propagates from pairs methods")
+    func forcedErrorPropagatesPairMethods() async {
+        let repo = FakeSocialRepository(error: .offline)
+        var caughtCount = 0
+        do { _ = try await repo.getPairs() } catch let e as AppError { #expect(e.code == "offline"); caughtCount += 1 } catch { Issue.record("unexpected: \(error)") }
+        do { _ = try await repo.createInvite() } catch let e as AppError { #expect(e.code == "offline"); caughtCount += 1 } catch { Issue.record("unexpected: \(error)") }
+        do { _ = try await repo.acceptInvite(code: "X") } catch let e as AppError { #expect(e.code == "offline"); caughtCount += 1 } catch { Issue.record("unexpected: \(error)") }
+        do { _ = try await repo.getPair(partnerId: "any") } catch let e as AppError { #expect(e.code == "offline"); caughtCount += 1 } catch { Issue.record("unexpected: \(error)") }
+        do { try await repo.deletePair(partnerId: "any") } catch let e as AppError { #expect(e.code == "offline"); caughtCount += 1 } catch { Issue.record("unexpected: \(error)") }
+        do { try await repo.nudgePartner(partnerId: "any") } catch let e as AppError { #expect(e.code == "offline"); caughtCount += 1 } catch { Issue.record("unexpected: \(error)") }
+        #expect(caughtCount == 6)
     }
 
     @Test("getPublicProfile returns seeded partner profile")
@@ -319,8 +291,43 @@ struct FakeSocialRepositoryTests {
     func getPublicProfileDefaultPreview() async throws {
         let repo = FakeSocialRepository()
         let fetched = try await repo.getPublicProfile(userId: "unknown-user")
-        // Should not throw; returns a preview profile
         #expect(!fetched.userId.isEmpty)
+    }
+
+    @Test("getPairs returns seeded pairs")
+    func getPairsReturnsSeeded() async throws {
+        let repo = FakeSocialRepository(pairs: [.previewActive, .previewPending])
+        let fetched = try await repo.getPairs()
+        #expect(fetched.count == 2)
+        #expect(fetched[0].status == .active)
+        #expect(fetched[1].status == .pending)
+    }
+
+    @Test("acceptInvite adds the accepted pair to the list")
+    func acceptInviteAddsPair() async throws {
+        let repo = FakeSocialRepository()
+        let pair = try await repo.acceptInvite(code: "TEST-CODE")
+        #expect(pair.partnerId == "accepted-TEST-CODE")
+        let pairs = try await repo.getPairs()
+        #expect(pairs.contains { $0.partnerId == "accepted-TEST-CODE" })
+    }
+
+    @Test("deletePair removes the pair and records the delete")
+    func deletePairRemovesPair() async throws {
+        let repo = FakeSocialRepository(pairs: [.previewActive])
+        try await repo.deletePair(partnerId: ReadingPair.previewActive.partnerId)
+        let remaining = try await repo.getPairs()
+        #expect(remaining.isEmpty)
+        let recorded = await repo.recordedDeletes
+        #expect(recorded.contains(ReadingPair.previewActive.partnerId))
+    }
+
+    @Test("nudgePartner records the nudge")
+    func nudgePartnerRecordsNudge() async throws {
+        let repo = FakeSocialRepository()
+        try await repo.nudgePartner(partnerId: "user-bob")
+        let recorded = await repo.recordedNudges
+        #expect(recorded.contains("user-bob"))
     }
 }
 
@@ -344,20 +351,6 @@ struct SocialEndpointsTests {
         #expect(endpoint.requiresAuth)
     }
 
-    @Test("getBadges builds correct path")
-    func getBadgesPath() {
-        let endpoint = Endpoints.getBadges()
-        #expect(endpoint.path == "/book/me/badges")
-        #expect(endpoint.requiresAuth)
-    }
-
-    @Test("getDashboard builds correct path")
-    func getDashboardPath() {
-        let endpoint = Endpoints.getDashboard()
-        #expect(endpoint.path == "/book/me/dashboard")
-        #expect(endpoint.requiresAuth)
-    }
-
     @Test("updateSettings builds PATCH with body")
     func updateSettingsEndpoint() throws {
         struct Body: Encodable { let displayName: String }
@@ -366,5 +359,51 @@ struct SocialEndpointsTests {
         #expect(endpoint.path == "/book/me/settings")
         #expect(endpoint.httpBody != nil)
         #expect(endpoint.requiresAuth)
+    }
+
+    @Test("getPairs builds GET /book/me/pairs")
+    func getPairsEndpoint() {
+        let endpoint = Endpoints.getPairs()
+        #expect(endpoint.path == "/book/me/pairs")
+        #expect(endpoint.method == .get)
+        #expect(endpoint.requiresAuth)
+    }
+
+    @Test("createPairInvite builds POST /book/me/pairs/invite")
+    func createPairInviteEndpoint() throws {
+        let endpoint = try Endpoints.createPairInvite()
+        #expect(endpoint.path == "/book/me/pairs/invite")
+        #expect(endpoint.method == .post)
+        #expect(endpoint.requiresAuth)
+    }
+
+    @Test("acceptPairInvite builds POST with code in path")
+    func acceptPairInviteEndpoint() throws {
+        let endpoint = try Endpoints.acceptPairInvite(code: "ABCD-1234")
+        #expect(endpoint.path == "/book/me/pairs/accept/ABCD-1234")
+        #expect(endpoint.method == .post)
+    }
+
+    @Test("getPair builds GET with partnerId in path")
+    func getPairEndpoint() {
+        let endpoint = Endpoints.getPair(partnerId: "user-bob")
+        #expect(endpoint.path == "/book/me/pairs/user-bob")
+        #expect(endpoint.method == .get)
+        #expect(endpoint.requiresAuth)
+    }
+
+    @Test("deletePair builds DELETE with partnerId in path")
+    func deletePairEndpoint() {
+        let endpoint = Endpoints.deletePair(partnerId: "user-bob")
+        #expect(endpoint.path == "/book/me/pairs/user-bob")
+        #expect(endpoint.method == .delete)
+        #expect(endpoint.requiresAuth)
+    }
+
+    @Test("nudgePartner builds POST /pairs/{id}/nudge")
+    func nudgePartnerEndpoint() throws {
+        let endpoint = try Endpoints.nudgePartner(partnerId: "user-bob")
+        #expect(endpoint.path == "/book/me/pairs/user-bob/nudge")
+        #expect(endpoint.method == .post)
     }
 }

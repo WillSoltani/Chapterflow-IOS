@@ -59,6 +59,11 @@ public final class AppModel {
     /// Shared repository for all of Lane S — profile, pairs, gifts, reflections, referrals.
     public let socialRepository: any SocialRepository
 
+    /// Set when the app opens via a `chapterflow://pair/accept/{code}` Universal Link.
+    /// ``ProfileView`` reads this to surface the ``AcceptInviteView`` immediately.
+    /// Cleared after the sheet is dismissed.
+    public var pendingPairAcceptCode: String = ""
+
     // MARK: - AI
 
     /// Shared repository for the "Ask the book" feature.
@@ -174,7 +179,10 @@ public final class AppModel {
             selectedTab = .library
         case .review:
             selectedTab = .reviews
-        case .pairAccept, .gift:
+        case .pairAccept(let code):
+            pendingPairAcceptCode = code
+            selectedTab = .profile
+        case .gift:
             selectedTab = .profile
         case .unknown:
             break
