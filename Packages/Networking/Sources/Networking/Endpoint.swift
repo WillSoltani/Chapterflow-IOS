@@ -412,6 +412,77 @@ public enum Endpoints {
         )
     }
 
+    // MARK: - Commitments
+
+    /// `GET /book/me/commitments` → `{ commitments: [...] }`.
+    public static func getCommitments() -> Endpoint {
+        Endpoint(method: .get, path: "/book/me/commitments", requiresAuth: true)
+    }
+
+    /// `POST /book/me/commitments` → `{ commitment: {...} }`.
+    ///
+    /// - Parameters:
+    ///   - bookId: The book the chapter belongs to.
+    ///   - chapterId: The chapter from which the commitment originates.
+    ///   - ifStatement: The trigger situation ("If I …").
+    ///   - thenStatement: The intended action ("… then I will …").
+    ///   - followUpDays: Days until the follow-up reminder fires (3 or 7).
+    public static func createCommitment(
+        bookId: String,
+        chapterId: String,
+        ifStatement: String,
+        thenStatement: String,
+        followUpDays: Int
+    ) throws -> Endpoint {
+        struct Body: Encodable {
+            let bookId: String
+            let chapterId: String
+            let ifStatement: String
+            let thenStatement: String
+            let followUpDays: Int
+        }
+        return try Endpoint(
+            method: .post,
+            path: "/book/me/commitments",
+            body: Body(
+                bookId: bookId,
+                chapterId: chapterId,
+                ifStatement: ifStatement,
+                thenStatement: thenStatement,
+                followUpDays: followUpDays
+            )
+        )
+    }
+
+    /// `GET /book/me/commitments/{id}` → `{ commitment: {...} }`.
+    public static func getCommitment(id: String) -> Endpoint {
+        Endpoint(method: .get, path: "/book/me/commitments/\(id)", requiresAuth: true)
+    }
+
+    /// `PATCH /book/me/commitments/{id}` → `{ commitment: {...} }` — submit reflection + outcome.
+    ///
+    /// - Parameters:
+    ///   - id: The commitment ID.
+    ///   - reflection: Free-text reflection text.
+    ///   - outcomeRawValue: Raw string for the outcome (`"helped"`, `"partly"`, or `"didnt"`).
+    public static func updateCommitment(
+        id: String,
+        reflection: String,
+        outcomeRawValue: String
+    ) throws -> Endpoint {
+        struct Body: Encodable {
+            let reflection: String
+            let outcome: String
+        }
+        return try Endpoint(
+            method: .patch,
+            path: "/book/me/commitments/\(id)",
+            body: Body(reflection: reflection, outcome: outcomeRawValue)
+        )
+    }
+
+    // MARK: - Audio
+
     /// `POST /book/me/reading-sessions` — audio listening session event.
     ///
     /// Mirrors `postReadingSessionEvent` but carries a `source: "audio"` field
