@@ -30,4 +30,9 @@ public actor LiveAIRepository: AIRepository {
         let endpoint = Endpoints.getConceptGraph(bookId: bookId)
         return try await client.send(endpoint)
     }
+
+    public func depthRecommendation(bookId: String) async throws -> DepthRecommendation {
+        let endpoint = Endpoints.getDepthRecommendation(bookId: bookId)
+        return try await client.send(endpoint)
+    }
 }

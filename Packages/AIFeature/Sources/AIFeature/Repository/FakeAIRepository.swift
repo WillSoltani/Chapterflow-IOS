@@ -8,6 +8,7 @@ public actor FakeAIRepository: AIRepository {
 
     private let response: BookAskResponse?
     private let graphResponse: ConceptGraph?
+    private let depthResponse: DepthRecommendation?
     private let forcedError: AppError?
     /// Artificial delay in seconds to simulate network latency in previews.
     private let delay: Double
@@ -15,11 +16,13 @@ public actor FakeAIRepository: AIRepository {
     public init(
         response: BookAskResponse? = FakeAIRepository.sampleResponse,
         graph: ConceptGraph? = FakeAIRepository.sampleConceptGraph,
+        depth: DepthRecommendation? = FakeAIRepository.sampleDepthRecommendation,
         error: AppError? = nil,
         delay: Double = 0.0
     ) {
         self.response = response
         self.graphResponse = graph
+        self.depthResponse = depth
         self.forcedError = error
         self.delay = delay
     }
@@ -49,6 +52,17 @@ public actor FakeAIRepository: AIRepository {
             throw AppError.server(code: "no_graph", message: "No fake graph configured.", requestId: nil)
         }
         return graph
+    }
+
+    public func depthRecommendation(bookId: String) async throws -> DepthRecommendation {
+        if delay > 0 {
+            try await Task.sleep(for: .seconds(delay))
+        }
+        if let error = forcedError { throw error }
+        guard let depth = depthResponse else {
+            throw AppError.server(code: "no_depth", message: "No fake depth recommendation configured.", requestId: nil)
+        }
+        return depth
     }
 
     // MARK: - Sample data
@@ -104,6 +118,18 @@ public actor FakeAIRepository: AIRepository {
             "3": ["habit-loop"],
             "4": ["habit-loop", "environment-design"],
         ]
+    )
+
+    /// A confident recommendation (medium/balanced) for use in previews and tests.
+    public static let sampleDepthRecommendation = DepthRecommendation(
+        recommendedDepth: .medium,
+        confidence: 0.85
+    )
+
+    /// A low-confidence recommendation — should be hidden by the UI.
+    public static let lowConfidenceDepthRecommendation = DepthRecommendation(
+        recommendedDepth: .hard,
+        confidence: 0.4
     )
 
     public static let rateLimitedError = AppError.rateLimited(retryAfter: nil)

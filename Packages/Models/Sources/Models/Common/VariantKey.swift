@@ -73,3 +73,21 @@ extension VariantKey: CaseIterable {
         [.easy, .medium, .hard, .precise, .balanced, .challenging]
     }
 }
+
+// MARK: - Display name
+
+extension VariantKey {
+    /// A human-readable display label for use in UI (e.g. depth pickers).
+    /// Returns an empty string for `.unknown`.
+    public var displayName: String {
+        switch self {
+        case .easy:           return "Easy"
+        case .medium:         return "Medium"
+        case .hard:           return "Hard"
+        case .precise:        return "Precise"
+        case .balanced:       return "Balanced"
+        case .challenging:    return "Challenging"
+        case .unknown:        return ""
+        }
+    }
+}

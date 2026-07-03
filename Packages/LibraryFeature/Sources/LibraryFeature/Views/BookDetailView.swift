@@ -36,6 +36,12 @@ public struct BookDetailView: View {
         let m = BookDetailModel(bookId: bookId, repository: repository)
         m.onOpenReader = onOpenReader
         m.onShowPaywall = onShowPaywall
+        // Wire depth recommendation using the AI repository (optional feature).
+        if let ai = aiRepository {
+            m.fetchDepthRecommendation = { bookId in
+                try await ai.depthRecommendation(bookId: bookId)
+            }
+        }
         _model = State(initialValue: m)
         self.aiRepository = aiRepository
     }
@@ -283,7 +289,47 @@ public struct BookDetailView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            depthRecommendationHint
             Divider().padding(.leading, .cfSpacing16)
+        }
+    }
+
+    @ViewBuilder
+    private var depthRecommendationHint: some View {
+        if let rec = model.depthRecommendation,
+           rec.isConfident,
+           let depth = rec.recommendedDepth,
+           !depth.isUnknown {
+            let family = model.manifest?.variantFamily ?? .emh
+            VStack(spacing: 0) {
+                Divider().padding(.leading, .cfSpacing16)
+                HStack(alignment: .top, spacing: .cfSpacing8) {
+                    Image(systemName: "sparkles")
+                        .font(.cfCaption)
+                        .foregroundStyle(Color.cfAccent)
+                        .padding(.top, 1)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Recommended for you: \(depth.displayName)")
+                            .font(.cfCaption)
+                            .fontWeight(.medium)
+                            .foregroundStyle(Color.cfAccent)
+                        let rationale = rec.rationale(variantFamily: family)
+                        if !rationale.isEmpty {
+                            Text(rationale)
+                                .font(.cfCaption2)
+                                .foregroundStyle(Color.cfAccent.opacity(0.8))
+                        }
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, .cfSpacing16)
+                .padding(.vertical, .cfSpacing8)
+            }
+            .transition(.move(edge: .top).combined(with: .opacity))
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(
+                "Depth recommendation: \(depth.displayName). \(rec.rationale(variantFamily: family))"
+            )
         }
     }
 
@@ -410,6 +456,15 @@ private extension CGFloat {
     static let cfSpacing14: CGFloat = 14
 }
 
+// MARK: - VariantKey unknown helper
+
+private extension VariantKey {
+    var isUnknown: Bool {
+        if case .unknown = self { return true }
+        return false
+    }
+}
+
 // MARK: - Previews
 
 #if DEBUG
@@ -471,5 +526,41 @@ private func makePreviewAudioModel() -> AudioPlayerModel {
     }
     .environment(makePreviewAudioModel())
     .dynamicTypeSize(.accessibility3)
+}
+
+#Preview("Depth recommendation — confident") {
+    NavigationStack {
+        BookDetailView(
+            bookId: "b-atomic-habits",
+            repository: PreviewData.bookDetailInProgress,
+            aiRepository: FakeAIRepository()
+        )
+    }
+    .environment(makePreviewAudioModel())
+}
+
+#Preview("Depth recommendation — low confidence (hidden)") {
+    NavigationStack {
+        BookDetailView(
+            bookId: "b-atomic-habits",
+            repository: PreviewData.bookDetailInProgress,
+            aiRepository: FakeAIRepository(
+                depth: FakeAIRepository.lowConfidenceDepthRecommendation
+            )
+        )
+    }
+    .environment(makePreviewAudioModel())
+}
+
+#Preview("Depth recommendation — dark mode") {
+    NavigationStack {
+        BookDetailView(
+            bookId: "b-atomic-habits",
+            repository: PreviewData.bookDetailInProgress,
+            aiRepository: FakeAIRepository()
+        )
+    }
+    .environment(makePreviewAudioModel())
+    .preferredColorScheme(.dark)
 }
 #endif

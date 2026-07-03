@@ -27,4 +27,14 @@ public protocol AIRepository: Sendable {
     /// - Returns: The full ``ConceptGraph`` (concepts, edges, chapter mappings).
     /// - Throws: `AppError.offline` when there is no network; other `AppError` cases for failures.
     func conceptGraph(bookId: String) async throws -> ConceptGraph
+
+    /// Fetches the server's adaptive reading-depth recommendation for this user/book pair.
+    ///
+    /// The returned `DepthRecommendation.isConfident` flag indicates whether the server
+    /// has enough data to surface the suggestion. Low-confidence results should be hidden.
+    ///
+    /// - Parameter bookId: The book for which to fetch a depth recommendation.
+    /// - Returns: A ``DepthRecommendation`` with a recommended depth and confidence score.
+    /// - Throws: `AppError.offline` when there is no network; other `AppError` cases for failures.
+    func depthRecommendation(bookId: String) async throws -> DepthRecommendation
 }

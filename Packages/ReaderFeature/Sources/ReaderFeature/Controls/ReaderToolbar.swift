@@ -31,7 +31,7 @@ public struct ReaderToolbar: View {
         .padding(.bottom, .cfSpacing8)
     }
 
-    // MARK: - Recommended depth hint (placeholder for P6.4)
+    // MARK: - Recommended depth hint (P6.4)
 
     @ViewBuilder
     private var recommendedHint: some View {
@@ -42,11 +42,20 @@ public struct ReaderToolbar: View {
                 Button {
                     model.switchVariant(recommended, currentTopIndex: currentTopIndex)
                 } label: {
-                    HStack(spacing: .cfSpacing8) {
+                    HStack(alignment: .top, spacing: .cfSpacing8) {
                         Image(systemName: "sparkles")
                             .font(.cfCaption)
-                        Text("Recommended for you: \(model.displayName(for: recommended))")
-                            .font(.cfCaption)
+                            .padding(.top, 1)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Recommended for you: \(model.displayName(for: recommended))")
+                                .font(.cfCaption)
+                                .fontWeight(.medium)
+                            if let rationale = model.recommendedRationale, !rationale.isEmpty {
+                                Text(rationale)
+                                    .font(.cfCaption2)
+                                    .foregroundStyle(Color.cfAccent.opacity(0.8))
+                            }
+                        }
                     }
                     .foregroundStyle(Color.cfAccent)
                     .padding(.horizontal, .cfSpacing16)
@@ -60,6 +69,7 @@ public struct ReaderToolbar: View {
 
                 Divider().padding(.horizontal, .cfSpacing12)
             }
+            .transition(.move(edge: .top).combined(with: .opacity))
         }
     }
 
@@ -95,21 +105,35 @@ public struct ReaderToolbar: View {
 
     private func depthButton(for variant: VariantKey) -> some View {
         let isSelected = model.selectedVariant == variant
+        let isRecommended = model.recommendedVariant == variant && !variant.isUnknown
+        let bgColor: Color = isSelected
+            ? Color.cfAccent
+            : (isRecommended ? Color.cfAccent.opacity(0.1) : Color.cfSecondaryFill)
+
         return Button {
             model.switchVariant(variant, currentTopIndex: currentTopIndex)
         } label: {
-            Text(model.displayName(for: variant))
-                .font(.cfSubheadline)
-                .foregroundStyle(isSelected ? Color.white : Color.cfLabel)
-                .frame(maxWidth: .infinity, minHeight: 36)
-                .background(
-                    RoundedRectangle(cornerRadius: .cfRadius8)
-                        .fill(isSelected ? Color.cfAccent : Color.cfSecondaryFill)
-                        .animation(.spring(duration: 0.2), value: isSelected)
-                )
+            HStack(spacing: 3) {
+                if isRecommended {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundStyle(isSelected ? Color.white.opacity(0.85) : Color.cfAccent)
+                }
+                Text(model.displayName(for: variant))
+                    .font(.cfSubheadline)
+                    .foregroundStyle(isSelected ? Color.white : Color.cfLabel)
+            }
+            .frame(maxWidth: .infinity, minHeight: 36)
+            .background(
+                RoundedRectangle(cornerRadius: .cfRadius8)
+                    .fill(bgColor)
+                    .animation(.spring(duration: 0.2), value: isSelected)
+            )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(model.displayName(for: variant)) depth")
+        .accessibilityLabel(
+            "\(model.displayName(for: variant)) depth\(isRecommended ? ", recommended for you" : "")"
+        )
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
