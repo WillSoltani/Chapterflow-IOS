@@ -90,6 +90,7 @@ struct CelebrationCardView: View {
         case .tierUp:           return .purple
         case .badgeEarned:      return Color(red: 0.85, green: 0.65, blue: 0.15)
         case .insightSpark:     return Color(red: 0.20, green: 0.75, blue: 0.55)
+        case .journeyComplete:  return Color(red: 0.18, green: 0.72, blue: 0.42)
         }
     }
 

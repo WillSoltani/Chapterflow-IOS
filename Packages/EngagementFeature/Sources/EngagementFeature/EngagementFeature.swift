@@ -35,6 +35,14 @@
 /// - ``TierView`` — current tier, per-metric progress (loops/score/categories), tier-ladder mini-map
 /// - ``TierModel`` — `@Observable` view model; fires a one-per-tier `.tierUp` celebration
 /// - ``EngagementRepository.fetchTier(forceRefresh:)`` — detailed tier state from `POST /book/me/tier`
+///
+/// Public API added in P5.6:
+/// - ``JourneysListView`` — list of all available curated multi-book paths with gradient covers
+/// - ``JourneyDetailView`` — ordered book sequence, user progress, and Start/Continue action
+/// - ``JourneysModel`` — `@Observable` view model for the journey catalog
+/// - ``JourneyDetailModel`` — `@Observable` view model for a single journey's progress
+/// - ``JourneysRepository`` — data layer for `GET /book/books/journeys`,
+///   `GET /book/me/journeys/{id}`, `POST /book/me/journeys/{id}/start`
 public enum EngagementFeature {
     public static let moduleName = "EngagementFeature"
 }

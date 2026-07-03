@@ -267,6 +267,24 @@ public enum Endpoints {
         Endpoint(method: .delete, path: "/book/me/notebook/\(entryId)")
     }
 
+    // MARK: - Journeys
+
+    /// `GET /book/books/journeys` → `{ journeys: [...] }` — all available journey paths.
+    public static func getJourneys() -> Endpoint {
+        Endpoint(method: .get, path: "/book/books/journeys", requiresAuth: true)
+    }
+
+    /// `GET /book/me/journeys/{id}` → `{ journey: UserJourney }` — user's progress on a journey.
+    public static func getUserJourney(id: String) -> Endpoint {
+        Endpoint(method: .get, path: "/book/me/journeys/\(id)", requiresAuth: true)
+    }
+
+    /// `POST /book/me/journeys/{id}/start` → `{ journey: UserJourney }` — enroll in a journey.
+    public static func startJourney(id: String) throws -> Endpoint {
+        struct Body: Encodable {}
+        return try Endpoint(method: .post, path: "/book/me/journeys/\(id)/start", body: Body())
+    }
+
     /// `GET /book/books/{bookId}/concept-graph` → `{ concepts, edges, chapterIntroduces, chapterRequires }`.
     public static func getConceptGraph(bookId: String) -> Endpoint {
         Endpoint(method: .get, path: "/book/books/\(bookId)/concept-graph", requiresAuth: true)

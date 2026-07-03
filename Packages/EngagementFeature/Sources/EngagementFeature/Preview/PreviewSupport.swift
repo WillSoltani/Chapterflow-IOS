@@ -380,3 +380,106 @@ extension EngagementRepository {
 extension AppError {
     static var preview: AppError { .offline }
 }
+
+// MARK: - Journey fixtures
+
+extension JourneyCatalogItem {
+    static let preview = JourneyCatalogItem(
+        journeyId: "j-productivity",
+        title: "Peak Productivity",
+        description: "Build unbreakable focus and deep work habits through the lens of the best productivity thinkers.",
+        durationWeeks: 6,
+        books: [
+            JourneyBookEntry(bookId: "deep-work", title: "Deep Work", author: "Cal Newport",
+                             cover: Cover(emoji: "🎯", color: "#1A3B6E"),
+                             reason: "The foundation — learn to do hard things without distraction.", order: 0),
+            JourneyBookEntry(bookId: "atomic-habits", title: "Atomic Habits", author: "James Clear",
+                             cover: Cover(emoji: "⚡️", color: "#2E5E2E"),
+                             reason: "Turn tiny daily actions into compounding systems.", order: 1),
+            JourneyBookEntry(bookId: "essentialism", title: "Essentialism", author: "Greg McKeown",
+                             cover: Cover(emoji: "🎯", color: "#5E2E2E"),
+                             reason: "Choose fewer, better things to focus on.", order: 2),
+        ],
+        completionBadge: JourneyBadge(badgeId: "journey-productivity", name: "Productivity Master", icon: "🏆"),
+        bonusFlowPoints: 500,
+        gradient: JourneyGradient(startColor: "#1A3B6E", endColor: "#2E5E2E")
+    )
+}
+
+// MARK: - Preview JourneysRepository
+
+extension JourneysRepository {
+    static var preview: JourneysRepository {
+        let journey = JourneyCatalogItem.preview
+        let userJourney = UserJourney(
+            journeyId: journey.journeyId,
+            currentBookIndex: 1,
+            completedBookIds: ["deep-work"],
+            isCompleted: false,
+            startedAt: "2026-06-01T10:00:00Z",
+            completedAt: nil
+        )
+        let client = PreviewAPIClient { endpoint in
+            if endpoint.path == "/book/books/journeys" {
+                return try JSONCoding.encoder.encode(JourneysListResponse(journeys: [journey]))
+            }
+            if endpoint.path.hasPrefix("/book/me/journeys/") {
+                return try JSONCoding.encoder.encode(UserJourneyResponse(journey: userJourney))
+            }
+            throw AppError.notFound
+        }
+        return JourneysRepository(apiClient: client, modelContainer: nil)
+    }
+
+    static var previewNotStarted: JourneysRepository {
+        let journey = JourneyCatalogItem.preview
+        let client = PreviewAPIClient { endpoint in
+            if endpoint.path == "/book/books/journeys" {
+                return try JSONCoding.encoder.encode(JourneysListResponse(journeys: [journey]))
+            }
+            if endpoint.path.hasPrefix("/book/me/journeys/"), endpoint.method == .post {
+                let userJourney = UserJourney(
+                    journeyId: journey.journeyId,
+                    currentBookIndex: 0,
+                    completedBookIds: [],
+                    isCompleted: false,
+                    startedAt: "2026-07-03T10:00:00Z",
+                    completedAt: nil
+                )
+                return try JSONCoding.encoder.encode(UserJourneyResponse(journey: userJourney))
+            }
+            // Unenrolled: 404
+            throw AppError.notFound
+        }
+        return JourneysRepository(apiClient: client, modelContainer: nil)
+    }
+}
+
+// MARK: - Preview JourneysModel
+
+extension JourneysModel {
+    @MainActor static var preview: JourneysModel {
+        JourneysModel(repository: .preview)
+    }
+}
+
+// MARK: - Preview JourneyDetailModel
+
+extension JourneyDetailModel {
+    @MainActor static var previewNotStarted: JourneyDetailModel {
+        JourneyDetailModel(
+            journey: .preview,
+            repository: .previewNotStarted,
+            celebrationPresenter: CelebrationPresenter()
+        )
+    }
+
+    @MainActor static var previewInProgress: JourneyDetailModel {
+        let model = JourneyDetailModel(
+            journey: .preview,
+            repository: .preview,
+            celebrationPresenter: CelebrationPresenter()
+        )
+        return model
+    }
+}
