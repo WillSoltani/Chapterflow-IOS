@@ -14,16 +14,18 @@ private enum CacheKey {
     static let dashboard = "engagement.dashboard"
     static let streak = "engagement.streak"
     static let progress = "engagement.progress"
+    static let badges = "engagement.badges"
 }
 
 // MARK: - EngagementRepository
 
-/// The single read path for all engagement data: dashboard, streak, flow-points, and tier.
+/// The single read path for all engagement data: dashboard, streak, flow-points, tier, and badges.
 ///
-/// P5.2–P5.13 depend on this actor to access the three endpoints it aggregates:
+/// P5.2–P5.13 depend on this actor to access the endpoints it aggregates:
 /// - `GET /book/me/dashboard`
 /// - `GET /book/me/streak`
 /// - `GET /book/me/progress`
+/// - `GET /book/me/badges`
 ///
 /// ### Cache strategy
 /// Every fetch checks an in-memory store first (fast, session-scoped), then a
@@ -50,11 +52,13 @@ public actor EngagementRepository {
     private var memDashboard: MemEntry<Dashboard>?
     private var memStreak: MemEntry<StreakState>?
     private var memProgress: MemEntry<[ProgressOverviewItem]>?
+    private var memBadges: MemEntry<[BadgeItem]>?
 
     // TTLs
     private let dashboardTTL: TimeInterval = 5 * 60
     private let streakTTL: TimeInterval = 10 * 60
     private let progressTTL: TimeInterval = 5 * 60
+    private let badgesTTL: TimeInterval = 10 * 60
 
     // MARK: Init
 
@@ -138,11 +142,34 @@ public actor EngagementRepository {
         }
     }
 
+    // MARK: - Public: Badges
+
+    public func fetchBadges(forceRefresh: Bool = false) async throws -> [BadgeItem] {
+        if !forceRefresh, let entry = memBadges, !entry.isStale(ttl: badgesTTL) {
+            return entry.value
+        }
+        do {
+            let resp: BadgesResponse = try await apiClient.send(Endpoints.getBadges())
+            let value = resp.badges
+            memBadges = MemEntry(value: value, storedAt: Date())
+            persistToDisk(key: CacheKey.badges, encodable: resp)
+            return value
+        } catch AppError.offline {
+            if let cached: BadgesResponse = loadFromDisk(key: CacheKey.badges) {
+                memBadges = MemEntry(value: cached.badges, storedAt: Date())
+                return cached.badges
+            }
+            if let entry = memBadges { return entry.value }
+            throw AppError.offline
+        }
+    }
+
     // MARK: - Public: Accessors derived from last-known state
 
     public var currentDashboard: Dashboard? { memDashboard?.value }
     public var currentStreak: StreakState? { memStreak?.value }
     public var currentProgress: [ProgressOverviewItem]? { memProgress?.value }
+    public var currentBadges: [BadgeItem]? { memBadges?.value }
 
     public var flowPointsBalance: Int? { memDashboard?.value.flowPoints }
     public var tier: String? { memDashboard?.value.tier }
@@ -154,6 +181,7 @@ public actor EngagementRepository {
         memDashboard = nil
         memStreak = nil
         memProgress = nil
+        memBadges = nil
     }
 
     // MARK: - Disk cache helpers (run on actor executor)

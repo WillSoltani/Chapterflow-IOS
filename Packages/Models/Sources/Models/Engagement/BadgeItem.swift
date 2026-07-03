@@ -9,6 +9,10 @@ public struct BadgeItem: Codable, Sendable, Identifiable {
     public let isEarned: Bool
     public let earnedAt: String?
     public let icon: String?
+    /// Current progress toward earning the badge (server-optional).
+    public let progress: Int?
+    /// Target value required to earn the badge (server-optional).
+    public let target: Int?
 
     public var id: String { badgeId }
 
@@ -19,7 +23,9 @@ public struct BadgeItem: Codable, Sendable, Identifiable {
         category: String,
         isEarned: Bool,
         earnedAt: String?,
-        icon: String?
+        icon: String?,
+        progress: Int? = nil,
+        target: Int? = nil
     ) {
         self.badgeId = badgeId
         self.name = name
@@ -28,6 +34,14 @@ public struct BadgeItem: Codable, Sendable, Identifiable {
         self.isEarned = isEarned
         self.earnedAt = earnedAt
         self.icon = icon
+        self.progress = progress
+        self.target = target
+    }
+
+    /// 0–1 fraction toward earning the badge; `nil` when progress data is absent.
+    public var progressFraction: Double? {
+        guard let p = progress, let t = target, t > 0 else { return nil }
+        return min(1.0, Double(p) / Double(t))
     }
 }
 
@@ -38,6 +52,10 @@ public struct BadgesResponse: Codable, Sendable {
     public let badges: [BadgeItem]
 
     private enum CodingKeys: String, CodingKey { case badges }
+
+    public init(badges: [BadgeItem]) {
+        self.badges = badges
+    }
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
