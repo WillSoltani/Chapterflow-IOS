@@ -123,6 +123,11 @@ public struct AppRootView: View {
         }
         .tabViewStyle(.sidebarAdaptable)
         .tint(.cfAccent)
+        .environment(model.audioPlayerModel)
+        .safeAreaInset(edge: .bottom) {
+            MiniPlayerBar()
+                .environment(model.audioPlayerModel)
+        }
     }
 
     // MARK: - Tab content

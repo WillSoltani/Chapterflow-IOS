@@ -3,6 +3,7 @@ import Models
 import DesignSystem
 import CoreKit
 import AIFeature
+import Persistence
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -21,6 +22,7 @@ public struct BookDetailView: View {
     @State private var model: BookDetailModel
     @State private var showAskSheet = false
     @State private var askModel: AskTheBookModel?
+    @Environment(AudioPlayerModel.self) private var audioPlayerModel
 
     private let aiRepository: (any AIRepository)?
 
@@ -85,6 +87,8 @@ public struct BookDetailView: View {
                         .padding(.horizontal, .cfSpacing16)
                         .padding(.top, .cfSpacing8)
                 }
+                listenSection
+                    .padding(.top, .cfSpacing8)
                 depthToneRow
                     .padding(.top, .cfSpacing16)
                 chapterListSection
@@ -205,6 +209,28 @@ public struct BookDetailView: View {
         .disabled(model.primaryAction == .disabled || model.isStarting)
         .padding(.horizontal, .cfSpacing16)
         .accessibilityLabel(primaryActionLabel)
+    }
+
+    // MARK: - Listen
+
+    private var listenSection: some View {
+        Button {
+            let bookId = model.bookId
+            let chapter = model.currentChapterNumber
+            Task { await audioPlayerModel.play(bookId: bookId, chapterNumber: chapter) }
+        } label: {
+            Label("Listen", systemImage: "headphones")
+                .font(.cfSubheadline)
+                .frame(maxWidth: .infinity)
+                .frame(height: 50)
+                .background(
+                    Color.cfSecondaryFill,
+                    in: RoundedRectangle(cornerRadius: .cfRadius12, style: .continuous)
+                )
+                .foregroundStyle(Color.cfAccent)
+        }
+        .padding(.horizontal, .cfSpacing16)
+        .accessibilityLabel("Listen to chapter \(model.currentChapterNumber)")
     }
 
     private var primaryActionLabel: String {
@@ -387,6 +413,14 @@ private extension CGFloat {
 // MARK: - Previews
 
 #if DEBUG
+@MainActor
+private func makePreviewAudioModel() -> AudioPlayerModel {
+    AudioPlayerModel(
+        player: AudioPlayer(repository: FakeAudioRepository()),
+        preferences: AppPreferences()
+    )
+}
+
 #Preview("Free — locked (paywall)") {
     NavigationStack {
         BookDetailView(
@@ -394,6 +428,7 @@ private extension CGFloat {
             repository: PreviewData.bookDetailFreeLocked
         )
     }
+    .environment(makePreviewAudioModel())
 }
 
 #Preview("In-progress") {
@@ -403,6 +438,7 @@ private extension CGFloat {
             repository: PreviewData.bookDetailInProgress
         )
     }
+    .environment(makePreviewAudioModel())
 }
 
 #Preview("Completed") {
@@ -412,6 +448,7 @@ private extension CGFloat {
             repository: PreviewData.bookDetailCompleted
         )
     }
+    .environment(makePreviewAudioModel())
 }
 
 #Preview("Dark mode — in-progress") {
@@ -421,6 +458,7 @@ private extension CGFloat {
             repository: PreviewData.bookDetailInProgress
         )
     }
+    .environment(makePreviewAudioModel())
     .preferredColorScheme(.dark)
 }
 
@@ -431,6 +469,7 @@ private extension CGFloat {
             repository: PreviewData.bookDetailInProgress
         )
     }
+    .environment(makePreviewAudioModel())
     .dynamicTypeSize(.accessibility3)
 }
 #endif
