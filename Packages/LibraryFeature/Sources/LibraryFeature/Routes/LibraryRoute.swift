@@ -4,4 +4,6 @@ import CoreKit
 public enum LibraryRoute: Routed {
     case bookDetail(bookId: String)
     case globalSearch
+    /// Browse all books in a single category.
+    case categoryDetail(category: String)
 }
