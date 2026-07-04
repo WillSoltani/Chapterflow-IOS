@@ -589,6 +589,8 @@ private actor StubStoreKitService: StoreKitServicing {
         }
     }
 
+    func verifyCurrentEntitlements() async throws {}
+
     func currentSubscriptionStatus() async throws -> SubscriptionStatus {
         .notSubscribed
     }

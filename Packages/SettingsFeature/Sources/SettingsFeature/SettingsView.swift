@@ -24,6 +24,7 @@ public struct SettingsView: View {
     /// Called when the user taps "Privacy Settings" — navigate to
     /// ``PrivacySettingsView`` in your feature's navigation stack.
     private let onShowPrivacySettings: (() -> Void)?
+    private let notificationSettingsModel: NotificationSettingsModel?
 
     public init(
         isPro: Bool = false,
@@ -35,7 +36,8 @@ public struct SettingsView: View {
         pushStatus: NotificationPermissionStatus? = nil,
         pushRegistrationError: Error? = nil,
         onManagePushSettings: (() -> Void)? = nil,
-        onShowPrivacySettings: (() -> Void)? = nil
+        onShowPrivacySettings: (() -> Void)? = nil,
+        notificationSettingsModel: NotificationSettingsModel? = nil
     ) {
         self.isPro = isPro
         self.remainingFreeStarts = remainingFreeStarts
@@ -47,6 +49,7 @@ public struct SettingsView: View {
         self.pushRegistrationError = pushRegistrationError
         self.onManagePushSettings = onManagePushSettings
         self.onShowPrivacySettings = onShowPrivacySettings
+        self.notificationSettingsModel = notificationSettingsModel
     }
 
     public var body: some View {
@@ -101,6 +104,17 @@ public struct SettingsView: View {
                     }
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("Registration error: \(error.localizedDescription)")
+                }
+
+                if let notifModel = notificationSettingsModel {
+                    NavigationLink {
+                        NotificationSettingsView(model: notifModel)
+                    } label: {
+                        Label("Notification Preferences", systemImage: "bell.and.waves.left.and.right")
+                            .foregroundStyle(Color.cfLabel)
+                    }
+                    .accessibilityLabel("Open notification preferences")
+                    .accessibilityHint("Manage reminders, digests, and alert types")
                 }
             }
         }
@@ -311,6 +325,18 @@ public struct SettingsView: View {
         isPro: false,
         remainingFreeStarts: 0,
         pushStatus: NotificationPermissionStatus.notDetermined
+    )
+}
+
+#Preview("Settings — With notification prefs link") {
+    SettingsView(
+        isPro: false,
+        remainingFreeStarts: 1,
+        pushStatus: NotificationPermissionStatus.authorized,
+        notificationSettingsModel: NotificationSettingsModel(
+            repository: FakeNotificationPreferencesRepository(),
+            authorizer: PreviewNotificationAuthorizer()
+        )
     )
 }
 

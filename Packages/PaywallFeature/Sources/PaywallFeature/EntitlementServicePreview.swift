@@ -15,6 +15,7 @@ private actor PreviewStoreKitService: StoreKitServicing {
     func loadProducts() async throws -> [Product] { [] }
     func purchase(_ product: Product) async throws -> PurchaseResult { .userCancelled }
     func restorePurchases() async throws {}
+    func verifyCurrentEntitlements() async throws {}
     func currentSubscriptionStatus() async throws -> SubscriptionStatus {
         isProStatus ? .subscribed(productID: "com.cf.annual", expirationDate: nil) : .notSubscribed
     }
