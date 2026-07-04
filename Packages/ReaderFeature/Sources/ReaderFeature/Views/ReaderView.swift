@@ -117,7 +117,8 @@ public struct ReaderView: View {
                     chapterTitle: chapterTitle,
                     onTakeQuiz: readerModel.onTakeQuiz,
                     onListen: readerModel.onListen,
-                    onAsk: readerModel.onAsk
+                    onAsk: readerModel.onAsk,
+                    onReflect: readerModel.onReflect
                 )
             }
         }

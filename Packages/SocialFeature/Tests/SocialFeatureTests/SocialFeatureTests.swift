@@ -406,4 +406,35 @@ struct SocialEndpointsTests {
         #expect(endpoint.path == "/book/me/pairs/user-bob/nudge")
         #expect(endpoint.method == .post)
     }
+
+    // MARK: - Reflection endpoints
+
+    @Test("getReflections builds correct GET path")
+    func getReflectionsEndpoint() {
+        let endpoint = Endpoints.getReflections(bookId: "atomic-habits", chapterN: 3)
+        #expect(endpoint.path == "/book/me/reflections/atomic-habits/3")
+        #expect(endpoint.method == .get)
+        #expect(endpoint.requiresAuth)
+    }
+
+    @Test("postReflection builds POST with text body")
+    func postReflectionEndpoint() throws {
+        let endpoint = try Endpoints.postReflection(
+            bookId: "deep-work", chapterN: 7, text: "My thoughts"
+        )
+        #expect(endpoint.path == "/book/me/reflections/deep-work/7")
+        #expect(endpoint.method == .post)
+        #expect(endpoint.httpBody != nil)
+        #expect(endpoint.requiresAuth)
+    }
+
+    @Test("requestReflectionFeedback builds POST to /feedback")
+    func requestReflectionFeedbackEndpoint() throws {
+        let endpoint = try Endpoints.requestReflectionFeedback(
+            bookId: "atomic-habits", chapterN: 3, reflectionId: "refl-123"
+        )
+        #expect(endpoint.path == "/book/me/reflections/atomic-habits/3/feedback")
+        #expect(endpoint.method == .post)
+        #expect(endpoint.httpBody != nil)
+    }
 }

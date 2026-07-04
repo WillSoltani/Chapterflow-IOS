@@ -3,7 +3,7 @@ import DesignSystem
 
 /// A floating bottom panel that appears once the user has substantially read
 /// the chapter (~85 % +). Contains the primary "Take the quiz" action plus
-/// optional "Listen" and "Ask about this" entry points.
+/// optional "Listen", "Ask about this", and "Reflect" entry points.
 ///
 /// The panel uses a material background so it feels native to the reading
 /// surface without fully obscuring the content beneath.
@@ -12,17 +12,20 @@ public struct ChapterEndCTA: View {
     public let onTakeQuiz: (() -> Void)?
     public let onListen: (() -> Void)?
     public let onAsk: (() -> Void)?
+    public let onReflect: (() -> Void)?
 
     public init(
         chapterTitle: String,
         onTakeQuiz: (() -> Void)? = nil,
         onListen: (() -> Void)? = nil,
-        onAsk: (() -> Void)? = nil
+        onAsk: (() -> Void)? = nil,
+        onReflect: (() -> Void)? = nil
     ) {
         self.chapterTitle = chapterTitle
         self.onTakeQuiz = onTakeQuiz
         self.onListen = onListen
         self.onAsk = onAsk
+        self.onReflect = onReflect
     }
 
     public var body: some View {
@@ -33,7 +36,7 @@ public struct ChapterEndCTA: View {
                 quizButton
             }
 
-            if onListen != nil || onAsk != nil {
+            if hasSecondaryActions {
                 secondaryActions
             }
         }
@@ -47,6 +50,10 @@ public struct ChapterEndCTA: View {
         .padding(.horizontal, .cfSpacing16)
         .padding(.bottom, .cfSpacing8)
         .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    private var hasSecondaryActions: Bool {
+        onListen != nil || onAsk != nil || onReflect != nil
     }
 
     // MARK: - Completion hint
@@ -101,6 +108,14 @@ public struct ChapterEndCTA: View {
                     accessibilityLabel: "Ask the AI about this chapter"
                 )
             }
+            if let onReflect {
+                secondaryButton(
+                    label: "Reflect",
+                    icon: "text.bubble",
+                    action: onReflect,
+                    accessibilityLabel: "Write a reflection on this chapter"
+                )
+            }
         }
     }
 
@@ -132,7 +147,8 @@ public struct ChapterEndCTA: View {
             chapterTitle: "The Surprising Power of Atomic Habits",
             onTakeQuiz: {},
             onListen: {},
-            onAsk: {}
+            onAsk: {},
+            onReflect: {}
         )
     }
 }
@@ -147,6 +163,17 @@ public struct ChapterEndCTA: View {
     }
 }
 
+#Preview("Chapter end CTA — with reflect") {
+    ZStack(alignment: .bottom) {
+        Color.cfBackground.ignoresSafeArea()
+        ChapterEndCTA(
+            chapterTitle: "The Surprising Power of Atomic Habits",
+            onTakeQuiz: {},
+            onReflect: {}
+        )
+    }
+}
+
 #Preview("Chapter end CTA — dark") {
     ZStack(alignment: .bottom) {
         Color.cfBackground.ignoresSafeArea()
@@ -154,7 +181,8 @@ public struct ChapterEndCTA: View {
             chapterTitle: "The Surprising Power of Atomic Habits",
             onTakeQuiz: {},
             onListen: {},
-            onAsk: {}
+            onAsk: {},
+            onReflect: {}
         )
     }
     .preferredColorScheme(.dark)

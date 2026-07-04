@@ -25,7 +25,7 @@ extension KeyedDecodingContainer {
     /// always succeeds even if every element is malformed. This matches the
     /// ChapterFlow server-evolution contract: additive server changes must never
     /// crash a released app.
-    func decodeLossy<T: Decodable>(_ type: T.Type, forKey key: Key) throws -> [T] {
+    public func decodeLossy<T: Decodable>(_ type: T.Type, forKey key: Key) throws -> [T] {
         var unkeyed = try nestedUnkeyedContainer(forKey: key)
         var result: [T] = []
         while !unkeyed.isAtEnd {

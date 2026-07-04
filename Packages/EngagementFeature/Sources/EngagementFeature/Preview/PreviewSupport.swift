@@ -483,3 +483,111 @@ extension JourneyDetailModel {
         return model
     }
 }
+
+// MARK: - Scenario fixtures
+
+extension UserScenario {
+    static let previewPending = UserScenario(
+        id: "s-001",
+        bookId: "atomic-habits",
+        chapterNumber: 3,
+        title: "Building a morning writing habit",
+        scenario: "I tend to check my phone first thing every morning, which derails my focus for the rest of the day. I want to use habit stacking to pair my coffee ritual with 15 minutes of writing.",
+        whatToDo: "Place my notebook beside the coffee machine each night. When I pour my first cup, I sit at the table and write for exactly 15 minutes before touching my phone.",
+        whyItMatters: "Writing first thing channels my freshest mental energy into creative work instead of reactive scrolling.",
+        scope: .personal,
+        status: .pending,
+        pointsAwarded: nil,
+        createdAt: Date(timeIntervalSinceNow: -3600)
+    )
+
+    static let previewApproved = UserScenario(
+        id: "s-002",
+        bookId: "atomic-habits",
+        chapterNumber: 2,
+        title: "Two-minute team stand-up rule",
+        scenario: "Our remote stand-ups drag on because people check Slack between updates. I want to apply the two-minute rule to keep each person's update short and drive the meeting to under 10 minutes total.",
+        whatToDo: "At the start of each stand-up, I'll remind the team: updates are two minutes max. I'll use a visible timer. Anything longer becomes a separate call.",
+        whyItMatters: "Shorter stand-ups respect everyone's deep-work time and model the behaviour I want the team to adopt.",
+        scope: .work,
+        status: .approved,
+        pointsAwarded: 50,
+        createdAt: Date(timeIntervalSinceNow: -86400)
+    )
+
+    static let previewRejected = UserScenario(
+        id: "s-003",
+        bookId: "atomic-habits",
+        chapterNumber: 1,
+        title: "Using habits",
+        scenario: "I want to use habits.",
+        whatToDo: "Do the habits.",
+        whyItMatters: "Habits are good.",
+        scope: .school,
+        status: .rejected,
+        pointsAwarded: nil,
+        createdAt: Date(timeIntervalSinceNow: -172800)
+    )
+}
+
+extension CommunityScenario {
+    static let previewCommunity1 = CommunityScenario(
+        id: "cs-001",
+        title: "Habit-stacking language learning",
+        scenario: "I linked Spanish practice to my daily lunch break by listening to a podcast episode while I eat.",
+        whatToDo: "Queue the podcast before sitting down for lunch. No podcast = no lunch (mild social contract with my roommate).",
+        whyItMatters: "Language acquisition benefits from daily exposure, and lunch is the one consistent break in my day.",
+        scope: .personal,
+        authorName: "Alex K.",
+        createdAt: Date(timeIntervalSinceNow: -43200)
+    )
+}
+
+// MARK: - Preview ScenarioRepository
+
+extension ScenarioRepository {
+    static func makePreview(
+        myScenarios: [UserScenario] = [.previewApproved, .previewPending, .previewRejected],
+        community: [CommunityScenario] = [.previewCommunity1]
+    ) -> ScenarioRepository {
+        let resp = ScenariosResponse(scenarios: myScenarios, community: community)
+        let previewScenario = UserScenario(
+            id: "s-preview-new", bookId: "atomic-habits", chapterNumber: 3,
+            title: "New scenario", scenario: "Preview scenario",
+            whatToDo: "Do the thing", whyItMatters: "Because reasons",
+            scope: .work, status: .pending, pointsAwarded: nil, createdAt: Date()
+        )
+        let client = PreviewAPIClient { endpoint in
+            if endpoint.path.hasSuffix("/scenarios") && endpoint.method == .get {
+                return try JSONCoding.encoder.encode(resp)
+            }
+            if endpoint.path.hasSuffix("/scenarios") && endpoint.method == .post {
+                return try JSONCoding.encoder.encode(ScenarioResponse(scenario: previewScenario))
+            }
+            throw AppError.notFound
+        }
+        return ScenarioRepository(apiClient: client, modelContainer: nil)
+    }
+
+    static var previewEmpty: ScenarioRepository { makePreview(myScenarios: [], community: []) }
+}
+
+// MARK: - Preview ScenariosModel
+
+extension ScenariosModel {
+    @MainActor static var preview: ScenariosModel {
+        ScenariosModel(
+            repository: .makePreview(),
+            bookId: "atomic-habits",
+            chapterNumber: 3
+        )
+    }
+
+    @MainActor static var previewEmpty: ScenariosModel {
+        ScenariosModel(
+            repository: .previewEmpty,
+            bookId: "atomic-habits",
+            chapterNumber: 3
+        )
+    }
+}
