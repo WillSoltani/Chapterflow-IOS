@@ -137,6 +137,12 @@ public final class PaywallModel {
     public private(set) var serverBenefits: [String]?
     /// The presentation context injected at init time.
     public let context: PaywallContext
+    /// The raw `proSource` field from the backend entitlement.
+    ///
+    /// Common values: `"stripe"`, `"apple"`, `"license"`, `"gift_code"`, `"admin"`.
+    /// `nil` when the user is on the free tier or the entitlement hasn't loaded yet.
+    /// Used by the paywall to show source-specific "already Pro" messaging.
+    public private(set) var proSource: String?
 
     // MARK: - Dependencies
 
@@ -175,10 +181,12 @@ public final class PaywallModel {
     func inject(
         productInfos: [StoreProductInfo],
         status: SubscriptionStatus,
+        proSource: String? = nil,
         serverBenefits: [String]? = nil
     ) {
         self.productInfos = productInfos
         self.subscriptionStatus = status
+        self.proSource = proSource
         self.serverBenefits = serverBenefits
     }
 
@@ -345,6 +353,13 @@ public final class PaywallModel {
     /// The backend entitlement is authoritative for gating — this keeps the local
     /// `subscriptionStatus` in sync with the server view, which may differ when
     /// the user subscribes via a different platform (web/Stripe).
+    ///
+    /// Also updates `proSource` so the paywall can show source-specific "already Pro"
+    /// messaging (e.g. "Pro via web" for Stripe users).
+    ///
+    /// **Never double-charges:** if the backend confirms Pro (any source),
+    /// `subscriptionStatus.isPro` is `true` and the paywall guard prevents
+    /// presenting the purchase flow.
     public func refreshEntitlement() async {
         do {
             // 1. Refresh local StoreKit status (grace period, billing retry, etc.)
@@ -352,16 +367,19 @@ public final class PaywallModel {
 
             // 2. Re-fetch the backend entitlement so gating reflects the server truth.
             let response: EntitlementResponse = try await apiClient.send(Endpoints.getEntitlements())
+            let entitlement = response.entitlement
 
             // Backend plan is authoritative for gating; StoreKit state surfaces
             // billing-lifecycle detail (grace period, billing retry).
-            let isPro = response.entitlement.plan == .pro
-            if isPro {
+            let backendIsPro = entitlement.plan == .pro && entitlement.proStatus == "active"
+            if backendIsPro {
                 // When backend confirms pro, prefer StoreKit state so billing-UI
                 // banners (grace period, billing retry) are surfaced correctly.
                 subscriptionStatus = storeStatus.isPro ? storeStatus : .subscribed(productID: "", expirationDate: nil)
+                proSource = entitlement.proSource
             } else {
                 subscriptionStatus = .notSubscribed
+                proSource = nil
             }
         } catch {
             // Keep the last known status on refresh failure to avoid flickering.
