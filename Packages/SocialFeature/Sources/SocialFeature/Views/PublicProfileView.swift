@@ -9,12 +9,26 @@ import DesignSystem
 ///
 /// Safety features (P7.7): block/unblock and report are available via the toolbar
 /// menu. Blocked users see a blocked-state banner instead of profile content.
+///
+/// **Privacy enforcement (P7.8):** Pass `privacySettings` to add client-side
+/// enforcement on top of what the server already hid. When rendering your own
+/// profile in "how others see me" mode, pass your own ``PrivacySettings``.
+/// For a genuine partner profile, pass `nil` — rely on the server's nil values.
 public struct PublicProfileView: View {
 
     @State private var model: PublicProfileModel
 
-    public init(userId: String, repository: any SocialRepository) {
+    /// Optional client-side privacy filter. When non-nil, any field the user has
+    /// hidden is suppressed even if the server returned a value.
+    private let privacySettings: PrivacySettings?
+
+    public init(
+        userId: String,
+        repository: any SocialRepository,
+        privacySettings: PrivacySettings? = nil
+    ) {
         _model = State(initialValue: PublicProfileModel(userId: userId, repository: repository))
+        self.privacySettings = privacySettings
     }
 
     public var body: some View {
@@ -167,16 +181,20 @@ public struct PublicProfileView: View {
 
     private func statsGrid(profile: PublicProfile) -> some View {
         HStack(spacing: .cfSpacing8) {
-            ProfileStatItemView(
-                icon: "🔥",
-                value: "\(profile.currentStreak)",
-                label: "Streak"
-            )
-            ProfileStatItemView(
-                icon: "📚",
-                value: "\(profile.booksFinished)",
-                label: "Books"
-            )
+            if let streak = profile.visibleStreak(honoring: privacySettings) {
+                ProfileStatItemView(
+                    icon: "🔥",
+                    value: "\(streak)",
+                    label: "Streak"
+                )
+            }
+            if let books = profile.visibleBooksFinished(honoring: privacySettings) {
+                ProfileStatItemView(
+                    icon: "📚",
+                    value: "\(books)",
+                    label: "Books"
+                )
+            }
             ProfileStatItemView(
                 icon: "🏅",
                 value: "\(profile.badgeCount)",
@@ -337,5 +355,22 @@ public struct PublicProfileView: View {
         )
     }
     .dynamicTypeSize(.accessibility3)
+}
+
+#Preview("PublicProfileView — privacy enforced (streak + books hidden)") {
+    NavigationStack {
+        PublicProfileView(
+            userId: "user-partner",
+            repository: FakeSocialRepository.loaded,
+            privacySettings: PrivacySettings(
+                showStreak: false,
+                showBooksFinished: false,
+                showProgress: false,
+                useDisplayName: true,
+                leaderboardOptIn: false,
+                discoverabilityOptIn: false
+            )
+        )
+    }
 }
 #endif

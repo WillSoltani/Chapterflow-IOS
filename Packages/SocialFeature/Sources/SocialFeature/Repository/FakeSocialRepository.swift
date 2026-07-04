@@ -84,7 +84,8 @@ public actor FakeSocialRepository: SocialRepository {
             equippedFrame: profile.equippedFrame,
             equippedTheme: profile.equippedTheme,
             badgeCount: profile.badgeCount,
-            joinedAt: profile.joinedAt
+            joinedAt: profile.joinedAt,
+            privacySettings: body.privacySettings ?? profile.privacySettings
         )
         profile = updated
         return updated

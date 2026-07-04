@@ -29,7 +29,8 @@ extension OwnProfile {
             rarity: "uncommon"
         ),
         badgeCount: 8,
-        joinedAt: "2024-01-01T00:00:00Z"
+        joinedAt: "2024-01-01T00:00:00Z",
+        privacySettings: .default
     )
 
     public static let previewNoCosmetics = OwnProfile(
