@@ -53,6 +53,26 @@ struct OnboardingStepTests {
     }
 }
 
+// MARK: - ChapterOrder
+
+@Suite("ChapterOrder")
+struct ChapterOrderTests {
+    @Test("summaryFirst has correct raw value")
+    func summaryFirstRawValue() {
+        #expect(ChapterOrder.summaryFirst.rawValue == "summary_first")
+    }
+
+    @Test("scenariosFirst has correct raw value")
+    func scenariosFirstRawValue() {
+        #expect(ChapterOrder.scenariosFirst.rawValue == "scenarios_first")
+    }
+
+    @Test("allCases has exactly two entries")
+    func allCasesCount() {
+        #expect(ChapterOrder.allCases.count == 2)
+    }
+}
+
 // MARK: - OnboardingModel
 
 @Suite("OnboardingModel")
@@ -63,6 +83,7 @@ struct OnboardingModelTests {
         let model: OnboardingModel
         let repo: MockOnboardingRepository
         let prefs: AppPreferences
+        let goalStore: DailyGoalStore
     }
 
     private func makeModel(
@@ -70,10 +91,12 @@ struct OnboardingModelTests {
         preferences: AppPreferences? = nil
     ) -> ModelFixture {
         let suite = "com.cf.tests.onboarding.\(UUID().uuidString)"
+        let goalSuite = "com.cf.tests.onboarding.goal.\(UUID().uuidString)"
         let prefs = preferences ?? AppPreferences(defaults: UserDefaults(suiteName: suite)!)
+        let goalStore = DailyGoalStore(defaults: UserDefaults(suiteName: goalSuite)!)
         let repo = MockOnboardingRepository(stubbedProgress: progress)
-        let model = OnboardingModel(preferences: prefs, repository: repo)
-        return ModelFixture(model: model, repo: repo, prefs: prefs)
+        let model = OnboardingModel(preferences: prefs, repository: repo, goalStore: goalStore)
+        return ModelFixture(model: model, repo: repo, prefs: prefs, goalStore: goalStore)
     }
 
     // MARK: - Initialisation
@@ -84,23 +107,26 @@ struct OnboardingModelTests {
         #expect(model.currentStep == .welcome)
     }
 
-    @Test("seeds selections from AppPreferences")
+    @Test("seeds selections from AppPreferences and DailyGoalStore")
     func seedsFromPreferences() {
         let suite = "com.cf.tests.onboarding-seed.\(UUID().uuidString)"
+        let goalSuite = "com.cf.tests.onboarding-seed-goal.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
+        let goalDefaults = UserDefaults(suiteName: goalSuite)!
         let prefs = AppPreferences(defaults: defaults)
+        let goalStore = DailyGoalStore(defaults: goalDefaults)
         prefs.readingTone = .competitive
-        prefs.depthVariant = .hard
-        prefs.dailyGoalChapters = 3
         prefs.interestIds = ["business", "science"]
+        goalStore.dailyGoalMinutes = 20
 
-        let fix = makeModel(preferences: prefs); let model = fix.model
+        let repo = MockOnboardingRepository()
+        let model = OnboardingModel(preferences: prefs, repository: repo, goalStore: goalStore)
         #expect(model.readingTone == .competitive)
-        #expect(model.depthVariant == .hard)
-        #expect(model.dailyGoalChapters == 3)
+        #expect(model.dailyGoalMinutes == 20)
         #expect(model.selectedInterestIds == ["business", "science"])
 
         defaults.removePersistentDomain(forName: suite)
+        goalDefaults.removePersistentDomain(forName: goalSuite)
     }
 
     // MARK: - Progress loading
@@ -118,9 +144,9 @@ struct OnboardingModelTests {
             step: "completed",
             completed: true,
             interests: nil,
-            depthVariant: nil,
-            toneKey: nil,
-            dailyGoalChapters: nil,
+            chapterOrder: nil,
+            tone: nil,
+            dailyGoal: nil,
             reminderHour: nil,
             reminderMinute: nil
         )
@@ -135,9 +161,9 @@ struct OnboardingModelTests {
             step: "dailyGoal",
             completed: false,
             interests: ["business", "psychology"],
-            depthVariant: "hard",
-            toneKey: "competitive",
-            dailyGoalChapters: 4,
+            chapterOrder: "scenarios_first",
+            tone: "competitive",
+            dailyGoal: 20,
             reminderHour: 7,
             reminderMinute: 30
         )
@@ -147,11 +173,30 @@ struct OnboardingModelTests {
         #expect(model.currentStep == .dailyGoal)
         #expect(model.selectedInterestIds.contains("business"))
         #expect(model.selectedInterestIds.contains("psychology"))
-        #expect(model.depthVariant == .hard)
+        #expect(model.chapterOrder == .scenariosFirst)
         #expect(model.readingTone == .competitive)
-        #expect(model.dailyGoalChapters == 4)
+        #expect(model.dailyGoalMinutes == 20)
         #expect(model.reminderHour == 7)
         #expect(model.reminderMinute == 30)
+    }
+
+    @Test("loadProgress ignores dailyGoal values outside the canonical tiers")
+    func loadProgressIgnoresInvalidGoal() async {
+        let progress = OnboardingServerProgress(
+            step: "dailyGoal",
+            completed: false,
+            interests: nil,
+            chapterOrder: nil,
+            tone: nil,
+            dailyGoal: 99,
+            reminderHour: nil,
+            reminderMinute: nil
+        )
+        let fix = makeModel(progress: progress); let model = fix.model
+        let initialGoal = model.dailyGoalMinutes
+        await model.loadProgress()
+        // 99 is not a valid tier; goal should stay unchanged
+        #expect(model.dailyGoalMinutes == initialGoal)
     }
 
     @Test("loadProgress with unknown step stays at welcome")
@@ -160,9 +205,9 @@ struct OnboardingModelTests {
             step: "unknownFutureStep",
             completed: false,
             interests: nil,
-            depthVariant: nil,
-            toneKey: nil,
-            dailyGoalChapters: nil,
+            chapterOrder: nil,
+            tone: nil,
+            dailyGoal: nil,
             reminderHour: nil,
             reminderMinute: nil
         )
@@ -186,7 +231,7 @@ struct OnboardingModelTests {
     func advanceFromInterests() async {
         let fix = makeModel(); let model = fix.model; let repo = fix.repo
         model.selectedInterestIds = ["business"]
-        model.currentStep = .interests  // simulate being on this step
+        model.currentStep = .interests
         await model.advance()
 
         #expect(model.currentStep == .readingPrefs)
@@ -196,18 +241,18 @@ struct OnboardingModelTests {
         #expect(bodies.first?.interests?.contains("business") == true)
     }
 
-    @Test("advance from readingPrefs persists depth and tone")
+    @Test("advance from readingPrefs posts chapterOrder and tone with correct server field names")
     func advanceFromReadingPrefs() async {
         let fix = makeModel(); let model = fix.model; let repo = fix.repo
-        model.depthVariant = .hard
+        model.chapterOrder = .scenariosFirst
         model.readingTone = .competitive
         model.currentStep = .readingPrefs
         await model.advance()
 
         #expect(model.currentStep == .dailyGoal)
         let bodies = await repo.savedProgressBodies
-        #expect(bodies.first?.depthVariant == "hard")
-        #expect(bodies.first?.toneKey == "competitive")
+        #expect(bodies.first?.chapterOrder == "scenarios_first")
+        #expect(bodies.first?.tone == "competitive")
     }
 
     @Test("advance from notifications calls complete and sets onboardingCompleted")
@@ -233,19 +278,47 @@ struct OnboardingModelTests {
         #expect(completeBodies.count == 1)
     }
 
-    @Test("skip writes choices to preferences before completing")
+    @Test("skip writes choices to stores before completing")
     func skipWritesPreferences() async {
-        let fix = makeModel(); let model = fix.model; let prefs = fix.prefs
+        let fix = makeModel(); let model = fix.model; let prefs = fix.prefs; let goalStore = fix.goalStore
         model.selectedInterestIds = ["science"]
-        model.depthVariant = .easy
+        model.chapterOrder = .summaryFirst
         model.readingTone = .gentle
-        model.dailyGoalChapters = 2
+        model.dailyGoalMinutes = 20
         await model.skip()
 
         #expect(prefs.interestIds.contains("science"))
-        #expect(prefs.depthVariant == .easy)
         #expect(prefs.readingTone == .gentle)
-        #expect(prefs.dailyGoalChapters == 2)
+        #expect(goalStore.dailyGoalMinutes == 20)
+    }
+
+    // MARK: - Goal round-trip
+
+    @Test("completing onboarding writes dailyGoalMinutes to DailyGoalStore")
+    func goalRoundTrip() async {
+        let fix = makeModel(); let model = fix.model; let goalStore = fix.goalStore
+        model.dailyGoalMinutes = 30
+        model.currentStep = .notifications
+        await model.advance()
+
+        #expect(goalStore.dailyGoalMinutes == 30)
+    }
+
+    @Test("complete body posts dailyGoal field with minutes value")
+    func completeBodyFieldNames() async {
+        let fix = makeModel(); let model = fix.model; let repo = fix.repo
+        model.dailyGoalMinutes = 20
+        model.chapterOrder = .summaryFirst
+        model.readingTone = .direct
+        model.selectedInterestIds = ["business"]
+        model.currentStep = .notifications
+        await model.advance()
+
+        let bodies = await repo.completeBodies
+        #expect(bodies.first?.dailyGoal == 20)
+        #expect(bodies.first?.chapterOrder == "summary_first")
+        #expect(bodies.first?.tone == "direct")
+        #expect(bodies.first?.interests.contains("business") == true)
     }
 
     // MARK: - Network failure resilience
@@ -264,7 +337,6 @@ struct OnboardingModelTests {
         await repo.setSaveShouldThrow(AppError.offline)
         model.currentStep = .interests
         await model.advance()
-        // Step should still advance despite save failure
         #expect(model.currentStep == .readingPrefs)
     }
 }

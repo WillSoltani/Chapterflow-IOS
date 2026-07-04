@@ -137,12 +137,7 @@ public final class AppPreferences {
         }
     }
 
-    // MARK: - Onboarding / Daily goal / Interests
-
-    /// Daily reading goal in chapters (1…10). Read by the Engagement and Discover tabs.
-    public var dailyGoalChapters: Int {
-        didSet { defaults.set(dailyGoalChapters, forKey: Keys.dailyGoalChapters) }
-    }
+    // MARK: - Onboarding / Interests
 
     /// IDs of interest categories the user selected during onboarding.
     /// Read by the Discover "For You" rail (P2.9) to rank content.
@@ -174,7 +169,6 @@ public final class AppPreferences {
         self.audioSpeed = (store.object(forKey: Keys.audioSpeed) as? Double) ?? 1.0
         self.reminderHour = (store.object(forKey: Keys.reminderHour) as? Int) ?? 20
         self.reminderMinute = (store.object(forKey: Keys.reminderMinute) as? Int) ?? 0
-        self.dailyGoalChapters = (store.object(forKey: Keys.dailyGoalChapters) as? Int) ?? 1
         self.interestIds = store.stringArray(forKey: Keys.interestIds) ?? []
         self.onboardingCompleted = store.bool(forKey: Keys.onboardingCompleted)
     }
@@ -189,7 +183,6 @@ public final class AppPreferences {
         static let audioSpeed = "pref.audioSpeed"
         static let reminderHour = "pref.reminderHour"
         static let reminderMinute = "pref.reminderMinute"
-        static let dailyGoalChapters = "pref.dailyGoalChapters"
         static let interestIds = "pref.interestIds"
         static let onboardingCompleted = "pref.onboardingCompleted"
     }

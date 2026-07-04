@@ -4,6 +4,7 @@ import Foundation
 import Models
 import Networking
 import CoreKit
+import Persistence
 
 // MARK: - Helpers
 
@@ -83,43 +84,35 @@ struct DailyGoalStoreTests {
         return DailyGoalStore(defaults: defaults)
     }
 
-    @Test("defaults to 20 minutes when no value is stored")
+    @Test("defaults to 10 minutes when no value is stored")
     func defaultGoal() {
         let store = freshStore()
         #expect(store.dailyGoalMinutes == DailyGoalStore.defaultGoalMinutes)
+        #expect(store.dailyGoalMinutes == 10)
     }
 
-    @Test("persists a new goal value")
+    @Test("persists a valid tier value")
     func persistsGoal() {
         let store = freshStore()
-        store.dailyGoalMinutes = 45
-        #expect(store.dailyGoalMinutes == 45)
+        store.dailyGoalMinutes = 20
+        #expect(store.dailyGoalMinutes == 20)
     }
 
-    @Test("clamps values below minimum to minimum")
-    func clampsLow() {
+    @Test("snaps out-of-range value to nearest tier")
+    func snapsToNearestTier() {
         let store = freshStore()
-        store.dailyGoalMinutes = 0
-        #expect(store.dailyGoalMinutes == DailyGoalStore.minimumGoalMinutes)
+        store.dailyGoalMinutes = 0    // nearest tier = 10
+        #expect(store.dailyGoalMinutes == 10)
+        store.dailyGoalMinutes = 500  // nearest tier = 30
+        #expect(store.dailyGoalMinutes == 30)
+        store.dailyGoalMinutes = 15   // nearest tier = 10 or 20 (both equidistant; any valid tier)
+        #expect(DailyGoalStore.tiers.contains(store.dailyGoalMinutes))
     }
 
-    @Test("clamps values above maximum to maximum")
-    func clampsHigh() {
-        let store = freshStore()
-        store.dailyGoalMinutes = 500
-        #expect(store.dailyGoalMinutes == DailyGoalStore.maximumGoalMinutes)
-    }
-
-    @Test("progressFraction returns 0 when goal is 0")
-    func progressFractionZeroGoal() {
-        let store = freshStore()
-        // Force goal to 0 by directly setting minimum then using raw default
-        // (can't set below minimum via dailyGoalMinutes, so test via fraction math)
-        let fraction = DailyGoalStore.defaultGoalMinutes > 0
-            ? store.progressFraction(todayMinutes: 20)
-            : 0.0
-        // Just verify the fraction path works when goal > 0
-        #expect(fraction > 0)
+    @Test("options equals the three tiers")
+    func optionsCoverage() {
+        #expect(DailyGoalStore.options == [10, 20, 30])
+        #expect(DailyGoalStore.tiers == [10, 20, 30])
     }
 
     @Test("progressFraction is capped at 1.0 when over goal")
@@ -132,19 +125,9 @@ struct DailyGoalStoreTests {
     @Test("progressFraction returns partial when under goal")
     func progressFractionPartial() {
         let store = freshStore()
-        store.dailyGoalMinutes = 60
-        let fraction = store.progressFraction(todayMinutes: 30)
+        store.dailyGoalMinutes = 20
+        let fraction = store.progressFraction(todayMinutes: 10)
         #expect(abs(fraction - 0.5) < 0.001)
-    }
-
-    @Test("options contains all 5-minute steps from min to max")
-    func optionsCoverage() {
-        let options = DailyGoalStore.options
-        #expect(options.first == DailyGoalStore.minimumGoalMinutes)
-        #expect(options.last == DailyGoalStore.maximumGoalMinutes)
-        // Every consecutive pair is exactly 5 minutes apart
-        let allStep5 = zip(options, options.dropFirst()).allSatisfy { $1 - $0 == DailyGoalStore.stepMinutes }
-        #expect(allStep5)
     }
 }
 
@@ -266,7 +249,6 @@ struct DailyGoalModelTests {
         let model = DailyGoalModel(repository: repo, store: store)
 
         model.load()
-        // Give the async task time to complete
         try await Task.sleep(nanoseconds: 500_000_000)
 
         guard case .loaded(let state) = model.loadState else {
@@ -293,21 +275,21 @@ struct DailyGoalModelTests {
     @Test("setGoal persists and rebuilds state without refetch")
     @MainActor func setGoalPersistsAndRebuilds() async throws {
         let repo = EngagementRepository(apiClient: makeDashboardClient(todayMinutes: 20), modelContainer: nil)
-        let store = freshStore(goal: 30)
+        let store = freshStore(goal: 20)
         let model = DailyGoalModel(repository: repo, store: store)
 
         model.load()
         try await Task.sleep(nanoseconds: 500_000_000)
 
-        model.setGoal(40)
+        model.setGoal(30)
 
         guard case .loaded(let state) = model.loadState else {
             Issue.record("Expected .loaded after setGoal")
             return
         }
-        #expect(state.goalMinutes == 40)
-        #expect(model.goalMinutes == 40)
-        #expect(store.dailyGoalMinutes == 40)
+        #expect(state.goalMinutes == 30)
+        #expect(model.goalMinutes == 30)
+        #expect(store.dailyGoalMinutes == 30)
     }
 
     @Test("weekActivity contains exactly 7 days ordered oldest-first")
@@ -369,8 +351,8 @@ struct DailyGoalModelTests {
     @Test("goalMinutes reflects store value")
     @MainActor func goalMinutesReflectsStore() {
         let repo = EngagementRepository(apiClient: makeDashboardClient(), modelContainer: nil)
-        let store = freshStore(goal: 45)
+        let store = freshStore(goal: 30)
         let model = DailyGoalModel(repository: repo, store: store)
-        #expect(model.goalMinutes == 45)
+        #expect(model.goalMinutes == 30)
     }
 }

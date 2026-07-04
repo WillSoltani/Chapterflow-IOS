@@ -10,7 +10,7 @@ import UserNotifications
 /// Responsibilities:
 /// - Load existing server progress on startup (enables resume after interruption).
 /// - Track the current step and the user's accumulated selections.
-/// - Persist each step's choices to the server and to `AppPreferences`.
+/// - Persist each step's choices to the server, to `AppPreferences`, and to `DailyGoalStore`.
 /// - Advance through steps, completing or skipping the flow.
 @Observable
 @MainActor
@@ -30,14 +30,15 @@ public final class OnboardingModel {
     /// Interest categories the user has toggled on (step 2).
     public var selectedInterestIds: Set<String> = []
 
-    /// Reading depth for default reader sessions (step 3).
-    public var depthVariant: DepthVariant = .medium
+    /// Chapter-reading order (step 3).
+    public var chapterOrder: ChapterOrder = .summaryFirst
 
     /// Teaching tone for default reader sessions (step 3).
     public var readingTone: ReadingTone = .direct
 
-    /// Number of chapters the user wants to read per day (step 4).
-    public var dailyGoalChapters: Int = 1
+    /// Number of minutes the user wants to read per day (step 4).
+    /// Always one of 10 | 20 | 30.
+    public var dailyGoalMinutes: Int = DailyGoalStore.defaultGoalMinutes
 
     /// Hour component of the daily reminder time, 0–23 (step 4).
     public var reminderHour: Int = 20
@@ -49,17 +50,22 @@ public final class OnboardingModel {
 
     @ObservationIgnored private let repository: any OnboardingRepository
     @ObservationIgnored private let preferences: AppPreferences
+    @ObservationIgnored private let goalStore: DailyGoalStore
 
     // MARK: Init
 
-    public init(preferences: AppPreferences, repository: any OnboardingRepository) {
+    public init(
+        preferences: AppPreferences,
+        repository: any OnboardingRepository,
+        goalStore: DailyGoalStore? = nil
+    ) {
         self.preferences = preferences
         self.repository = repository
+        self.goalStore = goalStore ?? DailyGoalStore.shared
 
-        // Seed from persisted preferences so the user sees their last-saved values.
-        self.depthVariant = preferences.depthVariant
+        // Seed from persisted stores so the user sees their last-saved values.
         self.readingTone = preferences.readingTone
-        self.dailyGoalChapters = preferences.dailyGoalChapters
+        self.dailyGoalMinutes = (goalStore ?? DailyGoalStore.shared).dailyGoalMinutes
         self.reminderHour = preferences.reminderHour
         self.reminderMinute = preferences.reminderMinute
         self.selectedInterestIds = Set(preferences.interestIds)
@@ -82,9 +88,9 @@ public final class OnboardingModel {
             }
 
             if let ids = progress.interests { selectedInterestIds = Set(ids) }
-            if let d = progress.depthVariant { depthVariant = DepthVariant(rawValue: d) ?? .medium }
-            if let t = progress.toneKey { readingTone = ReadingTone(rawValue: t) ?? .direct }
-            if let g = progress.dailyGoalChapters { dailyGoalChapters = g }
+            if let c = progress.chapterOrder { chapterOrder = ChapterOrder(rawValue: c) ?? .summaryFirst }
+            if let t = progress.tone { readingTone = ReadingTone(rawValue: t) ?? .direct }
+            if let g = progress.dailyGoal, DailyGoalStore.tiers.contains(g) { dailyGoalMinutes = g }
             if let h = progress.reminderHour { reminderHour = h }
             if let m = progress.reminderMinute { reminderMinute = m }
             if let step = OnboardingStep(rawValue: progress.step) { currentStep = step }
@@ -140,21 +146,21 @@ public final class OnboardingModel {
         isLoading = true
         defer { isLoading = false }
 
-        applyChoicesToPreferences()
+        applyChoicesToStores()
 
         let body = OnboardingProgressBody(
             step: step.rawValue,
             interests: Array(selectedInterestIds),
-            depthVariant: depthVariant.rawValue,
-            toneKey: readingTone.rawValue,
-            dailyGoalChapters: dailyGoalChapters,
+            chapterOrder: chapterOrder.rawValue,
+            tone: readingTone.rawValue,
+            dailyGoal: dailyGoalMinutes,
             reminderHour: reminderHour,
             reminderMinute: reminderMinute
         )
         do {
             try await repository.saveProgress(body)
         } catch {
-            // Non-fatal: local preferences are already written above.
+            // Non-fatal: local stores are already written above.
         }
 
         withAnimation(.easeInOut(duration: 0.35)) {
@@ -166,13 +172,13 @@ public final class OnboardingModel {
         isLoading = true
         defer { isLoading = false }
 
-        applyChoicesToPreferences()
+        applyChoicesToStores()
 
         let body = OnboardingCompleteBody(
             interests: Array(selectedInterestIds),
-            depthVariant: depthVariant.rawValue,
-            toneKey: readingTone.rawValue,
-            dailyGoalChapters: dailyGoalChapters,
+            chapterOrder: chapterOrder.rawValue,
+            tone: readingTone.rawValue,
+            dailyGoal: dailyGoalMinutes,
             reminderHour: reminderHour,
             reminderMinute: reminderMinute
         )
@@ -186,12 +192,11 @@ public final class OnboardingModel {
         preferences.onboardingCompleted = true
     }
 
-    private func applyChoicesToPreferences() {
+    private func applyChoicesToStores() {
         preferences.readingTone = readingTone
-        preferences.depthVariant = depthVariant
-        preferences.dailyGoalChapters = dailyGoalChapters
         preferences.reminderHour = reminderHour
         preferences.reminderMinute = reminderMinute
         preferences.interestIds = Array(selectedInterestIds)
+        goalStore.dailyGoalMinutes = dailyGoalMinutes
     }
 }

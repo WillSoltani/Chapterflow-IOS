@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import CoreKit
 import Models
+import Persistence
 
 /// View model for the daily-goal & habit surface.
 ///

@@ -12,6 +12,16 @@ public enum OnboardingStep: String, Sendable, Equatable, CaseIterable {
     case completed
 }
 
+// MARK: - ChapterOrder
+
+/// The user's preferred chapter-reading order.
+///
+/// Raw values match the server's `chapterOrder` field: "summary_first" | "scenarios_first".
+public enum ChapterOrder: String, Sendable, CaseIterable {
+    case summaryFirst = "summary_first"
+    case scenariosFirst = "scenarios_first"
+}
+
 // MARK: - Server response types
 
 /// Outer wrapper returned by `GET /book/me/onboarding/progress`.
@@ -24,9 +34,12 @@ public struct OnboardingServerProgress: Decodable, Sendable {
     public let step: String
     public let completed: Bool
     public let interests: [String]?
-    public let depthVariant: String?
-    public let toneKey: String?
-    public let dailyGoalChapters: Int?
+    /// Chapter-order preference: "summary_first" | "scenarios_first".
+    public let chapterOrder: String?
+    /// Teaching tone identifier.
+    public let tone: String?
+    /// Daily reading goal in minutes. One of 10 | 20 | 30.
+    public let dailyGoal: Int?
     public let reminderHour: Int?
     public let reminderMinute: Int?
 }

@@ -220,21 +220,8 @@ struct AppPreferencesTests {
         #expect(prefs.audioSpeed == 1.0)
         #expect(prefs.reminderHour == 20)
         #expect(prefs.reminderMinute == 0)
-        #expect(prefs.dailyGoalChapters == 1)
         #expect(prefs.interestIds.isEmpty)
         #expect(prefs.onboardingCompleted == false)
-    }
-
-    @MainActor
-    @Test("dailyGoalChapters persists across instances")
-    func dailyGoalChaptersPersists() {
-        let (defaults, suite) = makeDefaults()
-        defer { defaults.removePersistentDomain(forName: suite) }
-
-        let first = AppPreferences(defaults: defaults)
-        first.dailyGoalChapters = 5
-        let second = AppPreferences(defaults: defaults)
-        #expect(second.dailyGoalChapters == 5)
     }
 
     @MainActor
@@ -358,5 +345,76 @@ struct FileStoreTests {
         #expect(throws: PersistenceError.notFound) {
             try store.read(named: "nope.dat")
         }
+    }
+}
+
+// MARK: - DailyGoalStore
+
+@Suite("DailyGoalStore")
+struct DailyGoalStoreTests {
+
+    private func freshStore() -> (DailyGoalStore, String) {
+        let suite = "com.chapterflow.tests.goal.\(UUID().uuidString)"
+        return (DailyGoalStore(defaults: UserDefaults(suiteName: suite)!), suite)
+    }
+
+    @Test("defaults to 10 minutes on a fresh store")
+    func defaultGoal() {
+        let (store, suite) = freshStore()
+        defer { UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite) }
+        #expect(store.dailyGoalMinutes == DailyGoalStore.defaultGoalMinutes)
+        #expect(store.dailyGoalMinutes == 10)
+    }
+
+    @Test("persists a valid tier value across instances")
+    func persistsAcrossInstances() {
+        let (store, suite) = freshStore()
+        defer { UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite) }
+        let defaults = UserDefaults(suiteName: suite)!
+        store.dailyGoalMinutes = 20
+        let store2 = DailyGoalStore(defaults: defaults)
+        #expect(store2.dailyGoalMinutes == 20)
+    }
+
+    @Test("snaps values below range to 10")
+    func snapsLow() {
+        let (store, suite) = freshStore()
+        defer { UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite) }
+        store.dailyGoalMinutes = 0
+        #expect(store.dailyGoalMinutes == 10)
+    }
+
+    @Test("snaps values above range to 30")
+    func snapsHigh() {
+        let (store, suite) = freshStore()
+        defer { UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite) }
+        store.dailyGoalMinutes = 999
+        #expect(store.dailyGoalMinutes == 30)
+    }
+
+    @Test("tiers are exactly [10, 20, 30]")
+    func tierValues() {
+        #expect(DailyGoalStore.tiers == [10, 20, 30])
+    }
+
+    @Test("options equals tiers")
+    func optionsEqualsTiers() {
+        #expect(DailyGoalStore.options == DailyGoalStore.tiers)
+    }
+
+    @Test("progressFraction caps at 1.0 when over goal")
+    func progressFractionCapped() {
+        let (store, suite) = freshStore()
+        defer { UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite) }
+        store.dailyGoalMinutes = 10
+        #expect(store.progressFraction(todayMinutes: 30) == 1.0)
+    }
+
+    @Test("progressFraction is accurate at partial progress")
+    func progressFractionPartial() {
+        let (store, suite) = freshStore()
+        defer { UserDefaults(suiteName: suite)?.removePersistentDomain(forName: suite) }
+        store.dailyGoalMinutes = 20
+        #expect(abs(store.progressFraction(todayMinutes: 10) - 0.5) < 0.001)
     }
 }

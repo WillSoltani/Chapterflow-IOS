@@ -12,13 +12,13 @@ struct ReadingPrefsStepView: View {
             stepHeader(
                 icon: "books.vertical",
                 title: "How do you\nlike to learn?",
-                subtitle: "Set your default reading depth and teaching style."
+                subtitle: "Set your preferred reading order and teaching style."
             )
             .padding(.top, .cfSpacing48)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: .cfSpacing32) {
-                    depthSection
+                    chapterOrderSection
                     toneSection
                 }
                 .padding(.horizontal, .cfSpacing24)
@@ -38,18 +38,18 @@ struct ReadingPrefsStepView: View {
 
     // MARK: Sections
 
-    private var depthSection: some View {
+    private var chapterOrderSection: some View {
         VStack(alignment: .leading, spacing: .cfSpacing12) {
-            SectionLabel(text: "Reading Depth")
+            SectionLabel(text: "Reading Order")
 
             VStack(spacing: .cfSpacing8) {
-                ForEach(depthOptions, id: \.variant) { option in
+                ForEach(chapterOrderOptions, id: \.order) { option in
                     PreferenceRow(
                         title: option.title,
                         subtitle: option.description,
-                        isSelected: model.depthVariant == option.variant
+                        isSelected: model.chapterOrder == option.order
                     ) {
-                        model.depthVariant = option.variant
+                        model.chapterOrder = option.order
                     }
                 }
             }
@@ -76,8 +76,8 @@ struct ReadingPrefsStepView: View {
 
     // MARK: Data
 
-    private struct DepthOption {
-        let variant: DepthVariant
+    private struct ChapterOrderOption {
+        let order: ChapterOrder
         let title: String
         let description: String
     }
@@ -88,28 +88,35 @@ struct ReadingPrefsStepView: View {
         let description: String
     }
 
-    private let depthOptions: [DepthOption] = [
-        DepthOption(variant: .easy,
-                    title: "Accessible",
-                    description: "Core ideas in plain language — great for any topic."),
-        DepthOption(variant: .medium,
-                    title: "Standard",
-                    description: "Balanced detail with examples and context."),
-        DepthOption(variant: .hard,
-                    title: "In-Depth",
-                    description: "Rigorous coverage, technical nuance, and full depth."),
+    private let chapterOrderOptions: [ChapterOrderOption] = [
+        ChapterOrderOption(
+            order: .summaryFirst,
+            title: "Summary First",
+            description: "See the key ideas upfront, then explore real-world context."
+        ),
+        ChapterOrderOption(
+            order: .scenariosFirst,
+            title: "Scenarios First",
+            description: "Start with real-world examples, then synthesise the core ideas."
+        ),
     ]
 
     private let toneOptions: [ToneOption] = [
-        ToneOption(tone: .gentle,
-                   title: "Gentle",
-                   description: "Supportive, patient, and encouraging."),
-        ToneOption(tone: .direct,
-                   title: "Direct",
-                   description: "Clear, concise, and straight to the point."),
-        ToneOption(tone: .competitive,
-                   title: "Competitive",
-                   description: "Challenging and motivating — push your limits."),
+        ToneOption(
+            tone: .gentle,
+            title: "Gentle",
+            description: "Supportive, patient, and encouraging."
+        ),
+        ToneOption(
+            tone: .direct,
+            title: "Direct",
+            description: "Clear, concise, and straight to the point."
+        ),
+        ToneOption(
+            tone: .competitive,
+            title: "Competitive",
+            description: "Challenging and motivating — push your limits."
+        ),
     ]
 }
 

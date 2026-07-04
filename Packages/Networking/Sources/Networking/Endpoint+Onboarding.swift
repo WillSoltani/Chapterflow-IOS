@@ -28,52 +28,58 @@ extension Endpoints {
 public struct OnboardingProgressBody: Encodable, Sendable {
     public let step: String
     public let interests: [String]?
-    public let depthVariant: String?
-    public let toneKey: String?
-    public let dailyGoalChapters: Int?
+    /// Chapter-order preference: "summary_first" | "scenarios_first".
+    public let chapterOrder: String?
+    /// Teaching tone identifier matching the server's `VALID_TONES` list.
+    public let tone: String?
+    /// Daily reading goal in minutes. One of 10 | 20 | 30.
+    public let dailyGoal: Int?
     public let reminderHour: Int?
     public let reminderMinute: Int?
 
     public init(
         step: String,
         interests: [String]? = nil,
-        depthVariant: String? = nil,
-        toneKey: String? = nil,
-        dailyGoalChapters: Int? = nil,
+        chapterOrder: String? = nil,
+        tone: String? = nil,
+        dailyGoal: Int? = nil,
         reminderHour: Int? = nil,
         reminderMinute: Int? = nil
     ) {
         self.step = step
         self.interests = interests
-        self.depthVariant = depthVariant
-        self.toneKey = toneKey
-        self.dailyGoalChapters = dailyGoalChapters
+        self.chapterOrder = chapterOrder
+        self.tone = tone
+        self.dailyGoal = dailyGoal
         self.reminderHour = reminderHour
         self.reminderMinute = reminderMinute
     }
 }
 
-/// Body for `POST /book/me/onboarding/complete` — all fields required.
+/// Body for `POST /book/me/onboarding/complete`.
 public struct OnboardingCompleteBody: Encodable, Sendable {
     public let interests: [String]
-    public let depthVariant: String
-    public let toneKey: String
-    public let dailyGoalChapters: Int
+    /// Chapter-order preference: "summary_first" | "scenarios_first".
+    public let chapterOrder: String
+    /// Teaching tone identifier matching the server's `VALID_TONES` list.
+    public let tone: String
+    /// Daily reading goal in minutes. One of 10 | 20 | 30.
+    public let dailyGoal: Int
     public let reminderHour: Int
     public let reminderMinute: Int
 
     public init(
         interests: [String],
-        depthVariant: String,
-        toneKey: String,
-        dailyGoalChapters: Int,
+        chapterOrder: String,
+        tone: String,
+        dailyGoal: Int,
         reminderHour: Int,
         reminderMinute: Int
     ) {
         self.interests = interests
-        self.depthVariant = depthVariant
-        self.toneKey = toneKey
-        self.dailyGoalChapters = dailyGoalChapters
+        self.chapterOrder = chapterOrder
+        self.tone = tone
+        self.dailyGoal = dailyGoal
         self.reminderHour = reminderHour
         self.reminderMinute = reminderMinute
     }

@@ -1,5 +1,6 @@
 import SwiftUI
 import DesignSystem
+import Persistence
 
 // MARK: - Daily goal step
 
@@ -18,13 +19,13 @@ struct DailyGoalStepView: View {
             stepHeader(
                 icon: "target",
                 title: "Set your\ndaily goal",
-                subtitle: "Reading a chapter a day adds up fast. How many can you commit to?"
+                subtitle: "Consistency builds knowledge. How many minutes can you commit to each day?"
             )
             .padding(.top, .cfSpacing48)
 
             ScrollView {
                 VStack(spacing: .cfSpacing32) {
-                    chaptersSection
+                    minutesSection
                     reminderSection
                 }
                 .padding(.horizontal, .cfSpacing24)
@@ -42,7 +43,6 @@ struct DailyGoalStepView: View {
             .padding(.bottom, .cfSpacing40)
         }
         .onAppear {
-            // Sync the date picker to whatever is stored in model
             var c = DateComponents()
             c.hour = model.reminderHour
             c.minute = model.reminderMinute
@@ -52,52 +52,20 @@ struct DailyGoalStepView: View {
 
     // MARK: Sections
 
-    private var chaptersSection: some View {
+    private var minutesSection: some View {
         VStack(alignment: .leading, spacing: .cfSpacing16) {
-            SectionLabel(text: "Chapters per day")
+            SectionLabel(text: "Minutes per day")
 
-            HStack {
-                Button {
-                    if model.dailyGoalChapters > 1 { model.dailyGoalChapters -= 1 }
-                } label: {
-                    Image(systemName: "minus.circle.fill")
-                        .font(.system(size: 36))
-                        .foregroundStyle(model.dailyGoalChapters > 1 ? Color.cfAccent : Color.cfSecondaryLabel)
+            HStack(spacing: .cfSpacing12) {
+                ForEach(DailyGoalStore.tiers, id: \.self) { tier in
+                    GoalTileButton(
+                        minutes: tier,
+                        isSelected: model.dailyGoalMinutes == tier
+                    ) {
+                        model.dailyGoalMinutes = tier
+                    }
                 }
-                .accessibilityLabel("Decrease goal")
-                .disabled(model.dailyGoalChapters <= 1)
-
-                Spacer()
-
-                VStack(spacing: .cfSpacing4) {
-                    Text("\(model.dailyGoalChapters)")
-                        .font(.system(size: 56, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color.cfAccent)
-                        .contentTransition(.numericText())
-                        .animation(.easeInOut(duration: 0.2), value: model.dailyGoalChapters)
-
-                    Text(model.dailyGoalChapters == 1 ? "chapter" : "chapters")
-                        .font(.cfSubheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(model.dailyGoalChapters) \(model.dailyGoalChapters == 1 ? "chapter" : "chapters") per day")
-
-                Spacer()
-
-                Button {
-                    if model.dailyGoalChapters < 10 { model.dailyGoalChapters += 1 }
-                } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 36))
-                        .foregroundStyle(model.dailyGoalChapters < 10 ? Color.cfAccent : Color.cfSecondaryLabel)
-                }
-                .accessibilityLabel("Increase goal")
-                .disabled(model.dailyGoalChapters >= 10)
             }
-            .padding(.vertical, .cfSpacing20)
-            .padding(.horizontal, .cfSpacing24)
-            .background(Color.cfSecondaryBackground, in: RoundedRectangle(cornerRadius: .cfRadius16))
         }
     }
 
@@ -139,6 +107,47 @@ struct DailyGoalStepView: View {
         let comps = Calendar.current.dateComponents([.hour, .minute], from: reminderDate)
         model.reminderHour = comps.hour ?? 20
         model.reminderMinute = comps.minute ?? 0
+    }
+}
+
+// MARK: - Goal tile button
+
+private struct GoalTileButton: View {
+    let minutes: Int
+    let isSelected: Bool
+    let onSelect: () -> Void
+
+    var body: some View {
+        Button(action: onSelect) {
+            VStack(spacing: .cfSpacing4) {
+                Text("\(minutes)")
+                    .font(.system(size: 36, weight: .bold, design: .rounded))
+                    .foregroundStyle(isSelected ? Color.cfAccent : Color.cfLabel)
+                Text("min")
+                    .font(.cfSubheadline)
+                    .foregroundStyle(isSelected ? Color.cfAccent : Color.cfSecondaryLabel)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, .cfSpacing20)
+            .background(tileBackground, in: RoundedRectangle(cornerRadius: .cfRadius16))
+            .overlay(
+                RoundedRectangle(cornerRadius: .cfRadius16)
+                    .strokeBorder(
+                        isSelected ? Color.cfAccent.opacity(0.7) : Color.cfSeparator,
+                        lineWidth: isSelected ? 2 : 1
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+        .animation(.easeInOut(duration: 0.15), value: isSelected)
+        .accessibilityLabel("\(minutes) minutes per day")
+        .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+    }
+
+    private var tileBackground: some ShapeStyle {
+        isSelected
+            ? AnyShapeStyle(Color.cfAccent.opacity(0.08))
+            : AnyShapeStyle(Color.cfSecondaryBackground)
     }
 }
 
