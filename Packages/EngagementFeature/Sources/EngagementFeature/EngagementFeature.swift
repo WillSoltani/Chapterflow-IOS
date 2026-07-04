@@ -79,6 +79,16 @@
 /// - ``CommitmentRepository`` — actor; GET|POST /book/me/commitments, GET|PATCH /{id};
 ///   schedules UNCalendarNotificationTrigger for follow-up; offline outbox via PendingCommitmentUpload
 ///
+/// Public API added in P5.11:
+/// - ``ScenariosView`` — hub: my past submissions (status + points), community inspiration
+/// - ``ComposeScenarioView`` — calm modal compose UX with per-field char limits and validation
+/// - ``ScenarioDetailView`` — full-screen detail: all fields, moderation status banner, points
+/// - ``ScenarioRow`` — list row for a user scenario with scope tag and status badge
+/// - ``ScenarioStatusBadge`` — pill badge conveying pending/approved/rejected + points
+/// - ``ScenariosModel`` — `@Observable` view model; owns fetch, validation, submit lifecycle
+/// - ``ScenarioRepository`` — actor; GET|POST /book/me/books/{bookId}/chapters/{n}/scenarios;
+///   offline outbox via PendingScenarioUpload; syncPendingUploads() for reconnect sync
+///
 /// Public API added in P5.13:
 /// - ``DailyGoalView`` — today's progress ring, seven-day habit week view, nudge message,
 ///   and goal-adjustment sheet
