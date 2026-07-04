@@ -7,6 +7,9 @@ let package = Package(
     platforms: [.iOS(.v18), .macOS(.v14)],
     products: [
         .library(name: "NotificationsFeature", targets: ["NotificationsFeature"]),
+        // Pure Foundation library: no UIKit / UserNotifications — testable on macOS.
+        // Consumed by the NotificationService and NotificationContent extension targets.
+        .library(name: "RichNotificationCore", targets: ["RichNotificationCore"]),
     ],
     dependencies: [
         .package(path: "../CoreKit"),
@@ -14,6 +17,12 @@ let package = Package(
         .package(path: "../Networking"),
     ],
     targets: [
+        // Pure Foundation — no UIKit / UserNotifications — testable on macOS.
+        .target(name: "RichNotificationCore"),
+        .testTarget(
+            name: "RichNotificationCoreTests",
+            dependencies: ["RichNotificationCore"]
+        ),
         .target(
             name: "NotificationsFeature",
             dependencies: [

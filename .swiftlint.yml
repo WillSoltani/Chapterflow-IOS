@@ -5,6 +5,8 @@
 included:
   - ChapterFlow
   - Packages
+  - NotificationService
+  - NotificationContent
 
 excluded:
   - "**/.build"
