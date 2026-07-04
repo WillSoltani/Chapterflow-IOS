@@ -1,0 +1,80 @@
+import Foundation
+
+// MARK: - Onboarding endpoints
+
+extension Endpoints {
+    /// `GET /book/me/onboarding/progress` — fetch the user's saved onboarding state.
+    /// Returns 404 when the user has no saved progress yet; the caller should treat
+    /// `AppError.notFound` as "no progress exists" and start from the first step.
+    public static func getOnboardingProgress() -> Endpoint {
+        Endpoint(method: .get, path: "/book/me/onboarding/progress")
+    }
+
+    /// `POST /book/me/onboarding/progress` — persist the current step and accumulated choices.
+    public static func postOnboardingProgress(_ body: OnboardingProgressBody) throws -> Endpoint {
+        try Endpoint(method: .post, path: "/book/me/onboarding/progress", body: body)
+    }
+
+    /// `POST /book/me/onboarding/complete` — finalise onboarding with the user's full choices.
+    public static func postOnboardingComplete(_ body: OnboardingCompleteBody) throws -> Endpoint {
+        try Endpoint(method: .post, path: "/book/me/onboarding/complete", body: body)
+    }
+}
+
+// MARK: - Request body types
+
+/// Body for `POST /book/me/onboarding/progress`.
+/// Partial fields are nullable so only accumulated choices are sent at each step.
+public struct OnboardingProgressBody: Encodable, Sendable {
+    public let step: String
+    public let interests: [String]?
+    public let depthVariant: String?
+    public let toneKey: String?
+    public let dailyGoalChapters: Int?
+    public let reminderHour: Int?
+    public let reminderMinute: Int?
+
+    public init(
+        step: String,
+        interests: [String]? = nil,
+        depthVariant: String? = nil,
+        toneKey: String? = nil,
+        dailyGoalChapters: Int? = nil,
+        reminderHour: Int? = nil,
+        reminderMinute: Int? = nil
+    ) {
+        self.step = step
+        self.interests = interests
+        self.depthVariant = depthVariant
+        self.toneKey = toneKey
+        self.dailyGoalChapters = dailyGoalChapters
+        self.reminderHour = reminderHour
+        self.reminderMinute = reminderMinute
+    }
+}
+
+/// Body for `POST /book/me/onboarding/complete` — all fields required.
+public struct OnboardingCompleteBody: Encodable, Sendable {
+    public let interests: [String]
+    public let depthVariant: String
+    public let toneKey: String
+    public let dailyGoalChapters: Int
+    public let reminderHour: Int
+    public let reminderMinute: Int
+
+    public init(
+        interests: [String],
+        depthVariant: String,
+        toneKey: String,
+        dailyGoalChapters: Int,
+        reminderHour: Int,
+        reminderMinute: Int
+    ) {
+        self.interests = interests
+        self.depthVariant = depthVariant
+        self.toneKey = toneKey
+        self.dailyGoalChapters = dailyGoalChapters
+        self.reminderHour = reminderHour
+        self.reminderMinute = reminderMinute
+    }
+}

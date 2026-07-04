@@ -87,6 +87,19 @@ public struct AppRootView: View {
                             .animation(.spring, value: model.session.authState)
                     }
                 }
+                // First-run onboarding — dismissed automatically when preferences.onboardingCompleted
+                // becomes true (set by OnboardingModel after completing or skipping the flow).
+                .fullScreenCover(
+                    isPresented: Binding(
+                        get: { !model.preferences.onboardingCompleted },
+                        set: { _ in }
+                    )
+                ) {
+                    OnboardingFlowView(
+                        preferences: model.preferences,
+                        repository: model.onboardingRepository
+                    )
+                }
         }
     }
 

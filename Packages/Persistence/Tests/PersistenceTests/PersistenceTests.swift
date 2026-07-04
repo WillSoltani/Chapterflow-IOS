@@ -220,6 +220,46 @@ struct AppPreferencesTests {
         #expect(prefs.audioSpeed == 1.0)
         #expect(prefs.reminderHour == 20)
         #expect(prefs.reminderMinute == 0)
+        #expect(prefs.dailyGoalChapters == 1)
+        #expect(prefs.interestIds.isEmpty)
+        #expect(prefs.onboardingCompleted == false)
+    }
+
+    @MainActor
+    @Test("dailyGoalChapters persists across instances")
+    func dailyGoalChaptersPersists() {
+        let (defaults, suite) = makeDefaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let first = AppPreferences(defaults: defaults)
+        first.dailyGoalChapters = 5
+        let second = AppPreferences(defaults: defaults)
+        #expect(second.dailyGoalChapters == 5)
+    }
+
+    @MainActor
+    @Test("interestIds persists across instances")
+    func interestIdsPersists() {
+        let (defaults, suite) = makeDefaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let first = AppPreferences(defaults: defaults)
+        first.interestIds = ["business", "science"]
+        let second = AppPreferences(defaults: defaults)
+        #expect(second.interestIds == ["business", "science"])
+    }
+
+    @MainActor
+    @Test("onboardingCompleted persists across instances")
+    func onboardingCompletedPersists() {
+        let (defaults, suite) = makeDefaults()
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let first = AppPreferences(defaults: defaults)
+        #expect(first.onboardingCompleted == false)
+        first.onboardingCompleted = true
+        let second = AppPreferences(defaults: defaults)
+        #expect(second.onboardingCompleted == true)
     }
 
     @MainActor
