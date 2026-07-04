@@ -95,6 +95,10 @@ public final class ReaderModel {
     /// Receives the selected block text as context for the AI query.
     public var onAskAboutSelection: ((String) -> Void)?
 
+    /// Called when the user taps "Book Preferences" in the reader toolbar.
+    /// Wired by the host (AppFeature) to present ``BookPreferencesSheet``.
+    public var onShowBookPreferences: (() -> Void)?
+
     /// Called when the user taps "Reflect" in the chapter-end CTA.
     /// Wired by the host (AppFeature or SocialFeature) to open the reflections sheet.
     public var onReflect: (() -> Void)?

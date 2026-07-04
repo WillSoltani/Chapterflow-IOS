@@ -88,6 +88,18 @@
 /// - ``ScenariosModel`` — `@Observable` view model; owns fetch, validation, submit lifecycle
 /// - ``ScenarioRepository`` — actor; GET|POST /book/me/books/{bookId}/chapters/{n}/scenarios;
 ///   offline outbox via PendingScenarioUpload; syncPendingUploads() for reconnect sync
+///
+/// Public API added in P5.13:
+/// - ``DailyGoalView`` — today's progress ring, seven-day habit week view, nudge message,
+///   and goal-adjustment sheet
+/// - ``DailyGoalModel`` — `@Observable` view model; loads real activity from
+///   ``EngagementRepository``, reads/writes the goal via ``DailyGoalStore``
+/// - ``DailyGoalStore`` — persists the user's daily goal (in minutes) to the App Group
+///   `group.com.chapterflow` `UserDefaults` suite so widgets (P8.1) and reminders (P9.3)
+///   can read it without depending on `EngagementFeature`
+/// - ``DailyGoalState`` — immutable computed value type with `goalFraction`, `nudgeMessage`,
+///   and `weekActivity`; exposed publicly for widget and reminder consumers
+/// - ``DailyGoalDay`` — per-day habit indicator (date, minutesRead, fraction vs goal)
 public enum EngagementFeature {
     public static let moduleName = "EngagementFeature"
 }
