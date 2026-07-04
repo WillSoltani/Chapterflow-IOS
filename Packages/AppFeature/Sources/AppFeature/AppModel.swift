@@ -46,6 +46,17 @@ public final class AppModel {
     /// claim sheet is dismissed. `AppRootView` watches this and presents the sheet.
     public var pendingGiftCode: String?
 
+    // MARK: - Referral deep-link state
+
+    /// Set when a `chapterflow://ref/{code}` deep link lands; cleared after the
+    /// enter-code screen is dismissed. Drives pre-filling of ``EnterReferralCodeView``.
+    ///
+    /// iOS has no deferred deep-link API — a referral link that sends a new user
+    /// through an App Store install cannot carry the code into the app automatically.
+    /// This property handles the case where the app is already installed and the
+    /// link opens it directly. New installs must use the manual entry flow.
+    public var pendingReferralCode: String = ""
+
     // MARK: - Per-tab routers
 
     public let homeRouter     = Router()
@@ -236,6 +247,9 @@ public final class AppModel {
         case .gift(let code):
             selectedTab = .profile
             pendingGiftCode = code
+        case .referral(let code):
+            pendingReferralCode = code
+            selectedTab = .profile
         case .unknown:
             break
         }

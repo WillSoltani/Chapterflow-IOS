@@ -11,12 +11,17 @@ import Foundation
 /// - `chapterflow://book/{id}/chapter/{n}` → `.chapter`
 /// - `chapterflow://pair/accept/{code}` → `.pairAccept`
 /// - `chapterflow://gift/{code}` → `.gift`
+/// - `chapterflow://ref/{code}` → `.referral`
 /// - `chapterflow://review` → `.review`
 public enum DeepLink: Sendable, Equatable {
     case book(id: String)
     case chapter(bookId: String, chapter: Int)
     case pairAccept(code: String)
     case gift(code: String)
+    /// A referral invite link. iOS has no deferred deep-link API so an
+    /// install-then-open flow cannot carry the code automatically; the app
+    /// pre-fills the manual "Enter a code" screen with it instead.
+    case referral(code: String)
     case review
     /// A URL we recognize the scheme of but can't map to a known destination.
     case unknown(URL)
@@ -64,6 +69,13 @@ public enum DeepLink: Sendable, Equatable {
                 self = .unknown(url); return
             }
             self = .gift(code: segments[1])
+
+        case "ref":
+            // ref/{code} — referral invite link
+            guard segments.count >= 2, !segments[1].isEmpty else {
+                self = .unknown(url); return
+            }
+            self = .referral(code: segments[1])
 
         case "review":
             self = .review

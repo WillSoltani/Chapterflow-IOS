@@ -203,7 +203,8 @@ public struct AppRootView: View {
         case .profile:
             ProfileView(
                 repository: model.socialRepository,
-                pendingPairAcceptCode: $model.pendingPairAcceptCode
+                pendingPairAcceptCode: $model.pendingPairAcceptCode,
+                pendingReferralCode: $model.pendingReferralCode
             )
         case .reviews:
             ReviewsView(model: ReviewsModel(repository: model.reviewsRepository))
