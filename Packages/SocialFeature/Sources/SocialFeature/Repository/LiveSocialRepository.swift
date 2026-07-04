@@ -12,6 +12,7 @@ public actor LiveSocialRepository: SocialRepository {
     private let client: any APIClientProtocol
     private let outbox: ReflectionOutbox
     private let logger = Logger(subsystem: "com.chapterflow.ios", category: "LiveSocialRepo")
+    private var cachedBlockedUserIds: Set<String> = []
 
     public init(client: any APIClientProtocol) {
         self.client = client
@@ -163,6 +164,45 @@ public actor LiveSocialRepository: SocialRepository {
         // Using a workaround: markFeedbackPending returns nothing; we'll do a lookup
         // by filtering the full list. This actor-isolated approach is safe.
         return nil  // Callers should call getPendingReflections to get updated state.
+    }
+
+    // MARK: - Safety
+
+    public func blockUser(userId: String) async throws {
+        let _: BlockActionResponse = try await client.send(try Endpoints.blockUser(userId: userId))
+        cachedBlockedUserIds.insert(userId)
+    }
+
+    public func unblockUser(userId: String) async throws {
+        let _: BlockActionResponse = try await client.send(Endpoints.unblockUser(userId: userId))
+        cachedBlockedUserIds.remove(userId)
+    }
+
+    public func isBlocked(userId: String) async -> Bool {
+        cachedBlockedUserIds.contains(userId)
+    }
+
+    public func refreshBlockedUsers() async throws -> [BlockedUser] {
+        let response: BlockedUsersResponse = try await client.send(Endpoints.getBlockedUsers())
+        cachedBlockedUserIds = Set(response.blockedUsers.map(\.userId))
+        return response.blockedUsers
+    }
+
+    public func submitReport(
+        targetUserId: String?,
+        contentId: String?,
+        contentType: String?,
+        reason: ReportReason,
+        details: String?
+    ) async throws -> ReportResponse {
+        let endpoint = try Endpoints.submitReport(
+            targetUserId: targetUserId,
+            contentId: contentId,
+            contentType: contentType,
+            reason: reason.rawValue,
+            details: details
+        )
+        return try await client.send(endpoint)
     }
 
     public func syncPendingReflections(bookId: String, chapterN: Int) async -> [PendingReflectionItem] {

@@ -18,6 +18,7 @@ public actor FakeSocialRepository: SocialRepository {
     private var serverReflections: [String: [String: [ChapterReflection]]] = [:]  // bookId → chapterN.string → [reflection]
     private var pendingReflections: [PendingReflectionItem] = []
     private var reflectionIdCounter: Int = 0
+    private var blockedUserIds: Set<String>
     private let forcedError: AppError?
 
     /// Every `UpdateSettingsBody` that `updateSettings` has been called with, in order.
@@ -29,6 +30,9 @@ public actor FakeSocialRepository: SocialRepository {
     /// Partner IDs that have been deleted (for test assertions).
     public private(set) var recordedDeletes: [String] = []
 
+    /// Reports submitted via ``submitReport`` (for test assertions).
+    public private(set) var recordedReports: [(targetUserId: String?, reason: ReportReason)] = []
+
     public init(
         profile: OwnProfile = OwnProfile.preview,
         badges: [BadgeItem] = BadgeItem.previewList,
@@ -36,6 +40,7 @@ public actor FakeSocialRepository: SocialRepository {
         pairs: [ReadingPair] = [],
         gifts: [String: Gift] = [:],
         serverReflections: [String: [String: [ChapterReflection]]] = [:],
+        blockedUserIds: Set<String> = [],
         error: AppError? = nil
     ) {
         self.profile = profile
@@ -44,6 +49,7 @@ public actor FakeSocialRepository: SocialRepository {
         self.pairs = pairs
         self.gifts = gifts
         self.serverReflections = serverReflections
+        self.blockedUserIds = blockedUserIds
         self.forcedError = error
     }
 
@@ -257,5 +263,38 @@ public actor FakeSocialRepository: SocialRepository {
     public func syncPendingReflections(bookId: String, chapterN: Int) async -> [PendingReflectionItem] {
         // Fake: everything is already synced; just return pending list.
         return pendingReflections.filter { $0.bookId == bookId && $0.chapterN == chapterN }
+    }
+
+    // MARK: - Safety
+
+    public func blockUser(userId: String) async throws {
+        if let err = forcedError { throw err }
+        blockedUserIds.insert(userId)
+    }
+
+    public func unblockUser(userId: String) async throws {
+        if let err = forcedError { throw err }
+        blockedUserIds.remove(userId)
+    }
+
+    public func isBlocked(userId: String) async -> Bool {
+        blockedUserIds.contains(userId)
+    }
+
+    public func refreshBlockedUsers() async throws -> [BlockedUser] {
+        if let err = forcedError { throw err }
+        return blockedUserIds.map { BlockedUser(userId: $0) }
+    }
+
+    public func submitReport(
+        targetUserId: String?,
+        contentId: String?,
+        contentType: String?,
+        reason: ReportReason,
+        details: String?
+    ) async throws -> ReportResponse {
+        if let err = forcedError { throw err }
+        recordedReports.append((targetUserId: targetUserId, reason: reason))
+        return ReportResponse(reportId: "fake-report-\(recordedReports.count)", status: "received")
     }
 }

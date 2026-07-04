@@ -141,4 +141,43 @@ public protocol SocialRepository: Sendable {
     /// AI feedback automatically. Returns the up-to-date pending list after
     /// processing. Never throws; individual failures are logged and left for retry.
     func syncPendingReflections(bookId: String, chapterN: Int) async -> [PendingReflectionItem]
+
+    // MARK: - Safety (P7.7)
+
+    /// Blocks `userId`, preventing them from pairing, nudging, or viewing your profile.
+    ///
+    /// Maps to `POST /book/me/blocks`.
+    /// ⚠️ Backend TODO: endpoint not yet implemented — see `Endpoint+Safety.swift`.
+    func blockUser(userId: String) async throws
+
+    /// Removes a block previously placed on `userId`.
+    ///
+    /// Maps to `DELETE /book/me/blocks/{userId}`.
+    /// ⚠️ Backend TODO: endpoint not yet implemented — see `Endpoint+Safety.swift`.
+    func unblockUser(userId: String) async throws
+
+    /// Returns `true` if the current user has `userId` in their block list.
+    ///
+    /// Uses the locally-cached block list for speed; call ``refreshBlockedUsers()``
+    /// to sync with the server first.
+    func isBlocked(userId: String) async -> Bool
+
+    /// Fetches the complete blocked-user list and refreshes the local cache.
+    ///
+    /// Maps to `GET /book/me/blocks`.
+    /// ⚠️ Backend TODO: endpoint not yet implemented — see `Endpoint+Safety.swift`.
+    func refreshBlockedUsers() async throws -> [BlockedUser]
+
+    /// Submits a moderation report for a user or piece of content.
+    ///
+    /// At least one of `targetUserId` / `contentId` must be non-nil.
+    /// Maps to `POST /book/moderation/reports`.
+    /// ⚠️ Backend TODO: endpoint not yet implemented — see `Endpoint+Safety.swift`.
+    func submitReport(
+        targetUserId: String?,
+        contentId: String?,
+        contentType: String?,
+        reason: ReportReason,
+        details: String?
+    ) async throws -> ReportResponse
 }
