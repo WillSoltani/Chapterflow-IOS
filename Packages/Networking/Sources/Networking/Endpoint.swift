@@ -591,5 +591,4 @@ public enum Endpoints {
         struct Body: Encodable {}
         return try Endpoint(method: .post, path: "/book/me/pairs/\(partnerId)/nudge", body: Body())
     }
-
 }

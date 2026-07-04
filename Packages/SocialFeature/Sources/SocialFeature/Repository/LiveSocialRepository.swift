@@ -99,6 +99,19 @@ public actor LiveSocialRepository: SocialRepository {
         return response.gift
     }
 
+    // MARK: - Share events
+
+    public func postShareEvent(
+        cardType: ShareCardType,
+        destination: ShareEventDestination
+    ) async throws {
+        let endpoint = try Endpoints.postShareEvent(
+            cardType: cardType.rawValue,
+            destination: destination.rawValue
+        )
+        let _: ShareEventResponse = try await client.send(endpoint)
+    }
+
     // MARK: - Reflections
 
     public func getReflections(bookId: String, chapterN: Int) async throws -> [ChapterReflection] {
