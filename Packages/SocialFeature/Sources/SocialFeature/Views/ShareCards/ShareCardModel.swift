@@ -103,9 +103,9 @@ public final class ShareCardModel {
 /// and dismisses when the user finishes sharing.
 public struct ShareSheet: UIViewControllerRepresentable {
     public let items: [Any]
-    public var onComplete: ((UIActivityType?, Bool) -> Void)?
+    public var onComplete: ((UIActivity.ActivityType?, Bool) -> Void)?
 
-    public init(items: [Any], onComplete: ((UIActivityType?, Bool) -> Void)? = nil) {
+    public init(items: [Any], onComplete: ((UIActivity.ActivityType?, Bool) -> Void)? = nil) {
         self.items = items
         self.onComplete = onComplete
     }
