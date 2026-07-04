@@ -55,4 +55,15 @@ public actor MockAPIClient: APIClientProtocol {
             throw error
         }
     }
+
+    public func sendData(_ endpoint: Endpoint) async throws -> Data {
+        recordedEndpoints.append(endpoint)
+        guard let stub = routes[endpoint.path] ?? fallback else {
+            return Data()
+        }
+        switch stub {
+        case .success(let data): return data
+        case .failure(let error): throw error
+        }
+    }
 }

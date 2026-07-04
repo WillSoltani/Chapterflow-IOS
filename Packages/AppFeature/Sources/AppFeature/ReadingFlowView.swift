@@ -64,12 +64,21 @@ struct ReadingFlowView: View {
             ReaderView(readerModel: readerModel)
                 .navigationBarBackButtonHidden(true)
                 .toolbar {
+                    #if os(iOS)
                     ToolbarItem(placement: .topBarLeading) {
                         Button("Done") {
                             onDismiss()
                         }
                         .accessibilityLabel("Close reader")
                     }
+                    #else
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Done") {
+                            onDismiss()
+                        }
+                        .accessibilityLabel("Close reader")
+                    }
+                    #endif
                 }
         }
         .sheet(item: $quizContext) { ctx in

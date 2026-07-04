@@ -93,6 +93,7 @@ public struct AppRootView: View {
                 }
                 // First-run onboarding — dismissed automatically when preferences.onboardingCompleted
                 // becomes true (set by OnboardingModel after completing or skipping the flow).
+                #if os(iOS)
                 .fullScreenCover(
                     isPresented: Binding(
                         get: { !model.preferences.onboardingCompleted },
@@ -104,6 +105,7 @@ public struct AppRootView: View {
                         repository: model.onboardingRepository
                     )
                 }
+                #endif
         }
     }
 
@@ -146,6 +148,7 @@ public struct AppRootView: View {
             MiniPlayerBar()
                 .environment(model.audioPlayerModel)
         }
+        #if os(iOS)
         .fullScreenCover(item: $readingFlow) { flow in
             ReadingFlowView(
                 flow: flow,
@@ -156,6 +159,7 @@ public struct AppRootView: View {
                 onDismiss: { readingFlow = nil }
             )
         }
+        #endif
         .sheet(isPresented: Binding(
             get: { model.showPaywall },
             set: { model.showPaywall = $0 }
@@ -181,6 +185,7 @@ public struct AppRootView: View {
     // MARK: - Tab content
 
     @ViewBuilder
+    // swiftlint:disable:next function_body_length
     private func tabContent(for tab: AppTab) -> some View {
         switch tab {
         case .home:
@@ -247,7 +252,20 @@ public struct AppRootView: View {
                     }
                     #endif
                 },
-                notificationSettingsModel: model.notificationSettingsModel
+                notificationSettingsModel: model.notificationSettingsModel,
+                settingsModel: SettingsModel(
+                    repository: model.settingsRepository,
+                    preferences: model.preferences,
+                    onSignOut: { await model.signOut() }
+                ),
+                userEmail: model.displayName.isEmpty ? nil : {
+                    if let token = model.session.currentIdToken(),
+                       let profile = UserProfile.from(idToken: token) {
+                        return profile.email
+                    }
+                    return nil
+                }(),
+                onSignOut: { await model.signOut() }
             )
         }
     }

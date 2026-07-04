@@ -13,14 +13,23 @@ public protocol APIClientProtocol: Sendable {
     /// when absent). Use the server date to anchor countdowns to server time
     /// instead of device time — important when the device clock may be skewed.
     func sendWithServerDate<T: Decodable & Sendable>(_ endpoint: Endpoint) async throws -> (T, Date?)
+
+    /// Sends the endpoint and returns the raw response bytes without JSON decoding.
+    /// Used for binary/export endpoints where the caller needs the raw payload.
+    func sendData(_ endpoint: Endpoint) async throws -> Data
 }
 
-// Default implementation: delegates to `send` and returns nil for the date.
-// Used by MockAPIClient and any test double that only implements `send`.
+// Default implementations so existing conformers only need to implement `send`.
 public extension APIClientProtocol {
     func sendWithServerDate<T: Decodable & Sendable>(_ endpoint: Endpoint) async throws -> (T, Date?) {
         let result: T = try await send(endpoint)
         return (result, nil)
+    }
+
+    /// Default implementation for binary/export endpoints. Preview clients inherit
+    /// this so they don't need to implement `sendData` unless they need it.
+    func sendData(_ endpoint: Endpoint) async throws -> Data {
+        throw AppError.offline
     }
 }
 
@@ -111,6 +120,16 @@ public actor APIClient: APIClientProtocol {
     public func sendWithServerDate<T: Decodable & Sendable>(_ endpoint: Endpoint) async throws -> (T, Date?) {
         let (result, http): (T, HTTPURLResponse) = try await performRequest(endpoint)
         return (result, Self.serverDate(from: http))
+    }
+
+    public func sendData(_ endpoint: Endpoint) async throws -> Data {
+        let request = try await makeRequest(for: endpoint)
+        let (data, response) = try await session.data(for: request)
+        guard let http = response as? HTTPURLResponse else { throw AppError.offline }
+        guard (200..<300).contains(http.statusCode) else {
+            throw ErrorMapper.map(status: http.statusCode, data: data, retryAfter: Self.retryAfter(from: http))
+        }
+        return data
     }
 
     // MARK: - Core request loop
