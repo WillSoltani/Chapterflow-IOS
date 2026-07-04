@@ -205,6 +205,19 @@ public actor LiveSocialRepository: SocialRepository {
         return try await client.send(endpoint)
     }
 
+    // MARK: - Referrals
+
+    public func getReferralProfile() async throws -> ReferralProfile {
+        let response: ReferralProfileResponse = try await client.send(Endpoints.getReferralProfile())
+        return response.referral
+    }
+
+    public func applyReferralCode(_ code: String) async throws -> ReferralApplyResult {
+        let endpoint = try Endpoints.applyReferralCode(code)
+        let response: ReferralApplyResponse = try await client.send(endpoint)
+        return response.result
+    }
+
     public func syncPendingReflections(bookId: String, chapterN: Int) async -> [PendingReflectionItem] {
         let pending = await outbox.all(bookId: bookId, chapterN: chapterN)
         for item in pending where item.syncState == .pending {

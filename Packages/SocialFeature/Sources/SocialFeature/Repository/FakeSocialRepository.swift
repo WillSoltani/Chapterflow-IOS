@@ -41,6 +41,7 @@ public actor FakeSocialRepository: SocialRepository {
         gifts: [String: Gift] = [:],
         serverReflections: [String: [String: [ChapterReflection]]] = [:],
         blockedUserIds: Set<String> = [],
+        referralProfile: ReferralProfile = ReferralProfile.preview,
         error: AppError? = nil
     ) {
         self.profile = profile
@@ -50,6 +51,7 @@ public actor FakeSocialRepository: SocialRepository {
         self.gifts = gifts
         self.serverReflections = serverReflections
         self.blockedUserIds = blockedUserIds
+        self.referralProfile = referralProfile
         self.forcedError = error
     }
 
@@ -296,5 +298,23 @@ public actor FakeSocialRepository: SocialRepository {
         if let err = forcedError { throw err }
         recordedReports.append((targetUserId: targetUserId, reason: reason))
         return ReportResponse(reportId: "fake-report-\(recordedReports.count)", status: "received")
+    }
+
+    // MARK: - Referrals
+
+    private var referralProfile: ReferralProfile = ReferralProfile.preview
+
+    /// Applied referral codes (for test assertions).
+    public private(set) var recordedAppliedCodes: [String] = []
+
+    public func getReferralProfile() async throws -> ReferralProfile {
+        if let err = forcedError { throw err }
+        return referralProfile
+    }
+
+    public func applyReferralCode(_ code: String) async throws -> ReferralApplyResult {
+        if let err = forcedError { throw err }
+        recordedAppliedCodes.append(code)
+        return ReferralApplyResult(success: true, message: "Referral code applied! Your friend will receive their reward.")
     }
 }

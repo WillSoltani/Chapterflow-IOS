@@ -311,6 +311,39 @@ extension FakeSocialRepository {
     }
 }
 
+// MARK: - ReferralProfile preview fixtures
+
+extension ReferralProfile {
+    public static let preview = ReferralProfile(
+        code: "ALICE42",
+        shareUrl: nil,
+        stats: ReferralStats(pending: 3, activated: 5, pro: 2),
+        rewards: [
+            ReferralReward(
+                kind: .proWeek,
+                title: "7 Days of Pro",
+                description: "Earned when a friend signs up with your code.",
+                earnedAt: "2024-02-01T10:00:00Z",
+                isEarned: true
+            ),
+            ReferralReward(
+                kind: .proMonth,
+                title: "30 Days of Pro",
+                description: "Earned when a friend upgrades to Pro.",
+                earnedAt: nil,
+                isEarned: false
+            ),
+        ]
+    )
+
+    public static let previewEmpty = ReferralProfile(
+        code: "BOB007",
+        shareUrl: nil,
+        stats: ReferralStats(pending: 0, activated: 0, pro: 0),
+        rewards: []
+    )
+}
+
 // MARK: - ChapterReflection preview fixtures
 
 extension ChapterReflection {

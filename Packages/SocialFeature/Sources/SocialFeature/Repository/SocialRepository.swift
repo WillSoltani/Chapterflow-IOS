@@ -180,4 +180,23 @@ public protocol SocialRepository: Sendable {
         reason: ReportReason,
         details: String?
     ) async throws -> ReportResponse
+
+    // MARK: - Referrals
+
+    /// Fetches the authenticated user's referral programme profile.
+    ///
+    /// Maps to `GET /book/me/referrals`.
+    /// Returns the invite code, share URL, stats (pending / activated / pro),
+    /// and the server-authoritative reward list. Reward state is never computed
+    /// client-side — display exactly what the server returns.
+    func getReferralProfile() async throws -> ReferralProfile
+
+    /// Attributes a referral code to the current user.
+    ///
+    /// Maps to `POST /book/me/referrals/apply`.
+    /// Used when the user types or pastes a friend's code after installing without
+    /// clicking a referral link (iOS has no deferred deep-link API).
+    /// After a successful apply the caller should re-fetch the referral profile so
+    /// the reward list reflects any newly-granted rewards from the server.
+    func applyReferralCode(_ code: String) async throws -> ReferralApplyResult
 }
