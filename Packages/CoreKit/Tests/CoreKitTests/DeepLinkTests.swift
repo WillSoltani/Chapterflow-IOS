@@ -29,6 +29,17 @@ struct DeepLinkTests {
         #expect(link("chapterflow://gift/GIFT99") == .gift(code: "GIFT99"))
     }
 
+    @Test("parses a referral invite link")
+    func referral() {
+        #expect(link("chapterflow://ref/ALICE42") == .referral(code: "ALICE42"))
+    }
+
+    @Test("referral link with missing code resolves to .unknown")
+    func referralMissingCode() {
+        let url = URL(string: "chapterflow://ref")!
+        #expect(link("chapterflow://ref") == .unknown(url))
+    }
+
     @Test("parses the review link")
     func review() {
         #expect(link("chapterflow://review") == .review)

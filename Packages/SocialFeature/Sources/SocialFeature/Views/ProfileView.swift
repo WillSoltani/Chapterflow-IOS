@@ -6,12 +6,15 @@ import CoreKit
 /// The authenticated user's own profile tab.
 ///
 /// Shows display name, avatar, tier, engagement stats, equipped cosmetics,
-/// a badge preview, an "Edit Profile" entry point, and a navigation link to
-/// the Reading Partners (pairs) screen.
+/// a badge preview, an "Edit Profile" entry point, a navigation link to
+/// the Reading Partners (pairs) screen, and an "Invite Friends" referral link.
 ///
 /// - Parameter pendingPairAcceptCode: A binding set by ``AppModel`` when the app
 ///   opens via a `chapterflow://pair/accept/{code}` Universal Link. Non-empty
 ///   triggers the ``AcceptInviteView`` sheet immediately.
+/// - Parameter pendingReferralCode: A binding set by ``AppModel`` when the app
+///   opens via a `chapterflow://ref/{code}` Universal Link. Non-empty causes
+///   ``ReferralView`` to open the enter-code sheet pre-filled.
 public struct ProfileView: View {
 
     @State private var model: ProfileModel
@@ -24,14 +27,22 @@ public struct ProfileView: View {
     /// Non-empty when a pair deep link was received; drives the accept sheet.
     @Binding private var pendingPairAcceptCode: String
 
+    /// Non-empty when a referral deep link was received; drives the referral enter-code sheet.
+    @Binding private var pendingReferralCode: String
+
     /// Lightweight model for the deep-link accept flow (separate from PairsView's model).
     @State private var deepLinkPairsModel: PairsModel
 
-    public init(repository: any SocialRepository, pendingPairAcceptCode: Binding<String> = .constant("")) {
+    public init(
+        repository: any SocialRepository,
+        pendingPairAcceptCode: Binding<String> = .constant(""),
+        pendingReferralCode: Binding<String> = .constant("")
+    ) {
         self.repository = repository
         _model = State(initialValue: ProfileModel(repository: repository))
         _deepLinkPairsModel = State(initialValue: PairsModel(repository: repository))
         _pendingPairAcceptCode = pendingPairAcceptCode
+        _pendingReferralCode = pendingReferralCode
     }
 
     public var body: some View {
@@ -109,6 +120,8 @@ public struct ProfileView: View {
                 readingPartnersRow
 
                 giftsSection
+
+                inviteFriendsRow
 
                 Divider()
                     .padding(.horizontal, .cfSpacing16)
@@ -307,6 +320,32 @@ public struct ProfileView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
+    }
+
+    // MARK: - Invite friends row
+
+    private var inviteFriendsRow: some View {
+        NavigationLink {
+            ReferralView(repository: repository, pendingReferralCode: pendingReferralCode)
+                .onAppear { pendingReferralCode = "" }
+        } label: {
+            HStack {
+                Image(systemName: "person.badge.plus")
+                    .foregroundStyle(Color.cfAccent)
+                    .frame(width: .cfIconSmall)
+                Text("Invite Friends")
+                    .font(.cfBody)
+                    .foregroundStyle(Color.cfLabel)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.cfCaption)
+                    .foregroundStyle(Color.cfTertiaryLabel)
+            }
+            .padding(.cfSpacing16)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: .cfRadius16))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Invite Friends")
     }
 
     // MARK: - Edit profile row

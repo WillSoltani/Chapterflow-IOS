@@ -11,6 +11,7 @@ import QuizFeature
 import EngagementFeature
 import PaywallFeature
 import NotificationsFeature
+import OnboardingFeature
 
 /// The top-level observable app state that drives `AppRootView`.
 ///
@@ -46,6 +47,17 @@ public final class AppModel {
     /// Set when a `chapterflow://gift/{code}` deep link lands; cleared when the
     /// claim sheet is dismissed. `AppRootView` watches this and presents the sheet.
     public var pendingGiftCode: String?
+
+    // MARK: - Referral deep-link state
+
+    /// Set when a `chapterflow://ref/{code}` deep link lands; cleared after the
+    /// enter-code screen is dismissed. Drives pre-filling of ``EnterReferralCodeView``.
+    ///
+    /// iOS has no deferred deep-link API — a referral link that sends a new user
+    /// through an App Store install cannot carry the code into the app automatically.
+    /// This property handles the case where the app is already installed and the
+    /// link opens it directly. New installs must use the manual entry flow.
+    public var pendingReferralCode: String = ""
 
     // MARK: - Per-tab routers
 
@@ -100,6 +112,11 @@ public final class AppModel {
     /// Shared audio player model — owns the AVQueuePlayer and session for the entire app.
     public let audioPlayerModel: AudioPlayerModel
 
+    // MARK: - Onboarding
+
+    /// Repository driving the first-run onboarding flow.
+    public let onboardingRepository: any OnboardingRepository
+
     // MARK: - Subscription / Paywall
 
     /// StoreKit 2 service — shared with `EntitlementService` and `PaywallModel`.
@@ -149,6 +166,7 @@ public final class AppModel {
         }
 
         self.reviewsRepository = ReviewsRepository(apiClient: client, modelContainer: container)
+        self.onboardingRepository = LiveOnboardingRepository(apiClient: client)
 
         let prefs = AppPreferences()
         self.preferences = prefs
@@ -258,6 +276,9 @@ public final class AppModel {
         case .gift(let code):
             selectedTab = .profile
             pendingGiftCode = code
+        case .referral(let code):
+            pendingReferralCode = code
+            selectedTab = .profile
         case .unknown:
             break
         }
