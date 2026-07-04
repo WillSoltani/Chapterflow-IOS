@@ -57,6 +57,10 @@ public final class ReaderControlsModel {
     /// Whether the appearance panel sheet is currently presented.
     public var isAppearancePanelPresented = false
 
+    /// Whether the book-preferences sheet should be presented.
+    /// The host (AppFeature) observes this to show ``BookPreferencesSheet``.
+    public var isBookPreferencesPanelPresented = false
+
     // MARK: - Scroll restoration
 
     /// Set by `switchVariant` and `switchTone` after blocks are rebuilt.

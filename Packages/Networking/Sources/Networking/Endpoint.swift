@@ -164,6 +164,18 @@ public enum Endpoints {
         )
     }
 
+    /// `PATCH /book/me/books/{bookId}/state` — persist the user's preferred reading variant for a book.
+    ///
+    /// Server stores `preferredVariant` in `BookProgress`. Best-effort; caller may discard the result.
+    public static func patchBookPreferredVariant(bookId: String, preferredVariant: String) throws -> Endpoint {
+        struct Body: Encodable { let preferredVariant: String }
+        return try Endpoint(
+            method: .patch,
+            path: "/book/me/books/\(bookId)/state",
+            body: Body(preferredVariant: preferredVariant)
+        )
+    }
+
     /// `POST /book/me/reading-sessions` — reading-session event (start / heartbeat / end).
     /// Full session lifecycle is implemented in P2.7; this delivers heartbeats every ~30 s.
     public static func postReadingSessionEvent(
