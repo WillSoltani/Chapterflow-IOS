@@ -28,12 +28,10 @@ struct ReaderModelTests {
     // MARK: - Load → loaded
 
     @Test("load() transitions phase from loading to loaded on success")
-    func loadSuccessTransitions() async throws {
+    func loadSuccessTransitions() async {
         let model = makeModel()
         model.load()
-        // Flush the async load task.
-        await Task.yield()
-        try await Task.sleep(for: .milliseconds(50))
+        await waitUntil { if case .loaded = model.phase { return true }; return false }
 
         if case .loaded = model.phase {
             // pass
@@ -43,14 +41,13 @@ struct ReaderModelTests {
     }
 
     @Test("load() transitions phase to failed on network error")
-    func loadFailureTransitions() async throws {
+    func loadFailureTransitions() async {
         let fake = FakeReaderRepository(
             chapterResponse: .failure(URLError(.notConnectedToInternet))
         )
         let model = makeModel(repo: fake)
         model.load()
-        await Task.yield()
-        try await Task.sleep(for: .milliseconds(50))
+        await waitUntil { if case .failed = model.phase { return true }; return false }
 
         if case .failed = model.phase {
             // pass
@@ -60,14 +57,13 @@ struct ReaderModelTests {
     }
 
     @Test("load() is retriable — calling load() after error resets to loading")
-    func loadIsRetriable() async throws {
+    func loadIsRetriable() async {
         let fake = FakeReaderRepository(
             chapterResponse: .failure(URLError(.notConnectedToInternet))
         )
         let model = makeModel(repo: fake)
         model.load()
-        await Task.yield()
-        try await Task.sleep(for: .milliseconds(50))
+        await waitUntil { if case .failed = model.phase { return true }; return false }
         // Should be .failed
         guard case .failed = model.phase else {
             Issue.record("Expected .failed before retry")
@@ -80,8 +76,7 @@ struct ReaderModelTests {
         if case .loading = model.phase { } else {
             Issue.record("Expected .loading immediately after load()")
         }
-        await Task.yield()
-        try await Task.sleep(for: .milliseconds(50))
+        await waitUntil { if case .loaded = model.phase { return true }; return false }
         if case .loaded = model.phase { } else {
             Issue.record("Expected .loaded after successful retry")
         }
@@ -159,11 +154,11 @@ struct ReaderModelTests {
         // Our chapter is also 1. No forward movement → no patch.
         let model = makeModel(chapterNumber: 1, repo: fake)
         model.load()
-        await Task.yield()
-        try await Task.sleep(for: .milliseconds(50))
+        await waitUntil { if case .loaded = model.phase { return true }; return false }
 
         // Scroll to end
         model.didScrollToBlock(9, blockCount: 10, chapterId: "ch-ah-1")
+        // Give any spurious PATCH task time to arrive before asserting it didn't.
         try await Task.sleep(for: .milliseconds(50))
 
         // chapterNumber (1) is NOT > serverCursorChapterNumber (1) → no PATCH
@@ -171,34 +166,32 @@ struct ReaderModelTests {
     }
 
     @Test("cursor is patched when chapterNumber is ahead of serverCursor")
-    func cursorPatchedForward() async throws {
+    func cursorPatchedForward() async {
         let fake = FakeReaderRepository()
         // chapterNumber=2 but server cursor is at 1 → forward movement → patch
         let model = makeModel(chapterNumber: 2, repo: fake)
         model.load()
-        await Task.yield()
-        try await Task.sleep(for: .milliseconds(50))
+        await waitUntil { if case .loaded = model.phase { return true }; return false }
 
         model.didScrollToBlock(9, blockCount: 10, chapterId: "ch-ah-2")
-        try await Task.sleep(for: .milliseconds(50))
+        await waitUntil { !fake.patchCursorCalls.isEmpty }
 
         #expect(!fake.patchCursorCalls.isEmpty)
         #expect(fake.patchCursorCalls.first?.bookId == "test-book")
     }
 
     @Test("cursor PATCH is sent at most once per chapter load")
-    func cursorPatchedOnce() async throws {
+    func cursorPatchedOnce() async {
         let fake = FakeReaderRepository()
         let model = makeModel(chapterNumber: 2, repo: fake)
         model.load()
-        await Task.yield()
-        try await Task.sleep(for: .milliseconds(50))
+        await waitUntil { if case .loaded = model.phase { return true }; return false }
 
         // Scroll to end multiple times
         model.didScrollToBlock(9, blockCount: 10, chapterId: "ch-ah-2")
         model.didScrollToBlock(9, blockCount: 10, chapterId: "ch-ah-2")
         model.didScrollToBlock(9, blockCount: 10, chapterId: "ch-ah-2")
-        try await Task.sleep(for: .milliseconds(50))
+        await waitUntil { fake.patchCursorCalls.count >= 1 }
 
         // Only one PATCH sent despite multiple scroll events.
         #expect(fake.patchCursorCalls.count == 1)
@@ -228,15 +221,14 @@ struct ReaderModelTests {
     }
 
     @Test("saved position is restored as pendingScrollAnchor after load")
-    func positionRestoredAfterLoad() async throws {
+    func positionRestoredAfterLoad() async {
         let fake = FakeReaderRepository()
         // Pre-save a position.
         fake.saveScrollPosition(bookId: "test-book", chapterNumber: 1, blockIndex: 8)
 
         let model = makeModel(chapterNumber: 1, repo: fake)
         model.load()
-        await Task.yield()
-        try await Task.sleep(for: .milliseconds(50))
+        await waitUntil { if case .loaded = model.phase { return true }; return false }
 
         if case .loaded(let controlsModel) = model.phase {
             // pendingScrollAnchor is clamped to blocks.count - 1.
@@ -251,12 +243,11 @@ struct ReaderModelTests {
     // MARK: - Heartbeats
 
     @Test("heartbeats start after a successful load")
-    func heartbeatsStartAfterLoad() async throws {
+    func heartbeatsStartAfterLoad() async {
         let fake = FakeReaderRepository()
         let model = makeModel(repo: fake)
         model.load()
-        await Task.yield()
-        try await Task.sleep(for: .milliseconds(50))
+        await waitUntil { if case .loaded = model.phase { return true }; return false }
 
         // Heartbeat loop is running — no heartbeat should have fired yet
         // (first one fires after 30 s, which we don't wait for in tests).
@@ -271,12 +262,10 @@ struct ReaderModelTests {
         let fake = FakeReaderRepository()
         let model = makeModel(repo: fake)
         model.load()
-        await Task.yield()
-        try await Task.sleep(for: .milliseconds(50))
+        await waitUntil { if case .loaded = model.phase { return true }; return false }
 
         model.onDisappear()
-        // No assertion needed — just verify it doesn't crash and
-        // that subsequent heartbeat calls from the old task don't happen.
+        // Give the cancelled task a moment to confirm no heartbeat fires.
         try await Task.sleep(for: .milliseconds(20))
         // Zero heartbeats in tests (30 s hasn't elapsed).
         #expect(fake.heartbeatCalls.isEmpty)
@@ -285,13 +274,15 @@ struct ReaderModelTests {
     // MARK: - Depth recommendation (P6.4)
 
     @Test("confident recommendation sets recommendedVariant on controls model")
-    func confidentRecommendationSetsVariant() async throws {
+    func confidentRecommendationSetsVariant() async {
         let model = makeModel()
         let rec = DepthRecommendation(recommendedDepth: .medium, confidence: 0.85)
         model.fetchDepthRecommendation = { _ in rec }
         model.load()
-        await Task.yield()
-        try await Task.sleep(for: .milliseconds(100))
+        await waitUntil {
+            if case .loaded(let c) = model.phase, c.recommendedVariant != nil { return true }
+            return false
+        }
 
         guard case .loaded(let controls) = model.phase else {
             Issue.record("Expected .loaded phase"); return
@@ -300,13 +291,15 @@ struct ReaderModelTests {
     }
 
     @Test("confident recommendation sets recommendedRationale on controls model")
-    func confidentRecommendationSetsRationale() async throws {
+    func confidentRecommendationSetsRationale() async {
         let model = makeModel()
         let rec = DepthRecommendation(recommendedDepth: .medium, confidence: 0.9)
         model.fetchDepthRecommendation = { _ in rec }
         model.load()
-        await Task.yield()
-        try await Task.sleep(for: .milliseconds(100))
+        await waitUntil {
+            if case .loaded(let c) = model.phase, c.recommendedRationale != nil { return true }
+            return false
+        }
 
         guard case .loaded(let controls) = model.phase else {
             Issue.record("Expected .loaded phase"); return
@@ -316,13 +309,15 @@ struct ReaderModelTests {
     }
 
     @Test("low-confidence recommendation does not set recommendedVariant")
-    func lowConfidenceDoesNotSetVariant() async throws {
+    func lowConfidenceDoesNotSetVariant() async {
         let model = makeModel()
         let rec = DepthRecommendation(recommendedDepth: .hard, confidence: 0.4)
         model.fetchDepthRecommendation = { _ in rec }
         model.load()
+        // Wait for load, then yield twice to let the recommendation task settle.
+        await waitUntil { if case .loaded = model.phase { return true }; return false }
         await Task.yield()
-        try await Task.sleep(for: .milliseconds(100))
+        await Task.yield()
 
         guard case .loaded(let controls) = model.phase else {
             Issue.record("Expected .loaded phase"); return
@@ -331,13 +326,15 @@ struct ReaderModelTests {
     }
 
     @Test("nil recommendedDepth does not set recommendedVariant")
-    func nilDepthDoesNotSetVariant() async throws {
+    func nilDepthDoesNotSetVariant() async {
         let model = makeModel()
         let rec = DepthRecommendation(recommendedDepth: nil, confidence: 0.9)
         model.fetchDepthRecommendation = { _ in rec }
         model.load()
+        // Wait for load, then yield twice to let the recommendation task settle.
+        await waitUntil { if case .loaded = model.phase { return true }; return false }
         await Task.yield()
-        try await Task.sleep(for: .milliseconds(100))
+        await Task.yield()
 
         guard case .loaded(let controls) = model.phase else {
             Issue.record("Expected .loaded phase"); return
@@ -346,12 +343,11 @@ struct ReaderModelTests {
     }
 
     @Test("recommendation error does not affect phase")
-    func recommendationErrorDoesNotAffectPhase() async throws {
+    func recommendationErrorDoesNotAffectPhase() async {
         let model = makeModel()
         model.fetchDepthRecommendation = { _ in throw URLError(.notConnectedToInternet) }
         model.load()
-        await Task.yield()
-        try await Task.sleep(for: .milliseconds(100))
+        await waitUntil { if case .loaded = model.phase { return true }; return false }
 
         if case .loaded = model.phase { } else {
             Issue.record("Expected .loaded despite recommendation error, got \(model.phase)")
@@ -359,12 +355,11 @@ struct ReaderModelTests {
     }
 
     @Test("no recommendation when fetchDepthRecommendation is nil")
-    func noRecommendationWhenNotWired() async throws {
+    func noRecommendationWhenNotWired() async {
         let model = makeModel()
         // fetchDepthRecommendation defaults to nil — no closure set
         model.load()
-        await Task.yield()
-        try await Task.sleep(for: .milliseconds(100))
+        await waitUntil { if case .loaded = model.phase { return true }; return false }
 
         guard case .loaded(let controls) = model.phase else {
             Issue.record("Expected .loaded phase"); return
