@@ -112,6 +112,18 @@ public final class ReaderModel {
     /// Failures are silently swallowed — the recommendation is optional chrome.
     public var fetchDepthRecommendation: ((String) async throws -> DepthRecommendation)?
 
+    // MARK: - Chapter navigation
+
+    /// The table-of-contents / navigation model. Available after a successful
+    /// chapter + manifest load. `nil` when the manifest fetch fails or is in progress.
+    public private(set) var navModel: ChapterNavModel?
+
+    /// Injected by the host. Propagated to `navModel.onNavigateToChapter` whenever
+    /// it is set so the callback stays in sync regardless of load order.
+    public var onNavigateToChapter: ((Int) -> Void)? {
+        didSet { navModel?.onNavigateToChapter = onNavigateToChapter }
+    }
+
     // MARK: - Annotation
 
     /// The annotation model for highlights, notes, and bookmarks.
@@ -149,6 +161,7 @@ public final class ReaderModel {
     @ObservationIgnored private var heartbeatTask: Task<Void, Never>?
     @ObservationIgnored private var bookStateTask: Task<Void, Never>?
     @ObservationIgnored private var recommendationTask: Task<Void, Never>?
+    @ObservationIgnored private var navTask: Task<Void, Never>?
 
     /// readPercent threshold above which chapter-end state triggers.
     public static let chapterEndThreshold: Double = 0.95
@@ -188,6 +201,7 @@ public final class ReaderModel {
         loadTask?.cancel()
         bookStateTask?.cancel()
         recommendationTask?.cancel()
+        navTask?.cancel()
         phase = .loading
         readPercent = 0
         isAtChapterEnd = false
@@ -195,6 +209,7 @@ public final class ReaderModel {
         isLoopComplete = false
         isKnowledgeComplete = false
         applicationState = .none
+        navModel = nil
         loadTask = Task { [weak self] in
             guard let self else { return }
             await self.performLoad()
@@ -208,6 +223,7 @@ public final class ReaderModel {
         loadTask?.cancel()
         bookStateTask?.cancel()
         recommendationTask?.cancel()
+        navTask?.cancel()
         if case .loaded(let controlsModel) = phase {
             let chapterId = controlsModel.resolvedChapter.chapterId
             let bId = bookId
@@ -359,6 +375,9 @@ public final class ReaderModel {
             // Fetch depth recommendation (best-effort, does not block loading).
             applyDepthRecommendation(to: controlsModel)
 
+            // Fetch manifest for in-reader ToC (best-effort, does not block loading).
+            fetchNavModel(progress: progress)
+
         } catch is CancellationError {
             // Cancelled — phase remains loading; the next load() call will retry.
         } catch {
@@ -402,6 +421,29 @@ public final class ReaderModel {
             } catch {
                 // Best-effort — silently ignore recommendation failures.
             }
+        }
+    }
+
+    /// Best-effort fetch of `BookManifest` to populate the in-reader ToC.
+    ///
+    /// Creates and wires `navModel` when the manifest loads. Failures are
+    /// silently swallowed — the ToC is optional chrome; the reader still works.
+    private func fetchNavModel(progress: BookProgress) {
+        navTask?.cancel()
+        let bId = bookId
+        let repo = repository
+        let chapterNum = chapterNumber
+        navTask = Task { [weak self] in
+            guard let self else { return }
+            guard let manifest = try? await repo.getBookManifest(bookId: bId) else { return }
+            guard !Task.isCancelled else { return }
+            let model = ChapterNavModel(
+                manifest: manifest,
+                progress: progress,
+                currentChapterNumber: chapterNum
+            )
+            model.onNavigateToChapter = self.onNavigateToChapter
+            self.navModel = model
         }
     }
 

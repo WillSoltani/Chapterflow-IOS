@@ -6,6 +6,9 @@ import DesignSystem
 ///
 /// Receives a `userId` and loads the public profile on appear.
 /// This view is reused by P7.2 (Reading Partners) for the partner detail screen.
+///
+/// Safety features (P7.7): block/unblock and report are available via the toolbar
+/// menu. Blocked users see a blocked-state banner instead of profile content.
 public struct PublicProfileView: View {
 
     @State private var model: PublicProfileModel
@@ -20,6 +23,44 @@ public struct PublicProfileView: View {
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
             #endif
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    SafetyMenuButton(
+                        displayName: model.profile?.displayName,
+                        isBlocked: model.isBlocked,
+                        isLoading: model.isSubmittingBlock,
+                        onBlockTapped: { model.showBlockConfirmation = true },
+                        onUnblockTapped: { Task { await model.unblockUser() } },
+                        onReportTapped: { model.showReportSheet = true }
+                    )
+                }
+            }
+            .sheet(isPresented: $model.showBlockConfirmation) {
+                BlockConfirmationView(
+                    displayName: model.profile?.displayName,
+                    isLoading: model.isSubmittingBlock,
+                    onBlock: { Task { await model.blockUser() } },
+                    onCancel: { model.showBlockConfirmation = false }
+                )
+                .presentationDetents([.medium])
+            }
+            .sheet(isPresented: $model.showReportSheet) {
+                ReportView(
+                    displayName: model.profile?.displayName,
+                    onSubmit: { reason, details in
+                        await model.submitReport(reason: reason, details: details)
+                    },
+                    onCancel: { model.showReportSheet = false }
+                )
+            }
+            .alert("Error", isPresented: Binding(
+                get: { model.safetyError != nil },
+                set: { if !$0 { /* model clears on next action */ } }
+            )) {
+                Button("OK") {}
+            } message: {
+                Text(model.safetyError ?? "")
+            }
             .refreshable { await model.load() }
             .task { await model.load() }
     }
@@ -28,17 +69,41 @@ public struct PublicProfileView: View {
 
     @ViewBuilder
     private var content: some View {
-        switch model.phase {
-        case .idle where model.profile == nil,
-             .loading where model.profile == nil:
-            loadingSkeleton
-        case .error(let message):
-            errorView(message)
-        default:
-            if let profile = model.profile {
-                loadedScrollView(profile: profile)
+        if model.isBlocked {
+            blockedBanner
+        } else {
+            switch model.phase {
+            case .idle where model.profile == nil,
+                 .loading where model.profile == nil:
+                loadingSkeleton
+            case .error(let message):
+                errorView(message)
+            default:
+                if let profile = model.profile {
+                    loadedScrollView(profile: profile)
+                }
             }
         }
+    }
+
+    // MARK: - Blocked state
+
+    private var blockedBanner: some View {
+        VStack(spacing: .cfSpacing16) {
+            Image(systemName: "hand.raised.fill")
+                .font(.cfLargeTitle)
+                .foregroundStyle(Color.cfSecondaryLabel)
+            Text("You've blocked this user")
+                .font(.cfTitle3)
+                .foregroundStyle(Color.cfLabel)
+            Text("They can't pair with you, send nudges, or view your profile. You can unblock them using the menu above.")
+                .font(.cfBody)
+                .foregroundStyle(Color.cfSecondaryLabel)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.cfSpacing32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.cfGroupedBackground)
     }
 
     // MARK: - Loaded state
@@ -244,6 +309,15 @@ public struct PublicProfileView: View {
         )
     }
     .preferredColorScheme(.dark)
+}
+
+#Preview("PublicProfileView — blocked user") {
+    NavigationStack {
+        PublicProfileView(
+            userId: "user-partner",
+            repository: FakeSocialRepository.withBlocked(userId: "user-partner")
+        )
+    }
 }
 
 #Preview("PublicProfileView — error") {

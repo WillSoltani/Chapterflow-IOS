@@ -14,10 +14,16 @@ import Persistence
 public struct ReaderToolbar: View {
     private let model: ReaderControlsModel
     private let currentTopIndex: Int
+    private let navModel: ChapterNavModel?
 
-    public init(model: ReaderControlsModel, currentTopIndex: Int) {
+    public init(
+        model: ReaderControlsModel,
+        currentTopIndex: Int,
+        navModel: ChapterNavModel? = nil
+    ) {
         self.model = model
         self.currentTopIndex = currentTopIndex
+        self.navModel = navModel
     }
 
     public var body: some View {
@@ -77,6 +83,8 @@ public struct ReaderToolbar: View {
 
     private var mainControls: some View {
         VStack(spacing: 0) {
+            scrubberRow
+            Divider().padding(.horizontal, .cfSpacing12)
             if !model.availableVariants.isEmpty {
                 depthRow
                 Divider().padding(.horizontal, .cfSpacing12)
@@ -84,7 +92,106 @@ public struct ReaderToolbar: View {
             toneRow
             Divider().padding(.horizontal, .cfSpacing12)
             actionRow
+            if navModel != nil {
+                Divider().padding(.horizontal, .cfSpacing12)
+                navRow
+            }
         }
+    }
+
+    // MARK: - Scrubber row
+
+    private var scrubberRow: some View {
+        VStack(alignment: .leading, spacing: .cfSpacing8) {
+            sectionLabel("Position")
+            ChapterScrubberView(
+                readPercent: model.readPercent,
+                blockCount: model.blocks.count
+            ) { [model] blockIndex in
+                model.pendingScrollAnchor = blockIndex
+            }
+        }
+        .padding(.horizontal, .cfSpacing16)
+        .padding(.top, .cfSpacing12)
+        .padding(.bottom, .cfSpacing8)
+    }
+
+    // MARK: - Nav row (prev / ToC / next)
+
+    @ViewBuilder
+    private var navRow: some View {
+        if let nav = navModel {
+            HStack {
+                previousButton(nav: nav)
+                Spacer()
+                tocButton(nav: nav)
+                Spacer()
+                nextButton(nav: nav)
+            }
+            .padding(.horizontal, .cfSpacing16)
+            .padding(.vertical, .cfSpacing8)
+        }
+    }
+
+    private func previousButton(nav: ChapterNavModel) -> some View {
+        Button {
+            nav.goToPreviousChapter()
+        } label: {
+            HStack(spacing: .cfSpacing4) {
+                Image(systemName: "chevron.left")
+                    .font(.cfCaption.weight(.semibold))
+                Text("Previous")
+                    .font(.cfCaption)
+            }
+            .foregroundStyle(nav.canGoPrevious ? Color.cfLabel : Color.cfTertiaryLabel)
+            .padding(.horizontal, .cfSpacing12)
+            .padding(.vertical, .cfSpacing8)
+            .background(Color.cfSecondaryFill, in: RoundedRectangle(cornerRadius: .cfRadius8))
+        }
+        .buttonStyle(.plain)
+        .disabled(!nav.canGoPrevious)
+        .accessibilityLabel("Previous chapter")
+        .accessibilityHint(nav.canGoPrevious ? "" : "No previous chapter available")
+    }
+
+    private func tocButton(nav: ChapterNavModel) -> some View {
+        Button {
+            nav.isToCPresented = true
+        } label: {
+            HStack(spacing: .cfSpacing4) {
+                Image(systemName: "list.bullet")
+                    .font(.cfCaption)
+                Text("Contents")
+                    .font(.cfCaption)
+            }
+            .foregroundStyle(Color.cfAccent)
+            .padding(.horizontal, .cfSpacing12)
+            .padding(.vertical, .cfSpacing8)
+            .background(Color.cfAccent.opacity(0.1), in: RoundedRectangle(cornerRadius: .cfRadius8))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Table of Contents")
+    }
+
+    private func nextButton(nav: ChapterNavModel) -> some View {
+        Button {
+            nav.goToNextChapter()
+        } label: {
+            HStack(spacing: .cfSpacing4) {
+                Text("Next")
+                    .font(.cfCaption)
+                Image(systemName: "chevron.right")
+                    .font(.cfCaption.weight(.semibold))
+            }
+            .foregroundStyle(nav.canGoNext ? Color.cfLabel : Color.cfTertiaryLabel)
+            .padding(.horizontal, .cfSpacing12)
+            .padding(.vertical, .cfSpacing8)
+            .background(Color.cfSecondaryFill, in: RoundedRectangle(cornerRadius: .cfRadius8))
+        }
+        .buttonStyle(.plain)
+        .disabled(!nav.canGoNext)
+        .accessibilityLabel("Next chapter")
+        .accessibilityHint(nav.canGoNext ? "" : "Next chapter is locked or unavailable")
     }
 
     // MARK: - Depth row
