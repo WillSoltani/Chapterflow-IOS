@@ -72,6 +72,17 @@ public struct LibraryView: View {
                                 router.push(LibraryRoute.bookDetail(bookId: bookId))
                             }
                         )
+                    case .categoryDetail(let category):
+                        CategoryDetailView(
+                            category: category,
+                            books: model.allBooks.filter { $0.categories.contains(category) },
+                            savedBookIds: model.savedBookIds,
+                            bookDetailRepository: bookDetailRepository,
+                            aiRepository: aiRepository,
+                            onToggleSaved: { bookId in Task { await model.toggleSaved(bookId: bookId) } },
+                            onOpenReader: onOpenReader,
+                            onShowPaywall: onShowPaywall
+                        )
                     }
                 }
         }

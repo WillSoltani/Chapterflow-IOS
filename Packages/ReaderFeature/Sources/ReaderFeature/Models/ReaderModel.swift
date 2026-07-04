@@ -95,6 +95,10 @@ public final class ReaderModel {
     /// Receives the selected block text as context for the AI query.
     public var onAskAboutSelection: ((String) -> Void)?
 
+    /// Called when the user taps "Reflect" in the chapter-end CTA.
+    /// Wired by the host (AppFeature or SocialFeature) to open the reflections sheet.
+    public var onReflect: (() -> Void)?
+
     /// Async closure that fetches the depth recommendation for `bookId`.
     ///
     /// Injected by the host (AppFeature) using `LiveAIRepository`. When non-nil, the model

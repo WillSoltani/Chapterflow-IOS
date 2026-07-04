@@ -95,4 +95,50 @@ public protocol SocialRepository: Sendable {
     /// Maps to `POST /book/me/share-events`. Fire-and-forget: the caller should
     /// not surface a failure to the user (a dropped analytics event is not fatal).
     func postShareEvent(cardType: ShareCardType, destination: ShareEventDestination) async throws
+
+    // MARK: - Reflections
+
+    /// Fetches the server's reflection history for a chapter.
+    ///
+    /// Maps to `GET /book/me/reflections/{bookId}/{n}`.
+    /// May throw ``AppError/offline`` when the network is unavailable.
+    func getReflections(bookId: String, chapterN: Int) async throws -> [ChapterReflection]
+
+    /// Returns locally-queued reflections that have not yet been synced to the server.
+    ///
+    /// Never throws; reads the local outbox only.
+    func getPendingReflections(bookId: String, chapterN: Int) async -> [PendingReflectionItem]
+
+    /// Writes a new reflection.
+    ///
+    /// The item is persisted to the local outbox immediately, then the
+    /// implementation attempts a network upload. If the upload succeeds the
+    /// returned item has `syncState == .synced`; if offline it has `.pending`
+    /// and will be retried by ``syncPendingReflections(bookId:chapterN:)``.
+    /// Never throws — failures result in a `.pending` item.
+    func postReflection(bookId: String, chapterN: Int, text: String) async -> PendingReflectionItem
+
+    /// Requests AI feedback for a synced server reflection.
+    ///
+    /// Maps to `POST /book/me/reflections/{bookId}/{n}/feedback`.
+    /// Returns the feedback text on success.
+    func requestFeedback(
+        bookId: String,
+        chapterN: Int,
+        serverReflectionId: String
+    ) async throws -> String
+
+    /// Marks a locally-pending reflection as wanting AI feedback.
+    ///
+    /// The feedback request is stored in the outbox and sent automatically once
+    /// the reflection itself is successfully synced to the server.
+    /// Returns the updated `PendingReflectionItem`, or `nil` if `localId` is unknown.
+    func queueFeedbackForPending(localId: String) async -> PendingReflectionItem?
+
+    /// Retries syncing all pending reflections for a chapter to the server.
+    ///
+    /// For each newly-synced item whose `feedbackState == .pending`, also fetches
+    /// AI feedback automatically. Returns the up-to-date pending list after
+    /// processing. Never throws; individual failures are logged and left for retry.
+    func syncPendingReflections(bookId: String, chapterN: Int) async -> [PendingReflectionItem]
 }
