@@ -34,7 +34,10 @@ public struct AppRootView: View {
 
     public var body: some View {
         gatedContent
-            .task { try? model.configure() }
+            .task {
+                try? model.configure()
+                model.wirePushRouting()
+            }
             .onOpenURL { url in model.handle(url: url) }
             .onChange(of: model.session.authState) { _, newState in
                 switch newState {
@@ -243,7 +246,8 @@ public struct AppRootView: View {
                         Task { await UIApplication.shared.open(url) }
                     }
                     #endif
-                }
+                },
+                notificationSettingsModel: model.notificationSettingsModel
             )
         }
     }

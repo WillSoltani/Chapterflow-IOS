@@ -137,6 +137,10 @@ public final class AppModel {
     /// `SettingsView` can display the live push authorization status.
     public let apnsManager: APNSRegistrationManager
 
+    /// Drives the Notification Settings screen. Exposed so `SettingsView` can
+    /// pass it to `NotificationSettingsView` as a navigation destination.
+    public let notificationSettingsModel: NotificationSettingsModel
+
     // MARK: - Internal
 
     /// Retained so `makePaywallModel(context:)` can build `PaywallModel` without re-creating the client.
@@ -182,6 +186,12 @@ public final class AppModel {
         let authorizer = NotificationAuthorizer()
         let registrationRepo = LiveDeviceRegistrationRepository(apiClient: client)
         self.apnsManager = APNSRegistrationManager(authorizer: authorizer, repository: registrationRepo)
+
+        let notifPrefsRepo = LiveNotificationPreferencesRepository(apiClient: client)
+        self.notificationSettingsModel = NotificationSettingsModel(
+            repository: notifPrefsRepo,
+            authorizer: authorizer
+        )
 
         #if os(iOS)
         sm.registerBackgroundRefresh()
@@ -279,8 +289,28 @@ public final class AppModel {
         case .referral(let code):
             pendingReferralCode = code
             selectedTab = .profile
+        case .library:
+            selectedTab = .library
+        case .profile:
+            selectedTab = .profile
+        case .engagement:
+            selectedTab = .home
+        case .notifications:
+            selectedTab = .home
         case .unknown:
             break
         }
+    }
+
+    // MARK: - Push notification routing
+
+    /// Wires the `PushRoutingBridge` so incoming notification taps are routed
+    /// through `handle(url:)`. Call once at app startup (from `AppRootView.task`).
+    public func wirePushRouting() {
+        #if canImport(UIKit)
+        PushRoutingBridge.shared.onNotificationTapped = { [weak self] url in
+            self?.handle(url: url)
+        }
+        #endif
     }
 }

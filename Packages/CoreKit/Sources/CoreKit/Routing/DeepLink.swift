@@ -13,6 +13,10 @@ import Foundation
 /// - `chapterflow://gift/{code}` → `.gift`
 /// - `chapterflow://ref/{code}` → `.referral`
 /// - `chapterflow://review` → `.review`
+/// - `chapterflow://library` → `.library`
+/// - `chapterflow://profile[/*]` → `.profile`
+/// - `chapterflow://engagement` → `.engagement`
+/// - `chapterflow://notifications` → `.notifications`
 public enum DeepLink: Sendable, Equatable {
     case book(id: String)
     case chapter(bookId: String, chapter: Int)
@@ -23,6 +27,14 @@ public enum DeepLink: Sendable, Equatable {
     /// pre-fills the manual "Enter a code" screen with it instead.
     case referral(code: String)
     case review
+    /// Opens the Library tab.
+    case library
+    /// Opens the Profile tab (social, pairs, engagement).
+    case profile
+    /// Opens the Home tab at the engagement/progress dashboard.
+    case engagement
+    /// Opens the notification inbox (P9.4).
+    case notifications
     /// A URL we recognize the scheme of but can't map to a known destination.
     case unknown(URL)
 
@@ -32,56 +44,52 @@ public enum DeepLink: Sendable, Equatable {
     /// Parses a URL into a `DeepLink`. Returns `nil` when the scheme isn't ours.
     public init?(url: URL) {
         guard url.scheme?.lowercased() == DeepLink.scheme else { return nil }
+        let segments = DeepLink.segments(from: url)
+        self = DeepLink.parse(segments: segments, url: url)
+    }
 
-        // Combine host + path into a normalized list of segments, since with a
-        // custom scheme the first segment arrives as `host` (e.g. "book").
-        var segments: [String] = []
-        if let host = url.host, !host.isEmpty {
-            segments.append(host)
-        }
-        segments.append(
-            contentsOf: url.pathComponents.filter { $0 != "/" && !$0.isEmpty }
-        )
+    // MARK: - Private parsing helpers
 
+    private static func segments(from url: URL) -> [String] {
+        var result: [String] = []
+        if let host = url.host, !host.isEmpty { result.append(host) }
+        result.append(contentsOf: url.pathComponents.filter { $0 != "/" && !$0.isEmpty })
+        return result
+    }
+
+    private static func parse(segments: [String], url: URL) -> DeepLink {
         switch segments.first {
-        case "book":
-            // book/{id} or book/{id}/chapter/{n}
-            guard segments.count >= 2, !segments[1].isEmpty else {
-                self = .unknown(url); return
-            }
-            let bookId = segments[1]
-            if segments.count >= 4, segments[2] == "chapter", let n = Int(segments[3]) {
-                self = .chapter(bookId: bookId, chapter: n)
-            } else {
-                self = .book(id: bookId)
-            }
-
-        case "pair":
-            // pair/accept/{code}
-            guard segments.count >= 3, segments[1] == "accept", !segments[2].isEmpty else {
-                self = .unknown(url); return
-            }
-            self = .pairAccept(code: segments[2])
-
-        case "gift":
-            // gift/{code}
-            guard segments.count >= 2, !segments[1].isEmpty else {
-                self = .unknown(url); return
-            }
-            self = .gift(code: segments[1])
-
-        case "ref":
-            // ref/{code} — referral invite link
-            guard segments.count >= 2, !segments[1].isEmpty else {
-                self = .unknown(url); return
-            }
-            self = .referral(code: segments[1])
-
-        case "review":
-            self = .review
-
-        default:
-            self = .unknown(url)
+        case "book":        return parseBook(segments: segments, url: url)
+        case "pair":        return parsePair(segments: segments, url: url)
+        case "gift":        return parseCode(segments, url: url) { .gift(code: $0) }
+        case "ref":         return parseCode(segments, url: url) { .referral(code: $0) }
+        case "review":      return .review
+        case "library":     return .library
+        case "profile":     return .profile
+        case "engagement":  return .engagement
+        case "notifications": return .notifications
+        default:            return .unknown(url)
         }
+    }
+
+    private static func parseBook(segments: [String], url: URL) -> DeepLink {
+        guard segments.count >= 2, !segments[1].isEmpty else { return .unknown(url) }
+        let bookId = segments[1]
+        if segments.count >= 4, segments[2] == "chapter", let n = Int(segments[3]) {
+            return .chapter(bookId: bookId, chapter: n)
+        }
+        return .book(id: bookId)
+    }
+
+    private static func parsePair(segments: [String], url: URL) -> DeepLink {
+        guard segments.count >= 3, segments[1] == "accept", !segments[2].isEmpty else {
+            return .unknown(url)
+        }
+        return .pairAccept(code: segments[2])
+    }
+
+    private static func parseCode(_ segments: [String], url: URL, make: (String) -> DeepLink) -> DeepLink {
+        guard segments.count >= 2, !segments[1].isEmpty else { return .unknown(url) }
+        return make(segments[1])
     }
 }
