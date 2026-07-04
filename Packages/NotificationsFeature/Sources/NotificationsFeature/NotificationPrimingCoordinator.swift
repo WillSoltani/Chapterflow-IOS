@@ -2,70 +2,43 @@ import Foundation
 import Observation
 import CoreKit
 
-/// The high-value moment that triggered a priming suggestion.
-public enum NotificationPrimingTrigger: Sendable {
-    /// User finished their first chapter — highest-value reading moment.
-    case firstChapterCompleted
-    /// User navigated to set a reading reminder — explicit intent.
-    case readingReminderSet
-
-    var analyticsValue: String {
-        switch self {
-        case .firstChapterCompleted: return "first_chapter_completed"
-        case .readingReminderSet: return "reading_reminder_set"
-        }
-    }
-}
-
-/// State machine that decides when to show the notification priming screen.
+/// Coordinates the permission priming flow per docs/ios/PUSH-CONTRACT.md.
 ///
-/// **Rules enforced here (never elsewhere):**
-/// - Only surfaces priming when the OS status is `.notDetermined`.
-/// - Only surfaces priming once per install ("hasPrimed" gate in UserDefaults).
-/// - A high-value moment must be signalled via `suggest(trigger:)`.
-///
-/// **Usage pattern:**
-/// ```swift
-/// // After user completes their first chapter:
-/// await coordinator.suggest(trigger: .firstChapterCompleted)
-///
-/// // In the view:
-/// .sheet(isPresented: Binding(
-///     get: { coordinator.isPrimingVisible },
-///     set: { if !$0 { coordinator.dismiss() } }
-/// )) {
-///     NotificationPrimingView(
-///         onAccept: { await coordinator.accept() },
-///         onDismiss: { coordinator.dismiss() }
-///     )
-/// }
-/// ```
-@MainActor
+/// Rules:
+/// - Never call `suggest(trigger:)` on first launch.
+/// - The coordinator evaluates `hasPrimed` + OS status before showing the sheet.
+/// - `hasPrimed` persists in `UserDefaults.standard` and must not be cleared
+///   except during account-reset / sign-out flows.
 @Observable
+@MainActor
 public final class NotificationPrimingCoordinator {
 
     // MARK: - Observable state
 
-    /// `true` while the priming sheet should be presented.
+    /// Whether the priming sheet should be visible. Drive a `.sheet(isPresented:)`.
     public private(set) var isPrimingVisible: Bool = false
 
     // MARK: - Dependencies
 
     private let authorizer: any NotificationAuthorizerProtocol
-    private let analytics: any AnalyticsClient
+    private let analytics: (any AnalyticsClient)?
     private let defaults: UserDefaults
 
-    // MARK: - Persistence keys
+    // MARK: - Persistence
 
-    private enum Keys {
-        static let hasPrimed = "com.chapterflow.notifications.hasPrimed"
+    private static let hasPrimedKey = "com.chapterflow.notificationHasPrimed"
+
+    /// Whether the user has already seen the priming sheet (or explicitly dismissed it).
+    public private(set) var hasPrimed: Bool {
+        get { defaults.bool(forKey: Self.hasPrimedKey) }
+        set { defaults.set(newValue, forKey: Self.hasPrimedKey) }
     }
 
     // MARK: - Init
 
     public init(
         authorizer: any NotificationAuthorizerProtocol,
-        analytics: any AnalyticsClient,
+        analytics: (any AnalyticsClient)? = nil,
         defaults: UserDefaults = .standard
     ) {
         self.authorizer = authorizer
@@ -73,49 +46,52 @@ public final class NotificationPrimingCoordinator {
         self.defaults = defaults
     }
 
-    // MARK: - Public API
+    // MARK: - Suggest
 
-    /// Signal that a high-value moment occurred.
+    /// Suggests showing the priming sheet at a meaningful value moment.
     ///
-    /// The coordinator evaluates whether to surface the priming sheet.
-    /// No-ops if the user has already been primed or the OS status is not
-    /// `.notDetermined` (i.e., already granted or already denied).
-    public func suggest(trigger: NotificationPrimingTrigger) async {
-        guard !hasPrimed else { return }
-        let status = await authorizer.currentStatus()
-        guard status == .notDetermined else { return }
+    /// Shows the sheet only when:
+    /// - `hasPrimed` is `false` (first time seeing the prompt), AND
+    /// - The OS authorization status is `.notDetermined`.
+    public func suggest(trigger: PrimingTrigger) async {
+        let current = await authorizer.currentStatus()
+        guard !hasPrimed, current == .notDetermined else { return }
         isPrimingVisible = true
-        analytics.track(.custom(
-            name: "notification_priming_shown",
-            properties: ["trigger": trigger.analyticsValue]
-        ))
+        analytics?.track(.notificationPrimingShown)
     }
 
-    /// User accepted the priming explanation — fires the OS authorization prompt.
+    // MARK: - Accept / Dismiss
+
+    /// Called when the user taps "Enable" on the priming sheet.
+    /// Marks `hasPrimed`, hides the sheet, then requests OS authorization.
     ///
-    /// - Returns: The outcome of the OS prompt (.granted / .denied).
+    /// - Returns: The outcome of the OS authorization prompt.
     @discardableResult
     public func accept() async -> NotificationAuthorizationOutcome {
-        markPrimed()
+        hasPrimed = true
         isPrimingVisible = false
-        analytics.track(.custom(name: "notification_priming_accepted", properties: [:]))
+        analytics?.track(.notificationPrimingAccepted)
         return await authorizer.requestAuthorization()
     }
 
-    /// User dismissed the priming sheet without accepting ("Not Now").
+    /// Called when the user taps "Not Now" on the priming sheet.
+    /// Marks `hasPrimed` and hides the sheet without requesting OS authorization.
     public func dismiss() {
-        markPrimed()
+        hasPrimed = true
         isPrimingVisible = false
-        analytics.track(.custom(name: "notification_priming_dismissed", properties: [:]))
+        analytics?.track(.notificationPrimingDismissed)
     }
+}
 
-    // MARK: - Private
+// MARK: - Trigger
 
-    private var hasPrimed: Bool {
-        defaults.bool(forKey: Keys.hasPrimed)
-    }
-
-    private func markPrimed() {
-        defaults.set(true, forKey: Keys.hasPrimed)
-    }
+/// The value-moment trigger that caused the priming sheet to appear.
+/// Used for analytics; extend as new moments are identified.
+public enum PrimingTrigger: String, Sendable {
+    case firstChapterCompleted  = "first_chapter_completed"
+    case chapterCompleted       = "chapter_completed"
+    case streakMilestone        = "streak_milestone"
+    case firstBookStarted       = "first_book_started"
+    case reviewsDue             = "reviews_due"
+    case readingReminderSet     = "reading_reminder_set"
 }

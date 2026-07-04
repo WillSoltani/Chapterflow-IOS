@@ -1,5 +1,6 @@
 import SwiftUI
 import DesignSystem
+import NotificationsFeature
 
 /// The Settings tab.
 ///
@@ -17,6 +18,9 @@ public struct SettingsView: View {
     private let cancelAtPeriodEnd: Bool?
     private let onShowPaywall: (() -> Void)?
     private let onManageSubscription: (() -> Void)?
+    private let pushStatus: NotificationPermissionStatus?
+    private let pushRegistrationError: Error?
+    private let onManagePushSettings: (() -> Void)?
 
     public init(
         isPro: Bool = false,
@@ -24,7 +28,10 @@ public struct SettingsView: View {
         currentPeriodEnd: Date? = nil,
         cancelAtPeriodEnd: Bool? = nil,
         onShowPaywall: (() -> Void)? = nil,
-        onManageSubscription: (() -> Void)? = nil
+        onManageSubscription: (() -> Void)? = nil,
+        pushStatus: NotificationPermissionStatus? = nil,
+        pushRegistrationError: Error? = nil,
+        onManagePushSettings: (() -> Void)? = nil
     ) {
         self.isPro = isPro
         self.remainingFreeStarts = remainingFreeStarts
@@ -32,17 +39,90 @@ public struct SettingsView: View {
         self.cancelAtPeriodEnd = cancelAtPeriodEnd
         self.onShowPaywall = onShowPaywall
         self.onManageSubscription = onManageSubscription
+        self.pushStatus = pushStatus
+        self.pushRegistrationError = pushRegistrationError
+        self.onManagePushSettings = onManagePushSettings
     }
 
     public var body: some View {
         NavigationStack {
             Form {
                 subscriptionSection
+                if pushStatus != nil {
+                    pushSection
+                }
             }
             .navigationTitle("Settings")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
             #endif
+        }
+    }
+
+    // MARK: - Push notifications section
+
+    @ViewBuilder
+    private var pushSection: some View {
+        if let status = pushStatus {
+            Section("Push Notifications") {
+                HStack {
+                    Label("Status", systemImage: pushStatusIcon(status))
+                        .foregroundStyle(Color.cfLabel)
+                    Spacer()
+                    Text(pushStatusLabel(status))
+                        .font(.cfSubheadline)
+                        .foregroundStyle(pushStatusColor(status))
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Push notification status: \(pushStatusLabel(status))")
+
+                if status == .denied {
+                    Button(action: { onManagePushSettings?() }) {
+                        Label("Enable in Settings", systemImage: "arrow.up.right")
+                            .foregroundStyle(Color.cfAccent)
+                    }
+                    .accessibilityLabel("Open iOS Settings to enable push notifications")
+                }
+
+                if let error = pushRegistrationError {
+                    HStack(spacing: .cfSpacing8) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .foregroundStyle(Color.orange)
+                            .accessibilityHidden(true)
+                        Text(error.localizedDescription)
+                            .font(.cfFootnote)
+                            .foregroundStyle(Color.cfSecondaryLabel)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Registration error: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    private func pushStatusLabel(_ status: NotificationPermissionStatus) -> String {
+        switch status {
+        case .authorized: return "On"
+        case .provisional: return "Provisional"
+        case .denied: return "Off"
+        case .notDetermined: return "Not set"
+        case .ephemeral: return "Ephemeral"
+        }
+    }
+
+    private func pushStatusIcon(_ status: NotificationPermissionStatus) -> String {
+        switch status {
+        case .authorized, .provisional, .ephemeral: return "bell.badge.fill"
+        case .denied: return "bell.slash.fill"
+        case .notDetermined: return "bell"
+        }
+    }
+
+    private func pushStatusColor(_ status: NotificationPermissionStatus) -> Color {
+        switch status {
+        case .authorized, .provisional, .ephemeral: return Color.cfAccent
+        case .denied: return Color.orange
+        case .notDetermined: return Color.cfSecondaryLabel
         }
     }
 
@@ -183,13 +263,31 @@ public struct SettingsView: View {
     SettingsView(
         isPro: true,
         currentPeriodEnd: Date(timeIntervalSinceNow: 28 * 24 * 3600),
-        cancelAtPeriodEnd: false
+        cancelAtPeriodEnd: false,
+        pushStatus: NotificationPermissionStatus.authorized
     )
     .preferredColorScheme(.dark)
 }
 
+#Preview("Settings — Push denied") {
+    SettingsView(
+        isPro: false,
+        remainingFreeStarts: 1,
+        pushStatus: NotificationPermissionStatus.denied,
+        onManagePushSettings: {}
+    )
+}
+
+#Preview("Settings — Push not determined") {
+    SettingsView(
+        isPro: false,
+        remainingFreeStarts: 0,
+        pushStatus: NotificationPermissionStatus.notDetermined
+    )
+}
+
 #Preview("Settings — XXL text") {
-    SettingsView(isPro: false, remainingFreeStarts: 2)
+    SettingsView(isPro: false, remainingFreeStarts: 2, pushStatus: NotificationPermissionStatus.authorized)
         .dynamicTypeSize(.accessibility3)
 }
 

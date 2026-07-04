@@ -19,6 +19,12 @@ public enum AnalyticsEvent: Sendable, Equatable {
     case paywallViewed(source: String)
     case purchase(productId: String)
     case referralShared
+    case notificationPrimingShown
+    case notificationPrimingAccepted
+    case notificationPrimingDismissed
+    case notificationOSGranted
+    case notificationOSDenied
+    case notificationProvisionalGranted
     case custom(name: String, properties: [String: String])
 
     /// The stable wire name for this event.
@@ -36,6 +42,12 @@ public enum AnalyticsEvent: Sendable, Equatable {
         case .paywallViewed: return "paywall_viewed"
         case .purchase: return "purchase"
         case .referralShared: return "referral_shared"
+        case .notificationPrimingShown: return "notification_priming_shown"
+        case .notificationPrimingAccepted: return "notification_priming_accepted"
+        case .notificationPrimingDismissed: return "notification_priming_dismissed"
+        case .notificationOSGranted: return "notification_os_granted"
+        case .notificationOSDenied: return "notification_os_denied"
+        case .notificationProvisionalGranted: return "notification_provisional_granted"
         case .custom(let name, _): return name
         }
     }
@@ -43,7 +55,9 @@ public enum AnalyticsEvent: Sendable, Equatable {
     /// The event's properties, as a flat string dictionary suitable for JSON.
     public var properties: [String: String] {
         switch self {
-        case .appOpen, .signOut, .referralShared:
+        case .appOpen, .signOut, .referralShared,
+             .notificationPrimingShown, .notificationPrimingAccepted, .notificationPrimingDismissed,
+             .notificationOSGranted, .notificationOSDenied, .notificationProvisionalGranted:
             return [:]
         case .signIn(let method):
             return ["method": method]

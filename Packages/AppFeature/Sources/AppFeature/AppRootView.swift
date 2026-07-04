@@ -40,6 +40,7 @@ public struct AppRootView: View {
                 switch newState {
                 case .signedIn:
                     model.hydrateDisplayName()
+                    model.startAPNS()
                 case .signedOut:
                     model.displayName = ""
                 default:
@@ -233,6 +234,15 @@ public struct AppRootView: View {
                 },
                 onManageSubscription: {
                     model.openManageSubscriptions()
+                },
+                pushStatus: model.apnsManager.pushStatus,
+                pushRegistrationError: model.apnsManager.registrationError,
+                onManagePushSettings: {
+                    #if canImport(UIKit)
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        Task { await UIApplication.shared.open(url) }
+                    }
+                    #endif
                 }
             )
         }

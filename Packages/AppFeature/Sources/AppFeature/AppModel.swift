@@ -10,6 +10,7 @@ import ReaderFeature
 import QuizFeature
 import EngagementFeature
 import PaywallFeature
+import NotificationsFeature
 import OnboardingFeature
 
 /// The top-level observable app state that drives `AppRootView`.
@@ -130,6 +131,12 @@ public final class AppModel {
     /// Context that controls the copy shown inside the paywall.
     public var paywallContext: PaywallContext = .settings
 
+    // MARK: - Push notifications
+
+    /// Manages APNs token registration with the backend. Observable so
+    /// `SettingsView` can display the live push authorization status.
+    public let apnsManager: APNSRegistrationManager
+
     // MARK: - Internal
 
     /// Retained so `makePaywallModel(context:)` can build `PaywallModel` without re-creating the client.
@@ -172,6 +179,10 @@ public final class AppModel {
         self.storeKitService = sks
         self.entitlementService = EntitlementService(storeKitService: sks, apiClient: client)
 
+        let authorizer = NotificationAuthorizer()
+        let registrationRepo = LiveDeviceRegistrationRepository(apiClient: client)
+        self.apnsManager = APNSRegistrationManager(authorizer: authorizer, repository: registrationRepo)
+
         #if os(iOS)
         sm.registerBackgroundRefresh()
         #endif
@@ -191,6 +202,17 @@ public final class AppModel {
     public func configure() throws {
         try session.configure()
         entitlementService.start()
+    }
+
+    /// Starts APNs registration. Call once after `authState` transitions to `.signedIn`.
+    public func startAPNS() {
+        apnsManager.start()
+    }
+
+    /// Signs the user out, unregistering the APNs token from the backend first.
+    public func signOut() async {
+        await apnsManager.handleSignOut()
+        await session.signOut()
     }
 
     // MARK: - Paywall factory

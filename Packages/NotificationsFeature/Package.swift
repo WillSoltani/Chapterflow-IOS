@@ -11,6 +11,7 @@ let package = Package(
     dependencies: [
         .package(path: "../CoreKit"),
         .package(path: "../DesignSystem"),
+        .package(path: "../Networking"),
     ],
     targets: [
         .target(
@@ -18,6 +19,7 @@ let package = Package(
             dependencies: [
                 .product(name: "CoreKit", package: "CoreKit"),
                 .product(name: "DesignSystem", package: "DesignSystem"),
+                .product(name: "Networking", package: "Networking"),
             ]
         ),
         .testTarget(
@@ -25,6 +27,7 @@ let package = Package(
             dependencies: [
                 "NotificationsFeature",
                 .product(name: "CoreKit", package: "CoreKit"),
+                .product(name: "Networking", package: "Networking"),
             ]
         ),
     ]
