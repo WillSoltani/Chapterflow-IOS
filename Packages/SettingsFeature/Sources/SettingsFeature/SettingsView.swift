@@ -21,6 +21,9 @@ public struct SettingsView: View {
     private let pushStatus: NotificationPermissionStatus?
     private let pushRegistrationError: Error?
     private let onManagePushSettings: (() -> Void)?
+    /// Called when the user taps "Privacy Settings" — navigate to
+    /// ``PrivacySettingsView`` in your feature's navigation stack.
+    private let onShowPrivacySettings: (() -> Void)?
     private let notificationSettingsModel: NotificationSettingsModel?
 
     public init(
@@ -33,6 +36,7 @@ public struct SettingsView: View {
         pushStatus: NotificationPermissionStatus? = nil,
         pushRegistrationError: Error? = nil,
         onManagePushSettings: (() -> Void)? = nil,
+        onShowPrivacySettings: (() -> Void)? = nil,
         notificationSettingsModel: NotificationSettingsModel? = nil
     ) {
         self.isPro = isPro
@@ -44,6 +48,7 @@ public struct SettingsView: View {
         self.pushStatus = pushStatus
         self.pushRegistrationError = pushRegistrationError
         self.onManagePushSettings = onManagePushSettings
+        self.onShowPrivacySettings = onShowPrivacySettings
         self.notificationSettingsModel = notificationSettingsModel
     }
 
@@ -54,6 +59,7 @@ public struct SettingsView: View {
                 if pushStatus != nil {
                     pushSection
                 }
+                privacySection
             }
             .navigationTitle("Settings")
             #if os(iOS)
@@ -137,6 +143,28 @@ public struct SettingsView: View {
         case .authorized, .provisional, .ephemeral: return Color.cfAccent
         case .denied: return Color.orange
         case .notDetermined: return Color.cfSecondaryLabel
+        }
+    }
+
+    // MARK: - Privacy section
+
+    private var privacySection: some View {
+        Section("Privacy") {
+            Button {
+                onShowPrivacySettings?()
+            } label: {
+                HStack {
+                    Label("Privacy Settings", systemImage: "lock.shield")
+                        .foregroundStyle(Color.cfLabel)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.cfCaption)
+                        .foregroundStyle(Color.cfTertiaryLabel)
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Privacy Settings")
+            .accessibilityHint("Control what reading partners can see on your profile")
         }
     }
 
@@ -315,6 +343,15 @@ public struct SettingsView: View {
 #Preview("Settings — XXL text") {
     SettingsView(isPro: false, remainingFreeStarts: 2, pushStatus: NotificationPermissionStatus.authorized)
         .dynamicTypeSize(.accessibility3)
+}
+
+#Preview("Settings — with privacy callback") {
+    SettingsView(
+        isPro: true,
+        currentPeriodEnd: Date(timeIntervalSinceNow: 28 * 24 * 3600),
+        cancelAtPeriodEnd: false,
+        onShowPrivacySettings: { print("Open privacy settings") }
+    )
 }
 
 #endif

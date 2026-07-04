@@ -8,8 +8,10 @@ public struct PublicProfile: Codable, Sendable, Equatable {
     public let avatarUrl: String?
     public let avatarEmoji: String?
     public let tier: ProfileTier
-    public let currentStreak: Int
-    public let booksFinished: Int
+    /// `nil` when the profile owner has hidden their streak (P7.8 privacy).
+    public let currentStreak: Int?
+    /// `nil` when the profile owner has hidden their books-finished count (P7.8 privacy).
+    public let booksFinished: Int?
     public let equippedFrame: CosmeticItem?
     public let equippedTheme: CosmeticItem?
     public let badgeCount: Int
@@ -21,8 +23,8 @@ public struct PublicProfile: Codable, Sendable, Equatable {
         avatarUrl: String?,
         avatarEmoji: String?,
         tier: ProfileTier,
-        currentStreak: Int,
-        booksFinished: Int,
+        currentStreak: Int?,
+        booksFinished: Int?,
         equippedFrame: CosmeticItem?,
         equippedTheme: CosmeticItem?,
         badgeCount: Int,

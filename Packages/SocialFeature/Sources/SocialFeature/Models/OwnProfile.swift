@@ -22,6 +22,9 @@ public struct OwnProfile: Codable, Sendable, Equatable {
     public let badgeCount: Int
     /// ISO-8601 timestamp when the account was created.
     public let joinedAt: String?
+    /// The user's privacy preferences (P7.8). `nil` when the server hasn't returned
+    /// them yet; treat as ``PrivacySettings/default`` in that case.
+    public let privacySettings: PrivacySettings?
 
     public init(
         userId: String,
@@ -37,7 +40,8 @@ public struct OwnProfile: Codable, Sendable, Equatable {
         equippedFrame: CosmeticItem?,
         equippedTheme: CosmeticItem?,
         badgeCount: Int,
-        joinedAt: String?
+        joinedAt: String?,
+        privacySettings: PrivacySettings? = nil
     ) {
         self.userId = userId
         self.displayName = displayName
@@ -53,6 +57,7 @@ public struct OwnProfile: Codable, Sendable, Equatable {
         self.equippedTheme = equippedTheme
         self.badgeCount = badgeCount
         self.joinedAt = joinedAt
+        self.privacySettings = privacySettings
     }
 
     /// Two-letter initials derived from the display name, used as the avatar fallback.
@@ -69,13 +74,24 @@ public struct OwnProfileResponse: Codable, Sendable {
 }
 
 /// Fields the user may update via `PATCH /book/me/settings`.
+///
+/// All fields are optional — only the fields present in the encoded JSON are
+/// applied by the server. Pass only the fields you want to change.
 public struct UpdateSettingsBody: Encodable, Sendable, Equatable {
     public let displayName: String?
     public let avatarEmoji: String?
+    /// Privacy-settings update (P7.8). When non-nil, the entire settings object
+    /// is patched atomically on the server.
+    public let privacySettings: PrivacySettings?
 
-    public init(displayName: String? = nil, avatarEmoji: String? = nil) {
+    public init(
+        displayName: String? = nil,
+        avatarEmoji: String? = nil,
+        privacySettings: PrivacySettings? = nil
+    ) {
         self.displayName = displayName
         self.avatarEmoji = avatarEmoji
+        self.privacySettings = privacySettings
     }
 }
 

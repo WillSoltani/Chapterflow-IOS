@@ -30,6 +30,14 @@ public final class ProfileModel {
     public private(set) var isSaving: Bool = false
     public private(set) var saveError: String?
 
+    // MARK: - Privacy settings
+
+    /// The user's current privacy settings, or the privacy-respecting defaults
+    /// when the server hasn't returned them yet.
+    public var currentPrivacySettings: PrivacySettings {
+        profile?.privacySettings ?? .default
+    }
+
     // MARK: - Dependencies
 
     private let repository: any SocialRepository

@@ -126,6 +126,8 @@ public struct ProfileView: View {
                 Divider()
                     .padding(.horizontal, .cfSpacing16)
 
+                privacyRow
+
                 editRow
             }
             .padding(.horizontal, .cfSpacing16)
@@ -346,6 +348,35 @@ public struct ProfileView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Invite Friends")
+    }
+
+    // MARK: - Privacy row
+
+    private var privacyRow: some View {
+        NavigationLink {
+            PrivacySettingsView(
+                settings: model.currentPrivacySettings,
+                repository: repository
+            )
+        } label: {
+            HStack {
+                Image(systemName: "lock.shield")
+                    .foregroundStyle(Color.cfAccent)
+                    .frame(width: .cfIconSmall)
+                Text("Privacy Settings")
+                    .font(.cfBody)
+                    .foregroundStyle(Color.cfLabel)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.cfCaption)
+                    .foregroundStyle(Color.cfTertiaryLabel)
+            }
+            .padding(.cfSpacing16)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: .cfRadius16))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Privacy Settings")
+        .accessibilityHint("Control what partners can see on your profile")
     }
 
     // MARK: - Edit profile row
