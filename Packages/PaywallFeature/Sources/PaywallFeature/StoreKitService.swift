@@ -45,6 +45,12 @@ public protocol StoreKitServicing: Sendable {
     func purchase(_ product: Product) async throws -> PurchaseResult
     func restorePurchases() async throws
     func currentSubscriptionStatus() async throws -> SubscriptionStatus
+
+    /// Re-verifies all currently-entitling Apple transactions with the backend,
+    /// without calling `AppStore.sync()`. Used by `EntitlementService` reconciliation
+    /// to process transactions the backend may have missed (e.g. after a renewal).
+    /// Unlike `restorePurchases()`, this is safe to call on every foreground refresh.
+    func verifyCurrentEntitlements() async throws
 }
 
 // MARK: - StoreKitService
@@ -153,13 +159,20 @@ public actor StoreKitService: StoreKitServicing {
     /// all current entitlement transactions with the backend.
     public func restorePurchases() async throws {
         try await AppStore.sync()
+        try await verifyCurrentEntitlements()
+    }
+
+    /// Re-verifies all currently-entitling Apple transactions with the backend,
+    /// **without** calling `AppStore.sync()`. Safe to call on every foreground refresh
+    /// as part of cross-platform reconciliation.
+    public func verifyCurrentEntitlements() async throws {
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result,
                   config.allProductIDs.contains(transaction.productID) else { continue }
             do {
                 try await handleVerifiedResult(result)
             } catch {
-                log.error("restorePurchases: failed for \(transaction.productID): \(error.localizedDescription)")
+                log.warning("verifyCurrentEntitlements: failed for \(transaction.productID): \(error.localizedDescription)")
             }
         }
     }

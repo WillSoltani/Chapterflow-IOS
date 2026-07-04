@@ -108,7 +108,8 @@ public struct PaywallView: View {
     // MARK: - Already Pro
 
     private var alreadyProSection: some View {
-        VStack(spacing: .cfSpacing16) {
+        let sourceKind = ProSourceKind(rawSource: model.proSource)
+        return VStack(spacing: .cfSpacing16) {
             Image(systemName: "checkmark.seal.fill")
                 .font(.system(size: 44))
                 .foregroundStyle(Color.cfAccent)
@@ -119,22 +120,38 @@ public struct PaywallView: View {
                 .foregroundStyle(Color.cfLabel)
                 .multilineTextAlignment(.center)
 
-            billingStatusBanner
+            if sourceKind.isApple {
+                // Apple subscription: surface billing lifecycle banners + manage in App Store.
+                billingStatusBanner
 
-            Button {
-                model.openManageSubscriptions()
-            } label: {
-                Text("Manage Subscription")
-                    .font(.cfHeadline)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 52)
+                Button {
+                    model.openManageSubscriptions()
+                } label: {
+                    Text("Manage Subscription")
+                        .font(.cfHeadline)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color.cfAccent)
+                .accessibilityLabel("Manage Subscription — opens App Store")
+            } else {
+                // Non-Apple source (Stripe, license, gift, etc.): explain where to manage.
+                Text("Your Pro access comes from your \(sourceKind.displayName) subscription.")
+                    .font(.cfSubheadline)
+                    .foregroundStyle(Color.cfSecondaryLabel)
+                    .multilineTextAlignment(.center)
+
+                Text("To manage or cancel, visit chapterflow.app from any browser.")
+                    .font(.cfFootnote)
+                    .foregroundStyle(Color.cfTertiaryLabel)
+                    .multilineTextAlignment(.center)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(Color.cfAccent)
-            .accessibilityLabel("Manage Subscription — opens App Store")
         }
         .padding(.cfSpacing16)
         .background(Color.cfSecondaryBackground, in: RoundedRectangle(cornerRadius: .cfRadius16))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("You are a Pro member via \(sourceKind.displayName).")
     }
 
     // MARK: - Benefits
@@ -447,8 +464,8 @@ private enum ProBenefit: CaseIterable {
         case .unlimitedBooks:  return "books.vertical.fill"
         case .offlineReading:  return "arrow.down.circle.fill"
         case .aiInsights:      return "sparkles"
-        case .quizzes:         return "checkmark.seal.fill"
-        case .notes:           return "note.text"
+        case .quizzes:         return "checkmark.circle.fill"
+        case .notes:           return "pencil.and.outline"
         }
     }
 
@@ -456,141 +473,19 @@ private enum ProBenefit: CaseIterable {
         switch self {
         case .unlimitedBooks:  return "Unlimited Books"
         case .offlineReading:  return "Offline Reading"
-        case .aiInsights:      return "AI Insights"
-        case .quizzes:         return "Unlimited Quizzes"
+        case .aiInsights:      return "AI Deep Dive"
+        case .quizzes:         return "Spaced-Repetition Quizzes"
         case .notes:           return "Highlights & Notes"
         }
     }
 
     var subtitle: String {
         switch self {
-        case .unlimitedBooks:  return "Access the full catalogue of 200+ books"
-        case .offlineReading:  return "Download books and read without internet"
-        case .aiInsights:      return "Ask the book, concept graphs, deep analysis"
-        case .quizzes:         return "Reinforce every chapter with spaced repetition"
-        case .notes:           return "Save highlights and personal reflections"
+        case .unlimitedBooks:  return "Access our full catalogue of titles"
+        case .offlineReading:  return "Read anywhere — no internet required"
+        case .aiInsights:      return "Ask anything about any book"
+        case .quizzes:         return "Retain what you read, long-term"
+        case .notes:           return "Capture insights and export them"
         }
     }
-}
-
-// MARK: - Previews
-
-#Preview("Default — not subscribed", traits: .sizeThatFitsLayout) {
-    PaywallView(model: previewPaywallModel(status: .notSubscribed, products: []))
-        .frame(maxHeight: 700)
-}
-
-#Preview("With products — settings context") {
-    PaywallView(model: previewPaywallModel(
-        status: .notSubscribed,
-        products: sampleProducts,
-        context: .settings
-    ))
-}
-
-#Preview("Book detail context") {
-    PaywallView(model: previewPaywallModel(
-        status: .notSubscribed,
-        products: sampleProducts,
-        context: .bookDetail(bookTitle: "Atomic Habits")
-    ))
-}
-
-#Preview("Locked feature context") {
-    PaywallView(model: previewPaywallModel(
-        status: .notSubscribed,
-        products: sampleProducts,
-        context: .lockedFeature(featureName: "AI Deep Dive")
-    ))
-}
-
-#Preview("Already Pro") {
-    PaywallView(model: previewPaywallModel(
-        status: .subscribed(productID: "com.chapterflow.ios.pro.annual", expirationDate: nil),
-        products: sampleProducts,
-        context: .settings
-    ))
-}
-
-#Preview("Grace period") {
-    PaywallView(model: previewPaywallModel(
-        status: .inGracePeriod(productID: "com.chapterflow.ios.pro.annual", expirationDate: nil),
-        products: sampleProducts
-    ))
-}
-
-#Preview("Server benefits") {
-    PaywallView(model: previewPaywallModelWithBenefits())
-}
-
-#Preview("Dark mode") {
-    PaywallView(model: previewPaywallModel(status: .notSubscribed, products: sampleProducts))
-        .preferredColorScheme(.dark)
-}
-
-#Preview("XXL text") {
-    PaywallView(model: previewPaywallModel(status: .notSubscribed, products: sampleProducts))
-        .dynamicTypeSize(.accessibility3)
-}
-
-// MARK: - Preview helpers
-
-private let sampleProducts: [StoreProductInfo] = [
-    StoreProductInfo(
-        id: "com.chapterflow.ios.pro.annual",
-        displayName: "Annual",
-        displayPrice: "$49.99",
-        periodLabel: "year",
-        isPopular: true,
-        introductoryOfferText: "7-day free trial",
-        priceDecimalValue: 49.99
-    ),
-    StoreProductInfo(
-        id: "com.chapterflow.ios.pro.monthly",
-        displayName: "Monthly",
-        displayPrice: "$5.99",
-        periodLabel: "month",
-        isPopular: false,
-        priceDecimalValue: 5.99
-    ),
-]
-
-private actor PreviewStoreKitService: StoreKitServicing {
-    nonisolated let entitlementChanges: AsyncStream<Void> = AsyncStream { _ in }
-    func loadProducts() async throws -> [StoreKit.Product] { [] }
-    func purchase(_ product: StoreKit.Product) async throws -> PurchaseResult { .userCancelled }
-    func restorePurchases() async throws {}
-    func currentSubscriptionStatus() async throws -> SubscriptionStatus { .notSubscribed }
-}
-
-@MainActor
-private func previewPaywallModel(
-    status: SubscriptionStatus,
-    products: [StoreProductInfo],
-    context: PaywallContext = .settings
-) -> PaywallModel {
-    PaywallModel(
-        storeKitService: PreviewStoreKitService(),
-        apiClient: MockAPIClient(),
-        context: context,
-        initialProductInfos: products,
-        initialStatus: status
-    )
-}
-
-@MainActor
-private func previewPaywallModelWithBenefits() -> PaywallModel {
-    let model = previewPaywallModel(status: .notSubscribed, products: sampleProducts)
-    model.inject(
-        productInfos: sampleProducts,
-        status: .notSubscribed,
-        serverBenefits: [
-            "Unlimited books from our full catalogue",
-            "Offline reading — no internet required",
-            "AI Deep Dive — ask any question about a book",
-            "Unlimited spaced-repetition quizzes",
-            "Highlights, notes & export"
-        ]
-    )
-    return model
 }

@@ -31,6 +31,7 @@ private actor StubSKService: StoreKitServicing {
     func loadProducts() async throws -> [Product] { [] }
     func purchase(_ product: Product) async throws -> PurchaseResult { .userCancelled }
     func restorePurchases() async throws {}
+    func verifyCurrentEntitlements() async throws {}
     func currentSubscriptionStatus() async throws -> SubscriptionStatus {
         if shouldThrow { throw AppError.offline }
         return isProStatus

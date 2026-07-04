@@ -15,8 +15,13 @@ import UIKit
 /// - **Local StoreKit status** from ``StoreKitService`` — provides optimistic
 ///   `isPro = true` immediately after a purchase while the backend catches up.
 ///
-/// Never writes unlocks or completions client-side. The merge model is read-only:
-/// StoreKit flips `isPro` optimistically; backend truth wins on the next refresh.
+/// **Cross-platform reconciliation (P4.7):** on every `refresh()`, an
+/// ``EntitlementReconciler`` compares the backend state with the local StoreKit
+/// subscription. When StoreKit shows an active Apple subscription the backend
+/// hasn't processed yet (e.g. a renewal), it re-posts the JWS via
+/// `POST /book/me/billing/apple/verify` and re-fetches the backend entitlement.
+///
+/// Never writes unlocks or completions client-side. Gating is always server-truth.
 @Observable
 @MainActor
 public final class EntitlementService {
@@ -38,22 +43,27 @@ public final class EntitlementService {
     /// `isPro || remainingFreeStarts > 0`
     public private(set) var canStartNewBook: Bool = false
 
+    /// The raw `proSource` field from the backend entitlement.
+    ///
+    /// Common values: `"stripe"`, `"apple"`, `"license"`, `"gift_code"`, `"admin"`.
+    /// `nil` when the user is on the free tier or the entitlement hasn't loaded yet.
+    /// Use this to display source-specific messaging (e.g. "Pro via web" for Stripe).
+    public private(set) var proSource: String?
+
     // MARK: - Private state
 
     private var backendEntitlement: Entitlement?
     private var storeKitStatus: SubscriptionStatus = .unknown
+    private let reconciler = EntitlementReconciler()
 
     // MARK: - Dependencies
 
     private let storeKitService: any StoreKitServicing
     private let apiClient: any APIClientProtocol
     private let store: KeyValueStore
+    private let storeKitConfig: StoreKitConfig
     private let log = AppLog(category: .billing)
 
-    /// Listener tasks are cancelled in `deinit`.
-    /// `nonisolated(unsafe)` lets `deinit` cancel without a main-actor hop;
-    /// safe because only written from `start()` (always on main actor) and
-    /// `deinit` runs after all strong references are gone.
     nonisolated(unsafe) private var storeKitListenerTask: Task<Void, Never>?
     nonisolated(unsafe) private var foregroundListenerTask: Task<Void, Never>?
 
@@ -67,21 +77,38 @@ public final class EntitlementService {
     /// trigger an initial refresh.
     ///
     /// - Parameters:
-    ///   - storeKitService: The StoreKit 2 service (from P4.1).
+    ///   - storeKitService: The StoreKit 2 service.
     ///   - apiClient: The authenticated API client.
+    ///   - storeKitConfig: The StoreKit product ID configuration.
     ///   - store: Key-value store for the offline entitlement cache.
-    ///     Defaults to the App Group `UserDefaults` via `KeyValueStore()`.
     public init(
         storeKitService: any StoreKitServicing,
         apiClient: any APIClientProtocol,
+        storeKitConfig: StoreKitConfig,
         store: KeyValueStore = KeyValueStore()
     ) {
         self.storeKitService = storeKitService
         self.apiClient = apiClient
+        self.storeKitConfig = storeKitConfig
         self.store = store
         // Warm from cache — offline reads work before the first network fetch.
         self.backendEntitlement = store.value(Entitlement.self, forKey: Self.cacheKey)
         updateDerivedState()
+    }
+
+    /// Convenience initializer for use when StoreKit config isn't needed.
+    /// The reconciler will have no known product IDs and will skip Apple verification.
+    public convenience init(
+        storeKitService: any StoreKitServicing,
+        apiClient: any APIClientProtocol,
+        store: KeyValueStore = KeyValueStore()
+    ) {
+        self.init(
+            storeKitService: storeKitService,
+            apiClient: apiClient,
+            storeKitConfig: StoreKitConfig(monthlyProductID: "", annualProductID: ""),
+            store: store
+        )
     }
 
     nonisolated deinit {
@@ -149,16 +176,22 @@ public final class EntitlementService {
 
     // MARK: - Refresh
 
-    /// Refreshes entitlement state from both the backend and StoreKit.
+    /// Refreshes entitlement state from both the backend and StoreKit,
+    /// then runs cross-platform reconciliation.
     ///
-    /// On success, updates `isPro`, `canStartNewBook`, and the offline cache.
+    /// On success, updates `isPro`, `canStartNewBook`, `proSource`, and the offline cache.
     /// On failure, keeps the last known state to avoid flickering.
+    ///
+    /// Reconciliation: if StoreKit shows an active Apple subscription the backend
+    /// hasn't reflected (e.g. a renewal), this method re-verifies the transaction
+    /// with the backend and re-fetches the entitlement.
     ///
     /// Public so callers (e.g., post-purchase flow) can trigger an explicit
     /// refresh without waiting for the next background cycle.
     public func refresh() async {
         await fetchBackendEntitlement()
         await fetchStoreKitStatus()
+        await reconcileAndVerifyIfNeeded()
     }
 
     // MARK: - Private fetch
@@ -171,7 +204,6 @@ public final class EntitlementService {
             try? store.set(response.entitlement, forKey: Self.cacheKey)
         } catch {
             log.warning("EntitlementService: backend fetch failed — \(error.localizedDescription)")
-            // Keep the last known entitlement (cache or previous refresh).
         }
     }
 
@@ -182,6 +214,37 @@ public final class EntitlementService {
             updateDerivedState()
         } catch {
             log.warning("EntitlementService: StoreKit status fetch failed — \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - Cross-platform reconciliation (P4.7)
+
+    /// Runs the reconciler and triggers Apple transaction verification if needed.
+    ///
+    /// Called as the last step of every `refresh()`. When the reconciler detects
+    /// that StoreKit shows an active Apple subscription the backend hasn't processed
+    /// (most commonly: a renewal that arrived before the server webhook fired),
+    /// this method re-verifies the transaction and re-fetches the backend entitlement.
+    private func reconcileAndVerifyIfNeeded() async {
+        guard let backend = backendEntitlement else { return }
+
+        let action = reconciler.reconcile(
+            backend: backend,
+            storeKitActiveProductIds: storeKitStatus.activeProductIds,
+            storeKitLatestExpiryDate: storeKitStatus.latestExpiryDate,
+            backendPeriodEndDate: currentPeriodEnd,
+            knownAppleProductIds: storeKitConfig.allProductIDs
+        )
+
+        guard case .triggerAppleVerify = action else { return }
+
+        log.info("EntitlementService: reconciler triggered Apple verify")
+        do {
+            try await storeKitService.verifyCurrentEntitlements()
+            // Re-fetch the backend entitlement to reflect the newly processed transaction.
+            await fetchBackendEntitlement()
+        } catch {
+            log.warning("EntitlementService: Apple verify during reconciliation failed — \(error.localizedDescription)")
         }
     }
 
@@ -219,7 +282,9 @@ public final class EntitlementService {
         } ?? false
         let newIsPro = backendIsPro || storeKitStatus.isPro
         let newCanStart = newIsPro || (backendEntitlement?.remainingFreeStarts ?? 0) > 0
+        let newProSource = backendEntitlement?.proSource
         if isPro != newIsPro { isPro = newIsPro }
         if canStartNewBook != newCanStart { canStartNewBook = newCanStart }
+        if proSource != newProSource { proSource = newProSource }
     }
 }
