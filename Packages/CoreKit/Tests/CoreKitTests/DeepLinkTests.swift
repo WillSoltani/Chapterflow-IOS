@@ -60,4 +60,29 @@ struct DeepLinkTests {
     func foreignScheme() {
         #expect(link("https://chapterflow.app/book/1") == nil)
     }
+
+    @Test("parses the library link")
+    func library() {
+        #expect(link("chapterflow://library") == .library)
+    }
+
+    @Test("parses the profile link")
+    func profile() {
+        #expect(link("chapterflow://profile") == .profile)
+    }
+
+    @Test("parses profile with sub-path as .profile")
+    func profileSubPath() {
+        #expect(link("chapterflow://profile/badges") == .profile)
+    }
+
+    @Test("parses the engagement link")
+    func engagement() {
+        #expect(link("chapterflow://engagement") == .engagement)
+    }
+
+    @Test("parses the notifications link")
+    func notifications() {
+        #expect(link("chapterflow://notifications") == .notifications)
+    }
 }

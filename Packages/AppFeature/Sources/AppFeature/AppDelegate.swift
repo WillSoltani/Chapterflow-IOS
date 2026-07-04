@@ -1,17 +1,34 @@
 #if canImport(UIKit)
 import UIKit
+import UserNotifications
 import NotificationsFeature
 import CoreKit
 
 /// The app's `UIApplicationDelegate`, wired in via `@UIApplicationDelegateAdaptor`
 /// in `ChapterFlowApp`.
 ///
-/// Its only responsibility is to forward APNs registration callbacks into
-/// `APNSRegistrationBridge` so `APNSRegistrationManager` (in `NotificationsFeature`)
-/// can act on them without depending on the app target.
+/// Responsibilities:
+/// - Forward APNs token registration into `APNSRegistrationBridge`.
+/// - Register push notification categories at launch (idempotent, safe before auth).
+/// - Implement `UNUserNotificationCenterDelegate` to:
+///     • Show alerts while the app is foregrounded.
+///     • Route taps + inline actions to `PushRoutingBridge` → `AppModel`.
 public final class AppDelegate: NSObject, UIApplicationDelegate, @unchecked Sendable {
 
     private let log = AppLog(category: .notifications)
+
+    // MARK: - Launch
+
+    public func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
+    ) -> Bool {
+        // Register categories before any notification can be delivered.
+        PushCategoryRegistrar.registerCategories()
+        // Set this delegate as the UNUserNotificationCenter delegate.
+        UNUserNotificationCenter.current().delegate = self
+        return true
+    }
 
     // MARK: - APNs registration callbacks
 
@@ -32,6 +49,33 @@ public final class AppDelegate: NSObject, UIApplicationDelegate, @unchecked Send
         Task { @MainActor in
             APNSRegistrationBridge.shared.didFailToRegister(error)
         }
+    }
+}
+
+// MARK: - UNUserNotificationCenterDelegate
+
+extension AppDelegate: @preconcurrency UNUserNotificationCenterDelegate {
+
+    /// Called when a notification arrives while the app is in the foreground.
+    /// We always show the alert+badge+sound so the user sees the message.
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .badge, .sound])
+    }
+
+    /// Called when the user taps a notification banner or an inline action button.
+    /// Routes the response to `PushRoutingBridge` which calls the `AppModel`.
+    public func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        // didReceiveResponse is nonisolated — safe to call directly from the delegate.
+        PushRoutingBridge.shared.didReceiveResponse(response)
+        completionHandler()
     }
 }
 #endif

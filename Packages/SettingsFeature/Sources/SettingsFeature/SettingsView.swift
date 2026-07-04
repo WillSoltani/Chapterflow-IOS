@@ -21,6 +21,7 @@ public struct SettingsView: View {
     private let pushStatus: NotificationPermissionStatus?
     private let pushRegistrationError: Error?
     private let onManagePushSettings: (() -> Void)?
+    private let notificationSettingsModel: NotificationSettingsModel?
 
     public init(
         isPro: Bool = false,
@@ -31,7 +32,8 @@ public struct SettingsView: View {
         onManageSubscription: (() -> Void)? = nil,
         pushStatus: NotificationPermissionStatus? = nil,
         pushRegistrationError: Error? = nil,
-        onManagePushSettings: (() -> Void)? = nil
+        onManagePushSettings: (() -> Void)? = nil,
+        notificationSettingsModel: NotificationSettingsModel? = nil
     ) {
         self.isPro = isPro
         self.remainingFreeStarts = remainingFreeStarts
@@ -42,6 +44,7 @@ public struct SettingsView: View {
         self.pushStatus = pushStatus
         self.pushRegistrationError = pushRegistrationError
         self.onManagePushSettings = onManagePushSettings
+        self.notificationSettingsModel = notificationSettingsModel
     }
 
     public var body: some View {
@@ -95,6 +98,17 @@ public struct SettingsView: View {
                     }
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("Registration error: \(error.localizedDescription)")
+                }
+
+                if let notifModel = notificationSettingsModel {
+                    NavigationLink {
+                        NotificationSettingsView(model: notifModel)
+                    } label: {
+                        Label("Notification Preferences", systemImage: "bell.and.waves.left.and.right")
+                            .foregroundStyle(Color.cfLabel)
+                    }
+                    .accessibilityLabel("Open notification preferences")
+                    .accessibilityHint("Manage reminders, digests, and alert types")
                 }
             }
         }
@@ -283,6 +297,18 @@ public struct SettingsView: View {
         isPro: false,
         remainingFreeStarts: 0,
         pushStatus: NotificationPermissionStatus.notDetermined
+    )
+}
+
+#Preview("Settings — With notification prefs link") {
+    SettingsView(
+        isPro: false,
+        remainingFreeStarts: 1,
+        pushStatus: NotificationPermissionStatus.authorized,
+        notificationSettingsModel: NotificationSettingsModel(
+            repository: FakeNotificationPreferencesRepository(),
+            authorizer: PreviewNotificationAuthorizer()
+        )
     )
 }
 
