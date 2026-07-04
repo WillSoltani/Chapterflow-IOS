@@ -16,6 +16,7 @@ import UIKit
 public struct ReaderView: View {
     @State private var readerModel: ReaderModel
     @State private var didFireEndHaptic = false
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     public init(readerModel: ReaderModel) {
         _readerModel = State(initialValue: readerModel)
@@ -82,49 +83,27 @@ public struct ReaderView: View {
     // MARK: - Loaded
 
     private func loadedView(controlsModel: ReaderControlsModel) -> some View {
-        let appearance = ReadingAppearance(preferences: controlsModel.preferences)
         let chapterTitle = controlsModel.resolvedChapter.title
+        let navModel = readerModel.navModel
+        let showPersistentSidebar = horizontalSizeClass == .regular
+            && navModel?.isToCPresented == true
 
-        return ZStack(alignment: .bottom) {
-            VStack(spacing: 0) {
-                ReadingProgressBar(
-                    readPercent: readerModel.readPercent,
-                    timeLeftMinutes: controlsModel.timeLeftMinutes
+        return HStack(spacing: 0) {
+            if showPersistentSidebar, let nav = navModel {
+                TableOfContentsView(
+                    model: nav,
+                    currentReadPercent: readerModel.readPercent,
+                    isSheet: false
                 )
-
-                // Two-axis completion badges — shown when at least one axis is active.
-                if readerModel.isKnowledgeComplete || readerModel.applicationState != .none {
-                    HStack {
-                        ChapterCompletionBadgesView(
-                            isKnowledgeComplete: readerModel.isKnowledgeComplete,
-                            applicationState: readerModel.applicationState
-                        )
-                        Spacer()
-                    }
-                    .padding(.horizontal, .cfSpacing16)
-                    .padding(.vertical, .cfSpacing8)
-                    .background(appearance.colors.pageBg)
-                }
-
-                ReaderControlSurface(
-                    model: controlsModel,
-                    annotationModel: readerModel.annotationModel
-                )
+                .frame(width: 300)
+                .background(Color.cfSecondaryBackground)
+                Divider()
             }
-
-            if readerModel.showQuizCTA && !readerModel.isLoopComplete {
-                ChapterEndCTA(
-                    chapterTitle: chapterTitle,
-                    onTakeQuiz: readerModel.onTakeQuiz,
-                    onListen: readerModel.onListen,
-                    onAsk: readerModel.onAsk,
-                    onReflect: readerModel.onReflect
-                )
-            }
+            readerContentStack(controlsModel: controlsModel, chapterTitle: chapterTitle, navModel: navModel)
         }
-        .background(appearance.colors.pageBg)
         .animation(.spring(duration: 0.35), value: readerModel.showQuizCTA)
         .animation(.spring(duration: 0.35), value: readerModel.isLoopComplete)
+        .animation(.spring(duration: 0.3), value: showPersistentSidebar)
         .overlay {
             if readerModel.isLoopComplete {
                 LoopCompletionOverlay(
@@ -155,6 +134,51 @@ public struct ReaderView: View {
             }
         }
         .readerNavigationHidden(controlsModel.isFocusModeActive)
+    }
+
+    @ViewBuilder
+    private func readerContentStack(
+        controlsModel: ReaderControlsModel,
+        chapterTitle: String,
+        navModel: ChapterNavModel?
+    ) -> some View {
+        let appearance = ReadingAppearance(preferences: controlsModel.preferences)
+        ZStack(alignment: .bottom) {
+            VStack(spacing: 0) {
+                ReadingProgressBar(
+                    readPercent: readerModel.readPercent,
+                    timeLeftMinutes: controlsModel.timeLeftMinutes
+                )
+                // Two-axis completion badges — shown when at least one axis is active.
+                if readerModel.isKnowledgeComplete || readerModel.applicationState != .none {
+                    HStack {
+                        ChapterCompletionBadgesView(
+                            isKnowledgeComplete: readerModel.isKnowledgeComplete,
+                            applicationState: readerModel.applicationState
+                        )
+                        Spacer()
+                    }
+                    .padding(.horizontal, .cfSpacing16)
+                    .padding(.vertical, .cfSpacing8)
+                    .background(appearance.colors.pageBg)
+                }
+                ReaderControlSurface(
+                    model: controlsModel,
+                    annotationModel: readerModel.annotationModel,
+                    navModel: navModel
+                )
+            }
+            if readerModel.showQuizCTA && !readerModel.isLoopComplete {
+                ChapterEndCTA(
+                    chapterTitle: chapterTitle,
+                    onTakeQuiz: readerModel.onTakeQuiz,
+                    onListen: readerModel.onListen,
+                    onAsk: readerModel.onAsk,
+                    onReflect: readerModel.onReflect
+                )
+            }
+        }
+        .background(appearance.colors.pageBg)
     }
 
     // MARK: - Helpers
