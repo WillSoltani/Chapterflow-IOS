@@ -94,4 +94,17 @@ public actor LiveSocialRepository: SocialRepository {
         let response: CreateGiftResponse = try await client.send(endpoint)
         return response.gift
     }
+
+    // MARK: - Share events
+
+    public func postShareEvent(
+        cardType: ShareCardType,
+        destination: ShareEventDestination
+    ) async throws {
+        let endpoint = try Endpoints.postShareEvent(
+            cardType: cardType.rawValue,
+            destination: destination.rawValue
+        )
+        let _: ShareEventResponse = try await client.send(endpoint)
+    }
 }

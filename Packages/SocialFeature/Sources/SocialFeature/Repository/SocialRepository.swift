@@ -87,4 +87,12 @@ public protocol SocialRepository: Sendable {
     /// Maps to `POST /book/me/gifts`.
     /// - Parameter giftType: The product to gift (e.g. `"pro_week"`).
     func createGift(giftType: String) async throws -> Gift
+
+    // MARK: - Share events
+
+    /// Logs a share event to the server after the user shares a card.
+    ///
+    /// Maps to `POST /book/me/share-events`. Fire-and-forget: the caller should
+    /// not surface a failure to the user (a dropped analytics event is not fatal).
+    func postShareEvent(cardType: ShareCardType, destination: ShareEventDestination) async throws
 }

@@ -177,4 +177,17 @@ public actor FakeSocialRepository: SocialRepository {
         gifts[code] = gift
         return gift
     }
+
+    // MARK: - Share events
+
+    /// Share events recorded by ``postShareEvent`` (for test assertions).
+    public private(set) var recordedShareEvents: [(ShareCardType, ShareEventDestination)] = []
+
+    public func postShareEvent(
+        cardType: ShareCardType,
+        destination: ShareEventDestination
+    ) async throws {
+        if let err = forcedError { throw err }
+        recordedShareEvents.append((cardType, destination))
+    }
 }
