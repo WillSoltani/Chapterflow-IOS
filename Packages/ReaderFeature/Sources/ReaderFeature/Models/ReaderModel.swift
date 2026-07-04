@@ -95,6 +95,10 @@ public final class ReaderModel {
     /// Receives the selected block text as context for the AI query.
     public var onAskAboutSelection: ((String) -> Void)?
 
+    /// Called when the user taps "Book Preferences" in the reader toolbar.
+    /// Wired by the host (AppFeature) to present ``BookPreferencesSheet``.
+    public var onShowBookPreferences: (() -> Void)?
+
     /// Async closure that fetches the depth recommendation for `bookId`.
     ///
     /// Injected by the host (AppFeature) using `LiveAIRepository`. When non-nil, the model

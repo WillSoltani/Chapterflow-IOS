@@ -179,6 +179,8 @@ public struct ReaderToolbar: View {
         HStack {
             readingModeButton
             Spacer()
+            bookPreferencesButton
+            Spacer().frame(width: .cfSpacing16)
             appearanceButton
             Spacer().frame(width: .cfSpacing16)
             focusModeButton
@@ -229,6 +231,20 @@ public struct ReaderToolbar: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Reading appearance")
+    }
+
+    private var bookPreferencesButton: some View {
+        Button {
+            model.isBookPreferencesPanelPresented = true
+        } label: {
+            Image(systemName: "slider.horizontal.3")
+                .font(.cfCallout)
+                .foregroundStyle(Color.cfLabel)
+                .frame(width: 36, height: 36)
+                .background(Color.cfSecondaryFill, in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Book reading preferences")
     }
 
     private var focusModeButton: some View {

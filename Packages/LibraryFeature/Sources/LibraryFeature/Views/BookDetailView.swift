@@ -2,8 +2,8 @@ import SwiftUI
 import Models
 import DesignSystem
 import CoreKit
-import AIFeature
 import Persistence
+import AIFeature
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -21,29 +21,32 @@ public struct BookDetailView: View {
 
     @State private var model: BookDetailModel
     @State private var showAskSheet = false
+    @State private var showPreferencesSheet = false
     @State private var askModel: AskTheBookModel?
-    @Environment(AudioPlayerModel.self) private var audioPlayerModel
 
     private let aiRepository: (any AIRepository)?
+    private let preferences: AppPreferences
+    private let store: KeyValueStore
+    private let preferencesRepository: (any BookPreferencesRepository)?
 
     public init(
         bookId: String,
         repository: any BookDetailRepository,
         aiRepository: (any AIRepository)? = nil,
+        preferences: AppPreferences = AppPreferences(),
+        store: KeyValueStore = KeyValueStore(),
+        preferencesRepository: (any BookPreferencesRepository)? = nil,
         onOpenReader: ((String, Int, VariantFamily) -> Void)? = nil,
         onShowPaywall: (() -> Void)? = nil
     ) {
         let m = BookDetailModel(bookId: bookId, repository: repository)
         m.onOpenReader = onOpenReader
         m.onShowPaywall = onShowPaywall
-        // Wire depth recommendation using the AI repository (optional feature).
-        if let ai = aiRepository {
-            m.fetchDepthRecommendation = { bookId in
-                try await ai.depthRecommendation(bookId: bookId)
-            }
-        }
         _model = State(initialValue: m)
         self.aiRepository = aiRepository
+        self.preferences = preferences
+        self.store = store
+        self.preferencesRepository = preferencesRepository
     }
 
     public var body: some View {
@@ -56,6 +59,21 @@ public struct BookDetailView: View {
             .sheet(isPresented: $showAskSheet) {
                 if let askModel {
                     AskTheBookSheet(model: askModel)
+                }
+            }
+            .sheet(isPresented: $showPreferencesSheet) {
+                if let variantFamily = model.manifest?.variantFamily {
+                    BookPreferencesSheet(
+                        model: BookPreferencesModel(
+                            bookId: model.bookId,
+                            variantFamily: variantFamily,
+                            store: store,
+                            preferences: preferences,
+                            repository: preferencesRepository
+                        )
+                    )
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
                 }
             }
             .task { await model.fetch() }
@@ -93,8 +111,6 @@ public struct BookDetailView: View {
                         .padding(.horizontal, .cfSpacing16)
                         .padding(.top, .cfSpacing8)
                 }
-                listenSection
-                    .padding(.top, .cfSpacing8)
                 depthToneRow
                     .padding(.top, .cfSpacing16)
                 chapterListSection
@@ -149,7 +165,6 @@ public struct BookDetailView: View {
 
     private var statsSection: some View {
         HStack(spacing: .cfSpacing20) {
-            // Progress ring + fraction
             HStack(spacing: .cfSpacing8) {
                 ProgressRingView(progress: model.progressFraction, size: 36, lineWidth: 3.5)
                 VStack(alignment: .leading, spacing: 2) {
@@ -164,7 +179,6 @@ public struct BookDetailView: View {
 
             Divider().frame(height: 32)
 
-            // Total reading time
             HStack(spacing: .cfSpacing8) {
                 Image(systemName: "clock")
                     .foregroundStyle(Color.cfSecondaryLabel)
@@ -192,61 +206,29 @@ public struct BookDetailView: View {
     // MARK: - Primary action
 
     private var primaryActionSection: some View {
-        VStack(spacing: .cfSpacing4) {
-            Button {
-                triggerHaptic()
-                Task { await model.performPrimaryAction() }
-            } label: {
-                HStack {
-                    if model.isStarting {
-                        ProgressView()
-                            .progressViewStyle(.circular)
-                            .tint(.white)
-                            .scaleEffect(0.8)
-                    } else {
-                        Text(primaryActionLabel)
-                            .font(.cfHeadline)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 50)
-                .background(primaryActionBackground, in: RoundedRectangle(cornerRadius: .cfRadius12, style: .continuous))
-                .foregroundStyle(primaryActionForeground)
-            }
-            .disabled(model.primaryAction == .disabled || model.isStarting)
-            .padding(.horizontal, .cfSpacing16)
-            .accessibilityLabel(primaryActionLabel)
-
-            if model.primaryAction == .startReading, model.freeStartsLeft > 0 {
-                let count = model.freeStartsLeft
-                Text(count == 1 ? "1 free start remaining" : "\(count) free starts remaining")
-                    .font(.cfCaption2)
-                    .foregroundStyle(Color.cfSecondaryLabel)
-                    .accessibilityLabel("\(count) free book \(count == 1 ? "start" : "starts") remaining")
-            }
-        }
-    }
-
-    // MARK: - Listen
-
-    private var listenSection: some View {
         Button {
-            let bookId = model.bookId
-            let chapter = model.currentChapterNumber
-            Task { await audioPlayerModel.play(bookId: bookId, chapterNumber: chapter) }
+            triggerHaptic()
+            Task { await model.performPrimaryAction() }
         } label: {
-            Label("Listen", systemImage: "headphones")
-                .font(.cfSubheadline)
-                .frame(maxWidth: .infinity)
-                .frame(height: 50)
-                .background(
-                    Color.cfSecondaryFill,
-                    in: RoundedRectangle(cornerRadius: .cfRadius12, style: .continuous)
-                )
-                .foregroundStyle(Color.cfAccent)
+            HStack {
+                if model.isStarting {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .tint(.white)
+                        .scaleEffect(0.8)
+                } else {
+                    Text(primaryActionLabel)
+                        .font(.cfHeadline)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .background(primaryActionBackground, in: RoundedRectangle(cornerRadius: .cfRadius12, style: .continuous))
+            .foregroundStyle(primaryActionForeground)
         }
+        .disabled(model.primaryAction == .disabled || model.isStarting)
         .padding(.horizontal, .cfSpacing16)
-        .accessibilityLabel("Listen to chapter \(model.currentChapterNumber)")
+        .accessibilityLabel(primaryActionLabel)
     }
 
     private var primaryActionLabel: String {
@@ -278,10 +260,11 @@ public struct BookDetailView: View {
         VStack(spacing: 0) {
             Divider().padding(.leading, .cfSpacing16)
             Button {
-                // Depth/tone sheet — wired in a later prompt.
+                triggerSelectionHaptic()
+                showPreferencesSheet = true
             } label: {
                 HStack {
-                    Label("Depth & Tone", systemImage: "slider.horizontal.3")
+                    Label("Reading Preferences", systemImage: "slider.horizontal.3")
                         .font(.cfSubheadline)
                         .foregroundStyle(Color.cfLabel)
                     Spacer()
@@ -299,47 +282,8 @@ public struct BookDetailView: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            depthRecommendationHint
+            .accessibilityLabel("Open reading preferences")
             Divider().padding(.leading, .cfSpacing16)
-        }
-    }
-
-    @ViewBuilder
-    private var depthRecommendationHint: some View {
-        if let rec = model.depthRecommendation,
-           rec.isConfident,
-           let depth = rec.recommendedDepth,
-           !depth.isUnknown {
-            let family = model.manifest?.variantFamily ?? .emh
-            VStack(spacing: 0) {
-                Divider().padding(.leading, .cfSpacing16)
-                HStack(alignment: .top, spacing: .cfSpacing8) {
-                    Image(systemName: "sparkles")
-                        .font(.cfCaption)
-                        .foregroundStyle(Color.cfAccent)
-                        .padding(.top, 1)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Recommended for you: \(depth.displayName)")
-                            .font(.cfCaption)
-                            .fontWeight(.medium)
-                            .foregroundStyle(Color.cfAccent)
-                        let rationale = rec.rationale(variantFamily: family)
-                        if !rationale.isEmpty {
-                            Text(rationale)
-                                .font(.cfCaption2)
-                                .foregroundStyle(Color.cfAccent.opacity(0.8))
-                        }
-                    }
-                    Spacer()
-                }
-                .padding(.horizontal, .cfSpacing16)
-                .padding(.vertical, .cfSpacing8)
-            }
-            .transition(.move(edge: .top).combined(with: .opacity))
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(
-                "Depth recommendation: \(depth.displayName). \(rec.rationale(variantFamily: family))"
-            )
         }
     }
 
@@ -466,26 +410,9 @@ private extension CGFloat {
     static let cfSpacing14: CGFloat = 14
 }
 
-// MARK: - VariantKey unknown helper
-
-private extension VariantKey {
-    var isUnknown: Bool {
-        if case .unknown = self { return true }
-        return false
-    }
-}
-
 // MARK: - Previews
 
 #if DEBUG
-@MainActor
-private func makePreviewAudioModel() -> AudioPlayerModel {
-    AudioPlayerModel(
-        player: AudioPlayer(repository: FakeAudioRepository()),
-        preferences: AppPreferences()
-    )
-}
-
 #Preview("Free — locked (paywall)") {
     NavigationStack {
         BookDetailView(
@@ -493,7 +420,6 @@ private func makePreviewAudioModel() -> AudioPlayerModel {
             repository: PreviewData.bookDetailFreeLocked
         )
     }
-    .environment(makePreviewAudioModel())
 }
 
 #Preview("In-progress") {
@@ -503,7 +429,6 @@ private func makePreviewAudioModel() -> AudioPlayerModel {
             repository: PreviewData.bookDetailInProgress
         )
     }
-    .environment(makePreviewAudioModel())
 }
 
 #Preview("Completed") {
@@ -513,7 +438,6 @@ private func makePreviewAudioModel() -> AudioPlayerModel {
             repository: PreviewData.bookDetailCompleted
         )
     }
-    .environment(makePreviewAudioModel())
 }
 
 #Preview("Dark mode — in-progress") {
@@ -523,7 +447,6 @@ private func makePreviewAudioModel() -> AudioPlayerModel {
             repository: PreviewData.bookDetailInProgress
         )
     }
-    .environment(makePreviewAudioModel())
     .preferredColorScheme(.dark)
 }
 
@@ -534,43 +457,6 @@ private func makePreviewAudioModel() -> AudioPlayerModel {
             repository: PreviewData.bookDetailInProgress
         )
     }
-    .environment(makePreviewAudioModel())
     .dynamicTypeSize(.accessibility3)
-}
-
-#Preview("Depth recommendation — confident") {
-    NavigationStack {
-        BookDetailView(
-            bookId: "b-atomic-habits",
-            repository: PreviewData.bookDetailInProgress,
-            aiRepository: FakeAIRepository()
-        )
-    }
-    .environment(makePreviewAudioModel())
-}
-
-#Preview("Depth recommendation — low confidence (hidden)") {
-    NavigationStack {
-        BookDetailView(
-            bookId: "b-atomic-habits",
-            repository: PreviewData.bookDetailInProgress,
-            aiRepository: FakeAIRepository(
-                depth: FakeAIRepository.lowConfidenceDepthRecommendation
-            )
-        )
-    }
-    .environment(makePreviewAudioModel())
-}
-
-#Preview("Depth recommendation — dark mode") {
-    NavigationStack {
-        BookDetailView(
-            bookId: "b-atomic-habits",
-            repository: PreviewData.bookDetailInProgress,
-            aiRepository: FakeAIRepository()
-        )
-    }
-    .environment(makePreviewAudioModel())
-    .preferredColorScheme(.dark)
 }
 #endif

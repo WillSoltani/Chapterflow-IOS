@@ -46,6 +46,32 @@ public enum ReadingTheme: String, Sendable, CaseIterable, Codable {
     }
 }
 
+/// The user's preferred learning mode for a book.
+public enum LearningMode: String, Sendable, CaseIterable, Codable {
+    /// Read the chapter text (default).
+    case reading
+    /// Prefer audio narration.
+    case listening
+    /// Focus on quizzes and reviews.
+    case reviewing
+
+    public var displayName: String {
+        switch self {
+        case .reading: return "Reading"
+        case .listening: return "Listening"
+        case .reviewing: return "Reviewing"
+        }
+    }
+
+    public var systemImage: String {
+        switch self {
+        case .reading: return "book.pages"
+        case .listening: return "headphones"
+        case .reviewing: return "checkmark.circle"
+        }
+    }
+}
+
 /// An `@Observable` store of user reading/audio/appearance preferences, backed by
 /// App-Group `UserDefaults` so widgets and extensions read the same values.
 ///

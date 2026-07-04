@@ -147,6 +147,12 @@ public struct ReaderView: View {
                 hapticTick()
             }
         }
+        .onChange(of: controlsModel.isBookPreferencesPanelPresented) { _, isPresented in
+            if isPresented {
+                controlsModel.isBookPreferencesPanelPresented = false
+                readerModel.onShowBookPreferences?()
+            }
+        }
         .readerNavigationHidden(controlsModel.isFocusModeActive)
     }
 
