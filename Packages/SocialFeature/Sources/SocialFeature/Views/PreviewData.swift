@@ -263,6 +263,16 @@ extension FakeSocialRepository {
         FakeSocialRepository(error: .offline)
     }
 
+    /// Repository where `userId` is already blocked (for safety-UI previews).
+    public static func withBlocked(userId: String) -> FakeSocialRepository {
+        FakeSocialRepository(
+            profile: .preview,
+            badges: BadgeItem.previewList,
+            publicProfiles: ["user-partner": .preview()],
+            blockedUserIds: [userId]
+        )
+    }
+
     /// Repository seeded with multiple reading pairs for pairs-screen previews.
     public static var withPairs: FakeSocialRepository {
         FakeSocialRepository(
