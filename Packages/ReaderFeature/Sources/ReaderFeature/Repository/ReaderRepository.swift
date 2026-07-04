@@ -37,4 +37,9 @@ public protocol ReaderRepository: Sendable {
 
     /// Returns the previously saved block index for a chapter, or `nil` if none.
     func loadScrollPosition(bookId: String, chapterNumber: Int) -> Int?
+
+    /// Fetches the full book manifest (chapter list + metadata) from the server.
+    /// Used to populate the in-reader table of contents.
+    /// Failures are handled gracefully by the caller — the reader still works without it.
+    func getBookManifest(bookId: String) async throws -> BookManifest
 }

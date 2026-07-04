@@ -16,6 +16,9 @@ public final class FakeReaderRepository: ReaderRepository, @unchecked Sendable {
     /// Chapter to return from `getChapter`. Override to inject errors.
     public var chapterResponse: Result<ChapterResponse, Error>
 
+    /// Book manifest to return from `getBookManifest`. Override to inject errors.
+    public var manifestResponse: Result<BookManifest, Error>
+
     /// Book state to return from `getBookState`. Override to inject specific states.
     public var bookStateResponse: Result<BookStateResponse, Error>
 
@@ -58,12 +61,14 @@ public final class FakeReaderRepository: ReaderRepository, @unchecked Sendable {
     /// Creates a fake repository that returns the built-in EMH chapter fixture.
     public init() {
         self.chapterResponse = .success(Self.makePreviewResponse())
+        self.manifestResponse = .success(Self.makePreviewManifest())
         self.bookStateResponse = .success(Self.makeDefaultBookState())
     }
 
     /// Creates a fake repository with a custom response.
     public init(chapterResponse: Result<ChapterResponse, Error>) {
         self.chapterResponse = chapterResponse
+        self.manifestResponse = .success(Self.makePreviewManifest())
         self.bookStateResponse = .success(Self.makeDefaultBookState())
     }
 
@@ -97,6 +102,13 @@ public final class FakeReaderRepository: ReaderRepository, @unchecked Sendable {
         getBookStateCalls += 1
         switch bookStateResponse {
         case .success(let r): return r
+        case .failure(let e): throw e
+        }
+    }
+
+    public func getBookManifest(bookId: String) async throws -> BookManifest {
+        switch manifestResponse {
+        case .success(let m): return m
         case .failure(let e): throw e
         }
     }
@@ -185,6 +197,68 @@ public final class FakeReaderRepository: ReaderRepository, @unchecked Sendable {
         """
         // swiftlint:disable:next force_try
         return try! JSONDecoder.chapterFlow.decode(ChapterResponse.self, from: Data(json.utf8))
+    }
+
+    static func makePreviewManifest() -> BookManifest {
+        let chapters = [
+            BookManifestChapter(
+                chapterId: "ch-ah-1",
+                number: 1,
+                title: "The Surprising Power of Atomic Habits",
+                readingTimeMinutes: 12,
+                chapterKey: "ch-key-1",
+                quizKey: "quiz-key-1"
+            ),
+            BookManifestChapter(
+                chapterId: "ch-ah-2",
+                number: 2,
+                title: "How Your Habits Shape Your Identity",
+                readingTimeMinutes: 10,
+                chapterKey: "ch-key-2",
+                quizKey: "quiz-key-2"
+            ),
+            BookManifestChapter(
+                chapterId: "ch-ah-3",
+                number: 3,
+                title: "How to Build Better Habits in 4 Simple Steps",
+                readingTimeMinutes: 14,
+                chapterKey: "ch-key-3",
+                quizKey: "quiz-key-3"
+            ),
+            BookManifestChapter(
+                chapterId: "ch-ah-4",
+                number: 4,
+                title: "The Man Who Didn't Look Right",
+                readingTimeMinutes: 8,
+                chapterKey: "ch-key-4",
+                quizKey: nil
+            ),
+            BookManifestChapter(
+                chapterId: "ch-ah-5",
+                number: 5,
+                title: "The Best Way to Start a New Habit",
+                readingTimeMinutes: 11,
+                chapterKey: "ch-key-5",
+                quizKey: "quiz-key-5"
+            ),
+        ]
+        let cover = Cover(emoji: "⚛️", color: "#1a1a2e")
+        return BookManifest(
+            bookId: "atomic-habits",
+            title: "Atomic Habits",
+            author: "James Clear",
+            categories: ["Self-Help"],
+            tags: ["habits", "productivity"],
+            cover: cover,
+            variantFamily: .emh,
+            status: "published",
+            latestVersion: 1,
+            currentPublishedVersion: 1,
+            updatedAt: "2024-01-01T00:00:00Z",
+            chapters: chapters,
+            totalReadingTimeMinutes: 55,
+            chapterCount: 5
+        )
     }
 
     private static func makeDefaultBookState() -> BookStateResponse {

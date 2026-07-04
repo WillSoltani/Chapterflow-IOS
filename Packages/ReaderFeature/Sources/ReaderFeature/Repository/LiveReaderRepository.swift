@@ -86,6 +86,12 @@ public struct LiveReaderRepository: ReaderRepository, @unchecked Sendable {
         return try await client.send(endpoint)
     }
 
+    // MARK: - Book manifest
+
+    public func getBookManifest(bookId: String) async throws -> BookManifest {
+        try await client.send(Endpoints.getBook(id: bookId))
+    }
+
     // MARK: - Position persistence
 
     public func saveScrollPosition(bookId: String, chapterNumber: Int, blockIndex: Int) {

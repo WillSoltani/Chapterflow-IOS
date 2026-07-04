@@ -23,9 +23,13 @@ public struct ReaderControlSurface: View {
     @State private var model: ReaderControlsModel
     @State private var scrollPositionID: Int?
     @State private var paginatedPage = 0
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     /// When non-nil, highlights, notes, and bookmarks are enabled for this chapter.
     var annotationModel: AnnotationModel?
+
+    /// When non-nil, enables the in-reader ToC and prev/next navigation.
+    var navModel: ChapterNavModel?
 
     /// Creates the control surface for a chapter.
     ///
@@ -61,10 +65,17 @@ public struct ReaderControlSurface: View {
     ///   - model: The externally-owned controls model.
     ///   - annotationModel: Optional annotation model. When non-nil, all blocks
     ///     support long-press highlights, notes, and bookmarks.
+    ///   - navModel: Optional navigation model. When non-nil, enables the ToC and
+    ///     prev/next chapter controls in the toolbar.
     @MainActor
-    public init(model: ReaderControlsModel, annotationModel: AnnotationModel? = nil) {
+    public init(
+        model: ReaderControlsModel,
+        annotationModel: AnnotationModel? = nil,
+        navModel: ChapterNavModel? = nil
+    ) {
         _model = State(initialValue: model)
         self.annotationModel = annotationModel
+        self.navModel = navModel
     }
 
     public var body: some View {
@@ -122,6 +133,23 @@ public struct ReaderControlSurface: View {
                 AnnotationsListView(model: ann, onJumpToBlock: { blockIndex in
                     model.pendingScrollAnchor = blockIndex
                 })
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+            }
+        }
+        // ToC sheet: shown on compact (iPhone). On regular (iPad) the sidebar in ReaderView shows instead.
+        .sheet(
+            isPresented: Binding(
+                get: { (navModel?.isToCPresented ?? false) && horizontalSizeClass != .regular },
+                set: { navModel?.isToCPresented = $0 }
+            )
+        ) {
+            if let nav = navModel {
+                TableOfContentsView(
+                    model: nav,
+                    currentReadPercent: model.readPercent,
+                    isSheet: true
+                )
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
             }
@@ -198,7 +226,8 @@ public struct ReaderControlSurface: View {
             if model.isToolbarVisible {
                 ReaderToolbar(
                     model: model,
-                    currentTopIndex: scrollPositionID ?? 0
+                    currentTopIndex: scrollPositionID ?? 0,
+                    navModel: navModel
                 )
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
