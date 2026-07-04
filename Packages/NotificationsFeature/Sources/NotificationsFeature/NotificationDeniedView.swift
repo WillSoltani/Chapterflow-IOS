@@ -1,96 +1,59 @@
 import SwiftUI
 import DesignSystem
 
-/// Recovery screen shown when the user has previously denied notification permission.
+/// Recovery view shown when push authorization is `.denied`.
 ///
-/// The OS will not re-show its permission dialog, so we explain the impact and
-/// deep-link to the app's System Settings page where the user can re-enable.
+/// Per docs/ios/PUSH-CONTRACT.md: when denied, do not call `requestAuthorization()`.
+/// Instead, deep-link the user to `UIApplication.openSettingsURLString`.
 public struct NotificationDeniedView: View {
-    @Environment(\.openURL) private var openURL
 
-    public init() {}
+    private let onOpenSettings: () -> Void
+
+    public init(onOpenSettings: @escaping () -> Void) {
+        self.onOpenSettings = onOpenSettings
+    }
 
     public var body: some View {
-        VStack(spacing: 0) {
-            Spacer(minLength: .cfSpacing64)
-            deniedIcon
-            Spacer(minLength: .cfSpacing24)
-            deniedCopy
-            Spacer(minLength: .cfSpacing40)
-            settingsButton
-            Spacer()
-        }
-        .padding(.horizontal, .cfSpacing24)
-        .background(Color.cfBackground)
-    }
-
-    // MARK: - Icon
-
-    private var deniedIcon: some View {
-        ZStack {
-            Circle()
-                .fill(Color.cfSecondaryBackground)
-                .frame(width: 88, height: 88)
+        VStack(spacing: .cfSpacing24) {
             Image(systemName: "bell.slash.fill")
-                .font(.system(size: 38, weight: .medium))
+                .font(.system(size: 48))
                 .foregroundStyle(Color.cfSecondaryLabel)
+                .accessibilityHidden(true)
+
+            VStack(spacing: .cfSpacing8) {
+                Text("Notifications are turned off")
+                    .font(.cfHeadline)
+                    .foregroundStyle(Color.cfLabel)
+
+                Text("Enable notifications in Settings to receive reading reminders and streak alerts.")
+                    .font(.cfBody)
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(Color.cfSecondaryLabel)
+            }
+
+            Button(action: onOpenSettings) {
+                Label("Open Settings", systemImage: "gear")
+                    .font(.cfSubheadline)
+                    .foregroundStyle(Color.cfAccent)
+            }
+            .accessibilityLabel("Open iOS Settings to enable notifications")
         }
-        .accessibilityHidden(true)
-    }
-
-    // MARK: - Copy
-
-    private var deniedCopy: some View {
-        VStack(spacing: .cfSpacing12) {
-            Text("Notifications are Off")
-                .font(.cfTitle2)
-                .foregroundStyle(Color.cfLabel)
-            Text("To receive reading reminders and streak alerts, enable notifications for ChapterFlow in Settings.")
-                .font(.cfBody)
-                .foregroundStyle(Color.cfSecondaryLabel)
-                .multilineTextAlignment(.center)
-        }
-    }
-
-    // MARK: - Settings CTA
-
-    private var settingsButton: some View {
-        Button {
-            openSettings()
-        } label: {
-            Label("Open Settings", systemImage: "arrow.up.right.square")
-                .font(.cfHeadline)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, .cfSpacing4)
-        }
-        .buttonStyle(.borderedProminent)
-        .tint(Color.cfAccent)
-        .accessibilityLabel("Open Settings to enable notifications")
-        .accessibilityHint("Opens the ChapterFlow section in the iOS Settings app")
-    }
-
-    // MARK: - Private
-
-    private func openSettings() {
-        #if canImport(UIKit)
-        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
-        openURL(url)
-        #endif
+        .padding(.cfSpacing24)
     }
 }
 
-// MARK: - Previews
-
-#Preview("Denied — Light") {
-    NotificationDeniedView()
+#if DEBUG
+#Preview("Denied — light") {
+    NotificationDeniedView(onOpenSettings: {})
 }
 
-#Preview("Denied — Dark") {
-    NotificationDeniedView()
+#Preview("Denied — dark") {
+    NotificationDeniedView(onOpenSettings: {})
         .preferredColorScheme(.dark)
 }
 
-#Preview("Denied — XXL Text") {
-    NotificationDeniedView()
+#Preview("Denied — XXL text") {
+    NotificationDeniedView(onOpenSettings: {})
         .dynamicTypeSize(.accessibility3)
 }
+#endif

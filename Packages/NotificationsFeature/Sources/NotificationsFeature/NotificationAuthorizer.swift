@@ -1,68 +1,89 @@
 import Foundation
+import Observation
 import UserNotifications
 import CoreKit
 
-/// Centralized entry point for notification authorization.
+/// The single point of contact for `UNUserNotificationCenter` authorization.
 ///
-/// This actor is the single place that calls `UNUserNotificationCenter` for
-/// permission. P9.1 (APNs token registration) and P9.3 (local reminder scheduling)
-/// both call the same instance — priming decides *when*, this decides *how*.
-public actor NotificationAuthorizer: NotificationAuthorizerProtocol {
-    private let analytics: any AnalyticsClient
-    private let log = AppLog(category: .notifications)
+/// **Rules (per docs/ios/PUSH-CONTRACT.md):**
+/// - Never call `UNUserNotificationCenter.requestAuthorization` directly —
+///   always go through this type.
+/// - APNs token registration may only proceed once `status` is `.authorized`
+///   or `.provisional`.
+@Observable
+@MainActor
+public final class NotificationAuthorizer {
 
-    public init(analytics: any AnalyticsClient) {
+    // MARK: - Observable state
+
+    /// The current OS-reported authorization status (as `UNAuthorizationStatus`).
+    /// Refreshed on `refresh()`.
+    public private(set) var status: UNAuthorizationStatus = .notDetermined
+
+    // MARK: - Dependencies
+
+    let center: UNUserNotificationCenter
+    let analytics: (any AnalyticsClient)?
+
+    // MARK: - Init
+
+    public init(
+        center: UNUserNotificationCenter = .current(),
+        analytics: (any AnalyticsClient)? = nil
+    ) {
+        self.center = center
         self.analytics = analytics
     }
 
-    // MARK: - NotificationAuthorizerProtocol
+    // MARK: - Status refresh
 
-    /// Reads the current OS authorization status without prompting the user.
+    /// Re-reads the OS status and updates the published `status` property.
+    /// Call on app foreground to detect Settings.app changes.
+    public func refresh() async {
+        let settings = await center.notificationSettings()
+        status = settings.authorizationStatus
+    }
+}
+
+// MARK: - NotificationAuthorizerProtocol conformance
+
+extension NotificationAuthorizer: NotificationAuthorizerProtocol {
+
+    /// Returns the current status as `NotificationPermissionStatus`, also refreshing
+    /// the observable `status` property.
     public func currentStatus() async -> NotificationPermissionStatus {
-        let settings = await UNUserNotificationCenter.current().notificationSettings()
-        return NotificationPermissionStatus(settings.authorizationStatus)
+        await refresh()
+        return NotificationPermissionStatus(status)
     }
 
-    /// Requests full (alert + badge + sound) authorization.
-    ///
-    /// Only call after showing the priming screen; the OS prompt will appear
-    /// immediately after this returns. Tracks the outcome via analytics.
+    /// Requests full alert+badge+sound authorization from the OS.
+    /// Never throws — catches any UNUserNotificationCenter error and treats it as denied.
+    @discardableResult
     public func requestAuthorization() async -> NotificationAuthorizationOutcome {
         do {
-            let granted = try await UNUserNotificationCenter.current()
-                .requestAuthorization(options: [.alert, .badge, .sound])
-            let outcome: NotificationAuthorizationOutcome = granted ? .granted : .denied
-            analytics.track(.custom(
-                name: granted ? "notification_os_granted" : "notification_os_denied",
-                properties: [:]
-            ))
-            log.info("OS authorization outcome: \(granted ? "granted" : "denied")")
-            return outcome
+            let granted = try await center.requestAuthorization(options: [.alert, .badge, .sound])
+            await refresh()
+            analytics?.track(granted ? .notificationOSGranted : .notificationOSDenied)
+            return granted ? .granted : .denied
         } catch {
-            log.error("requestAuthorization failed: \(error.localizedDescription)")
-            analytics.track(.custom(name: "notification_os_denied",
-                                    properties: ["reason": "request_error"]))
+            await refresh()
+            analytics?.track(.notificationOSDenied)
             return .denied
         }
     }
 
-    /// Requests provisional authorization (Notification Center only — no OS alert).
-    ///
-    /// Safe to call without priming; provisional notifications are delivered
-    /// silently. Upgrades to full authorization after priming is accepted.
+    /// Requests provisional authorization (silent delivery, no OS prompt).
+    @discardableResult
     public func requestProvisionalAuthorization() async -> NotificationAuthorizationOutcome {
         do {
-            let granted = try await UNUserNotificationCenter.current()
-                .requestAuthorization(options: [.alert, .badge, .sound, .provisional])
-            let outcome: NotificationAuthorizationOutcome = granted ? .provisional : .denied
-            analytics.track(.custom(
-                name: granted ? "notification_provisional_granted" : "notification_os_denied",
-                properties: [:]
-            ))
-            log.info("Provisional authorization outcome: \(granted ? "provisional" : "denied")")
-            return outcome
+            let granted = try await center.requestAuthorization(
+                options: [.alert, .badge, .sound, .provisional]
+            )
+            await refresh()
+            if granted { analytics?.track(.notificationProvisionalGranted) }
+            return granted ? .provisional : .denied
         } catch {
-            log.error("requestProvisionalAuthorization failed: \(error.localizedDescription)")
+            await refresh()
             return .denied
         }
     }
