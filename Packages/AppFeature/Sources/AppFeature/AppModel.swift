@@ -10,6 +10,7 @@ import ReaderFeature
 import QuizFeature
 import EngagementFeature
 import PaywallFeature
+import OnboardingFeature
 
 /// The top-level observable app state that drives `AppRootView`.
 ///
@@ -99,6 +100,11 @@ public final class AppModel {
     /// Shared audio player model — owns the AVQueuePlayer and session for the entire app.
     public let audioPlayerModel: AudioPlayerModel
 
+    // MARK: - Onboarding
+
+    /// Repository driving the first-run onboarding flow.
+    public let onboardingRepository: any OnboardingRepository
+
     // MARK: - Subscription / Paywall
 
     /// StoreKit 2 service — shared with `EntitlementService` and `PaywallModel`.
@@ -142,6 +148,7 @@ public final class AppModel {
         }
 
         self.reviewsRepository = ReviewsRepository(apiClient: client, modelContainer: container)
+        self.onboardingRepository = LiveOnboardingRepository(apiClient: client)
 
         let prefs = AppPreferences()
         self.preferences = prefs

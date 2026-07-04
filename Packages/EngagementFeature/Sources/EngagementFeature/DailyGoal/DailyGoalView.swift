@@ -1,6 +1,7 @@
 import SwiftUI
 import DesignSystem
 import CoreKit
+import Persistence
 
 /// The daily-goal & habit surface.
 ///

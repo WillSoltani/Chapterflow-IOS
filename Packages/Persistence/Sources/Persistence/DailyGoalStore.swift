@@ -4,11 +4,13 @@ import Foundation
 /// UserDefaults suite so that the main app, WidgetKit extensions, and the
 /// notifications feature all read the same value.
 ///
-/// Thread-safety: `UserDefaults` is documented as thread-safe; `DailyGoalStore`
-/// is therefore `@unchecked Sendable`.
+/// ### Canonical model
+/// The goal is expressed in minutes with exactly three tiers: 10, 20, and 30.
+/// Values outside this set are snapped to the nearest tier on write.
 ///
 /// ### Consumers
-/// - ``DailyGoalModel`` — reads and writes the goal.
+/// - `OnboardingFeature` — writes the user's chosen goal at onboarding time.
+/// - `DailyGoalModel` — reads and writes the goal in the Engagement tab.
 /// - Widgets (P8.1) — read `dailyGoalMinutes` + `progressFraction(todayMinutes:)`.
 /// - Local reminders (P9.3) — read `dailyGoalMinutes` to set nudge thresholds.
 public final class DailyGoalStore: @unchecked Sendable {
@@ -25,10 +27,14 @@ public final class DailyGoalStore: @unchecked Sendable {
     /// UserDefaults key for the stored goal.
     public static let goalKey = "com.chapterflow.dailyGoalMinutes"
 
-    public static let defaultGoalMinutes = 20
-    public static let minimumGoalMinutes = 5
-    public static let maximumGoalMinutes = 120
-    public static let stepMinutes = 5
+    /// The three valid goal tiers, in minutes.
+    public static let tiers: [Int] = [10, 20, 30]
+
+    /// Default goal tier (10 minutes).
+    public static let defaultGoalMinutes = 10
+
+    /// All valid goal options — same as `tiers`.
+    public static var options: [Int] { tiers }
 
     // MARK: Storage
 
@@ -48,16 +54,16 @@ public final class DailyGoalStore: @unchecked Sendable {
 
     /// The number of minutes in the user's daily reading goal.
     ///
-    /// Setting this immediately persists to the shared `UserDefaults` suite.
-    /// Value is clamped to `minimumGoalMinutes…maximumGoalMinutes` on write.
+    /// Always one of the three canonical tiers (10, 20, or 30).
+    /// Writing a value outside the tier set snaps it to the nearest tier.
     public var dailyGoalMinutes: Int {
         get {
             let stored = defaults.integer(forKey: Self.goalKey)
-            return stored >= Self.minimumGoalMinutes ? stored : Self.defaultGoalMinutes
+            return Self.tiers.contains(stored) ? stored : Self.defaultGoalMinutes
         }
         set {
-            let clamped = max(Self.minimumGoalMinutes, min(Self.maximumGoalMinutes, newValue))
-            defaults.set(clamped, forKey: Self.goalKey)
+            let snapped = Self.tiers.min(by: { abs($0 - newValue) < abs($1 - newValue) }) ?? Self.defaultGoalMinutes
+            defaults.set(snapped, forKey: Self.goalKey)
         }
     }
 
@@ -69,9 +75,4 @@ public final class DailyGoalStore: @unchecked Sendable {
         guard goal > 0 else { return 0 }
         return min(1.0, Double(todayMinutes) / Double(goal))
     }
-
-    /// All valid goal options in 5-minute steps.
-    public static let options: [Int] = Array(stride(from: minimumGoalMinutes,
-                                                     through: maximumGoalMinutes,
-                                                     by: stepMinutes))
 }
