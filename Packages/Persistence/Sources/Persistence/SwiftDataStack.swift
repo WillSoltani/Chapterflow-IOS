@@ -72,11 +72,32 @@ public enum PersistenceSchemaV5: VersionedSchema {
     }
 }
 
+/// V6: adds the offline content-cache schema and the unified PendingMutation outbox (P3.1).
+///
+/// New models: CachedBook, CachedChapter, CachedManifest, CachedProgress,
+/// CachedBookState, CachedQuizState, CachedNotebookEntry, CachedHighlight,
+/// CachedReviewCard, PendingMutation.
+public enum PersistenceSchemaV6: VersionedSchema {
+    public static var versionIdentifier: Schema.Version { Schema.Version(6, 0, 0) }
+
+    public static var models: [any PersistentModel.Type] {
+        [
+            CachedKeyValue.self, LocalAnnotation.self, PendingAnnotationUpload.self,
+            PendingReviewGrade.self, PendingCommitmentUpload.self, PendingScenarioUpload.self,
+            CachedBook.self, CachedChapter.self, CachedManifest.self,
+            CachedProgress.self, CachedBookState.self, CachedQuizState.self,
+            CachedNotebookEntry.self, CachedHighlight.self, CachedReviewCard.self,
+            PendingMutation.self,
+        ]
+    }
+}
+
 /// Migration plan. Lightweight migrations require no field renames or transformations.
 public enum PersistenceMigrationPlan: SchemaMigrationPlan {
     public static var schemas: [any VersionedSchema.Type] {
         [PersistenceSchemaV1.self, PersistenceSchemaV2.self,
-         PersistenceSchemaV3.self, PersistenceSchemaV4.self, PersistenceSchemaV5.self]
+         PersistenceSchemaV3.self, PersistenceSchemaV4.self,
+         PersistenceSchemaV5.self, PersistenceSchemaV6.self]
     }
 
     public static var stages: [MigrationStage] {
@@ -85,6 +106,7 @@ public enum PersistenceMigrationPlan: SchemaMigrationPlan {
             .lightweight(fromVersion: PersistenceSchemaV2.self, toVersion: PersistenceSchemaV3.self),
             .lightweight(fromVersion: PersistenceSchemaV3.self, toVersion: PersistenceSchemaV4.self),
             .lightweight(fromVersion: PersistenceSchemaV4.self, toVersion: PersistenceSchemaV5.self),
+            .lightweight(fromVersion: PersistenceSchemaV5.self, toVersion: PersistenceSchemaV6.self),
         ]
     }
 }
@@ -128,7 +150,7 @@ public struct PersistenceController: Sendable {
     ///   - migrationPlan: Optional migration plan; pass `PersistenceMigrationPlan.self`
     ///     when the model set matches the versioned schema.
     public init(
-        models: [any PersistentModel.Type] = PersistenceSchemaV5.models,
+        models: [any PersistentModel.Type] = PersistenceSchemaV6.models,
         storage: StorageMode = .appGroup,
         migrationPlan: (any SchemaMigrationPlan.Type)? = nil
     ) throws {
@@ -175,10 +197,10 @@ public struct PersistenceController: Sendable {
         self.container = container
     }
 
-    /// Convenience: the default core schema (V5) with its migration plan.
+    /// Convenience: the default core schema (V6) with its migration plan.
     public static func makeDefault(storage: StorageMode = .appGroup) throws -> PersistenceController {
         try PersistenceController(
-            models: PersistenceSchemaV5.models,
+            models: PersistenceSchemaV6.models,
             storage: storage,
             migrationPlan: PersistenceMigrationPlan.self
         )
