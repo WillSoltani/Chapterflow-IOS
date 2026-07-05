@@ -3,7 +3,7 @@
 /// The paywall uses this to show "already Pro via web" messaging for non-Apple
 /// sources (Stripe, license, gift, etc.) and the App Store manage-subscription
 /// CTA only for Apple subscriptions.
-enum ProSourceKind {
+enum ProSourceKind: Equatable {
     case apple
     case stripe
     case license

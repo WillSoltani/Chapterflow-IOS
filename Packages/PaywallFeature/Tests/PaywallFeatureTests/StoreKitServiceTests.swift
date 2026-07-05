@@ -594,4 +594,6 @@ private actor StubStoreKitService: StoreKitServicing {
     func currentSubscriptionStatus() async throws -> SubscriptionStatus {
         .notSubscribed
     }
+
+    func currentTransactionID() async -> UInt64? { nil }
 }

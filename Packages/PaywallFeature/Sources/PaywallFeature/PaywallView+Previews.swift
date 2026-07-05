@@ -131,6 +131,7 @@ private actor PaywallPreviewStoreKitService: StoreKitServicing {
     func restorePurchases() async throws {}
     func currentSubscriptionStatus() async throws -> SubscriptionStatus { .notSubscribed }
     func verifyCurrentEntitlements() async throws {}
+    func currentTransactionID() async -> UInt64? { nil }
 }
 
 @MainActor

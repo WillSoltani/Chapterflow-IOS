@@ -51,6 +51,13 @@ public protocol StoreKitServicing: Sendable {
     /// to process transactions the backend may have missed (e.g. after a renewal).
     /// Unlike `restorePurchases()`, this is safe to call on every foreground refresh.
     func verifyCurrentEntitlements() async throws
+
+    /// Returns the UInt64 transaction ID of the currently-entitling Apple transaction,
+    /// or `nil` when no verified subscription transaction exists.
+    ///
+    /// Used to populate the in-app refund-request sheet
+    /// (`Transaction.beginRefundRequest(for:in:)` / SwiftUI `.refundRequestSheet`).
+    func currentTransactionID() async -> UInt64?
 }
 
 // MARK: - StoreKitService
@@ -224,6 +231,17 @@ public actor StoreKitService: StoreKitServicing {
         }
 
         return .subscribed(productID: productID, expirationDate: bestExpirationDate)
+    }
+
+    /// Returns the UInt64 ID of the first currently-entitling verified transaction
+    /// whose product ID matches the configured subscription product IDs.
+    public func currentTransactionID() async -> UInt64? {
+        for await result in Transaction.currentEntitlements {
+            guard case .verified(let transaction) = result,
+                  config.allProductIDs.contains(transaction.productID) else { continue }
+            return transaction.id
+        }
+        return nil
     }
 
     // MARK: - Private

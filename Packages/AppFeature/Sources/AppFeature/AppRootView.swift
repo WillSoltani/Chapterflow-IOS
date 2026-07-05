@@ -180,6 +180,20 @@ public struct AppRootView: View {
                 )
             }
         }
+        // Subscription management sheet — full billing lifecycle detail and CTAs.
+        .sheet(isPresented: Binding(
+            get: { model.showSubscriptionManagement },
+            set: { model.showSubscriptionManagement = $0 }
+        )) {
+            SubscriptionManagementView(
+                model: model.makeSubscriptionManagementModel(),
+                onShowPaywall: {
+                    model.showSubscriptionManagement = false
+                    model.paywallContext = .settings
+                    model.showPaywall = true
+                }
+            )
+        }
     }
 
     // MARK: - Tab content
@@ -241,7 +255,7 @@ public struct AppRootView: View {
                     model.showPaywall = true
                 },
                 onManageSubscription: {
-                    model.openManageSubscriptions()
+                    model.showSubscriptionManagement = true
                 },
                 pushStatus: model.apnsManager.pushStatus,
                 pushRegistrationError: model.apnsManager.registrationError,

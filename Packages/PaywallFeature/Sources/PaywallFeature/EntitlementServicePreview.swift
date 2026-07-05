@@ -19,6 +19,7 @@ private actor PreviewStoreKitService: StoreKitServicing {
     func currentSubscriptionStatus() async throws -> SubscriptionStatus {
         isProStatus ? .subscribed(productID: "com.cf.annual", expirationDate: nil) : .notSubscribed
     }
+    func currentTransactionID() async -> UInt64? { nil }
 }
 
 // MARK: - Factory

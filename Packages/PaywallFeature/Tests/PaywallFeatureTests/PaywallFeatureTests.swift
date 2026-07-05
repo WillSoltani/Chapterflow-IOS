@@ -383,4 +383,5 @@ private actor MockStoreKitService: StoreKitServicing {
     func restorePurchases() async throws {}
     func verifyCurrentEntitlements() async throws {}
     func currentSubscriptionStatus() async throws -> SubscriptionStatus { mockStatus }
+    func currentTransactionID() async -> UInt64? { nil }
 }
