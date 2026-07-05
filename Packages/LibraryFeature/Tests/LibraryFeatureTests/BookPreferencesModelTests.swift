@@ -318,7 +318,7 @@ struct BookPreferencesModelTests {
     // MARK: - Server sync (FakeBookPreferencesRepository)
 
     @Test("syncToServer calls patchBookPreferredVariant with correct variantKey")
-    func syncToServerCallsRepository() async throws {
+    func syncToServerCallsRepository() async {
         let repo = FakeBookPreferencesRepository()
         let model = BookPreferencesModel(
             bookId: "book-sync",
@@ -329,8 +329,7 @@ struct BookPreferencesModelTests {
         )
         model.selectedVariant = .hard
         model.syncToServer()
-        // Allow the Task to complete.
-        try await Task.sleep(for: .milliseconds(50))
+        await waitUntil { await repo.lastPatchedVariantKey != nil }
         let lastPatched = await repo.lastPatchedVariantKey
         #expect(lastPatched == "hard")
     }
