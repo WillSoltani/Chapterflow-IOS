@@ -68,9 +68,10 @@ struct BadgeCelebrationView: View {
         .frame(height: 260)
 }
 
-#Preview("Badge — Streak (dark)", traits: .colorScheme(.dark)) {
+#Preview("Badge — Streak (dark)") {
     BadgeCelebrationView(badgeName: "7-Day Reading Streak", badgeKey: "streak_7")
         .frame(height: 260)
+        .preferredColorScheme(.dark)
 }
 
 #Preview("Badge — Quiz") {
@@ -78,7 +79,8 @@ struct BadgeCelebrationView: View {
         .frame(height: 260)
 }
 
-#Preview("Badge — XXL type", traits: .sizeCategoryXXXL) {
+#Preview("Badge — XXL type") {
     BadgeCelebrationView(badgeName: "First Chapter Complete", badgeKey: "first_chapter")
         .frame(height: 320)
+        .environment(\.dynamicTypeSize, .accessibility5)
 }
