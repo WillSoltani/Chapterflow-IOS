@@ -85,11 +85,16 @@ public actor EngagementRepository {
     ///
     /// Uses cached values when available unless `forceRefresh` is `true`.
     /// Falls back to on-disk cache when the network is unavailable.
+    ///
+    /// On success, publishes a ``SharedAppStateSnapshot`` to the App Group via
+    /// ``SharedStateWriter`` so widgets and extensions see fresh data immediately.
     public func fetchDashboardSnapshot(forceRefresh: Bool = false) async throws -> DashboardSnapshot {
         async let d = fetchDashboard(forceRefresh: forceRefresh)
         async let s = fetchStreak(forceRefresh: forceRefresh)
         async let p = fetchProgress(forceRefresh: forceRefresh)
-        return try await DashboardSnapshot(dashboard: d, streak: s, progress: p)
+        let result = try await DashboardSnapshot(dashboard: d, streak: s, progress: p)
+        publishSharedState(from: result)
+        return result
     }
 
     // MARK: - Public: Individual fetches
@@ -351,5 +356,48 @@ public actor EngagementRepository {
         guard let entry = (try? context.fetch(descriptor))?.first else { return nil }
         guard let data = entry.value.data(using: .utf8) else { return nil }
         return try? JSONCoding.decoder.decode(T.self, from: data)
+    }
+
+    // MARK: - Shared state publishing (P8.0)
+
+    /// Builds a ``SharedAppStateSnapshot`` from a freshly-fetched ``DashboardSnapshot``
+    /// and publishes it to the App Group via ``SharedStateWriter``.
+    ///
+    /// Called automatically after every successful ``fetchDashboardSnapshot(forceRefresh:)``
+    /// so widgets and Live Activities see current streak, continue-reading, and goal data.
+    private func publishSharedState(from snapshot: DashboardSnapshot) {
+        let atRisk = computeStreakAtRisk(streak: snapshot.streak)
+        let continueBook = snapshot.dashboard.continueBook
+        let progressItem = snapshot.progress.first { $0.bookId == continueBook?.bookId }
+
+        let appState = SharedAppStateSnapshot(
+            streakDays: snapshot.streak.currentStreak,
+            streakAtRisk: atRisk,
+            continueBookId: continueBook?.bookId,
+            continueBookTitle: continueBook?.title,
+            continueBookCoverEmoji: continueBook?.cover?.emoji,
+            continueBookCoverColor: continueBook?.cover?.color,
+            continueChapterNumber: continueBook?.lastChapterNumber,
+            continueProgress: progressItem?.completionFraction,
+            dueReviewCount: snapshot.dashboard.dueReviewCount,
+            dailyGoalMinutes: DailyGoalStore.shared.dailyGoalMinutes,
+            goalProgressMinutes: snapshot.dashboard.todayReadingMinutes,
+            lastUpdated: Date()
+        )
+        Task { await SharedStateWriter.shared.publish(appState) }
+    }
+
+    private func computeStreakAtRisk(streak: StreakState) -> Bool {
+        guard streak.currentStreak > 0 else { return false }
+        let today = isoDateString(from: Calendar.current.startOfDay(for: Date()))
+        if let last = streak.lastActivityDate, last >= today { return false }
+        return Calendar.current.component(.hour, from: Date()) >= 20
+    }
+
+    private func isoDateString(from date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: date)
     }
 }
