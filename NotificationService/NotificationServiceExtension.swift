@@ -30,14 +30,16 @@ final class NotificationServiceExtension: UNNotificationServiceExtension, @unche
         bestAttemptContent = mutable
 
         let payload = PushPayloadParser.parse(mutable.userInfo)
-        let handler = contentHandler
 
-        attachmentTask = Task {
+        attachmentTask = Task { [weak self, payload] in
+            guard let self else { return }
             if let attachment = await AttachmentBuilder.build(from: payload) {
-                mutable.attachments = [attachment]
+                self.bestAttemptContent?.attachments = [attachment]
             }
             // Deliver enriched content (or plain if no image was attached).
-            handler(mutable)
+            if let handler = self.contentHandler, let content = self.bestAttemptContent {
+                handler(content)
+            }
         }
     }
 
