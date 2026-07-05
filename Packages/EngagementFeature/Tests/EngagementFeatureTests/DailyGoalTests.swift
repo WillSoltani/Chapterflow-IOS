@@ -54,23 +54,36 @@ private extension Dashboard {
 }
 
 private extension StreakState {
-    static let goalTestFixture = StreakState(
-        currentStreak: 7,
-        longestStreak: 14,
-        streakShieldsHeld: 1,
-        lastActivityDate: "2026-07-04",
-        streakHistory: nil,
-        consistencyLast30: [
-            StreakDay(date: "2026-06-28", minutesRead: 10),
-            StreakDay(date: "2026-06-29", minutesRead: 25),
-            StreakDay(date: "2026-06-30", minutesRead: 0),
-            StreakDay(date: "2026-07-01", minutesRead: 15),
-            StreakDay(date: "2026-07-02", minutesRead: 30),
-            StreakDay(date: "2026-07-03", minutesRead: 20),
-            StreakDay(date: "2026-07-04", minutesRead: 18),
-        ],
-        milestonesReached: [7]
-    )
+    /// Dates are generated RELATIVE to the current day (offsets from today) using the same
+    /// Calendar.current + "yyyy-MM-dd" the model's `buildWeekActivity` uses, so the last entry
+    /// is always "today". A hardcoded fixture date silently breaks the day the calendar rolls
+    /// past it (today's entry becomes 0 min instead of the fixtured value).
+    static var goalTestFixture: StreakState {
+        let calendar = Calendar.current
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        let startOfToday = calendar.startOfDay(for: Date())
+        func day(_ offset: Int) -> String {
+            formatter.string(from: calendar.date(byAdding: .day, value: offset, to: startOfToday)!)
+        }
+        return StreakState(
+            currentStreak: 7,
+            longestStreak: 14,
+            streakShieldsHeld: 1,
+            lastActivityDate: day(0),
+            streakHistory: nil,
+            consistencyLast30: [
+                StreakDay(date: day(-6), minutesRead: 10),
+                StreakDay(date: day(-5), minutesRead: 25),
+                StreakDay(date: day(-4), minutesRead: 0),
+                StreakDay(date: day(-3), minutesRead: 15),
+                StreakDay(date: day(-2), minutesRead: 30),
+                StreakDay(date: day(-1), minutesRead: 20),
+                StreakDay(date: day(0), minutesRead: 18),
+            ],
+            milestonesReached: [7]
+        )
+    }
 }
 
 // MARK: - DailyGoalStore tests
