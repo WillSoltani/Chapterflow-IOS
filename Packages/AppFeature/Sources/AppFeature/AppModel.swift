@@ -12,6 +12,7 @@ import EngagementFeature
 import PaywallFeature
 import NotificationsFeature
 import OnboardingFeature
+import SettingsFeature
 
 /// The top-level observable app state that drives `AppRootView`.
 ///
@@ -117,6 +118,11 @@ public final class AppModel {
     /// Repository driving the first-run onboarding flow.
     public let onboardingRepository: any OnboardingRepository
 
+    // MARK: - Settings
+
+    /// Repository for the Settings tab: server reading prefs, export, and account lifecycle.
+    public let settingsRepository: any SettingsRepository
+
     // MARK: - Subscription / Paywall
 
     /// StoreKit 2 service — shared with `EntitlementService` and `PaywallModel`.
@@ -171,6 +177,7 @@ public final class AppModel {
 
         self.reviewsRepository = ReviewsRepository(apiClient: client, modelContainer: container)
         self.onboardingRepository = LiveOnboardingRepository(apiClient: client)
+        self.settingsRepository = LiveSettingsRepository(client: client)
 
         let prefs = AppPreferences()
         self.preferences = prefs

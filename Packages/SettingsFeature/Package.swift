@@ -10,6 +10,10 @@ let package = Package(
     dependencies: [
         .package(path: "../DesignSystem"),
         .package(path: "../CoreKit"),
+        .package(path: "../Models"),
+        .package(path: "../Networking"),
+        .package(path: "../Persistence"),
+        .package(path: "../AuthKit"),
         .package(path: "../NotificationsFeature"),
     ],
     targets: [
@@ -18,12 +22,20 @@ let package = Package(
             dependencies: [
                 .product(name: "DesignSystem", package: "DesignSystem"),
                 .product(name: "CoreKit", package: "CoreKit"),
+                .product(name: "Models", package: "Models"),
+                .product(name: "Networking", package: "Networking"),
+                .product(name: "Persistence", package: "Persistence"),
+                .product(name: "AuthKit", package: "AuthKit"),
                 .product(name: "NotificationsFeature", package: "NotificationsFeature"),
             ]
         ),
         .testTarget(
             name: "SettingsFeatureTests",
-            dependencies: ["SettingsFeature"]
+            dependencies: [
+                "SettingsFeature",
+                .product(name: "Networking", package: "Networking"),
+                .product(name: "Persistence", package: "Persistence"),
+            ]
         ),
     ]
 )
