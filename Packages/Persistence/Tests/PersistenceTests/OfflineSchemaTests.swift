@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Foundation
 import SwiftData
 import Testing
@@ -13,8 +14,8 @@ import Models
 // OfflineSchemaTests guarantees tests run serially, so the shared store is
 // never accessed by two tests simultaneously.
 // swiftlint:disable:next force_try
-private let sharedV6Container: ModelContainer = try! {
-    let schema = Schema(PersistenceSchemaV6.models)
+private let sharedV7Container: ModelContainer = try! {
+    let schema = Schema(PersistenceSchemaV7.models)
     let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
     return try ModelContainer(for: schema, configurations: config)
 }()
@@ -29,7 +30,7 @@ struct OfflineSchemaTests {
     /// Returns the shared main context with all offline tables wiped.
     @MainActor
     private func freshContext() throws -> ModelContext {
-        let ctx = sharedV6Container.mainContext
+        let ctx = sharedV7Container.mainContext
         try ctx.delete(model: CachedBook.self)
         try ctx.delete(model: CachedChapter.self)
         try ctx.delete(model: CachedManifest.self)
@@ -46,6 +47,8 @@ struct OfflineSchemaTests {
         try ctx.delete(model: PendingReviewGrade.self)
         try ctx.delete(model: PendingCommitmentUpload.self)
         try ctx.delete(model: PendingScenarioUpload.self)
+        try ctx.delete(model: CachedBookDownload.self)
+        try ctx.delete(model: CachedDownloadedSegment.self)
         try ctx.save()
         return ctx
     }
@@ -68,7 +71,7 @@ struct OfflineSchemaTests {
 
         @Test("background store inserts and counts off the main actor")
         func backgroundStore() async throws {
-            let background = BackgroundStore(modelContainer: sharedV6Container)
+            let background = BackgroundStore(modelContainer: sharedV7Container)
             try await background.insert(CachedKeyValue(key: "k", value: "v"))
             let count = try await background.count(CachedKeyValue.self)
             #expect(count >= 1)
@@ -520,12 +523,12 @@ struct OfflineSchemaTests {
         }
     }
 
-    // MARK: - V6 schema boot
+    // MARK: - V7 schema boot
 
-    @Suite("PersistenceSchemaV6")
-    struct PersistenceSchemaV6Tests {
+    @Suite("PersistenceSchemaV7")
+    struct PersistenceSchemaV7Tests {
         @MainActor
-        @Test("V6 container boots with all 10 new offline @Model types")
+        @Test("V7 container boots with all 12 offline @Model types including download tracking")
         func containerBoots() throws {
             let context = try OfflineSchemaTests().freshContext()
 
@@ -548,6 +551,19 @@ struct OfflineSchemaTests {
                     payloadJSON: "{\"minutes\":15}"
                 )
             )
+            context.insert(CachedBookDownload(
+                rowId: CachedBookDownload.makeRowId(userId: "u", bookId: "book-1"),
+                userId: "u",
+                bookId: "book-1",
+                title: "Test Book"
+            ))
+            context.insert(CachedDownloadedSegment(
+                segmentId: "seg-1",
+                bookId: "book-1",
+                chapterNumber: 1,
+                userId: "u",
+                fileSize: 1024
+            ))
             try context.save()
 
             #expect(try context.fetchCount(FetchDescriptor<CachedBook>()) == 1)
@@ -560,6 +576,110 @@ struct OfflineSchemaTests {
             #expect(try context.fetchCount(FetchDescriptor<CachedHighlight>()) == 1)
             #expect(try context.fetchCount(FetchDescriptor<CachedReviewCard>()) == 1)
             #expect(try context.fetchCount(FetchDescriptor<PendingMutation>()) == 1)
+            #expect(try context.fetchCount(FetchDescriptor<CachedBookDownload>()) == 1)
+            #expect(try context.fetchCount(FetchDescriptor<CachedDownloadedSegment>()) == 1)
+        }
+    }
+
+    // MARK: - CachedBookDownload
+
+    @Suite("CachedBookDownload")
+    struct CachedBookDownloadTests {
+        @MainActor
+        @Test("round-trips all fields")
+        func roundTrip() throws {
+            let context = try OfflineSchemaTests().freshContext()
+            let rowId = CachedBookDownload.makeRowId(userId: "u", bookId: "b-1")
+            let record = CachedBookDownload(
+                rowId: rowId, userId: "u", bookId: "b-1", title: "My Book"
+            )
+            record.chapterCount = 5
+            record.downloadedChapterCount = 3
+            record.audioSegmentCount = 10
+            record.downloadedAudioSegmentCount = 7
+            record.totalBytes = 5_000_000
+            record.status = .downloading
+            context.insert(record)
+            try context.save()
+
+            let fetched = try context.fetch(FetchDescriptor<CachedBookDownload>())
+            #expect(fetched.count == 1)
+            #expect(fetched[0].rowId == rowId)
+            #expect(fetched[0].bookId == "b-1")
+            #expect(fetched[0].title == "My Book")
+            #expect(fetched[0].status == .downloading)
+            #expect(fetched[0].chapterCount == 5)
+            #expect(fetched[0].downloadedChapterCount == 3)
+            #expect(fetched[0].totalBytes == 5_000_000)
+        }
+
+        @Test("fractionCompleted reflects chapter + audio progress")
+        func fractionCompleted() {
+            let record = CachedBookDownload(
+                rowId: "u:b", userId: "u", bookId: "b", title: "T"
+            )
+            record.chapterCount = 4
+            record.downloadedChapterCount = 2
+            record.audioSegmentCount = 4
+            record.downloadedAudioSegmentCount = 2
+            #expect(record.fractionCompleted == 0.5)
+        }
+
+        @Test("status defaults to downloading on init")
+        func defaultStatus() {
+            let record = CachedBookDownload(
+                rowId: "u:b", userId: "u", bookId: "b", title: "T"
+            )
+            #expect(record.status == .downloading)
+        }
+    }
+
+    // MARK: - CachedDownloadedSegment
+
+    @Suite("CachedDownloadedSegment")
+    struct CachedDownloadedSegmentTests {
+        @MainActor
+        @Test("round-trips segmentId, bookId, chapterNumber, userId, fileSize")
+        func roundTrip() throws {
+            let context = try OfflineSchemaTests().freshContext()
+            context.insert(CachedDownloadedSegment(
+                segmentId: "seg-abc",
+                bookId: "book-1",
+                chapterNumber: 3,
+                userId: "user-1",
+                fileSize: 512_000
+            ))
+            try context.save()
+
+            let fetched = try context.fetch(FetchDescriptor<CachedDownloadedSegment>())
+            #expect(fetched.count == 1)
+            #expect(fetched[0].segmentId == "seg-abc")
+            #expect(fetched[0].bookId == "book-1")
+            #expect(fetched[0].chapterNumber == 3)
+            #expect(fetched[0].userId == "user-1")
+            #expect(fetched[0].fileSize == 512_000)
+        }
+
+        @Test("fileStoreKey prefixes with audio_")
+        func fileStoreKey() {
+            let key = CachedDownloadedSegment.fileStoreKey(segmentId: "seg-xyz")
+            #expect(key == "audio_seg-xyz")
+        }
+    }
+
+    // MARK: - Migration plan counts
+
+    @Suite("MigrationPlan")
+    struct MigrationPlanTests {
+        @Test("plan contains 7 schemas and 6 migration stages")
+        func schemaAndStageCounts() {
+            #expect(PersistenceMigrationPlan.schemas.count == 7)
+            #expect(PersistenceMigrationPlan.stages.count == 6)
+        }
+
+        @Test("final schema version identifier is 7.0.0")
+        func finalVersionId() {
+            #expect(PersistenceSchemaV7.versionIdentifier == Schema.Version(7, 0, 0))
         }
     }
 }

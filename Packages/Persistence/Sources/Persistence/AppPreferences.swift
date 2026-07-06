@@ -150,6 +150,24 @@ public final class AppPreferences {
         didSet { defaults.set(onboardingCompleted, forKey: Keys.onboardingCompleted) }
     }
 
+    // MARK: - Downloads
+
+    /// When `true`, audio segment downloads are restricted to Wi-Fi connections.
+    public var downloadOverWifiOnly: Bool {
+        didSet { defaults.set(downloadOverWifiOnly, forKey: Keys.downloadOverWifiOnly) }
+    }
+
+    /// Maximum on-disk storage for all downloaded books, in gigabytes.
+    /// `0` means unlimited. Default: 5 GB.
+    public var downloadStorageLimitGB: Double {
+        didSet { defaults.set(downloadStorageLimitGB, forKey: Keys.downloadStorageLimitGB) }
+    }
+
+    /// Convenience: `downloadStorageLimitGB` converted to bytes, or `nil` when unlimited.
+    public var downloadStorageLimitBytes: Int64? {
+        downloadStorageLimitGB > 0 ? Int64(downloadStorageLimitGB * 1_073_741_824) : nil
+    }
+
     /// Creates a preferences store. Pass a custom `defaults` for tests/previews;
     /// defaults to the App Group suite, falling back to `.standard`.
     public init(defaults: UserDefaults? = nil) {
@@ -171,6 +189,8 @@ public final class AppPreferences {
         self.reminderMinute = (store.object(forKey: Keys.reminderMinute) as? Int) ?? 0
         self.interestIds = store.stringArray(forKey: Keys.interestIds) ?? []
         self.onboardingCompleted = store.bool(forKey: Keys.onboardingCompleted)
+        self.downloadOverWifiOnly = store.bool(forKey: Keys.downloadOverWifiOnly)
+        self.downloadStorageLimitGB = (store.object(forKey: Keys.downloadStorageLimitGB) as? Double) ?? 5.0
     }
 
     private enum Keys {
@@ -185,5 +205,7 @@ public final class AppPreferences {
         static let reminderMinute = "pref.reminderMinute"
         static let interestIds = "pref.interestIds"
         static let onboardingCompleted = "pref.onboardingCompleted"
+        static let downloadOverWifiOnly = "pref.downloadOverWifiOnly"
+        static let downloadStorageLimitGB = "pref.downloadStorageLimitGB"
     }
 }

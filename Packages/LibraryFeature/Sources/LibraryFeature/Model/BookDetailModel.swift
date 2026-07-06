@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import Models
 import CoreKit
+import Persistence
 
 // MARK: - Supporting types
 
@@ -75,18 +76,33 @@ public final class BookDetailModel {
     /// silently swallowed — the recommendation is optional UI chrome.
     public var fetchDepthRecommendation: ((String) async throws -> DepthRecommendation)?
 
+    // MARK: - Download state
+
+    /// Current offline-availability state of this book.
+    public private(set) var downloadState: DownloadButtonState = .notDownloaded
+
     // MARK: - Private
 
     public let bookId: String
     private let repository: any BookDetailRepository
     private let evaluator = EntitlementEvaluator()
     @MainActor private var recommendationTask: Task<Void, Never>?
+    private var downloadTask: Task<Void, Never>?
+    private var downloadManager: DownloadManager?
+    var userId: String = ""
 
     // MARK: - Init
 
-    public init(bookId: String, repository: any BookDetailRepository) {
+    public init(
+        bookId: String,
+        repository: any BookDetailRepository,
+        downloadManager: DownloadManager? = nil,
+        userId: String = ""
+    ) {
         self.bookId = bookId
         self.repository = repository
+        self.downloadManager = downloadManager
+        self.userId = userId
     }
 
     // MARK: - Derived: overview
@@ -256,5 +272,57 @@ public final class BookDetailModel {
     public func tapChapter(_ chapter: BookManifestChapter) {
         guard isUnlocked(chapter) else { return }
         onOpenReader?(bookId, chapter.number, manifest?.variantFamily ?? .emh)
+    }
+
+    // MARK: - Download actions
+
+    /// Checks the stored download state and updates `downloadState`.
+    public func refreshDownloadState() async {
+        guard let manager = downloadManager, !userId.isEmpty else { return }
+        let isOffline = await manager.isDownloaded(bookId: bookId, userId: userId)
+        downloadState = isOffline ? .downloaded : .notDownloaded
+    }
+
+    /// Begins or resumes a download, updating `downloadState` as events arrive.
+    public func startDownload() {
+        guard let manager = downloadManager, !userId.isEmpty else { return }
+        downloadTask?.cancel()
+        let bid = bookId
+        let uid = userId
+        downloadTask = Task { [weak self] in
+            guard let self else { return }
+            let stream = await manager.downloadBook(bookId: bid, userId: uid)
+            for await progress in stream {
+                guard !Task.isCancelled else { break }
+                switch progress.phase {
+                case .fetchingManifest, .downloadingChapters, .downloadingAudio:
+                    self.downloadState = .inProgress(fraction: progress.fractionCompleted)
+                case .complete:
+                    self.downloadState = .downloaded
+                case .failed(let msg):
+                    self.downloadState = .failed(msg)
+                }
+            }
+        }
+    }
+
+    /// Cancels an in-progress download.
+    public func cancelDownload() {
+        downloadTask?.cancel()
+        downloadTask = nil
+        downloadState = .notDownloaded
+        guard let manager = downloadManager, !userId.isEmpty else { return }
+        Task { await manager.cancelDownload(bookId: bookId, userId: userId) }
+    }
+
+    /// Deletes the stored download.
+    public func deleteDownload() {
+        downloadTask?.cancel()
+        downloadTask = nil
+        downloadState = .notDownloaded
+        guard let manager = downloadManager, !userId.isEmpty else { return }
+        Task {
+            try? await manager.deleteBookDownload(bookId: bookId, userId: userId)
+        }
     }
 }

@@ -35,6 +35,10 @@ public enum UserDataWipe {
                            where: #Predicate<CachedReviewCard> { $0.userId == uid })
         try context.delete(model: PendingMutation.self,
                            where: #Predicate<PendingMutation> { $0.userId == uid })
+        try context.delete(model: CachedBookDownload.self,
+                           where: #Predicate<CachedBookDownload> { $0.userId == uid })
+        try context.delete(model: CachedDownloadedSegment.self,
+                           where: #Predicate<CachedDownloadedSegment> { $0.userId == uid })
         try context.save()
     }
 }
@@ -65,6 +69,10 @@ extension BackgroundStore {
                                 where: #Predicate<CachedReviewCard> { $0.userId == uid })
         try modelContext.delete(model: PendingMutation.self,
                                 where: #Predicate<PendingMutation> { $0.userId == uid })
+        try modelContext.delete(model: CachedBookDownload.self,
+                                where: #Predicate<CachedBookDownload> { $0.userId == uid })
+        try modelContext.delete(model: CachedDownloadedSegment.self,
+                                where: #Predicate<CachedDownloadedSegment> { $0.userId == uid })
         try modelContext.save()
     }
 }

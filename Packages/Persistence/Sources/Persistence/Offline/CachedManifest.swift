@@ -31,7 +31,7 @@ public final class CachedManifest {
 // MARK: - Domain mapping
 
 extension CachedManifest {
-    static func makeRowId(userId: String, bookId: String) -> String {
+    public static func makeRowId(userId: String, bookId: String) -> String {
         "\(userId):\(bookId)"
     }
 
