@@ -7,16 +7,26 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		04FEC734CE8CA7DA3F93E69F /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 01BF66985E4B1ED2CC4984CF /* Foundation.framework */; };
+		2407C1347F9A7DADCB0E9201 /* ChapterflowWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 8EA7DDEFAE3D456CE7B77F71 /* ChapterflowWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		34386934FB1068D522F52A08 /* AppFeature in Frameworks */ = {isa = PBXBuildFile; productRef = A8255B985D25AB005A4FF769 /* AppFeature */; };
+		395D4114A7DCE61D8B617E05 /* ContinueReadingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C9D4C311CC0366A2B5B4008 /* ContinueReadingWidget.swift */; };
+		3A1095CD2CCE676D593CE128 /* NextReviewWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B61F7E717429A35DF5B29CCE /* NextReviewWidget.swift */; };
 		66BC2819ABEF0EBFE1FD08FC /* NotificationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DCF192CB7B14D42D2B19DBE /* NotificationViewController.swift */; };
 		722B1BC219CE90F9818CF60D /* NotificationContent.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 050A996D551F59F957401E6D /* NotificationContent.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		72F48B3486D36A62CBAA775C /* AttachmentBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA027BFD0C054E6CFEC8BC3E /* AttachmentBuilder.swift */; };
+		8AB972D70AF3F6E524667A5B /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E9800A4BEA2EA1A39922A3A3 /* WidgetKit.framework */; };
 		98AECF0B4841871979E1D0BE /* BadgeCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A18BD4A98A6DFECCF5AC3CC /* BadgeCelebrationView.swift */; };
+		A016F644B8B745B8C35910CF /* ChapterflowWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F0CE0636209E9DAAC909D4A /* ChapterflowWidgetsBundle.swift */; };
 		A1E3CE47077E18E227BC75D7 /* NotificationServiceExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4F52C53E7B459419F05C983 /* NotificationServiceExtension.swift */; };
 		AD3A8B5E08AA699B95905A77 /* NotificationService.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = E04CAB02AF39E4B3C81F199F /* NotificationService.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AFA0E2C970BC6887892A157A /* RichNotificationCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8EE91B935F78B8ABFC1C1B6A /* RichNotificationCore */; };
 		BB3658E7AA5FE592823E62D4 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 01BF66985E4B1ED2CC4984CF /* Foundation.framework */; };
+		E1C0F47BE4C81FC2758A4CE2 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 62337D48E2C6D11D9DD20D70 /* SwiftUI.framework */; };
 		E3684E495900CD5A5A45721B /* RichNotificationCore in Frameworks */ = {isa = PBXBuildFile; productRef = 6EA764DF69611DF5DFD58ED8 /* RichNotificationCore */; };
+		EFD26A9B1B8FADA3538EC58A /* ProgressRingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81FE884A215CF6E3ADA31C64 /* ProgressRingWidget.swift */; };
+		F0B5D79777C758BE4B90E507 /* StreakWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3439D5BFE5F7A771123B64FD /* StreakWidget.swift */; };
+		F991441ACB15AD18451605AD /* WidgetDataReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7661D6455EE1B64C3349CC10 /* WidgetDataReader.swift */; };
 		FD9956D1EF8DF0B055D5ECE9 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 01BF66985E4B1ED2CC4984CF /* Foundation.framework */; };
 /* End PBXBuildFile section */
 
@@ -35,6 +45,13 @@
 			remoteGlobalIDString = 20F4D9CAB499C7188C0D73F4;
 			remoteInfo = NotificationService;
 		};
+		C2FFEB47549C7C31B7E1BCC7 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 15E751752FF4A90000FA8025 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0981D623679A9DD61BD341AC;
+			remoteInfo = ChapterflowWidgets;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -46,6 +63,7 @@
 			files = (
 				AD3A8B5E08AA699B95905A77 /* NotificationService.appex in Embed App Extensions */,
 				722B1BC219CE90F9818CF60D /* NotificationContent.appex in Embed App Extensions */,
+				2407C1347F9A7DADCB0E9201 /* ChapterflowWidgets.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -55,13 +73,24 @@
 /* Begin PBXFileReference section */
 		01BF66985E4B1ED2CC4984CF /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		050A996D551F59F957401E6D /* NotificationContent.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NotificationContent.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		0C9D4C311CC0366A2B5B4008 /* ContinueReadingWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContinueReadingWidget.swift; sourceTree = "<group>"; };
 		15E7517D2FF4A90000FA8025 /* ChapterFlow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ChapterFlow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		18EA46ABF3A38A13F2985782 /* Secrets.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
+		3439D5BFE5F7A771123B64FD /* StreakWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StreakWidget.swift; sourceTree = "<group>"; };
+		3F0CE0636209E9DAAC909D4A /* ChapterflowWidgetsBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChapterflowWidgetsBundle.swift; sourceTree = "<group>"; };
 		4A18BD4A98A6DFECCF5AC3CC /* BadgeCelebrationView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BadgeCelebrationView.swift; sourceTree = "<group>"; };
 		4DCF192CB7B14D42D2B19DBE /* NotificationViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NotificationViewController.swift; sourceTree = "<group>"; };
+		62337D48E2C6D11D9DD20D70 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = SwiftUI.framework; sourceTree = SDKROOT; };
+		7661D6455EE1B64C3349CC10 /* WidgetDataReader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetDataReader.swift; sourceTree = "<group>"; };
+		81FE884A215CF6E3ADA31C64 /* ProgressRingWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProgressRingWidget.swift; sourceTree = "<group>"; };
+		8EA7DDEFAE3D456CE7B77F71 /* ChapterflowWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ChapterflowWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		90ACB13AF7E994C17C5ECEFB /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A4F52C53E7B459419F05C983 /* NotificationServiceExtension.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NotificationServiceExtension.swift; sourceTree = "<group>"; };
+		B61F7E717429A35DF5B29CCE /* NextReviewWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NextReviewWidget.swift; sourceTree = "<group>"; };
 		E04CAB02AF39E4B3C81F199F /* NotificationService.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NotificationService.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		E9800A4BEA2EA1A39922A3A3 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = WidgetKit.framework; sourceTree = SDKROOT; };
 		EA027BFD0C054E6CFEC8BC3E /* AttachmentBuilder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AttachmentBuilder.swift; sourceTree = "<group>"; };
+		FE8F84E4FCD501EFB0CB0817 /* ChapterflowWidgets.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = ChapterflowWidgets.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -101,6 +130,16 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E583B008A0304F4D34DADE1A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				04FEC734CE8CA7DA3F93E69F /* Foundation.framework in Frameworks */,
+				8AB972D70AF3F6E524667A5B /* WidgetKit.framework in Frameworks */,
+				E1C0F47BE4C81FC2758A4CE2 /* SwiftUI.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -108,6 +147,8 @@
 			isa = PBXGroup;
 			children = (
 				DD7A54AC20A42EC9406A4606 /* iOS */,
+				E9800A4BEA2EA1A39922A3A3 /* WidgetKit.framework */,
+				62337D48E2C6D11D9DD20D70 /* SwiftUI.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -121,6 +162,7 @@
 				0554DCBA2ACC894E0647432D /* Frameworks */,
 				97A058B48F3EB352F62930F3 /* NotificationService */,
 				D1F216CA990CC16EA8C397A0 /* NotificationContent */,
+				CA76E0C08AE1679040B8C5DC /* ChapterflowWidgets */,
 			);
 			sourceTree = "<group>";
 		};
@@ -130,6 +172,7 @@
 				15E7517D2FF4A90000FA8025 /* ChapterFlow.app */,
 				E04CAB02AF39E4B3C81F199F /* NotificationService.appex */,
 				050A996D551F59F957401E6D /* NotificationContent.appex */,
+				8EA7DDEFAE3D456CE7B77F71 /* ChapterflowWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -142,6 +185,22 @@
 			);
 			name = NotificationService;
 			path = NotificationService;
+			sourceTree = "<group>";
+		};
+		CA76E0C08AE1679040B8C5DC /* ChapterflowWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				3F0CE0636209E9DAAC909D4A /* ChapterflowWidgetsBundle.swift */,
+				7661D6455EE1B64C3349CC10 /* WidgetDataReader.swift */,
+				3439D5BFE5F7A771123B64FD /* StreakWidget.swift */,
+				0C9D4C311CC0366A2B5B4008 /* ContinueReadingWidget.swift */,
+				81FE884A215CF6E3ADA31C64 /* ProgressRingWidget.swift */,
+				B61F7E717429A35DF5B29CCE /* NextReviewWidget.swift */,
+				90ACB13AF7E994C17C5ECEFB /* Info.plist */,
+				FE8F84E4FCD501EFB0CB0817 /* ChapterflowWidgets.entitlements */,
+			);
+			name = ChapterflowWidgets;
+			path = ChapterflowWidgets;
 			sourceTree = "<group>";
 		};
 		D1F216CA990CC16EA8C397A0 /* NotificationContent */ = {
@@ -165,6 +224,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		0981D623679A9DD61BD341AC /* ChapterflowWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A915CEC5FA55B205D775D06C /* Build configuration list for PBXNativeTarget "ChapterflowWidgets" */;
+			buildPhases = (
+				1E375B875ADE0F9714DB2551 /* Sources */,
+				E583B008A0304F4D34DADE1A /* Frameworks */,
+				BB4E060BFB5DC49B17550A3A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ChapterflowWidgets;
+			productName = ChapterflowWidgets;
+			productReference = 8EA7DDEFAE3D456CE7B77F71 /* ChapterflowWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		15E7517C2FF4A90000FA8025 /* ChapterFlow */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 15E751882FF4A90400FA8025 /* Build configuration list for PBXNativeTarget "ChapterFlow" */;
@@ -179,6 +255,7 @@
 			dependencies = (
 				0DEC6190CBB0F1005C7AF618 /* PBXTargetDependency */,
 				F376C4A72EF24C588A72BD80 /* PBXTargetDependency */,
+				EB858C14737D9EBCB142A0A6 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				15E7517F2FF4A90000FA8025 /* ChapterFlow */,
@@ -267,6 +344,7 @@
 				15E7517C2FF4A90000FA8025 /* ChapterFlow */,
 				20F4D9CAB499C7188C0D73F4 /* NotificationService */,
 				E15F0487DBA7FCCDE176833D /* NotificationContent */,
+				0981D623679A9DD61BD341AC /* ChapterflowWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -293,6 +371,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BB4E060BFB5DC49B17550A3A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -300,6 +385,19 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		1E375B875ADE0F9714DB2551 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A016F644B8B745B8C35910CF /* ChapterflowWidgetsBundle.swift in Sources */,
+				F991441ACB15AD18451605AD /* WidgetDataReader.swift in Sources */,
+				F0B5D79777C758BE4B90E507 /* StreakWidget.swift in Sources */,
+				395D4114A7DCE61D8B617E05 /* ContinueReadingWidget.swift in Sources */,
+				EFD26A9B1B8FADA3538EC58A /* ProgressRingWidget.swift in Sources */,
+				3A1095CD2CCE676D593CE128 /* NextReviewWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -329,6 +427,12 @@
 			name = NotificationService;
 			target = 20F4D9CAB499C7188C0D73F4 /* NotificationService */;
 			targetProxy = 40817FD34E84989782B900E0 /* PBXContainerItemProxy */;
+		};
+		EB858C14737D9EBCB142A0A6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = ChapterflowWidgets;
+			target = 0981D623679A9DD61BD341AC /* ChapterflowWidgets */;
+			targetProxy = C2FFEB47549C7C31B7E1BCC7 /* PBXContainerItemProxy */;
 		};
 		F376C4A72EF24C588A72BD80 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -596,6 +700,27 @@
 			};
 			name = Debug;
 		};
+		6A418F9B541E0C5C31AF0B84 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = ChapterflowWidgets/ChapterflowWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ChapterflowWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.chapterflow.ios.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		7F7AABF437275E7D33F7BC27 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -616,6 +741,28 @@
 			};
 			name = Debug;
 		};
+		AF5F51C762A8501E94930FE5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = ChapterflowWidgets/ChapterflowWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ChapterflowWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.chapterflow.ios.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -633,6 +780,15 @@
 			buildConfigurations = (
 				15E751892FF4A90400FA8025 /* Debug */,
 				15E7518A2FF4A90400FA8025 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A915CEC5FA55B205D775D06C /* Build configuration list for PBXNativeTarget "ChapterflowWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AF5F51C762A8501E94930FE5 /* Release */,
+				6A418F9B541E0C5C31AF0B84 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

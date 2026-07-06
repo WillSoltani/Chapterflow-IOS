@@ -372,6 +372,8 @@ public actor EngagementRepository {
 
         let appState = SharedAppStateSnapshot(
             streakDays: snapshot.streak.currentStreak,
+            longestStreak: snapshot.streak.longestStreak,
+            streakShieldsHeld: snapshot.streak.streakShieldsHeld,
             streakAtRisk: atRisk,
             continueBookId: continueBook?.bookId,
             continueBookTitle: continueBook?.title,
