@@ -27,9 +27,18 @@ public struct WelcomeView: View {
                         .font(.largeTitle.weight(.bold))
                         .accessibilityAddTraits(.isHeader)
 
-                    Text("Learn more from every book.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    // When triggered from an auth gate, show contextual copy;
+                    // otherwise show the generic tagline.
+                    if let ctx = model.gateContext {
+                        Text(ctx)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.primary)
+                            .multilineTextAlignment(.center)
+                    } else {
+                        Text("Learn more from every book.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
 
@@ -75,6 +84,17 @@ public struct WelcomeView: View {
             if model.isLoading {
                 ProgressView()
                     .padding(.top, 12)
+            }
+
+            // "Browse without account" — only shown on the initial welcome screen,
+            // not when invoked from an auth gate (where the guest is already browsing).
+            if let browse = model.onBrowseAsGuest, model.gateContext == nil {
+                CFTextButton("Browse without account") {
+                    browse()
+                }
+                .disabled(model.isLoading)
+                .padding(.top, 8)
+                .accessibilityLabel("Continue browsing without creating an account")
             }
 
             Spacer()

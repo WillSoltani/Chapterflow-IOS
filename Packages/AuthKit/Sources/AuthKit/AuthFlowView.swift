@@ -10,8 +10,14 @@ import SwiftUI
 public struct AuthFlowView: View {
     @State private var model: AuthFlowModel
 
-    public init(authService: AuthService) {
-        _model = State(wrappedValue: AuthFlowModel(authService: authService))
+    public init(
+        authService: AuthService,
+        gateContext: String? = nil,
+        onBrowseAsGuest: (() -> Void)? = nil
+    ) {
+        var m = AuthFlowModel(authService: authService, gateContext: gateContext)
+        m.onBrowseAsGuest = onBrowseAsGuest
+        _model = State(wrappedValue: m)
     }
 
     public var body: some View {

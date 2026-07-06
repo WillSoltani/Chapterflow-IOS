@@ -14,6 +14,8 @@ public enum BookDetailPrimaryAction: Equatable {
     case continueReading
     /// The user has no access; open the paywall.
     case showPaywall
+    /// The user is browsing as a guest; prompt sign-in before starting.
+    case signInRequired
     /// Data is still loading; disable the button.
     case disabled
 }
@@ -61,6 +63,18 @@ public final class BookDetailModel {
     /// `nil` until loaded or when `fetchDepthRecommendation` is not wired.
     /// Only show this in the UI when `depthRecommendation?.isConfident == true`.
     public private(set) var depthRecommendation: DepthRecommendation?
+
+    // MARK: - Guest browse mode
+
+    /// When `true`, the model skips the entitlement and book-state fetches so
+    /// unauthenticated users can see book metadata and chapter lists. The primary
+    /// action becomes `.signInRequired`; tapping it calls `onSignInRequired`.
+    public var isGuest: Bool = false
+
+    /// Called when `isGuest == true` and the user taps the primary action
+    /// ("Sign in to Read"). Arguments: (bookId, variantFamily). Injected from
+    /// AppFeature so LibraryFeature stays decoupled from the auth stack.
+    public var onSignInRequired: ((String, VariantFamily) -> Void)?
 
     // MARK: - Navigation callbacks (injected from AppFeature)
 
@@ -127,6 +141,8 @@ public final class BookDetailModel {
     // MARK: - Derived: primary action
 
     public var primaryAction: BookDetailPrimaryAction {
+        // Guests see the metadata but must sign in before starting.
+        if isGuest { return manifest != nil ? .signInRequired : .disabled }
         guard let entitlement else { return .disabled }
         if bookState != nil { return .continueReading }
         return evaluator.canStart(bookId: bookId, entitlement: entitlement)
@@ -184,32 +200,39 @@ public final class BookDetailModel {
 
     /// Loads manifest, state, and entitlements concurrently.
     /// Gracefully handles a `.notFound` on the state endpoint (book not yet started).
+    /// When `isGuest == true`, only the public manifest is fetched.
     public func fetch() async {
         loadState = .loading
         do {
-            async let manifestTask = repository.getBook(id: bookId)
-            async let entitlementTask = repository.getEntitlements()
-            let (fetchedManifest, entitlementResponse) = try await (manifestTask, entitlementTask)
+            if isGuest {
+                // Guests only see public metadata — no auth-gated calls.
+                let fetchedManifest = try await repository.getBook(id: bookId)
+                self.manifest = fetchedManifest
+                self.loadState = .loaded
+            } else {
+                async let manifestTask = repository.getBook(id: bookId)
+                async let entitlementTask = repository.getEntitlements()
+                let (fetchedManifest, entitlementResponse) = try await (manifestTask, entitlementTask)
 
-            // State returns .notFound for books the user hasn't started — treat as nil.
-            let stateResponse: BookStateResponse?
-            do {
-                stateResponse = try await repository.getBookState(id: bookId)
-            } catch AppError.notFound {
-                stateResponse = nil
-            } catch {
-                stateResponse = nil
+                // State returns .notFound for books the user hasn't started — treat as nil.
+                let stateResponse: BookStateResponse?
+                do {
+                    stateResponse = try await repository.getBookState(id: bookId)
+                } catch AppError.notFound {
+                    stateResponse = nil
+                } catch {
+                    stateResponse = nil
+                }
+
+                self.manifest = fetchedManifest
+                self.entitlement = entitlementResponse.entitlement
+                self.bookState = stateResponse?.state
+                self.applicationStates = stateResponse?.applicationStates ?? [:]
+                self.loadState = .loaded
+
+                // Fire depth recommendation fetch (best-effort, non-blocking).
+                loadDepthRecommendation()
             }
-
-            self.manifest = fetchedManifest
-            self.entitlement = entitlementResponse.entitlement
-            self.bookState = stateResponse?.state
-            self.applicationStates = stateResponse?.applicationStates ?? [:]
-            self.loadState = .loaded
-
-            // Fire depth recommendation fetch (best-effort, non-blocking).
-            loadDepthRecommendation()
-
         } catch let appErr as AppError {
             loadState = .error(appErr.errorDescription ?? appErr.code)
         } catch {
@@ -238,9 +261,13 @@ public final class BookDetailModel {
         }
     }
 
-    /// Executes the primary action: start, continue, or paywall.
+    /// Executes the primary action: start, continue, paywall, or sign-in gate.
     public func performPrimaryAction() async {
         switch primaryAction {
+        case .signInRequired:
+            // Guest mode: delegate to AppFeature to show the auth gate.
+            onSignInRequired?(bookId, manifest?.variantFamily ?? .emh)
+
         case .showPaywall:
             onShowPaywall?()
 

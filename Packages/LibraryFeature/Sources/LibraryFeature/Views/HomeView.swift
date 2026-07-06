@@ -18,22 +18,33 @@ public struct HomeView: View {
     private let repository: any LibraryRepository
     private let bookDetailRepository: any BookDetailRepository
     private let aiRepository: (any AIRepository)?
+    private let isGuest: Bool
     private let onOpenReader: ((String, Int, VariantFamily) -> Void)?
     private let onShowPaywall: (() -> Void)?
+    /// Called when a guest taps a gated action (save, etc.). Triggers the auth gate.
+    private let onRequireAuth: (() -> Void)?
+    /// Called when a guest taps "Sign in to Read" on a book detail screen.
+    private let onSignInRequired: ((String, VariantFamily) -> Void)?
 
     public init(
         repository: any LibraryRepository,
         bookDetailRepository: any BookDetailRepository,
         aiRepository: (any AIRepository)? = nil,
+        isGuest: Bool = false,
         onOpenReader: ((String, Int, VariantFamily) -> Void)? = nil,
-        onShowPaywall: (() -> Void)? = nil
+        onShowPaywall: (() -> Void)? = nil,
+        onRequireAuth: (() -> Void)? = nil,
+        onSignInRequired: ((String, VariantFamily) -> Void)? = nil
     ) {
         _model = State(initialValue: HomeModel(repository: repository))
         self.repository = repository
         self.bookDetailRepository = bookDetailRepository
         self.aiRepository = aiRepository
+        self.isGuest = isGuest
         self.onOpenReader = onOpenReader
         self.onShowPaywall = onShowPaywall
+        self.onRequireAuth = onRequireAuth
+        self.onSignInRequired = onSignInRequired
     }
 
     public var body: some View {
@@ -52,8 +63,10 @@ public struct HomeView: View {
                             bookId: bookId,
                             repository: bookDetailRepository,
                             aiRepository: aiRepository,
+                            isGuest: isGuest,
                             onOpenReader: onOpenReader,
-                            onShowPaywall: onShowPaywall
+                            onShowPaywall: onShowPaywall,
+                            onSignInRequired: onSignInRequired
                         )
                     case .globalSearch:
                         GlobalSearchView(
@@ -73,9 +86,14 @@ public struct HomeView: View {
                             progressItems: model.progressItems,
                             bookDetailRepository: bookDetailRepository,
                             aiRepository: aiRepository,
-                            onToggleSaved: { bookId in Task { await model.toggleSaved(bookId: bookId) } },
+                            isGuest: isGuest,
+                            onToggleSaved: { bookId in
+                                guard !isGuest else { onRequireAuth?(); return }
+                                Task { await model.toggleSaved(bookId: bookId) }
+                            },
                             onOpenReader: onOpenReader,
-                            onShowPaywall: onShowPaywall
+                            onShowPaywall: onShowPaywall,
+                            onSignInRequired: onSignInRequired
                         )
                     }
                 }
@@ -174,7 +192,10 @@ public struct HomeView: View {
                     book: book,
                     progress: progressItem(for: book.bookId),
                     isSaved: true,
-                    onSave: { Task { await model.toggleSaved(bookId: book.bookId) } },
+                    onSave: {
+                        guard !isGuest else { onRequireAuth?(); return }
+                        Task { await model.toggleSaved(bookId: book.bookId) }
+                    },
                     onTap: { router.push(LibraryRoute.bookDetail(bookId: book.bookId)) }
                 )
                 .padding(.horizontal, .cfSpacing16)
@@ -210,7 +231,10 @@ public struct HomeView: View {
                 BookCardView(
                     book: book,
                     isSaved: model.savedBookIds.contains(book.bookId),
-                    onSave: { Task { await model.toggleSaved(bookId: book.bookId) } },
+                    onSave: {
+                        guard !isGuest else { onRequireAuth?(); return }
+                        Task { await model.toggleSaved(bookId: book.bookId) }
+                    },
                     onTap: { router.push(LibraryRoute.bookDetail(bookId: book.bookId)) }
                 )
                 .padding(.horizontal, .cfSpacing16)
