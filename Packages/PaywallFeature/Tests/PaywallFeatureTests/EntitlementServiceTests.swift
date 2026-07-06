@@ -38,6 +38,7 @@ private actor StubSKService: StoreKitServicing {
             ? .subscribed(productID: "com.cf.annual", expirationDate: nil)
             : .notSubscribed
     }
+    func currentTransactionID() async -> UInt64? { nil }
 }
 
 // MARK: - Helpers

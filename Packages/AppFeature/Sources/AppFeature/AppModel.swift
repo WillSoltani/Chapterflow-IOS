@@ -137,6 +137,9 @@ public final class AppModel {
     /// Context that controls the copy shown inside the paywall.
     public var paywallContext: PaywallContext = .settings
 
+    /// Whether the full subscription management sheet is presented.
+    public var showSubscriptionManagement: Bool = false
+
     // MARK: - Push notifications
 
     /// Manages APNs token registration with the backend. Observable so
@@ -240,7 +243,16 @@ public final class AppModel {
         PaywallModel(storeKitService: storeKitService, apiClient: apiClient, context: context)
     }
 
+    /// Creates a fresh `SubscriptionManagementModel`.
+    /// Called by `AppRootView` when the subscription management sheet is presented.
+    public func makeSubscriptionManagementModel() -> SubscriptionManagementModel {
+        SubscriptionManagementModel(storeKitService: storeKitService, apiClient: apiClient)
+    }
+
     /// Opens the App Store subscription management page.
+    ///
+    /// Legacy path; prefer `showSubscriptionManagement = true` to present the
+    /// in-app subscription management sheet instead.
     public func openManageSubscriptions() {
         #if canImport(UIKit)
         guard let url = URL(string: "https://apps.apple.com/account/subscriptions") else { return }
