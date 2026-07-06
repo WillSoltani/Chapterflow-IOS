@@ -377,52 +377,29 @@ public struct SettingsView: View {
     private var downloadsSection: some View {
         if let model = settingsModel {
             Section {
-                if model.downloadedFiles.isEmpty {
-                    Text("No downloaded books")
-                        .foregroundStyle(.secondary)
-                        .accessibilityLabel("No downloaded books stored on device")
-                } else {
-                    ForEach(model.downloadedFiles) { file in
-                        HStack {
-                            VStack(alignment: .leading, spacing: .cfSpacing4) {
-                                Text(file.displayName)
-                                    .font(.cfBody)
-                                Text(file.formattedSize)
-                                    .font(.cfCaption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Button {
-                                model.deleteDownload(file)
-                            } label: {
-                                Image(systemName: "trash")
-                                    .foregroundStyle(Color.red)
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("Delete \(file.displayName)")
+                // Navigate to the full DownloadsSettingsView
+                NavigationLink {
+                    DownloadsSettingsView(
+                        downloadInfo: model.downloadInfoProvider,
+                        preferences: model.preferences,
+                        userId: model.userId
+                    )
+                } label: {
+                    HStack {
+                        Label("Downloads", systemImage: "arrow.down.circle")
+                            .foregroundStyle(Color.cfLabel)
+                        Spacer()
+                        if model.totalDownloadBytes > 0 {
+                            Text(ByteCountFormatter.string(
+                                fromByteCount: model.totalDownloadBytes,
+                                countStyle: .file
+                            ))
+                            .font(.cfCaption)
+                            .foregroundStyle(Color.cfSecondaryLabel)
                         }
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel("\(file.displayName), \(file.formattedSize)")
-                    }
-
-                    if model.downloadedFiles.count > 1 {
-                        Button(role: .destructive) {
-                            model.deleteAllDownloads()
-                        } label: {
-                            Label(
-                                "Delete All (\(ByteCountFormatter.string(fromByteCount: model.totalDownloadBytes, countStyle: .file)))",
-                                systemImage: "trash"
-                            )
-                        }
-                        .accessibilityLabel("Delete all downloaded books")
                     }
                 }
-            } header: {
-                Text("Downloads")
-            } footer: {
-                if model.totalDownloadBytes > 0 {
-                    Text("Total: \(ByteCountFormatter.string(fromByteCount: model.totalDownloadBytes, countStyle: .file))")
-                }
+                .accessibilityLabel("Downloads settings")
             }
         }
     }

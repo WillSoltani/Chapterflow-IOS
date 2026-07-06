@@ -56,7 +56,7 @@ public final class CachedQuizState {
 // MARK: - Domain mapping
 
 extension CachedQuizState {
-    static func makeRowId(userId: String, bookId: String, chapterNumber: Int) -> String {
+    public static func makeRowId(userId: String, bookId: String, chapterNumber: Int) -> String {
         "\(userId):\(bookId):\(chapterNumber)"
     }
 

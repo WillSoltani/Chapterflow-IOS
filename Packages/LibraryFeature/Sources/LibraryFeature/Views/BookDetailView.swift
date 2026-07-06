@@ -81,6 +81,7 @@ public struct BookDetailView: View {
                 }
             }
             .task { await model.fetch() }
+            .task(id: model.bookId) { await model.refreshDownloadState() }
     }
 
     // MARK: - Content
@@ -115,6 +116,9 @@ public struct BookDetailView: View {
                         .padding(.horizontal, .cfSpacing16)
                         .padding(.top, .cfSpacing8)
                 }
+                downloadSection
+                    .padding(.horizontal, .cfSpacing16)
+                    .padding(.top, .cfSpacing12)
                 depthToneRow
                     .padding(.top, .cfSpacing16)
                 chapterListSection
@@ -258,6 +262,17 @@ public struct BookDetailView: View {
         case .showPaywall: return Color.cfAccent
         default:           return Color.white
         }
+    }
+
+    // MARK: - Download
+
+    private var downloadSection: some View {
+        BookDownloadButton(
+            state: model.downloadState,
+            onDownload: { model.startDownload() },
+            onCancel: { model.cancelDownload() },
+            onDelete: { model.deleteDownload() }
+        )
     }
 
     // MARK: - Depth & Tone entry point

@@ -54,7 +54,12 @@ public final class SettingsModel {
     public var showDeleteConfirm = false
     public private(set) var isDangerousOperationInProgress = false
 
-    // MARK: - Downloads
+    // MARK: - Downloads (new SwiftData-backed)
+
+    /// Optional download-info provider (DownloadManager from LibraryFeature).
+    /// When nil, falls back to the legacy file-scan approach.
+    public let downloadInfoProvider: (any DownloadInfoProviding)?
+    public let userId: String
 
     public private(set) var downloadedFiles: [DownloadedFile] = []
     public private(set) var totalDownloadBytes: Int64 = 0
@@ -75,23 +80,27 @@ public final class SettingsModel {
     public init(
         repository: any SettingsRepository,
         preferences: AppPreferences,
-        onSignOut: @escaping () async -> Void
+        onSignOut: @escaping () async -> Void,
+        downloadInfoProvider: (any DownloadInfoProviding)? = nil,
+        userId: String = ""
     ) {
         self.repository = repository
         self.preferences = preferences
         self.onSignOut = onSignOut
+        self.downloadInfoProvider = downloadInfoProvider
+        self.userId = userId
     }
 
     // MARK: - Lifecycle
 
     /// Loads server reading settings and syncs them into `AppPreferences`.
-    /// Also scans the downloads directory.
+    /// Also refreshes the downloads inventory.
     public func load() async {
         isLoading = true
         defer { isLoading = false }
         error = nil
         await loadReadingSettings()
-        loadDownloads()
+        await loadDownloads()
     }
 
     private func loadReadingSettings() async {
@@ -138,7 +147,23 @@ public final class SettingsModel {
 
     // MARK: - Downloads
 
-    private func loadDownloads() {
+    private func loadDownloads() async {
+        if let provider = downloadInfoProvider, !userId.isEmpty {
+            // SwiftData-backed inventory
+            let books = await provider.downloadedBooks(userId: userId)
+            let total = await provider.totalUsedBytes(userId: userId)
+            downloadedFiles = books.map {
+                DownloadedFile(
+                    id: $0.bookId,
+                    displayName: $0.title,
+                    byteCount: $0.totalBytes,
+                    url: URL(filePath: $0.bookId)   // URL not used for deletion; provider handles it
+                )
+            }.sorted { $0.displayName < $1.displayName }
+            totalDownloadBytes = total
+            return
+        }
+        // Legacy file-scan fallback (pre-P3.2 data)
         guard let store = try? FileStore.applicationSupport(subdirectory: "Downloads") else { return }
         let fm = FileManager.default
         guard let contents = try? fm.contentsOfDirectory(
@@ -166,15 +191,34 @@ public final class SettingsModel {
         totalDownloadBytes = total
     }
 
-    /// Deletes a single downloaded file.
+    /// Deletes a single downloaded book (SwiftData path) or file (legacy path).
     public func deleteDownload(_ file: DownloadedFile) {
+        if let provider = downloadInfoProvider, !userId.isEmpty {
+            let bid = file.id
+            let uid = userId
+            Task {
+                try? await provider.deleteBookDownload(bookId: bid, userId: uid)
+                downloadedFiles.removeAll { $0.id == bid }
+                totalDownloadBytes = await provider.totalUsedBytes(userId: uid)
+            }
+            return
+        }
         try? FileManager.default.removeItem(at: file.url)
         downloadedFiles.removeAll { $0.id == file.id }
         totalDownloadBytes -= file.byteCount
     }
 
-    /// Deletes all downloaded files.
+    /// Deletes all downloaded books.
     public func deleteAllDownloads() {
+        if let provider = downloadInfoProvider, !userId.isEmpty {
+            let uid = userId
+            Task {
+                try? await provider.deleteAllBookDownloads(userId: uid)
+                downloadedFiles = []
+                totalDownloadBytes = 0
+            }
+            return
+        }
         for file in downloadedFiles {
             try? FileManager.default.removeItem(at: file.url)
         }
