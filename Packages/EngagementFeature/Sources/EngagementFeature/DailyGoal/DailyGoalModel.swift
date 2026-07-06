@@ -69,9 +69,14 @@ public final class DailyGoalModel {
     }
 
     /// Persists a new goal and immediately updates the displayed state.
+    ///
+    /// Also publishes a partial ``SharedAppStateSnapshot`` update to the App Group
+    /// via ``SharedStateWriter`` so widgets reflect the change without a full refresh.
     public func setGoal(_ minutes: Int) {
         store.dailyGoalMinutes = minutes
         rebuildState()
+        let todayMinutes = cachedTodayMinutes ?? 0
+        Task { await SharedStateWriter.shared.updateGoalState(goalMinutes: minutes, progressMinutes: todayMinutes) }
     }
 
     // MARK: - Exposed for widgets / reminders
