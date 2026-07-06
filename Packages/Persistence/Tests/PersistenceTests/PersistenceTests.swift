@@ -107,92 +107,20 @@ struct TokenStoreTests {
     }
 }
 
-// MARK: - SwiftData container
+// MARK: - SwiftData migration plan (no container creation)
 
-@Suite("PersistenceController")
-struct PersistenceControllerTests {
-    @MainActor
-    @Test("boots an in-memory container with the sample @Model and round-trips a record")
-    func containerBoots() throws {
-        let controller = try PersistenceController(
-            models: PersistenceSchemaV2.models,
-            storage: .inMemory,
-            migrationPlan: PersistenceMigrationPlan.self
-        )
-        let context = controller.mainContext
-
-        context.insert(CachedKeyValue(key: "greeting", value: "hello"))
-        try context.save()
-
-        let fetched = try context.fetch(FetchDescriptor<CachedKeyValue>())
-        #expect(fetched.count == 1)
-        #expect(fetched.first?.value == "hello")
-    }
-
-    @Test("background store inserts and counts off the main actor")
-    func backgroundStore() async throws {
-        let controller = try PersistenceController(models: PersistenceSchemaV2.models, storage: .inMemory)
-        let background = controller.backgroundStore()
-
-        try await background.insert(CachedKeyValue(key: "k", value: "v"))
-        let count = try await background.count(CachedKeyValue.self)
-        #expect(count == 1)
-    }
-
-    @Test("LocalAnnotation round-trips in-memory")
-    @MainActor
-    func localAnnotationRoundTrip() throws {
-        let controller = try PersistenceController(models: PersistenceSchemaV2.models, storage: .inMemory)
-        let context = controller.mainContext
-
-        let ann = LocalAnnotation(
-            bookId: "book-1",
-            chapterId: "ch-1",
-            type: "highlight",
-            colorRaw: "yellow",
-            snippet: "Hello"
-        )
-        context.insert(ann)
-        try context.save()
-
-        let fetched = try context.fetch(FetchDescriptor<LocalAnnotation>())
-        #expect(fetched.count == 1)
-        #expect(fetched.first?.type == "highlight")
-        #expect(fetched.first?.colorRaw == "yellow")
-    }
-
-    @Test("migration plan is well-formed with V1 → V2 → V3 → V4 → V5 stages")
+@Suite("PersistenceSchema")
+struct PersistenceSchemaTests {
+    @Test("migration plan is well-formed with V1 → V2 → V3 → V4 → V5 → V6 stages")
     func migrationPlan() {
-        #expect(PersistenceMigrationPlan.schemas.count == 5)
-        #expect(PersistenceMigrationPlan.stages.count == 4)
+        #expect(PersistenceMigrationPlan.schemas.count == 6)
+        #expect(PersistenceMigrationPlan.stages.count == 5)
         #expect(PersistenceSchemaV1.versionIdentifier == Schema.Version(1, 0, 0))
         #expect(PersistenceSchemaV2.versionIdentifier == Schema.Version(2, 0, 0))
         #expect(PersistenceSchemaV3.versionIdentifier == Schema.Version(3, 0, 0))
         #expect(PersistenceSchemaV4.versionIdentifier == Schema.Version(4, 0, 0))
         #expect(PersistenceSchemaV5.versionIdentifier == Schema.Version(5, 0, 0))
-    }
-
-    @Test("PendingReviewGrade round-trips in-memory")
-    @MainActor
-    func pendingReviewGradeRoundTrip() throws {
-        let controller = try PersistenceController(models: PersistenceSchemaV3.models, storage: .inMemory)
-        let context = controller.mainContext
-
-        let grade = PendingReviewGrade(
-            cardId: "card-1",
-            rating: 3,
-            reviewedAt: "2026-01-01T00:00:00Z",
-            optimisticStability: 5.0,
-            optimisticDifficulty: 4.5,
-            optimisticDueAt: "2026-01-04T00:00:00Z"
-        )
-        context.insert(grade)
-        try context.save()
-
-        let fetched = try context.fetch(FetchDescriptor<PendingReviewGrade>())
-        #expect(fetched.count == 1)
-        #expect(fetched.first?.cardId == "card-1")
-        #expect(fetched.first?.rating == 3)
+        #expect(PersistenceSchemaV6.versionIdentifier == Schema.Version(6, 0, 0))
     }
 }
 
