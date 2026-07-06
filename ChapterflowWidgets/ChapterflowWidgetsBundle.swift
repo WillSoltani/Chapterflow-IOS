@@ -4,9 +4,13 @@ import SwiftUI
 @main
 struct ChapterflowWidgetsBundle: WidgetBundle {
     var body: some Widget {
+        // Home-screen & Lock Screen widgets (P8.1)
         StreakWidget()
         ContinueReadingWidget()
         ProgressRingWidget()
         NextReviewWidget()
+        // Live Activities (P8.2)
+        ReadingSessionActivity()
+        StreakAtRiskActivity()
     }
 }
