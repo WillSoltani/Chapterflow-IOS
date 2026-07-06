@@ -32,6 +32,8 @@ public final class QuizModel {
         case submitting
         /// Server has returned a graded result.
         case result
+        /// Submitted while offline; awaiting server grading when connectivity returns.
+        case pendingGrading
         case error(String)
     }
 
@@ -167,10 +169,9 @@ public final class QuizModel {
                 try? await repository.postEvent(bookId: bookId, n: chapterNumber, event: event)
             }
 
-        } catch AppError.offline {
-            // Revert to active — the view shows "connect to submit" when !isOnline.
-            isOnline = false
-            phase = .active
+        } catch QuizSubmissionError.pendingGrading {
+            // Answers saved to offline outbox — will be graded when back online.
+            phase = .pendingGrading
         } catch let e as AppError {
             phase = .error(e.errorDescription ?? e.code)
         } catch {
@@ -188,8 +189,12 @@ public final class QuizModel {
     // MARK: - Computed
 
     /// Whether the submit button should be enabled.
+    ///
+    /// Offline submission is allowed — the repository will queue the answers as a
+    /// ``PendingMutation`` and throw ``QuizSubmissionError/pendingGrading`` so the
+    /// view can transition to the waiting state.
     public var canSubmit: Bool {
-        phase == .active && allAnswered && isOnline
+        phase == .active && allAnswered
     }
 
     /// True when every question has a selected answer.
