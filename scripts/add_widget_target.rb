@@ -63,6 +63,7 @@ widget_target.build_configurations.each do |config|
   s['MARKETING_VERSION']         = '1.0'
   s['CURRENT_PROJECT_VERSION']   = '1'
 
+  s['PRODUCT_NAME']              = '$(TARGET_NAME)'
   s['SKIP_INSTALL']              = 'YES'
   s['CODE_SIGN_STYLE']           = 'Automatic'
 
