@@ -10,6 +10,8 @@ import WidgetKit
 /// Shared key namespace used by both ``SharedStateWriter`` and ``SharedStateReader``.
 public enum SharedStateKeys {
     public static let streakDays          = "shared.streakDays"
+    public static let longestStreak       = "shared.longestStreak"
+    public static let streakShieldsHeld   = "shared.streakShieldsHeld"
     public static let streakAtRisk        = "shared.streakAtRisk"
     public static let dueReviewCount      = "shared.dueReviewCount"
     public static let dailyGoalMinutes    = "shared.dailyGoalMinutes"
@@ -150,6 +152,8 @@ public actor SharedStateWriter {
 
     private func writeToUserDefaults(_ snapshot: SharedAppStateSnapshot) {
         defaults.set(snapshot.streakDays, forKey: SharedStateKeys.streakDays)
+        defaults.set(snapshot.longestStreak, forKey: SharedStateKeys.longestStreak)
+        defaults.set(snapshot.streakShieldsHeld, forKey: SharedStateKeys.streakShieldsHeld)
         defaults.set(snapshot.streakAtRisk, forKey: SharedStateKeys.streakAtRisk)
         defaults.set(snapshot.dueReviewCount, forKey: SharedStateKeys.dueReviewCount)
         defaults.set(snapshot.dailyGoalMinutes, forKey: SharedStateKeys.dailyGoalMinutes)

@@ -31,6 +31,8 @@ public struct SharedStateReader: @unchecked Sendable { // UserDefaults is thread
     /// sane default. This method never throws, never force-unwraps, never crashes.
     public func load() -> SharedAppStateSnapshot {
         let streakDays = max(0, defaults.integer(forKey: SharedStateKeys.streakDays))
+        let longestStreak = max(0, defaults.integer(forKey: SharedStateKeys.longestStreak))
+        let streakShieldsHeld = max(0, defaults.integer(forKey: SharedStateKeys.streakShieldsHeld))
         let streakAtRisk = defaults.bool(forKey: SharedStateKeys.streakAtRisk)
         let dueReviewCount = max(0, defaults.integer(forKey: SharedStateKeys.dueReviewCount))
         let rawGoal = defaults.object(forKey: SharedStateKeys.dailyGoalMinutes) as? Int
@@ -50,6 +52,8 @@ public struct SharedStateReader: @unchecked Sendable { // UserDefaults is thread
 
         return SharedAppStateSnapshot(
             streakDays: streakDays,
+            longestStreak: longestStreak,
+            streakShieldsHeld: streakShieldsHeld,
             streakAtRisk: streakAtRisk,
             continueBookId: continueBookId,
             continueBookTitle: continueBookTitle,

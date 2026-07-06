@@ -11,6 +11,8 @@ struct SharedAppStateSnapshotTests {
     func defaultValues() {
         let snapshot = SharedAppStateSnapshot()
         #expect(snapshot.streakDays == 0)
+        #expect(snapshot.longestStreak == 0)
+        #expect(snapshot.streakShieldsHeld == 0)
         #expect(snapshot.streakAtRisk == false)
         #expect(snapshot.continueBookId == nil)
         #expect(snapshot.continueBookTitle == nil)
@@ -116,14 +118,18 @@ struct SharedStateReaderTests {
         #expect(snapshot.lastUpdated == .distantPast)
     }
 
-    @Test("reads streak days and atRisk flag")
+    @Test("reads streak days, longestStreak, shields and atRisk flag")
     func readsStreakFields() {
         let suite = makeSuite()
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         defaults.set(14, forKey: SharedStateKeys.streakDays)
+        defaults.set(30, forKey: SharedStateKeys.longestStreak)
+        defaults.set(2,  forKey: SharedStateKeys.streakShieldsHeld)
         defaults.set(true, forKey: SharedStateKeys.streakAtRisk)
         let snapshot = SharedStateReader(suiteName: suite).load()
+        #expect(snapshot.longestStreak == 30)
+        #expect(snapshot.streakShieldsHeld == 2)
         #expect(snapshot.streakDays == 14)
         #expect(snapshot.streakAtRisk == true)
     }
@@ -224,6 +230,8 @@ struct SharedStateWriterTests {
 
         let snapshot = SharedAppStateSnapshot(
             streakDays: 21,
+            longestStreak: 45,
+            streakShieldsHeld: 3,
             streakAtRisk: true,
             dueReviewCount: 5,
             dailyGoalMinutes: 30,
@@ -232,6 +240,8 @@ struct SharedStateWriterTests {
         await writer.publishImmediately(snapshot)
 
         #expect(defaults.integer(forKey: SharedStateKeys.streakDays) == 21)
+        #expect(defaults.integer(forKey: SharedStateKeys.longestStreak) == 45)
+        #expect(defaults.integer(forKey: SharedStateKeys.streakShieldsHeld) == 3)
         #expect(defaults.bool(forKey: SharedStateKeys.streakAtRisk) == true)
         #expect(defaults.integer(forKey: SharedStateKeys.dueReviewCount) == 5)
         #expect(defaults.integer(forKey: SharedStateKeys.dailyGoalMinutes) == 30)
