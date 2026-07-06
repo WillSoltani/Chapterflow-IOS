@@ -24,22 +24,31 @@ public struct LibraryView: View {
     private let repository: any LibraryRepository
     private let bookDetailRepository: any BookDetailRepository
     private let aiRepository: (any AIRepository)?
+    private let isGuest: Bool
     private let onOpenReader: ((String, Int, VariantFamily) -> Void)?
     private let onShowPaywall: (() -> Void)?
+    private let onRequireAuth: (() -> Void)?
+    private let onSignInRequired: ((String, VariantFamily) -> Void)?
 
     public init(
         repository: any LibraryRepository,
         bookDetailRepository: any BookDetailRepository,
         aiRepository: (any AIRepository)? = nil,
+        isGuest: Bool = false,
         onOpenReader: ((String, Int, VariantFamily) -> Void)? = nil,
-        onShowPaywall: (() -> Void)? = nil
+        onShowPaywall: (() -> Void)? = nil,
+        onRequireAuth: (() -> Void)? = nil,
+        onSignInRequired: ((String, VariantFamily) -> Void)? = nil
     ) {
         _model = State(initialValue: LibraryModel(repository: repository))
         self.repository = repository
         self.bookDetailRepository = bookDetailRepository
         self.aiRepository = aiRepository
+        self.isGuest = isGuest
         self.onOpenReader = onOpenReader
         self.onShowPaywall = onShowPaywall
+        self.onRequireAuth = onRequireAuth
+        self.onSignInRequired = onSignInRequired
     }
 
     public var body: some View {
@@ -59,8 +68,10 @@ public struct LibraryView: View {
                             bookId: bookId,
                             repository: bookDetailRepository,
                             aiRepository: aiRepository,
+                            isGuest: isGuest,
                             onOpenReader: onOpenReader,
-                            onShowPaywall: onShowPaywall
+                            onShowPaywall: onShowPaywall,
+                            onSignInRequired: onSignInRequired
                         )
                     case .globalSearch:
                         GlobalSearchView(
@@ -79,9 +90,14 @@ public struct LibraryView: View {
                             savedBookIds: model.savedBookIds,
                             bookDetailRepository: bookDetailRepository,
                             aiRepository: aiRepository,
-                            onToggleSaved: { bookId in Task { await model.toggleSaved(bookId: bookId) } },
+                            isGuest: isGuest,
+                            onToggleSaved: { bookId in
+                                guard !isGuest else { onRequireAuth?(); return }
+                                Task { await model.toggleSaved(bookId: bookId) }
+                            },
                             onOpenReader: onOpenReader,
-                            onShowPaywall: onShowPaywall
+                            onShowPaywall: onShowPaywall,
+                            onSignInRequired: onSignInRequired
                         )
                     }
                 }
@@ -134,6 +150,7 @@ public struct LibraryView: View {
                             book: book,
                             isSaved: model.savedBookIds.contains(book.bookId),
                             onSave: {
+                                guard !isGuest else { onRequireAuth?(); return }
                                 triggerHaptic()
                                 Task { await model.toggleSaved(bookId: book.bookId) }
                             },
