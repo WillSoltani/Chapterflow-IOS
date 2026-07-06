@@ -38,7 +38,7 @@ public final class CachedChapter {
 // MARK: - Domain mapping
 
 extension CachedChapter {
-    static func makeRowId(userId: String, bookId: String, number: Int) -> String {
+    public static func makeRowId(userId: String, bookId: String, number: Int) -> String {
         "\(userId):\(bookId):\(number)"
     }
 
