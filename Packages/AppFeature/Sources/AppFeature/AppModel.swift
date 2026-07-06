@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreKit
+import Models
 import AuthKit
 import Networking
 import Persistence
@@ -32,6 +33,20 @@ public final class AppModel {
 
     public let authService: AuthService
     public let session: SessionManager
+
+    // MARK: - Guest browse mode
+
+    /// `true` when the user has chosen to browse without signing in.
+    /// `AppRootView` shows the main tab shell (Library/Discover fully public)
+    /// while `authState == .signedOut && isGuestMode`.
+    public var isGuestMode: Bool = false
+
+    /// Whether the auth gate sheet is currently presented.
+    public var showAuthGate: Bool = false
+
+    /// The action a guest was trying to perform when they hit an auth gate.
+    /// Cleared and replayed by `replayPendingIntent()` after sign-in.
+    public var pendingAuthIntent: AuthGateIntent = .none
 
     // MARK: - User profile
 
@@ -233,6 +248,64 @@ public final class AppModel {
     public func signOut() async {
         await apnsManager.handleSignOut()
         await session.signOut()
+        isGuestMode = false
+    }
+
+    // MARK: - Guest browse mode
+
+    /// Transitions into guest mode: the user browses the catalog without signing in.
+    /// Called from `WelcomeView`'s "Browse without account" button.
+    public func enterGuestMode() {
+        isGuestMode = true
+    }
+
+    /// Captures a gated-action intent and presents the auth gate sheet.
+    ///
+    /// After the user signs in, `AppRootView` calls `replayPendingIntent()` to
+    /// execute the captured action.
+    public func requestAuth(intent: AuthGateIntent) {
+        pendingAuthIntent = intent
+        showAuthGate = true
+    }
+
+    /// Executes the pending intent after a successful sign-in.
+    ///
+    /// Starts the book and opens the reader for `.startBook`, or does nothing
+    /// for `.none`. Called from `AppRootView.onChange(of: authState)`.
+    func replayPendingIntent(readingFlowSetter: (ReadingFlow) -> Void) async {
+        let intent = pendingAuthIntent
+        pendingAuthIntent = .none
+        isGuestMode = false
+
+        switch intent {
+        case .startBook(let bookId, let variantFamily):
+            do {
+                async let stateTask = bookDetailRepository.startBook(id: bookId)
+                let stateResponse = try await stateTask
+                let chapterNumber = resolveChapterNumber(from: stateResponse.state)
+                readingFlowSetter(ReadingFlow(
+                    bookId: bookId,
+                    chapterNumber: chapterNumber,
+                    variantFamily: variantFamily
+                ))
+            } catch {
+                // If start fails (e.g. no entitlement), just navigate to library so
+                // the user can see the book detail with the paywall.
+                selectedTab = .library
+            }
+
+        case .none:
+            break
+        }
+    }
+
+    private func resolveChapterNumber(from state: BookUserBookState) -> Int {
+        guard let chapterId = state.currentChapterId ?? state.lastReadChapterId else { return 1 }
+        // Without the manifest in scope here, we fall back to chapter 1. The
+        // reader loads its own manifest and handles an invalid chapter number
+        // gracefully by opening the first available chapter.
+        _ = chapterId
+        return 1
     }
 
     // MARK: - Paywall factory
@@ -294,6 +367,17 @@ public final class AppModel {
     }
 
     public func handle(deepLink: DeepLink) {
+        // In guest mode, browseable links go through normally;
+        // account-only links trigger the auth gate instead.
+        if isGuestMode {
+            switch deepLink {
+            case .book, .chapter, .library:
+                selectedTab = .library
+            default:
+                requestAuth(intent: .none)
+            }
+            return
+        }
         switch deepLink {
         case .book, .chapter:
             selectedTab = .library

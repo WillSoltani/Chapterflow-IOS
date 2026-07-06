@@ -75,6 +75,17 @@ public final class AuthFlowModel {
 
     public var navigationPath: [AuthRoute] = []
 
+    // MARK: - Guest browse mode
+
+    /// Optional context string set when the flow is triggered from an auth gate
+    /// (e.g. "Sign up free to start reading"). `WelcomeView` renders it as a
+    /// contextual prompt above the sign-in buttons.
+    public var gateContext: String? = nil
+
+    /// Called when the user taps "Browse without account" on `WelcomeView`.
+    /// Wired by `AppRootView` to `AppModel.enterGuestMode()`.
+    public var onBrowseAsGuest: (() -> Void)?
+
     // MARK: - Loading / feedback
 
     public var isLoading = false
@@ -108,8 +119,9 @@ public final class AuthFlowModel {
 
     private let authService: AuthService
 
-    public init(authService: AuthService) {
+    public init(authService: AuthService, gateContext: String? = nil) {
         self.authService = authService
+        self.gateContext = gateContext
     }
 
     // MARK: - Navigation helpers

@@ -44,6 +44,13 @@ public struct AppRootView: View {
                 case .signedIn:
                     model.hydrateDisplayName()
                     model.startAPNS()
+                    model.showAuthGate = false
+                    // Replay any action the guest was attempting before signing in.
+                    if !model.pendingAuthIntent.isNone {
+                        Task { await model.replayPendingIntent { readingFlow = $0 } }
+                    } else {
+                        model.isGuestMode = false
+                    }
                 case .signedOut:
                     model.displayName = ""
                 default:
@@ -77,7 +84,13 @@ public struct AppRootView: View {
                 .accessibilityLabel("Loading")
 
         case .signedOut:
-            authFlowContent
+            // Guest mode: show the full tab shell with public content available.
+            // The auth gate sheet and affordance pill are layered on top.
+            if model.isGuestMode {
+                guestTabView
+            } else {
+                authFlowContent
+            }
 
         case .signedIn, .reauthRequired, .reconnecting:
             mainTabView
@@ -112,10 +125,60 @@ public struct AppRootView: View {
     @ViewBuilder
     private var authFlowContent: some View {
         #if os(iOS)
-        AuthFlowView(authService: model.authService)
+        AuthFlowView(
+            authService: model.authService,
+            onBrowseAsGuest: { model.enterGuestMode() }
+        )
         #else
         EmptyView()
         #endif
+    }
+
+    // MARK: - Guest tab view
+
+    /// Tab shell for unauthenticated guests — same layout as `mainTabView` but
+    /// with the auth gate sheet and affordance pill layered on top.
+    private var guestTabView: some View {
+        guestTabShell
+            #if os(iOS)
+            .sheet(isPresented: Binding(
+                get: { model.showAuthGate },
+                set: { model.showAuthGate = $0 }
+            )) {
+                AuthGateSheet(
+                    authService: model.authService,
+                    intent: model.pendingAuthIntent
+                )
+                .presentationDetents([.large])
+            }
+            #endif
+    }
+
+    private var guestTabShell: some View {
+        TabView(selection: $model.selectedTab) {
+            Tab("Home", systemImage: "house", value: AppTab.home) {
+                guestTabContent(for: .home)
+            }
+            Tab("Library", systemImage: "books.vertical", value: AppTab.library) {
+                guestTabContent(for: .library)
+            }
+            Tab("Reviews", systemImage: "star", value: AppTab.reviews) {
+                guestTabContent(for: .reviews)
+            }
+            Tab("Profile", systemImage: "person.crop.circle", value: AppTab.profile) {
+                guestTabContent(for: .profile)
+            }
+            Tab("Settings", systemImage: "gearshape", value: AppTab.settings) {
+                guestTabContent(for: .settings)
+            }
+        }
+        .tabViewStyle(.sidebarAdaptable)
+        .tint(.cfAccent)
+        .safeAreaInset(edge: .bottom) {
+            GuestAffordancePill {
+                model.requestAuth(intent: .none)
+            }
+        }
     }
 
     // MARK: - Main tab view
@@ -283,6 +346,82 @@ public struct AppRootView: View {
             )
         }
     }
+
+    // MARK: - Guest tab content
+
+    @ViewBuilder
+    private func guestTabContent(for tab: AppTab) -> some View {
+        let authGateClosure: (String, VariantFamily) -> Void = { bookId, variantFamily in
+            model.requestAuth(intent: .startBook(bookId: bookId, variantFamily: variantFamily))
+        }
+        let requireAuthClosure: () -> Void = {
+            model.requestAuth(intent: .none)
+        }
+
+        switch tab {
+        case .home:
+            HomeView(
+                repository: model.libraryRepository,
+                bookDetailRepository: model.bookDetailRepository,
+                aiRepository: model.aiRepository,
+                isGuest: true,
+                onOpenReader: nil, // guests can't open the reader
+                onShowPaywall: nil,
+                onRequireAuth: requireAuthClosure,
+                onSignInRequired: authGateClosure
+            )
+        case .library:
+            LibraryView(
+                repository: model.libraryRepository,
+                bookDetailRepository: model.bookDetailRepository,
+                aiRepository: model.aiRepository,
+                isGuest: true,
+                onOpenReader: nil,
+                onShowPaywall: nil,
+                onRequireAuth: requireAuthClosure,
+                onSignInRequired: authGateClosure
+            )
+        case .reviews:
+            NavigationStack {
+                GuestTabEmptyView(
+                    systemImage: "star",
+                    title: "Reviews",
+                    description: "Create a free account to access spaced-repetition reviews.",
+                    onCreateAccount: requireAuthClosure
+                )
+                .navigationTitle("Reviews")
+                #if os(iOS)
+                .navigationBarTitleDisplayMode(.large)
+                #endif
+            }
+        case .profile:
+            NavigationStack {
+                GuestTabEmptyView(
+                    systemImage: "person.crop.circle",
+                    title: "Profile",
+                    description: "Create a free account to track your progress and connect with others.",
+                    onCreateAccount: requireAuthClosure
+                )
+                .navigationTitle("Profile")
+                #if os(iOS)
+                .navigationBarTitleDisplayMode(.large)
+                #endif
+            }
+        case .settings:
+            NavigationStack {
+                GuestTabEmptyView(
+                    systemImage: "gearshape",
+                    title: "Settings",
+                    description: "Create a free account to access settings.",
+                    onCreateAccount: requireAuthClosure
+                )
+                .navigationTitle("Settings")
+                #if os(iOS)
+                .navigationBarTitleDisplayMode(.large)
+                #endif
+            }
+        }
+    }
 }
 
 // MARK: - Reconnecting banner
@@ -321,3 +460,10 @@ private struct ReconnectingBanner: View {
 #Preview("Reconnecting banner") {
     ReconnectingBanner()
 }
+
+#if DEBUG
+#Preview("Guest Home — browsing") {
+    let view = AppRootView()
+    return view
+}
+#endif

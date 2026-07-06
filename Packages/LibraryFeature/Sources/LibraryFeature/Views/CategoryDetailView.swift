@@ -16,9 +16,11 @@ public struct CategoryDetailView: View {
     let progressItems: [ProgressOverviewItem]
     let bookDetailRepository: any BookDetailRepository
     let aiRepository: (any AIRepository)?
+    let isGuest: Bool
     let onToggleSaved: (String) -> Void
     let onOpenReader: ((String, Int, VariantFamily) -> Void)?
     let onShowPaywall: (() -> Void)?
+    let onSignInRequired: ((String, VariantFamily) -> Void)?
 
     @State private var searchQuery: String = ""
     @State private var router = Router()
@@ -30,9 +32,11 @@ public struct CategoryDetailView: View {
         progressItems: [ProgressOverviewItem] = [],
         bookDetailRepository: any BookDetailRepository,
         aiRepository: (any AIRepository)? = nil,
+        isGuest: Bool = false,
         onToggleSaved: @escaping (String) -> Void,
         onOpenReader: ((String, Int, VariantFamily) -> Void)? = nil,
-        onShowPaywall: (() -> Void)? = nil
+        onShowPaywall: (() -> Void)? = nil,
+        onSignInRequired: ((String, VariantFamily) -> Void)? = nil
     ) {
         self.category = category
         self.books = books
@@ -40,9 +44,11 @@ public struct CategoryDetailView: View {
         self.progressItems = progressItems
         self.bookDetailRepository = bookDetailRepository
         self.aiRepository = aiRepository
+        self.isGuest = isGuest
         self.onToggleSaved = onToggleSaved
         self.onOpenReader = onOpenReader
         self.onShowPaywall = onShowPaywall
+        self.onSignInRequired = onSignInRequired
     }
 
     // MARK: - Filtered
@@ -80,8 +86,10 @@ public struct CategoryDetailView: View {
                         bookId: bookId,
                         repository: bookDetailRepository,
                         aiRepository: aiRepository,
+                        isGuest: isGuest,
                         onOpenReader: onOpenReader,
-                        onShowPaywall: onShowPaywall
+                        onShowPaywall: onShowPaywall,
+                        onSignInRequired: onSignInRequired
                     )
                 case .globalSearch:
                     EmptyView()

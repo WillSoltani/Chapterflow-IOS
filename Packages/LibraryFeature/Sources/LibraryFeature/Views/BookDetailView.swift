@@ -36,12 +36,16 @@ public struct BookDetailView: View {
         preferences: AppPreferences = AppPreferences(),
         store: KeyValueStore = KeyValueStore(),
         preferencesRepository: (any BookPreferencesRepository)? = nil,
+        isGuest: Bool = false,
         onOpenReader: ((String, Int, VariantFamily) -> Void)? = nil,
-        onShowPaywall: (() -> Void)? = nil
+        onShowPaywall: (() -> Void)? = nil,
+        onSignInRequired: ((String, VariantFamily) -> Void)? = nil
     ) {
         let m = BookDetailModel(bookId: bookId, repository: repository)
+        m.isGuest = isGuest
         m.onOpenReader = onOpenReader
         m.onShowPaywall = onShowPaywall
+        m.onSignInRequired = onSignInRequired
         _model = State(initialValue: m)
         self.aiRepository = aiRepository
         self.preferences = preferences
@@ -77,6 +81,7 @@ public struct BookDetailView: View {
                 }
             }
             .task { await model.fetch() }
+            .task(id: model.bookId) { await model.refreshDownloadState() }
     }
 
     // MARK: - Content
@@ -111,6 +116,9 @@ public struct BookDetailView: View {
                         .padding(.horizontal, .cfSpacing16)
                         .padding(.top, .cfSpacing8)
                 }
+                downloadSection
+                    .padding(.horizontal, .cfSpacing16)
+                    .padding(.top, .cfSpacing12)
                 depthToneRow
                     .padding(.top, .cfSpacing16)
                 chapterListSection
@@ -226,7 +234,7 @@ public struct BookDetailView: View {
             .background(primaryActionBackground, in: RoundedRectangle(cornerRadius: .cfRadius12, style: .continuous))
             .foregroundStyle(primaryActionForeground)
         }
-        .disabled(model.primaryAction == .disabled || model.isStarting)
+        .disabled((model.primaryAction == .disabled && !model.isGuest) || model.isStarting)
         .padding(.horizontal, .cfSpacing16)
         .accessibilityLabel(primaryActionLabel)
     }
@@ -236,14 +244,16 @@ public struct BookDetailView: View {
         case .startReading:    return "Start Reading"
         case .continueReading: return "Continue Reading"
         case .showPaywall:     return "Unlock Book"
+        case .signInRequired:  return "Sign in to Read"
         case .disabled:        return "Loading…"
         }
     }
 
     private var primaryActionBackground: some ShapeStyle {
         switch model.primaryAction {
-        case .showPaywall: return AnyShapeStyle(Color.cfAccent.opacity(0.15))
-        default:           return AnyShapeStyle(Color.cfAccent)
+        case .showPaywall:    return AnyShapeStyle(Color.cfAccent.opacity(0.15))
+        case .signInRequired: return AnyShapeStyle(Color.cfAccent)
+        default:              return AnyShapeStyle(Color.cfAccent)
         }
     }
 
@@ -252,6 +262,17 @@ public struct BookDetailView: View {
         case .showPaywall: return Color.cfAccent
         default:           return Color.white
         }
+    }
+
+    // MARK: - Download
+
+    private var downloadSection: some View {
+        BookDownloadButton(
+            state: model.downloadState,
+            onDownload: { model.startDownload() },
+            onCancel: { model.cancelDownload() },
+            onDelete: { model.deleteDownload() }
+        )
     }
 
     // MARK: - Depth & Tone entry point
@@ -413,6 +434,38 @@ private extension CGFloat {
 // MARK: - Previews
 
 #if DEBUG
+#Preview("Guest — browsing (sign in to read)") {
+    NavigationStack {
+        BookDetailView(
+            bookId: "b-atomic-habits",
+            repository: PreviewData.bookDetailFreeLocked,
+            isGuest: true
+        )
+    }
+}
+
+#Preview("Guest — dark mode") {
+    NavigationStack {
+        BookDetailView(
+            bookId: "b-atomic-habits",
+            repository: PreviewData.bookDetailFreeLocked,
+            isGuest: true
+        )
+    }
+    .preferredColorScheme(.dark)
+}
+
+#Preview("Guest — XXL text") {
+    NavigationStack {
+        BookDetailView(
+            bookId: "b-atomic-habits",
+            repository: PreviewData.bookDetailFreeLocked,
+            isGuest: true
+        )
+    }
+    .dynamicTypeSize(.accessibility3)
+}
+
 #Preview("Free — locked (paywall)") {
     NavigationStack {
         BookDetailView(
