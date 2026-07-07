@@ -133,6 +133,10 @@ public final class SubscriptionManagementModel {
     /// Drives `.manageSubscriptionsSheet` presentation.
     public var showManageSubscriptionsSheet = false
 
+    /// Drives the system offer-code redemption sheet.
+    /// Resulting transaction is handled by `StoreKitService.Transaction.updates`.
+    public var showOfferCodeRedemption = false
+
     // MARK: - Dependencies
 
     private let storeKitService: any StoreKitServicing
@@ -200,6 +204,14 @@ public final class SubscriptionManagementModel {
     /// Presents the system App Store manage-subscriptions sheet.
     public func manageAppleSubscription() {
         showManageSubscriptionsSheet = true
+    }
+
+    /// Triggers the system offer-code redemption sheet.
+    ///
+    /// The resulting transaction flows through `Transaction.updates` in
+    /// `StoreKitService` and is posted to the backend automatically.
+    public func redeemOfferCode() {
+        showOfferCodeRedemption = true
     }
 
     /// Presents the in-app refund-request sheet.

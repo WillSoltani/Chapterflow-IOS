@@ -38,6 +38,16 @@ public enum SubscriptionStatus: Sendable, Equatable {
         }
     }
 
+    /// `true` when the user is a lapsed subscriber (expired or revoked) — the win-back
+    /// offer surface should be shown in place of the standard product picker.
+    public var isLapsed: Bool {
+        switch self {
+        case .expired, .revoked: return true
+        case .unknown, .notSubscribed, .subscribed,
+             .pending, .inGracePeriod, .inBillingRetry: return false
+        }
+    }
+
     /// `true` when a billing-attention banner should be shown.
     public var requiresAttention: Bool {
         switch self {

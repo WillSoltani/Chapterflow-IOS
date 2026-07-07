@@ -36,6 +36,7 @@ public struct SubscriptionManagementView: View {
                 billingAttentionSection
                 detailsSection
                 actionsSection
+                promoCodeSection
                 recoverySection
             }
             #if os(iOS)
@@ -70,6 +71,9 @@ public struct SubscriptionManagementView: View {
                 model.handleRefundResult(result)
             }
         )
+        // System offer-code redemption sheet; resulting transaction is handled
+        // by StoreKitService.Transaction.updates and posts to the backend automatically.
+        .offerCodeRedemption(isPresented: $model.showOfferCodeRedemption) { _ in }
         #endif
         .alert(refundAlertTitle, isPresented: Binding(
             get: { showRefundAlert },
@@ -176,6 +180,32 @@ public struct SubscriptionManagementView: View {
             case .giftActive, .adminOrOther, .free:
                 EmptyView()
             }
+        }
+    }
+
+    // MARK: - Promo code section
+
+    /// "Redeem Promo Code" entry point shown for all Apple users.
+    ///
+    /// Offer code redemption is available to both free and paying Apple users —
+    /// a code may grant or extend Pro access. Non-Apple users (Stripe, license, gift)
+    /// manage codes via the web app so this section is hidden for them.
+    @ViewBuilder
+    private var promoCodeSection: some View {
+        switch model.detailState.proSourceKind {
+        case .apple:
+            Section {
+                Button {
+                    model.redeemOfferCode()
+                } label: {
+                    Label("Redeem Promo Code", systemImage: "tag")
+                        .foregroundStyle(Color.cfAccent)
+                }
+                .accessibilityLabel("Redeem a promotional offer code")
+                .accessibilityHint("Opens the App Store offer code redemption sheet")
+            }
+        default:
+            EmptyView()
         }
     }
 

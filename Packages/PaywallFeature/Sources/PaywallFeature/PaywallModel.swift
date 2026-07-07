@@ -21,7 +21,8 @@ public struct StoreProductInfo: Identifiable, Sendable, Equatable {
     public let periodLabel: String
     /// Whether this is the popular/recommended pick.
     public let isPopular: Bool
-    /// Introductory/trial offer display text, if available.
+    /// Introductory/trial offer display text — only populated when the user
+    /// is confirmed eligible via `Product.SubscriptionInfo.isEligibleForIntroOffer`.
     public let introductoryOfferText: String?
     /// The raw decimal price value — used for savings-badge calculation. Nil in
     /// preview / test stubs where a live `Product` is unavailable.
@@ -45,7 +46,13 @@ public struct StoreProductInfo: Identifiable, Sendable, Equatable {
         self.priceDecimalValue = priceDecimalValue
     }
 
-    init(product: Product, isPopular: Bool) {
+    /// Package-internal init from a live `Product`.
+    ///
+    /// `isEligibleForIntroOffer` gates the intro offer text: only users confirmed
+    /// eligible via `Product.SubscriptionInfo.isEligibleForIntroOffer` see trial
+    /// copy on the paywall. Ineligible users (who have previously redeemed the offer)
+    /// see the regular pricing without a trial badge.
+    init(product: Product, isPopular: Bool, isEligibleForIntroOffer: Bool = true) {
         self.id = product.id
         self.displayName = product.displayName
         self.displayPrice = product.displayPrice
@@ -65,7 +72,7 @@ public struct StoreProductInfo: Identifiable, Sendable, Equatable {
 
         self.priceDecimalValue = product.price
 
-        if let intro = product.subscription?.introductoryOffer {
+        if isEligibleForIntroOffer, let intro = product.subscription?.introductoryOffer {
             switch intro.paymentMode {
             case .freeTrial:
                 self.introductoryOfferText = "Free \(intro.period.value)-\(intro.period.unit.singular) trial"
@@ -88,6 +95,101 @@ private extension Product.SubscriptionPeriod.Unit {
         case .month: return "month"
         case .year:  return "year"
         @unknown default: return "period"
+        }
+    }
+}
+
+// MARK: - Win-back offer display
+
+/// Display-friendly representation of a StoreKit win-back offer.
+///
+/// Contains only value types so it is Sendable and preview-safe.
+/// The live `Product` and `Product.SubscriptionOffer` are retained internally
+/// by `PaywallModel` and used exclusively at purchase time.
+public struct WinBackDisplayInfo: Sendable, Equatable {
+    public let productID: String
+    public let productDisplayName: String
+    /// StoreKit-localised price for the introductory offer period (e.g. "Free" or "$4.99").
+    public let offerDisplayPrice: String
+    /// Human-readable duration of the offer (e.g. "7 days", "3 months").
+    public let offerPeriodText: String
+    /// Regular subscription price after the offer period (StoreKit-localised).
+    public let regularDisplayPrice: String
+    /// Regular subscription period label (e.g. "year" or "month").
+    public let regularPeriodLabel: String
+    public let paymentMode: PaymentModeKind
+    /// Identifier used to look up the offer at purchase time.
+    public let offerID: String
+
+    public enum PaymentModeKind: Sendable, Equatable {
+        case freeTrial, payUpFront, payAsYouGo
+    }
+
+    /// Human-readable description of the full offer, suitable for a CTA.
+    /// e.g. "7 days free, then $49.99/year"
+    public var fullDescription: String {
+        switch paymentMode {
+        case .freeTrial:
+            return "\(offerPeriodText) free, then \(regularDisplayPrice)/\(regularPeriodLabel)"
+        case .payUpFront, .payAsYouGo:
+            return "\(offerDisplayPrice) for \(offerPeriodText), then \(regularDisplayPrice)/\(regularPeriodLabel)"
+        }
+    }
+
+    /// Public init for Xcode Previews (all-value-type parameters).
+    public init(
+        productID: String,
+        productDisplayName: String,
+        offerDisplayPrice: String,
+        offerPeriodText: String,
+        regularDisplayPrice: String,
+        regularPeriodLabel: String,
+        paymentMode: PaymentModeKind,
+        offerID: String
+    ) {
+        self.productID = productID
+        self.productDisplayName = productDisplayName
+        self.offerDisplayPrice = offerDisplayPrice
+        self.offerPeriodText = offerPeriodText
+        self.regularDisplayPrice = regularDisplayPrice
+        self.regularPeriodLabel = regularPeriodLabel
+        self.paymentMode = paymentMode
+        self.offerID = offerID
+    }
+
+    /// Package-internal init from live StoreKit objects.
+    init(product: Product, offer: Product.SubscriptionOffer) {
+        self.productID = product.id
+        self.productDisplayName = product.displayName
+        self.offerDisplayPrice = offer.displayPrice
+        self.regularDisplayPrice = product.displayPrice
+        self.offerID = offer.id ?? ""
+
+        let offerPeriod = offer.period
+        switch offerPeriod.unit {
+        case .day:   offerPeriodText = offerPeriod.value == 1 ? "1 day" : "\(offerPeriod.value) days"
+        case .week:  offerPeriodText = offerPeriod.value == 1 ? "1 week" : "\(offerPeriod.value) weeks"
+        case .month: offerPeriodText = offerPeriod.value == 1 ? "1 month" : "\(offerPeriod.value) months"
+        case .year:  offerPeriodText = offerPeriod.value == 1 ? "1 year" : "\(offerPeriod.value) years"
+        @unknown default: offerPeriodText = "\(offerPeriod.value) periods"
+        }
+
+        if let sub = product.subscription?.subscriptionPeriod {
+            switch sub.unit {
+            case .day:   regularPeriodLabel = "day"
+            case .week:  regularPeriodLabel = "week"
+            case .month: regularPeriodLabel = "month"
+            case .year:  regularPeriodLabel = "year"
+            @unknown default: regularPeriodLabel = "period"
+            }
+        } else {
+            regularPeriodLabel = "period"
+        }
+
+        switch offer.paymentMode {
+        case .freeTrial:  paymentMode = .freeTrial
+        case .payAsYouGo: paymentMode = .payAsYouGo
+        default:          paymentMode = .payUpFront
         }
     }
 }
@@ -144,6 +246,18 @@ public final class PaywallModel {
     /// Used by the paywall to show source-specific "already Pro" messaging.
     public private(set) var proSource: String?
 
+    /// Product IDs for which the current user is eligible for an introductory offer.
+    /// Populated by `loadProducts()` via `StoreKitService.introOfferEligibleProductIDs()`.
+    public private(set) var eligibleIntroOfferProductIDs: Set<String> = []
+
+    /// Win-back offer available for this lapsed user, or `nil` when not applicable.
+    /// Shown when `subscriptionStatus` is `.expired` or `.revoked`.
+    public private(set) var winBackDisplay: WinBackDisplayInfo? = nil
+
+    /// Controls the system offer-code redemption sheet.
+    /// Set to `true` by `redeemOfferCode()` and reset by the sheet on dismiss.
+    public var showOfferCodeRedemption = false
+
     // MARK: - Dependencies
 
     private let storeKitService: any StoreKitServicing
@@ -182,12 +296,14 @@ public final class PaywallModel {
         productInfos: [StoreProductInfo],
         status: SubscriptionStatus,
         proSource: String? = nil,
-        serverBenefits: [String]? = nil
+        serverBenefits: [String]? = nil,
+        winBackDisplay: WinBackDisplayInfo? = nil
     ) {
         self.productInfos = productInfos
         self.subscriptionStatus = status
         self.proSource = proSource
         self.serverBenefits = serverBenefits
+        self.winBackDisplay = winBackDisplay
     }
 
     deinit {
@@ -197,13 +313,14 @@ public final class PaywallModel {
     // MARK: - On-appear
 
     /// Call once from `PaywallView.task`. Loads products, fetches server paywall
-    /// data, and fires the `paywall_viewed` analytics event.
+    /// data, fires the `paywall_viewed` analytics event, and checks offer eligibility.
     public func onAppear() async {
         analytics.track(.paywallViewed(source: context.analyticsSource))
         await withTaskGroup(of: Void.self) { group in
             group.addTask { await self.loadProducts() }
             group.addTask { await self.fetchServerPaywall() }
             group.addTask { await self.refreshEntitlement() }
+            group.addTask { await self.fetchWinBackDisplay() }
         }
         if selectedProductID == nil {
             selectedProductID = productInfos.first?.id
@@ -252,7 +369,8 @@ public final class PaywallModel {
 
     // MARK: - Product loading
 
-    /// Fetches products from the App Store and populates `productInfos`.
+    /// Fetches products from the App Store, checks intro-offer eligibility, and
+    /// populates `productInfos`. Only eligible users see trial/intro pricing.
     public func loadProducts() async {
         isLoadingProducts = true
         errorMessage = nil
@@ -260,10 +378,15 @@ public final class PaywallModel {
 
         do {
             let products = try await storeKitService.loadProducts()
+            let eligibleIDs = await storeKitService.introOfferEligibleProductIDs()
             liveProducts = Dictionary(uniqueKeysWithValues: products.map { ($0.id, $0) })
+            eligibleIntroOfferProductIDs = eligibleIDs
             productInfos = products.map { product in
-                // Mark the first product (typically annual) as popular.
-                StoreProductInfo(product: product, isPopular: products.first?.id == product.id)
+                StoreProductInfo(
+                    product: product,
+                    isPopular: products.first?.id == product.id,
+                    isEligibleForIntroOffer: eligibleIDs.contains(product.id)
+                )
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -285,9 +408,16 @@ public final class PaywallModel {
         }
     }
 
+    // MARK: - Win-back offer
+
+    /// Fetches the best eligible win-back offer for lapsed users.
+    private func fetchWinBackDisplay() async {
+        winBackDisplay = await storeKitService.winBackDisplayInfo()
+    }
+
     // MARK: - Purchase
 
-    /// Initiates a purchase for the product with `productID`.
+    /// Initiates a standard purchase for the product with `productID`.
     public func purchase(productID: String) async {
         guard let product = liveProducts[productID] else {
             errorMessage = "Product unavailable. Please try again."
@@ -312,6 +442,50 @@ public final class PaywallModel {
             purchaseState = .failed(error.localizedDescription)
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// Purchases the available win-back offer.
+    ///
+    /// No-ops gracefully if no win-back offer is cached (e.g. user became ineligible
+    /// between loading and tapping).
+    public func purchaseWinBack() async {
+        guard let info = winBackDisplay, !info.offerID.isEmpty else {
+            errorMessage = "Win-back offer is no longer available. Please try again."
+            return
+        }
+        purchaseState = .purchasing
+        errorMessage = nil
+
+        do {
+            let result = try await storeKitService.purchaseWithWinBack(
+                productID: info.productID,
+                offerID: info.offerID
+            )
+            switch result {
+            case .purchased:
+                analytics.track(.purchase(productId: info.productID))
+                await refreshEntitlement()
+                purchaseState = .success(productID: info.productID)
+            case .pending:
+                purchaseState = .pendingApproval
+            case .userCancelled:
+                purchaseState = .idle
+            }
+        } catch {
+            purchaseState = .failed(error.localizedDescription)
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    // MARK: - Offer code redemption
+
+    /// Triggers the system offer-code redemption sheet.
+    ///
+    /// The resulting transaction arrives through `Transaction.updates` in
+    /// `StoreKitService`, which posts it to the backend and fires
+    /// `entitlementChanges` — no additional action needed here.
+    public func redeemOfferCode() {
+        showOfferCodeRedemption = true
     }
 
     // MARK: - Restore

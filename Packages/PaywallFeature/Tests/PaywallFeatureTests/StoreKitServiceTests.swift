@@ -132,6 +132,31 @@ struct SubscriptionStatusTests {
         #expect(!SubscriptionStatus.notSubscribed.requiresAttention)
     }
 
+    @Test("isLapsed is true for .expired")
+    func isLapsedExpired() {
+        #expect(SubscriptionStatus.expired(productID: "x").isLapsed)
+    }
+
+    @Test("isLapsed is true for .revoked")
+    func isLapsedRevoked() {
+        #expect(SubscriptionStatus.revoked.isLapsed)
+    }
+
+    @Test("isLapsed is false for .subscribed")
+    func isLapsedSubscribed() {
+        #expect(!SubscriptionStatus.subscribed(productID: "x", expirationDate: nil).isLapsed)
+    }
+
+    @Test("isLapsed is false for .notSubscribed")
+    func isLapsedNotSubscribed() {
+        #expect(!SubscriptionStatus.notSubscribed.isLapsed)
+    }
+
+    @Test("isLapsed is false for .inGracePeriod")
+    func isLapsedGracePeriod() {
+        #expect(!SubscriptionStatus.inGracePeriod(productID: "x", expirationDate: nil).isLapsed)
+    }
+
     @Test("displayLabel returns correct strings")
     func displayLabels() {
         #expect(SubscriptionStatus.unknown.displayLabel == "Loading")
@@ -539,61 +564,4 @@ struct PaywallModelTests {
         )
         #expect(model.serverBenefits == ["Benefit A", "Benefit B"])
     }
-}
-
-// MARK: - Test stubs
-
-/// Records all `track(_:)` calls for assertion in tests.
-actor SpyAnalyticsClient: AnalyticsClient {
-    private(set) var trackedEvents: [AnalyticsEvent] = []
-
-    nonisolated func track(_ event: AnalyticsEvent) {
-        Task { await self.append(event) }
-    }
-
-    nonisolated func beacon(_ name: String, properties: [String: String]) {}
-
-    func flush() async {}
-
-    private func append(_ event: AnalyticsEvent) {
-        trackedEvents.append(event)
-    }
-}
-
-/// A minimal actor conforming to `StoreKitServicing` for use in unit tests.
-private actor StubStoreKitService: StoreKitServicing {
-
-    private let shouldThrowOnLoad: Bool
-    private let shouldThrowOnRestore: Bool
-
-    nonisolated let entitlementChanges: AsyncStream<Void>
-
-    init(throwOnLoad: Bool = false, throwOnRestore: Bool = false) {
-        self.shouldThrowOnLoad = throwOnLoad
-        self.shouldThrowOnRestore = throwOnRestore
-        self.entitlementChanges = AsyncStream { _ in }
-    }
-
-    func loadProducts() async throws -> [Product] {
-        if shouldThrowOnLoad { throw StoreKitServiceError.noProductsFound }
-        return []
-    }
-
-    func purchase(_ product: Product) async throws -> PurchaseResult {
-        .userCancelled
-    }
-
-    func restorePurchases() async throws {
-        if shouldThrowOnRestore {
-            throw AppError.server(code: "restore_failed", message: "Restore failed", requestId: nil)
-        }
-    }
-
-    func verifyCurrentEntitlements() async throws {}
-
-    func currentSubscriptionStatus() async throws -> SubscriptionStatus {
-        .notSubscribed
-    }
-
-    func currentTransactionID() async -> UInt64? { nil }
 }

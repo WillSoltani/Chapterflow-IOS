@@ -31,19 +31,23 @@ public struct PaywallView: View {
                             alreadyProSection
                         } else {
                             benefitsSection
-                            if model.isLoadingProducts {
-                                productsLoadingSection
-                            } else if !model.productInfos.isEmpty {
-                                productsSection
+                            if let winBack = model.winBackDisplay, model.subscriptionStatus.isLapsed {
+                                winBackSection(winBack)
+                            } else {
+                                if model.isLoadingProducts {
+                                    productsLoadingSection
+                                } else if !model.productInfos.isEmpty {
+                                    productsSection
+                                }
+                                if let error = model.errorMessage {
+                                    Text(error)
+                                        .font(.cfCaption)
+                                        .foregroundStyle(.red)
+                                        .multilineTextAlignment(.center)
+                                        .padding(.cfSpacing8)
+                                }
+                                ctaSection
                             }
-                            if let error = model.errorMessage {
-                                Text(error)
-                                    .font(.cfCaption)
-                                    .foregroundStyle(.red)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.cfSpacing8)
-                            }
-                            ctaSection
                         }
                         footerSection
                     }
@@ -82,6 +86,12 @@ public struct PaywallView: View {
                 }
             }
         }
+        #if os(iOS)
+        .offerCodeRedemption(isPresented: Bindable(model).showOfferCodeRedemption) { _ in
+            // Resulting transaction flows through Transaction.updates in StoreKitService,
+            // which posts to the backend and fires entitlementChanges automatically.
+        }
+        #endif
     }
 
     // MARK: - Header
@@ -249,6 +259,8 @@ public struct PaywallView: View {
             .disabled(model.purchaseState.isInProgress || model.selectedProductID == nil)
             .accessibilityLabel(ctaTitle)
 
+            introTrialDisclosure
+
             billingStatusBanner
         }
     }
@@ -262,9 +274,26 @@ public struct PaywallView: View {
         case .idle, .failed:
             if let id = model.selectedProductID,
                let info = model.productInfos.first(where: { $0.id == id }) {
+                if info.introductoryOfferText != nil {
+                    return "Start Free Trial"
+                }
                 return "Subscribe – \(info.displayPrice) / \(info.periodLabel)"
             }
             return "Subscribe"
+        }
+    }
+
+    /// Introductory offer disclosure shown below the CTA when the selected product
+    /// has a trial/intro offer the current user is eligible for.
+    @ViewBuilder
+    private var introTrialDisclosure: some View {
+        if let id = model.selectedProductID,
+           let info = model.productInfos.first(where: { $0.id == id }),
+           let introText = info.introductoryOfferText {
+            Text("\(introText), then \(info.displayPrice)/\(info.periodLabel). Cancel any time.")
+                .font(.cfCaption)
+                .foregroundStyle(Color.cfSecondaryLabel)
+                .multilineTextAlignment(.center)
         }
     }
 
@@ -323,6 +352,15 @@ public struct PaywallView: View {
                 }
                 .disabled(model.purchaseState.isInProgress)
                 .accessibilityLabel("Restore previous purchases")
+
+                Button {
+                    model.redeemOfferCode()
+                } label: {
+                    Text("Redeem Offer Code")
+                        .font(.cfFootnote)
+                        .foregroundStyle(Color.cfAccent)
+                }
+                .accessibilityLabel("Redeem a promotional offer code")
             }
 
             HStack(spacing: .cfSpacing16) {
@@ -340,6 +378,68 @@ public struct PaywallView: View {
                 .font(.cfCaption2)
                 .foregroundStyle(Color.cfTertiaryLabel)
                 .multilineTextAlignment(.center)
+        }
+    }
+
+    // MARK: - Win-back section
+
+    private func winBackSection(_ winBack: WinBackDisplayInfo) -> some View {
+        VStack(spacing: .cfSpacing16) {
+            VStack(spacing: .cfSpacing8) {
+                Text("Welcome back, \(winBack.productDisplayName)")
+                    .font(.cfTitle3)
+                    .foregroundStyle(Color.cfLabel)
+                    .multilineTextAlignment(.center)
+
+                Text("We'd love to have you back. Here's a special offer:")
+                    .font(.cfSubheadline)
+                    .foregroundStyle(Color.cfSecondaryLabel)
+                    .multilineTextAlignment(.center)
+
+                Text(winBack.fullDescription)
+                    .font(.cfHeadline)
+                    .foregroundStyle(Color.cfAccent)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.cfSpacing16)
+            .background(Color.cfSecondaryBackground, in: RoundedRectangle(cornerRadius: .cfRadius16))
+
+            Button {
+                Task { await model.purchaseWinBack() }
+            } label: {
+                Group {
+                    if model.purchaseState == .purchasing {
+                        ProgressView().tint(.white)
+                    } else {
+                        Text(winBackCTATitle(winBack))
+                            .font(.cfHeadline)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(Color.cfAccent)
+            .disabled(model.purchaseState.isInProgress)
+            .accessibilityLabel(winBackCTATitle(winBack))
+
+            Text("Renews at \(winBack.regularDisplayPrice)/\(winBack.regularPeriodLabel) after offer ends. Cancel any time.")
+                .font(.cfCaption)
+                .foregroundStyle(Color.cfSecondaryLabel)
+                .multilineTextAlignment(.center)
+        }
+    }
+
+    private func winBackCTATitle(_ info: WinBackDisplayInfo) -> String {
+        switch model.purchaseState {
+        case .purchasing: return "Processing…"
+        case .pendingApproval: return "Awaiting Approval"
+        case .success: return "Welcome back!"
+        default:
+            switch info.paymentMode {
+            case .freeTrial: return "Claim Free Trial"
+            case .payUpFront, .payAsYouGo: return "Claim Offer – \(info.offerDisplayPrice)"
+            }
         }
     }
 
