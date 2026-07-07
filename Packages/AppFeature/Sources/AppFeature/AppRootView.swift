@@ -34,6 +34,7 @@ public struct AppRootView: View {
 
     public var body: some View {
         gatedContent
+            .environment(model.reachability)
             .task {
                 try? model.configure()
                 model.wirePushRouting()

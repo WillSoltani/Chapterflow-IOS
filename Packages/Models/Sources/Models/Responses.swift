@@ -80,6 +80,11 @@ public struct SavedBooksResponse: Codable, Sendable {
 public struct ChapterResponse: Codable, Sendable {
     public let chapter: Chapter
     public let progress: BookProgress
+
+    public init(chapter: Chapter, progress: BookProgress) {
+        self.chapter = chapter
+        self.progress = progress
+    }
 }
 
 public struct QuizResponse: Codable, Sendable {

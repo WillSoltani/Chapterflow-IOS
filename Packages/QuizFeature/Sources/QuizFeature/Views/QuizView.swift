@@ -73,6 +73,8 @@ public struct QuizView: View {
                 onContinue: onContinue,
                 onRetry: { Task { await model.retry() } }
             )
+        case .pendingGrading:
+            pendingGradingView
         case .error(let msg):
             errorView(msg)
         }
@@ -137,7 +139,7 @@ public struct QuizView: View {
             } label: {
                 Group {
                     if !model.isOnline {
-                        Label("Connect to Submit", systemImage: "wifi.slash")
+                        Label("Save for Later", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
                     } else {
                         Text("Submit Quiz")
                     }
@@ -166,14 +168,32 @@ public struct QuizView: View {
         HStack(spacing: .cfSpacing8) {
             Image(systemName: "wifi.slash")
                 .font(.cfCaption)
-            Text("You're offline — connect to submit your answers.")
+            Text("Offline — answers will be graded when you reconnect.")
                 .font(.cfCaption)
         }
         .foregroundStyle(.secondary)
         .frame(maxWidth: .infinity)
         .padding(.horizontal, .cfSpacing20)
         .padding(.vertical, .cfSpacing8)
-        .accessibilityLabel("You are offline. Connect to the internet to submit your answers.")
+        .accessibilityLabel("You are offline. Your answers will be saved and graded when you reconnect.")
+    }
+
+    // MARK: - Pending grading
+
+    private var pendingGradingView: some View {
+        ContentUnavailableView {
+            Label("Awaiting Grading", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                .symbolRenderingMode(.hierarchical)
+        } description: {
+            Text("Your answers have been saved. We'll grade them automatically when you're back online.")
+                .font(.cfCallout)
+                .foregroundStyle(.secondary)
+        } actions: {
+            Button("Continue", action: onContinue)
+                .buttonStyle(.borderedProminent)
+                .tint(.cfAccent)
+        }
+        .accessibilityLabel("Your quiz answers are saved and waiting to be graded.")
     }
 
     private var unansweredHint: some View {
@@ -190,7 +210,7 @@ public struct QuizView: View {
     }
 
     private var submitAccessibilityLabel: String {
-        if !model.isOnline { return "Submit unavailable — you are offline" }
+        if !model.isOnline { return "Save answers for grading when back online" }
         if !model.allAnswered {
             let answered = model.selectedAnswers.count
             let total = model.session?.questions.count ?? 0

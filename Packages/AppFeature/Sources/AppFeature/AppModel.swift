@@ -165,10 +165,20 @@ public final class AppModel {
     /// pass it to `NotificationSettingsView` as a navigation destination.
     public let notificationSettingsModel: NotificationSettingsModel
 
+    // MARK: - Reachability
+
+    /// Shared reachability service — consumed by repositories and views.
+    public let reachability: ReachabilityService
+
     // MARK: - Internal
 
     /// Retained so `makePaywallModel(context:)` can build `PaywallModel` without re-creating the client.
     private let apiClient: any APIClientProtocol
+
+    /// Thread-safe store for the current user ID, readable cross-actor.
+    /// Written on MainActor when sign-in completes; reads are safe because
+    /// String is a value type and the only hazard is a brief sign-in/out race.
+    private let userIdBox: UserIdBox
 
     // MARK: - Init
 
@@ -181,12 +191,31 @@ public final class AppModel {
         let container = try? PersistenceController.makeDefault().container
         let client = APIClient(config: config, tokenProvider: sm)
         self.apiClient = client
-        self.libraryRepository = LiveLibraryRepository(client: client, container: container)
+        let reach = ReachabilityService()
+        self.reachability = reach
+        let box = UserIdBox()
+        self.userIdBox = box
+        let userIdClosure: @Sendable () -> String? = { [box] in box.userId }
+        self.libraryRepository = LiveLibraryRepository(
+            client: client,
+            container: container,
+            reachability: reach
+        )
         self.bookDetailRepository = LiveBookDetailRepository(client: client)
         self.socialRepository = LiveSocialRepository(client: client)
         self.aiRepository = LiveAIRepository(client: client)
-        self.readerRepository = LiveReaderRepository(client: client)
-        self.quizRepository = LiveQuizRepository(client: client)
+        self.readerRepository = LiveReaderRepository(
+            client: client,
+            container: container,
+            reachability: reach,
+            userId: userIdClosure
+        )
+        self.quizRepository = LiveQuizRepository(
+            client: client,
+            container: container,
+            reachability: reach,
+            userId: userIdClosure
+        )
         if let container {
             self.annotationRepository = LiveAnnotationRepository(container: container, apiClient: client)
         } else {
@@ -246,6 +275,7 @@ public final class AppModel {
 
     /// Signs the user out, unregistering the APNs token from the backend first.
     public func signOut() async {
+        userIdBox.userId = nil
         await apnsManager.handleSignOut()
         await session.signOut()
         isGuestMode = false
@@ -338,6 +368,11 @@ public final class AppModel {
     /// Resolves and caches the display name from the stored id_token JWT.
     /// Call after `authState` transitions to `.signedIn`.
     public func hydrateDisplayName() {
+        // Resolve userId first so repositories can use it immediately.
+        if case .signedIn(let user) = session.authState {
+            userIdBox.userId = user.userId
+        }
+
         // 1. JWT claims (Cognito stores the name attribute).
         if let token = session.currentIdToken(),
            let profile = UserProfile.from(idToken: token),

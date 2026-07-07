@@ -15,16 +15,22 @@ public actor FakeQuizRepository: QuizRepository {
     public private(set) var recordedAnswers: [QuizAnswerSubmission] = []
     public private(set) var eventCount: Int = 0
 
+    /// When `true`, `submit()` throws ``QuizSubmissionError/pendingGrading``
+    /// to simulate an offline quiz submission that has been queued in the outbox.
+    public var simulateOfflineSubmit: Bool = false
+
     public init(
         quiz: QuizResponse? = nil,
         submitResult: QuizAttemptResult? = nil,
         checkResult: QuizCheckResult? = nil,
-        error: AppError? = nil
+        error: AppError? = nil,
+        offlineSubmit: Bool = false
     ) {
         self.quizStub = quiz
         self.submitStub = submitResult
         self.checkStub = checkResult
         self.forcedError = error
+        self.simulateOfflineSubmit = offlineSubmit
     }
 
     public func getQuiz(bookId: String, n: Int, tone: ToneKey?) async throws -> QuizResponse {
@@ -34,6 +40,10 @@ public actor FakeQuizRepository: QuizRepository {
     }
 
     public func submit(bookId: String, n: Int, answers: [QuizAnswerSubmission]) async throws -> QuizAttemptResult {
+        if simulateOfflineSubmit {
+            recordedAnswers = answers
+            throw QuizSubmissionError.pendingGrading
+        }
         if let e = forcedError { throw e }
         recordedAnswers = answers
         guard let stub = submitStub else { throw AppError.notFound }

@@ -8,6 +8,7 @@ let package = Package(
         .library(name: "ReaderFeature", targets: ["ReaderFeature"]),
     ],
     dependencies: [
+        .package(path: "../CoreKit"),
         .package(path: "../Models"),
         .package(path: "../DesignSystem"),
         .package(path: "../Persistence"),
@@ -17,6 +18,7 @@ let package = Package(
         .target(
             name: "ReaderFeature",
             dependencies: [
+                .product(name: "CoreKit", package: "CoreKit"),
                 .product(name: "Models", package: "Models"),
                 .product(name: "DesignSystem", package: "DesignSystem"),
                 .product(name: "Persistence", package: "Persistence"),

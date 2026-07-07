@@ -234,14 +234,13 @@ struct QuizModelTests {
         #expect(recorded[1].questionId == "q-2")
     }
 
-    @Test("submit() with AppError.offline sets isOnline=false and reverts to .active")
+    @Test("submit() when offline queues answers and transitions to .pendingGrading")
     @MainActor
     func testSubmitOffline() async throws {
         let repo = FakeQuizRepository(
             quiz: QuizResponse(quiz: testSession, progress: testProgress),
-            error: .offline
+            offlineSubmit: true
         )
-        // Manually load session so we can test submit path
         let model = QuizModel(bookId: "b-test", chapterNumber: 1, repository: repo)
         model.injectActiveForPreview(session: testSession, selectedAnswers: [
             "q-1": "c-1-b",
@@ -250,8 +249,26 @@ struct QuizModelTests {
 
         await model.submit()
 
-        #expect(model.phase == .active)
-        #expect(model.isOnline == false)
+        #expect(model.phase == .pendingGrading)
+        // Answers were still recorded in the outbox (fake repo captures them).
+        let recorded = await repo.recordedAnswers
+        #expect(recorded.count == 2)
+    }
+
+    @Test("canSubmit is true regardless of connectivity when all answered")
+    @MainActor
+    func testCanSubmitOffline() async {
+        let repo = FakeQuizRepository(
+            quiz: QuizResponse(quiz: testSession, progress: testProgress)
+        )
+        let model = QuizModel(bookId: "b-test", chapterNumber: 1, repository: repo)
+        model.injectActiveForPreview(
+            session: testSession,
+            selectedAnswers: ["q-1": "c-1-b", "q-2": "c-2-b"],
+            isOnline: false
+        )
+        #expect(model.allAnswered == true)
+        #expect(model.canSubmit == true)
     }
 
     // MARK: - Retry gate
