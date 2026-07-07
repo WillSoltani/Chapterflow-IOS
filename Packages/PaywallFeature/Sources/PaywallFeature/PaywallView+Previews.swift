@@ -92,6 +92,54 @@ import DesignSystem
     PaywallView(model: previewPaywallModelWithBenefits())
 }
 
+// MARK: - Intro offer eligible previews
+
+#Preview("Intro offer eligible — Start Free Trial CTA") {
+    PaywallView(model: previewPaywallModel(
+        status: .notSubscribed,
+        products: previewSampleProducts   // annual has introductoryOfferText set
+    ))
+}
+
+#Preview("Intro offer NOT eligible — regular Subscribe CTA") {
+    PaywallView(model: previewPaywallModel(
+        status: .notSubscribed,
+        products: previewIneligibleProducts
+    ))
+}
+
+#Preview("Intro offer eligible · dark mode") {
+    PaywallView(model: previewPaywallModel(status: .notSubscribed, products: previewSampleProducts))
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Intro offer eligible · XXL text") {
+    PaywallView(model: previewPaywallModel(status: .notSubscribed, products: previewSampleProducts))
+        .dynamicTypeSize(.accessibility3)
+}
+
+// MARK: - Win-back offer previews (lapsed subscribers)
+
+#Preview("Win-back — expired subscriber, free trial offer") {
+    PaywallView(model: previewPaywallModelWithWinBack(paymentMode: .freeTrial))
+}
+
+#Preview("Win-back — expired subscriber, paid offer") {
+    PaywallView(model: previewPaywallModelWithWinBack(paymentMode: .payUpFront))
+}
+
+#Preview("Win-back · dark mode") {
+    PaywallView(model: previewPaywallModelWithWinBack(paymentMode: .freeTrial))
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Win-back · XXL text") {
+    PaywallView(model: previewPaywallModelWithWinBack(paymentMode: .freeTrial))
+        .dynamicTypeSize(.accessibility3)
+}
+
+// MARK: - Dark / XXL baseline
+
 #Preview("Dark mode") {
     PaywallView(model: previewPaywallModel(status: .notSubscribed, products: previewSampleProducts))
         .preferredColorScheme(.dark)
@@ -103,6 +151,27 @@ import DesignSystem
 }
 
 // MARK: - Preview helpers
+
+/// Products with NO introductory offer text — simulates an ineligible user.
+let previewIneligibleProducts: [StoreProductInfo] = [
+    StoreProductInfo(
+        id: "com.chapterflow.ios.pro.annual",
+        displayName: "Annual",
+        displayPrice: "$49.99",
+        periodLabel: "year",
+        isPopular: true,
+        introductoryOfferText: nil,  // ineligible — no trial shown
+        priceDecimalValue: 49.99
+    ),
+    StoreProductInfo(
+        id: "com.chapterflow.ios.pro.monthly",
+        displayName: "Monthly",
+        displayPrice: "$5.99",
+        periodLabel: "month",
+        isPopular: false,
+        priceDecimalValue: 5.99
+    ),
+]
 
 let previewSampleProducts: [StoreProductInfo] = [
     StoreProductInfo(
@@ -151,6 +220,33 @@ func previewPaywallModel(
     if let proSource {
         model.inject(productInfos: products, status: status, proSource: proSource)
     }
+    return model
+}
+
+@MainActor
+private func previewPaywallModelWithWinBack(paymentMode: WinBackDisplayInfo.PaymentModeKind) -> PaywallModel {
+    let winBack = WinBackDisplayInfo(
+        productID: "com.chapterflow.ios.pro.annual",
+        productDisplayName: "Annual Pro",
+        offerDisplayPrice: paymentMode == .freeTrial ? "Free" : "$12.99",
+        offerPeriodText: paymentMode == .freeTrial ? "7 days" : "3 months",
+        regularDisplayPrice: "$49.99",
+        regularPeriodLabel: "year",
+        paymentMode: paymentMode,
+        offerID: "win-back-preview"
+    )
+    let model = PaywallModel(
+        storeKitService: PaywallPreviewStoreKitService(),
+        apiClient: MockAPIClient(),
+        context: .settings,
+        initialProductInfos: previewSampleProducts,
+        initialStatus: .expired(productID: "com.chapterflow.ios.pro.annual")
+    )
+    model.inject(
+        productInfos: previewSampleProducts,
+        status: .expired(productID: "com.chapterflow.ios.pro.annual"),
+        winBackDisplay: winBack
+    )
     return model
 }
 

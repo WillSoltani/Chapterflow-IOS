@@ -58,6 +58,36 @@ public protocol StoreKitServicing: Sendable {
     /// Used to populate the in-app refund-request sheet
     /// (`Transaction.beginRefundRequest(for:in:)` / SwiftUI `.refundRequestSheet`).
     func currentTransactionID() async -> UInt64?
+
+    /// Returns the set of configured product IDs for which the current user is eligible
+    /// to receive an introductory offer (free trial or discounted intro price).
+    ///
+    /// Only products in the returned set should display trial/intro pricing on the
+    /// paywall. Users who have previously redeemed an introductory offer for ANY
+    /// product in the subscription group are ineligible.
+    func introOfferEligibleProductIDs() async -> Set<String>
+
+    /// Returns display info for the best eligible win-back offer across all configured
+    /// products, or `nil` when the user has no lapsed subscription or no win-back
+    /// offers are configured in App Store Connect.
+    ///
+    /// The App Store sorts eligible offers with the best offer first.
+    func winBackDisplayInfo() async -> WinBackDisplayInfo?
+
+    /// Purchases a subscription using a win-back offer identified by `offerID`
+    /// for the product identified by `productID`.
+    ///
+    /// The verify-then-finish path is identical to `purchase(_:)`.
+    func purchaseWithWinBack(productID: String, offerID: String) async throws -> PurchaseResult
+}
+
+// MARK: - Default implementations
+
+/// No-op defaults so existing preview / test stubs only need to override methods they care about.
+public extension StoreKitServicing {
+    func introOfferEligibleProductIDs() async -> Set<String> { [] }
+    func winBackDisplayInfo() async -> WinBackDisplayInfo? { nil }
+    func purchaseWithWinBack(productID: String, offerID: String) async throws -> PurchaseResult { .userCancelled }
 }
 
 // MARK: - StoreKitService
@@ -244,6 +274,90 @@ public actor StoreKitService: StoreKitServicing {
         return nil
     }
 
+    // MARK: - Offer eligibility
+
+    /// Returns product IDs for which the current user is eligible for an introductory offer.
+    ///
+    /// Checks `Product.SubscriptionInfo.isEligibleForIntroOffer` per product.
+    public func introOfferEligibleProductIDs() async -> Set<String> {
+        let ids = config.allProductIDs
+        guard !ids.isEmpty else { return [] }
+        let products = (try? await Product.products(for: ids)) ?? []
+        var eligible = Set<String>()
+        for product in products {
+            guard let subscription = product.subscription else { continue }
+            if await subscription.isEligibleForIntroOffer {
+                eligible.insert(product.id)
+            }
+        }
+        return eligible
+    }
+
+    /// Returns display info for the best eligible win-back offer.
+    ///
+    /// Checks `Product.SubscriptionInfo.RenewalInfo.eligibleWinBackOfferIDs`
+    /// (sorted best-first by the App Store) against the configured win-back offers.
+    public func winBackDisplayInfo() async -> WinBackDisplayInfo? {
+        let ids = config.allProductIDs
+        guard !ids.isEmpty else { return nil }
+        let products = (try? await Product.products(for: ids)) ?? []
+
+        for product in products {
+            guard let subscription = product.subscription else { continue }
+            let availableOffers = subscription.winBackOffers
+            guard !availableOffers.isEmpty else { continue }
+
+            // Pull subscription statuses to find which win-back offer IDs this user is eligible for.
+            let statuses = (try? await product.subscription?.status) ?? []
+            var eligibleOfferIDs: [String] = []
+            for status in statuses {
+                if case .verified(let renewalInfo) = status.renewalInfo {
+                    eligibleOfferIDs.append(contentsOf: renewalInfo.eligibleWinBackOfferIDs)
+                }
+            }
+
+            // Match the first (best) eligible offer to its full offer object.
+            guard let bestID = eligibleOfferIDs.first,
+                  let offer = availableOffers.first(where: { $0.id == bestID })
+            else { continue }
+
+            return WinBackDisplayInfo(product: product, offer: offer)
+        }
+        return nil
+    }
+
+    /// Purchases a subscription using a win-back offer.
+    ///
+    /// Looks up the product and offer by ID, then calls `product.purchase(options:)`
+    /// with `.winBackOffer(_:)`. The verify-then-finish path is identical to
+    /// `purchase(_:)`, including posting the JWS to the backend.
+    public func purchaseWithWinBack(productID: String, offerID: String) async throws -> PurchaseResult {
+        let products = (try? await Product.products(for: [productID])) ?? []
+        guard let product = products.first,
+              let offer = product.subscription?.winBackOffers.first(where: { $0.id == offerID })
+        else { throw StoreKitServiceError.noProductsFound }
+
+        let result = try await product.purchase(options: [.winBackOffer(offer)])
+        switch result {
+        case .success(let verificationResult):
+            switch verificationResult {
+            case .unverified(_, let error):
+                log.warning("Win-back purchase returned unverified transaction — not granting PRO")
+                throw StoreKitServiceError.unverified(error)
+            case .verified:
+                try await handleVerifiedResult(verificationResult)
+                return .purchased
+            }
+        case .pending:
+            log.info("Win-back purchase is pending (Ask-to-Buy or SCA)")
+            return .pending
+        case .userCancelled:
+            return .userCancelled
+        @unknown default:
+            return .userCancelled
+        }
+    }
+
     // MARK: - Private
 
     private func listenForTransactionUpdates() async {
@@ -261,7 +375,14 @@ public actor StoreKitService: StoreKitServicing {
         }
     }
 
-    /// Core verify-then-finish routine.
+    /// Core verify-then-finish routine — handles direct purchases, renewals,
+    /// offer-code redemptions, win-back purchases, and Family Sharing grants.
+    ///
+    /// Family Sharing: `Transaction.ownershipType == .familyShared` transactions arrive
+    /// through `Transaction.updates` and `Transaction.currentEntitlements` the same as
+    /// direct purchases. No special filtering by ownership type is applied here, so a
+    /// family member's shared subscription is POSTed to the backend and grants Pro on
+    /// their account automatically.
     ///
     /// 1. Extracts the JWS from `VerificationResult.jwsRepresentation`.
     /// 2. POSTs the JWS to the backend (backend verifies against Apple certs and grants PRO).
@@ -269,6 +390,10 @@ public actor StoreKitService: StoreKitServicing {
     /// 4. Signals `entitlementChanges` so observers refresh the UI.
     private func handleVerifiedResult(_ verificationResult: VerificationResult<Transaction>) async throws {
         guard case .verified(let transaction) = verificationResult else { return }
+
+        if transaction.ownershipType == .familyShared {
+            log.info("Processing family-shared transaction for \(transaction.productID)")
+        }
 
         let endpoint = try Endpoints.verifyApplePurchase(
             jwsRepresentation: verificationResult.jwsRepresentation
