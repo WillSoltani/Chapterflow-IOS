@@ -108,7 +108,7 @@
 		4A18BD4A98A6DFECCF5AC3CC /* BadgeCelebrationView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BadgeCelebrationView.swift; sourceTree = "<group>"; };
 		4DCF192CB7B14D42D2B19DBE /* NotificationViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NotificationViewController.swift; sourceTree = "<group>"; };
 		52EFD099E026B2AE09252632 /* ChapterFlowUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChapterFlowUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		62337D48E2C6D11D9DD20D70 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = SwiftUI.framework; sourceTree = SDKROOT; };
+		62337D48E2C6D11D9DD20D70 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = SwiftUI.framework; sourceTree = SDKROOT; };
 		7661D6455EE1B64C3349CC10 /* WidgetDataReader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetDataReader.swift; sourceTree = "<group>"; };
 		81FE884A215CF6E3ADA31C64 /* ProgressRingWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProgressRingWidget.swift; sourceTree = "<group>"; };
 		82C8556826731B4C5B553BC9 /* PurchaseFlowTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PurchaseFlowTests.swift; sourceTree = "<group>"; };
@@ -119,7 +119,7 @@
 		B61F7E717429A35DF5B29CCE /* NextReviewWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NextReviewWidget.swift; sourceTree = "<group>"; };
 		D23EAB3CE617CB627A5CD649 /* SmokeLaneTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SmokeLaneTests.swift; sourceTree = "<group>"; };
 		E04CAB02AF39E4B3C81F199F /* NotificationService.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NotificationService.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		E9800A4BEA2EA1A39922A3A3 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = WidgetKit.framework; sourceTree = SDKROOT; };
+		E9800A4BEA2EA1A39922A3A3 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = WidgetKit.framework; sourceTree = SDKROOT; };
 		EA027BFD0C054E6CFEC8BC3E /* AttachmentBuilder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AttachmentBuilder.swift; sourceTree = "<group>"; };
 		FE8F84E4FCD501EFB0CB0817 /* ChapterflowWidgets.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = ChapterflowWidgets.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -127,8 +127,6 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		15E7517F2FF4A90000FA8025 /* ChapterFlow */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = ChapterFlow;
 			sourceTree = "<group>";
 		};
@@ -224,7 +222,6 @@
 			children = (
 				13EF5D4DCFFA62699AA5D2DB /* AppRobot.swift */,
 			);
-			name = Support;
 			path = Support;
 			sourceTree = "<group>";
 		};
@@ -235,7 +232,6 @@
 				2B2A434EEDE75E182C3B9385 /* Support */,
 				8BA9CA550E375E3A7D380397 /* ChapterFlowUITests.swift */,
 			);
-			name = ChapterFlowUITests;
 			path = ChapterFlowUITests;
 			sourceTree = "<group>";
 		};
@@ -247,7 +243,6 @@
 				82C8556826731B4C5B553BC9 /* PurchaseFlowTests.swift */,
 				D23EAB3CE617CB627A5CD649 /* SmokeLaneTests.swift */,
 			);
-			name = Flows;
 			path = Flows;
 			sourceTree = "<group>";
 		};
@@ -268,7 +263,6 @@
 				EA027BFD0C054E6CFEC8BC3E /* AttachmentBuilder.swift */,
 				A4F52C53E7B459419F05C983 /* NotificationServiceExtension.swift */,
 			);
-			name = NotificationService;
 			path = NotificationService;
 			sourceTree = "<group>";
 		};
@@ -286,7 +280,6 @@
 				20B11F247829B40CD01C223C /* ReadingSessionLiveActivity.swift */,
 				165F7C41C20A17C133A0F496 /* StreakAtRiskLiveActivity.swift */,
 			);
-			name = ChapterflowWidgets;
 			path = ChapterflowWidgets;
 			sourceTree = "<group>";
 		};
@@ -296,7 +289,6 @@
 				4A18BD4A98A6DFECCF5AC3CC /* BadgeCelebrationView.swift */,
 				4DCF192CB7B14D42D2B19DBE /* NotificationViewController.swift */,
 			);
-			name = NotificationContent;
 			path = NotificationContent;
 			sourceTree = "<group>";
 		};
@@ -438,8 +430,8 @@
 			mainGroup = 15E751742FF4A90000FA8025;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				AEBC4AF79EA1DFC947B53B2B /* XCLocalSwiftPackageReference "AppFeature" */,
-				8FA03FD27C5E121FC2AB78B3 /* XCLocalSwiftPackageReference "NotificationsFeature" */,
+				AEBC4AF79EA1DFC947B53B2B /* XCLocalSwiftPackageReference "Packages/AppFeature" */,
+				8FA03FD27C5E121FC2AB78B3 /* XCLocalSwiftPackageReference "Packages/NotificationsFeature" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 15E7517E2FF4A90000FA8025 /* Products */;
@@ -813,7 +805,7 @@
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ChapterFlow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ChapterFlow";
+				TEST_HOST = "";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -917,7 +909,7 @@
 				SWIFT_STRICT_CONCURRENCY = complete;
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ChapterFlow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/ChapterFlow";
+				TEST_HOST = "";
 			};
 			name = Debug;
 		};
@@ -1003,11 +995,11 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		8FA03FD27C5E121FC2AB78B3 /* XCLocalSwiftPackageReference "NotificationsFeature" */ = {
+		8FA03FD27C5E121FC2AB78B3 /* XCLocalSwiftPackageReference "Packages/NotificationsFeature" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/NotificationsFeature;
 		};
-		AEBC4AF79EA1DFC947B53B2B /* XCLocalSwiftPackageReference "AppFeature" */ = {
+		AEBC4AF79EA1DFC947B53B2B /* XCLocalSwiftPackageReference "Packages/AppFeature" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/AppFeature;
 		};
@@ -1016,17 +1008,17 @@
 /* Begin XCSwiftPackageProductDependency section */
 		6EA764DF69611DF5DFD58ED8 /* RichNotificationCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 8FA03FD27C5E121FC2AB78B3 /* XCLocalSwiftPackageReference "NotificationsFeature" */;
+			package = 8FA03FD27C5E121FC2AB78B3 /* XCLocalSwiftPackageReference "Packages/NotificationsFeature" */;
 			productName = RichNotificationCore;
 		};
 		8EE91B935F78B8ABFC1C1B6A /* RichNotificationCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 8FA03FD27C5E121FC2AB78B3 /* XCLocalSwiftPackageReference "NotificationsFeature" */;
+			package = 8FA03FD27C5E121FC2AB78B3 /* XCLocalSwiftPackageReference "Packages/NotificationsFeature" */;
 			productName = RichNotificationCore;
 		};
 		A8255B985D25AB005A4FF769 /* AppFeature */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = AEBC4AF79EA1DFC947B53B2B /* XCLocalSwiftPackageReference "AppFeature" */;
+			package = AEBC4AF79EA1DFC947B53B2B /* XCLocalSwiftPackageReference "Packages/AppFeature" */;
 			productName = AppFeature;
 		};
 /* End XCSwiftPackageProductDependency section */
