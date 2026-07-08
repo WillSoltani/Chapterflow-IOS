@@ -188,6 +188,11 @@ public final class AppModel {
     /// Shared reachability service — consumed by repositories and views.
     public let reachability: ReachabilityService
 
+    // MARK: - Focus filter (P8.6)
+
+    /// `true` while Reading Focus is active; suppresses social features and the notification badge.
+    public var isReadingFocusActive: Bool = false
+
     // MARK: - Spotlight
 
     /// Indexes books and chapters into Core Spotlight. Owned here so the app can

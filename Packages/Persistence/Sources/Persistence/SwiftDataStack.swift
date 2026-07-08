@@ -112,7 +112,30 @@ public enum PersistenceSchemaV7: VersionedSchema {
 }
 
 /// Migration plan. Lightweight migrations require no field renames or transformations.
+///
+/// ## Adding a lightweight stage (additive model changes only)
+/// ```swift
+/// .lightweight(fromVersion: PersistenceSchemaVN.self, toVersion: PersistenceSchemaVN1.self)
+/// ```
+///
+/// ## Adding a custom stage (field renames, data transformations)
+/// ```swift
+/// .custom(
+///     fromVersion: PersistenceSchemaVN.self,
+///     toVersion: PersistenceSchemaVN1.self,
+///     willMigrate: { context in
+///         // Run before migration: read old data, set flags, etc.
+///     },
+///     didMigrate: { context in
+///         // Run after migration: transform values, back-fill new fields, etc.
+///     }
+/// )
+/// ```
 public enum PersistenceMigrationPlan: SchemaMigrationPlan {
+    /// The schema version the app is currently shipping. Update this whenever a
+    /// new `VersionedSchema` is added so diagnostics and tests can reference it.
+    public static let currentVersion: Schema.Version = PersistenceSchemaV7.versionIdentifier
+
     public static var schemas: [any VersionedSchema.Type] {
         [PersistenceSchemaV1.self, PersistenceSchemaV2.self,
          PersistenceSchemaV3.self, PersistenceSchemaV4.self,
@@ -147,7 +170,7 @@ public enum StorageMode: Sendable, Equatable {
 /// Owns the app's `ModelContainer` and vends main + background contexts.
 ///
 /// The schema is configurable: pass the `@Model` types the app needs (defaults to
-/// ``PersistenceSchemaV1``). The store lives in the App Group container so widgets
+/// the current V7 schema). The store lives in the App Group container so widgets
 /// share it. `ModelContainer` is `Sendable`, so this controller is safe to pass across
 /// isolation domains; `ModelContext` is not, so background work uses ``BackgroundStore``.
 ///
@@ -171,7 +194,7 @@ public struct PersistenceController: Sendable {
     ///   - migrationPlan: Optional migration plan; pass `PersistenceMigrationPlan.self`
     ///     when the model set matches the versioned schema.
     public init(
-        models: [any PersistentModel.Type] = PersistenceSchemaV6.models,
+        models: [any PersistentModel.Type] = PersistenceSchemaV7.models,
         storage: StorageMode = .appGroup,
         migrationPlan: (any SchemaMigrationPlan.Type)? = nil
     ) throws {
