@@ -14,6 +14,7 @@ import PaywallFeature
 import NotificationsFeature
 import OnboardingFeature
 import SettingsFeature
+import SyncEngine
 
 /// The top-level observable app state that drives `AppRootView`.
 ///
@@ -170,6 +171,15 @@ public final class AppModel {
     /// Shared reachability service — consumed by repositories and views.
     public let reachability: ReachabilityService
 
+    // MARK: - Sync engine (P3.5)
+
+    /// Drains the offline write outbox when connectivity is restored.
+    /// `nil` only when SwiftData couldn't be initialised (edge case).
+    private let syncEngineInternal: SyncEngine?
+
+    /// Observable sync status forwarded to the Settings sync section.
+    public var syncStatus: SyncStatus? { syncEngineInternal?.status }
+
     // MARK: - Internal
 
     /// Retained so `makePaywallModel(context:)` can build `PaywallModel` without re-creating the client.
@@ -218,8 +228,10 @@ public final class AppModel {
         )
         if let container {
             self.annotationRepository = LiveAnnotationRepository(container: container, apiClient: client)
+            self.syncEngineInternal = SyncEngine(apiClient: client, container: container)
         } else {
             self.annotationRepository = nil
+            self.syncEngineInternal = nil
         }
 
         self.reviewsRepository = ReviewsRepository(apiClient: client, modelContainer: container)
@@ -273,10 +285,21 @@ public final class AppModel {
         apnsManager.start()
     }
 
+    /// Starts the offline sync engine for the currently signed-in user.
+    /// Call once after `authState` transitions to `.signedIn`.
+    public func startSyncEngine() {
+        guard case .signedIn(let user) = session.authState else { return }
+        let userId = user.userId
+        Task { [weak self] in
+            await self?.syncEngineInternal?.start(userId: userId)
+        }
+    }
+
     /// Signs the user out, unregistering the APNs token from the backend first.
     public func signOut() async {
         userIdBox.userId = nil
         await apnsManager.handleSignOut()
+        await syncEngineInternal?.stop()
         await session.signOut()
         isGuestMode = false
     }

@@ -15,6 +15,7 @@ import SocialFeature
 import NotificationsFeature
 import OnboardingFeature
 import SettingsFeature
+import SyncEngine
 
 /// The top-level entry point for the app's UI.
 ///
@@ -27,6 +28,7 @@ import SettingsFeature
 public struct AppRootView: View {
     @State private var model: AppModel
     @State private var readingFlow: ReadingFlow?
+    @State private var showQueuedToast = false
     @Environment(\.scenePhase) private var scenePhase
 
     // Observed so SwiftUI tracks changes written by App Intents perform().
@@ -70,6 +72,7 @@ public struct AppRootView: View {
                 case .signedIn:
                     model.hydrateDisplayName()
                     model.startAPNS()
+                    model.startSyncEngine()
                     model.showAuthGate = false
                     // Replay any action the guest was attempting before signing in.
                     if !model.pendingAuthIntent.isNone {
@@ -81,6 +84,15 @@ public struct AppRootView: View {
                     model.displayName = ""
                 default:
                     break
+                }
+            }
+            .onChange(of: model.syncStatus?.pendingCount) { oldCount, newCount in
+                guard !model.reachability.isConnected else { return }
+                guard let old = oldCount, let new = newCount, new > old else { return }
+                showQueuedToast = true
+                Task {
+                    try? await Task.sleep(for: .seconds(3))
+                    showQueuedToast = false
                 }
             }
     }
@@ -205,6 +217,11 @@ public struct AppRootView: View {
                 model.requestAuth(intent: .none)
             }
         }
+        .overlay(alignment: .top) {
+            OfflineBannerView(isOffline: !model.reachability.isConnected)
+                .padding(.top, .cfSpacing8)
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: model.reachability.isConnected)
+        }
     }
 
     // MARK: - Main tab view
@@ -283,6 +300,17 @@ public struct AppRootView: View {
                 }
             )
         }
+        // Global offline banner — floats at the top; clears automatically on reconnect.
+        .overlay(alignment: .top) {
+            OfflineBannerView(
+                isOffline: !model.reachability.isConnected,
+                pendingCount: model.syncStatus?.pendingCount ?? 0
+            )
+            .padding(.top, .cfSpacing8)
+            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: model.reachability.isConnected)
+        }
+        // Queued-action confirmation toast shown when an offline write is enqueued.
+        .offlineQueuedToast(isPresented: $showQueuedToast)
     }
 
     // MARK: - Tab content
@@ -361,6 +389,7 @@ public struct AppRootView: View {
                     preferences: model.preferences,
                     onSignOut: { await model.signOut() }
                 ),
+                syncStatus: model.syncStatus,
                 userEmail: model.displayName.isEmpty ? nil : {
                     if let token = model.session.currentIdToken(),
                        let profile = UserProfile.from(idToken: token) {

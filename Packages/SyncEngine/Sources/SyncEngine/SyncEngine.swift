@@ -184,6 +184,8 @@ public actor SyncEngine {
         await updateStatus(phase: finalPhase, pendingCount: finalCount)
 
         if finalCount == 0 {
+            let now = Date()
+            await MainActor.run { status.lastSyncedDate = now }
             logger.info("SyncEngine: drain complete — outbox empty")
         } else {
             logger.warning("SyncEngine: drain finished with \(finalCount) unsynced mutation(s)")
