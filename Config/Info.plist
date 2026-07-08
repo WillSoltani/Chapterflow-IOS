@@ -50,5 +50,14 @@
 			</array>
 		</dict>
 	</array>
+	<!--
+	  NSUserActivityTypes — declare activity types the app can handle for
+	  Handoff (Continuity). The reading activity lets a chapter started on
+	  another device (or web) continue seamlessly on this device.
+	-->
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>com.chapterflow.ios.reading</string>
+	</array>
 </dict>
 </plist>

@@ -3,15 +3,22 @@ import Models
 import Persistence
 import ReaderFeature
 import QuizFeature
+import CoreKit
 
 // MARK: - Reading context (Identifiable so .fullScreenCover(item:) works)
 
 /// The parameters needed to open a reading session.
-struct ReadingFlow: Identifiable {
+struct ReadingFlow: Identifiable, Equatable {
     let id = UUID()
     let bookId: String
     let chapterNumber: Int
     let variantFamily: VariantFamily
+
+    static func == (lhs: ReadingFlow, rhs: ReadingFlow) -> Bool {
+        lhs.bookId == rhs.bookId
+            && lhs.chapterNumber == rhs.chapterNumber
+            && lhs.variantFamily == rhs.variantFamily
+    }
 }
 
 // MARK: - Quiz context
@@ -95,6 +102,25 @@ struct ReadingFlowView: View {
         }
         .task {
             wireQuizCTA()
+        }
+        // Advertise the reading session for Continuity Handoff.
+        // Sets webpageURL so non-iOS devices (e.g. Mac without the app) can open
+        // the web equivalent in Safari.
+        .userActivity(HandoffActivityType.reading) { activity in
+            let bookId = readerModel.bookId
+            let chapter = readerModel.chapterNumber
+            let variantRaw = readerModel.variantFamily.rawValue
+            activity.isEligibleForHandoff = true
+            activity.isEligibleForSearch = false
+            activity.title = "Reading Chapter \(chapter)"
+            activity.userInfo = [
+                HandoffKeys.bookId: bookId,
+                HandoffKeys.chapterNumber: chapter,
+                HandoffKeys.variantFamily: variantRaw,
+            ]
+            activity.webpageURL = URL(
+                string: "https://\(DeepLink.universalLinkDomain)/book/\(bookId)/chapter/\(chapter)"
+            )
         }
     }
 

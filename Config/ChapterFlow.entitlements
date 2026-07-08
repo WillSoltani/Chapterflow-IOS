@@ -9,5 +9,15 @@
 	<!-- APNs: "development" for debug builds; Xcode/signing uses "production" for distribution. -->
 	<key>aps-environment</key>
 	<string>development</string>
+	<!--
+	  Universal Links — requires the AASA file to be served at
+	  https://chapterflow.app/.well-known/apple-app-site-association
+	  (coordinate with the web team, B7).  The chapterflow:// custom scheme
+	  works independently until the AASA is deployed.
+	-->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:chapterflow.app</string>
+	</array>
 </dict>
 </plist>
