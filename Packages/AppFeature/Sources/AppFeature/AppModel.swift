@@ -60,6 +60,14 @@ public final class AppModel {
 
     public var selectedTab: AppTab = .home
 
+    // MARK: - Handoff / deep-link reading flow
+
+    /// Set when a Handoff activity should open the reader immediately.
+    /// ``AppRootView`` observes this and presents the `ReadingFlowView` full-screen cover.
+    /// Cleared by `AppRootView` once consumed.
+    /// Internal because `ReadingFlow` is an AppFeature-module type.
+    var pendingHandoffFlow: ReadingFlow?
+
     // MARK: - Gift deep-link state
 
     /// Set when a `chapterflow://gift/{code}` deep link lands; cleared when the
@@ -506,8 +514,16 @@ public final class AppModel {
             selectedTab = .profile
             pendingGiftCode = code
         case .referral(let code):
+            // iOS has no deferred deep-link API — a new install cannot carry the
+            // code automatically. The Profile tab always shows a manual entry path.
             pendingReferralCode = code
             selectedTab = .profile
+        case .paywall:
+            paywallContext = .settings
+            showPaywall = true
+        case .journey, .event:
+            // Journey and event detail screens live inside the Engagement/Home tab.
+            selectedTab = .home
         case .library:
             selectedTab = .library
         case .profile:

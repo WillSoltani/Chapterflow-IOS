@@ -3,7 +3,7 @@ import Foundation
 @testable import AppFeature
 import Models
 
-@Suite("AppModel deep-link routing")
+@Suite("AppModel deep-link routing — custom scheme")
 @MainActor
 struct AppModelTests {
 
@@ -35,17 +35,40 @@ struct AppModelTests {
         #expect(model.selectedTab == .profile)
     }
 
-    @Test("gift URL routes to profile tab")
+    @Test("gift URL routes to profile tab and sets pendingGiftCode")
     func giftURLRoutesToProfile() async {
         let model = AppModel()
         model.handle(url: URL(string: "chapterflow://gift/GIFTCODE")!)
         #expect(model.selectedTab == .profile)
+        #expect(model.pendingGiftCode == "GIFTCODE")
     }
 
-    @Test("unknown scheme is ignored; tab stays at default")
-    func unknownSchemeIgnored() async {
+    @Test("referral URL routes to profile tab and sets pendingReferralCode")
+    func referralURLRoutesToProfile() async {
         let model = AppModel()
-        model.handle(url: URL(string: "https://chapterflow.app/book/abc123")!)
+        model.handle(url: URL(string: "chapterflow://ref/ALICE42")!)
+        #expect(model.selectedTab == .profile)
+        #expect(model.pendingReferralCode == "ALICE42")
+    }
+
+    @Test("paywall URL presents the paywall")
+    func paywallURLPresentsPaywall() async {
+        let model = AppModel()
+        model.handle(url: URL(string: "chapterflow://paywall")!)
+        #expect(model.showPaywall)
+    }
+
+    @Test("journey URL routes to home tab")
+    func journeyURLRoutesToHome() async {
+        let model = AppModel()
+        model.handle(url: URL(string: "chapterflow://journey/j-summer")!)
+        #expect(model.selectedTab == .home)
+    }
+
+    @Test("event URL routes to home tab")
+    func eventURLRoutesToHome() async {
+        let model = AppModel()
+        model.handle(url: URL(string: "chapterflow://event/ev-nov")!)
         #expect(model.selectedTab == .home)
     }
 
@@ -56,6 +79,96 @@ struct AppModelTests {
         #expect(model.selectedTab == .home)
     }
 }
+
+// MARK: - Universal Link routing
+
+@Suite("AppModel deep-link routing — Universal Links")
+@MainActor
+struct AppModelUniversalLinkTests {
+
+    @Test("Universal Link book URL routes to library tab")
+    func universalLinkBookRoutesToLibrary() async {
+        let model = AppModel()
+        model.handle(url: URL(string: "https://app.chapterflow.ca/book/abc123")!)
+        #expect(model.selectedTab == .library)
+    }
+
+    @Test("Universal Link chapter URL routes to library tab")
+    func universalLinkChapterRoutesToLibrary() async {
+        let model = AppModel()
+        model.handle(url: URL(string: "https://app.chapterflow.ca/book/abc123/chapter/3")!)
+        #expect(model.selectedTab == .library)
+    }
+
+    @Test("Universal Link review URL routes to reviews tab")
+    func universalLinkReviewRoutesToReviews() async {
+        let model = AppModel()
+        model.handle(url: URL(string: "https://app.chapterflow.ca/review")!)
+        #expect(model.selectedTab == .reviews)
+    }
+
+    @Test("Universal Link pair accept URL routes to profile tab")
+    func universalLinkPairAcceptRoutesToProfile() async {
+        let model = AppModel()
+        model.handle(url: URL(string: "https://app.chapterflow.ca/pair/accept/XYZ")!)
+        #expect(model.selectedTab == .profile)
+        #expect(model.pendingPairAcceptCode == "XYZ")
+    }
+
+    @Test("Universal Link gift URL routes to profile and sets code")
+    func universalLinkGiftRoutesToProfile() async {
+        let model = AppModel()
+        model.handle(url: URL(string: "https://app.chapterflow.ca/gift/GIFTCODE")!)
+        #expect(model.selectedTab == .profile)
+        #expect(model.pendingGiftCode == "GIFTCODE")
+    }
+
+    @Test("Universal Link paywall URL presents paywall")
+    func universalLinkPaywallPresentsPaywall() async {
+        let model = AppModel()
+        model.handle(url: URL(string: "https://app.chapterflow.ca/paywall")!)
+        #expect(model.showPaywall)
+    }
+
+    @Test("wrong-domain https URL is ignored; tab stays at default")
+    func wrongDomainIgnored() async {
+        let model = AppModel()
+        model.handle(url: URL(string: "https://evil.com/book/abc123")!)
+        #expect(model.selectedTab == .home)
+    }
+}
+
+// MARK: - Handoff
+
+@Suite("AppModel — Handoff")
+@MainActor
+struct AppModelHandoffTests {
+
+    @Test("handleHandoff sets pendingHandoffFlow with correct bookId and chapter")
+    func handoffSetsFlow() {
+        let model = AppModel()
+        model.handleHandoff(bookId: "book-abc", chapterNumber: 3, variantFamilyRaw: "EMH")
+        #expect(model.pendingHandoffFlow?.bookId == "book-abc")
+        #expect(model.pendingHandoffFlow?.chapterNumber == 3)
+        #expect(model.pendingHandoffFlow?.variantFamily == .emh)
+    }
+
+    @Test("handleHandoff with nil variantFamily defaults to .emh")
+    func handoffDefaultsVariantFamily() {
+        let model = AppModel()
+        model.handleHandoff(bookId: "book-xyz", chapterNumber: 1, variantFamilyRaw: nil)
+        #expect(model.pendingHandoffFlow?.variantFamily == .emh)
+    }
+
+    @Test("handleHandoff with unknown variantFamily rawValue uses .unknown")
+    func handoffUnknownVariantFamily() {
+        let model = AppModel()
+        model.handleHandoff(bookId: "book-xyz", chapterNumber: 2, variantFamilyRaw: "FUTURE_FORMAT")
+        #expect(model.pendingHandoffFlow?.variantFamily == .unknown("FUTURE_FORMAT"))
+    }
+}
+
+// MARK: - Guest mode
 
 @Suite("AppModel — guest mode")
 @MainActor

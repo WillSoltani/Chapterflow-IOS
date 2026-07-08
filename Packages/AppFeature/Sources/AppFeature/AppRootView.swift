@@ -95,12 +95,38 @@ public struct AppRootView: View {
                     break
                 }
             }
+            // Core Spotlight — activity from a Spotlight search result.
             .onContinueUserActivity(CSSearchableItemActionType) { activity in
                 guard
                     let urlString = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String,
                     let url = URL(string: urlString)
                 else { return }
                 model.handle(url: url)
+            }
+            // Universal Links — iOS delivers https://chapterflow.ca/... and
+            // https://app.chapterflow.ca/... taps as NSUserActivityTypeBrowsingWeb
+            // with the URL in `webpageURL`. onOpenURL only covers custom-scheme
+            // URLs, so this handler is needed for Universal Links from Safari, etc.
+            .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                guard let url = activity.webpageURL else { return }
+                model.handle(url: url)
+            }
+            // Continuity Handoff — resume a reading session advertised by another
+            // iOS device (or this device's prior session) via userActivity(_:).
+            .onContinueUserActivity(HandoffActivityType.reading) { activity in
+                guard
+                    let info = activity.userInfo,
+                    let bookId = info[HandoffKeys.bookId] as? String,
+                    let chapter = info[HandoffKeys.chapterNumber] as? Int
+                else { return }
+                let variantRaw = info[HandoffKeys.variantFamily] as? String
+                model.handleHandoff(bookId: bookId, chapterNumber: chapter, variantFamilyRaw: variantRaw)
+            }
+            // Open the reader directly when a Handoff or intent sets pendingHandoffFlow.
+            .onChange(of: model.pendingHandoffFlow) { _, flow in
+                guard let flow else { return }
+                model.pendingHandoffFlow = nil
+                readingFlow = flow
             }
             .onChange(of: model.syncStatus?.pendingCount) { oldCount, newCount in
                 guard !model.reachability.isConnected else { return }
