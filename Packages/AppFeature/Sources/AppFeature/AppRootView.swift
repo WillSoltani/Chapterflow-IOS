@@ -16,6 +16,7 @@ import SocialFeature
 import NotificationsFeature
 import OnboardingFeature
 import SettingsFeature
+import SyncEngine
 
 /// The top-level entry point for the app's UI.
 ///
@@ -28,6 +29,7 @@ import SettingsFeature
 public struct AppRootView: View {
     @State private var model: AppModel
     @State private var readingFlow: ReadingFlow?
+    @State private var showQueuedToast = false
     @Environment(\.scenePhase) private var scenePhase
 
     // Observed so SwiftUI tracks changes written by App Intents perform().
@@ -71,6 +73,7 @@ public struct AppRootView: View {
                 case .signedIn:
                     model.hydrateDisplayName()
                     model.startAPNS()
+                    model.startSyncEngine()
                     model.showAuthGate = false
                     model.startSpotlightIndexing()
                     // Replay any action the guest was attempting before signing in.
@@ -91,6 +94,15 @@ public struct AppRootView: View {
                     let url = URL(string: urlString)
                 else { return }
                 model.handle(url: url)
+            }
+            .onChange(of: model.syncStatus?.pendingCount) { oldCount, newCount in
+                guard !model.reachability.isConnected else { return }
+                guard let old = oldCount, let new = newCount, new > old else { return }
+                showQueuedToast = true
+                Task {
+                    try? await Task.sleep(for: .seconds(3))
+                    showQueuedToast = false
+                }
             }
     }
 
@@ -214,6 +226,11 @@ public struct AppRootView: View {
                 model.requestAuth(intent: .none)
             }
         }
+        .overlay(alignment: .top) {
+            OfflineBannerView(isOffline: !model.reachability.isConnected)
+                .padding(.top, .cfSpacing8)
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: model.reachability.isConnected)
+        }
     }
 
     // MARK: - Main tab view
@@ -226,6 +243,7 @@ public struct AppRootView: View {
             Tab("Home", systemImage: "house", value: AppTab.home) {
                 tabContent(for: .home)
             }
+            .badge(model.notificationInboxModel.unreadCount)
             Tab("Library", systemImage: "books.vertical", value: AppTab.library) {
                 tabContent(for: .library)
             }
@@ -292,6 +310,31 @@ public struct AppRootView: View {
                 }
             )
         }
+        // Global offline banner — floats at the top; clears automatically on reconnect.
+        .overlay(alignment: .top) {
+            OfflineBannerView(
+                isOffline: !model.reachability.isConnected,
+                pendingCount: model.syncStatus?.pendingCount ?? 0
+            )
+            .padding(.top, .cfSpacing8)
+            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: model.reachability.isConnected)
+        }
+        // Queued-action confirmation toast shown when an offline write is enqueued.
+        .offlineQueuedToast(isPresented: $showQueuedToast)
+        // Notification inbox — presented by the bell button in the Home toolbar
+        // or by a chapterflow://notifications deep link.
+        .sheet(isPresented: Binding(
+            get: { model.showNotificationInbox },
+            set: { model.showNotificationInbox = $0 }
+        )) {
+            NotificationInboxView(
+                model: model.notificationInboxModel,
+                onOpenURL: { url in
+                    model.showNotificationInbox = false
+                    model.handle(url: url)
+                }
+            )
+        }
     }
 
     // MARK: - Tab content
@@ -315,6 +358,9 @@ public struct AppRootView: View {
                 onShowPaywall: {
                     model.paywallContext = .lockedFeature(featureName: "Book")
                     model.showPaywall = true
+                },
+                onShowNotificationInbox: {
+                    model.showNotificationInbox = true
                 }
             )
         case .library:
@@ -370,6 +416,7 @@ public struct AppRootView: View {
                     preferences: model.preferences,
                     onSignOut: { await model.signOut() }
                 ),
+                syncStatus: model.syncStatus,
                 userEmail: model.displayName.isEmpty ? nil : {
                     if let token = model.session.currentIdToken(),
                        let profile = UserProfile.from(idToken: token) {

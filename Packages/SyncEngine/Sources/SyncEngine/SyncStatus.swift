@@ -39,5 +39,8 @@ public final class SyncStatus: @unchecked Sendable {
     /// Human-readable description of the most recent terminal failure, if any.
     public var lastError: String?
 
+    /// The last time the outbox was fully drained to empty. `nil` before the first successful sync.
+    public var lastSyncedDate: Date?
+
     public init() {}
 }

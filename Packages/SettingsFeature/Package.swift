@@ -15,6 +15,7 @@ let package = Package(
         .package(path: "../Persistence"),
         .package(path: "../AuthKit"),
         .package(path: "../NotificationsFeature"),
+        .package(path: "../SyncEngine"),
     ],
     targets: [
         .target(
@@ -27,6 +28,7 @@ let package = Package(
                 .product(name: "Persistence", package: "Persistence"),
                 .product(name: "AuthKit", package: "AuthKit"),
                 .product(name: "NotificationsFeature", package: "NotificationsFeature"),
+                .product(name: "SyncEngine", package: "SyncEngine"),
             ]
         ),
         .testTarget(

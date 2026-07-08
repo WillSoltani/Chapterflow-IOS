@@ -3,6 +3,7 @@ import DesignSystem
 import CoreKit
 import Persistence
 import NotificationsFeature
+import SyncEngine
 
 // MARK: - Legal URL constants (company website)
 
@@ -56,6 +57,12 @@ public struct SettingsView: View {
     /// preferences, downloads, export, and account lifecycle.
     let settingsModel: SettingsModel?
 
+    // MARK: Sync status (P3.5)
+
+    /// Live sync status from the outbox drain engine. When non-nil, a "Sync" section
+    /// appears showing idle/syncing/error phase, pending count, and last-synced time.
+    let syncStatus: SyncStatus?
+
     /// The user's email displayed in the Account section.
     let userEmail: String?
 
@@ -85,6 +92,7 @@ public struct SettingsView: View {
         onShowPrivacySettings: (() -> Void)? = nil,
         notificationSettingsModel: NotificationSettingsModel? = nil,
         settingsModel: SettingsModel? = nil,
+        syncStatus: SyncStatus? = nil,
         userEmail: String? = nil,
         onSignOut: (() async -> Void)? = nil
     ) {
@@ -100,6 +108,7 @@ public struct SettingsView: View {
         self.onShowPrivacySettings = onShowPrivacySettings
         self.notificationSettingsModel = notificationSettingsModel
         self.settingsModel = settingsModel
+        self.syncStatus = syncStatus
         self.userEmail = userEmail
         self.onSignOut = onSignOut
     }
@@ -117,6 +126,7 @@ public struct SettingsView: View {
                 }
                 appLockSection
                 downloadsSection
+                syncSection
                 privacyLegalSection
                 dataSection
                 aboutSection

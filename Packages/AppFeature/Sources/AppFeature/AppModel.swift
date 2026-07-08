@@ -15,6 +15,7 @@ import NotificationsFeature
 import OnboardingFeature
 import SettingsFeature
 import CoreSpotlight
+import SyncEngine
 
 /// The top-level observable app state that drives `AppRootView`.
 ///
@@ -166,6 +167,14 @@ public final class AppModel {
     /// pass it to `NotificationSettingsView` as a navigation destination.
     public let notificationSettingsModel: NotificationSettingsModel
 
+    // MARK: - Notification inbox
+
+    /// Drives the in-app notification inbox (P9.4).
+    public let notificationInboxModel: NotificationInboxModel
+
+    /// Whether the notification inbox sheet is currently presented.
+    public var showNotificationInbox: Bool = false
+
     // MARK: - Reachability
 
     /// Shared reachability service — consumed by repositories and views.
@@ -176,6 +185,15 @@ public final class AppModel {
     /// Indexes books and chapters into Core Spotlight. Owned here so the app can
     /// clear the index on sign-out regardless of which screen is active.
     let spotlightIndexer = SpotlightIndexer()
+
+    // MARK: - Sync engine (P3.5)
+
+    /// Drains the offline write outbox when connectivity is restored.
+    /// `nil` only when SwiftData couldn't be initialised (edge case).
+    private let syncEngineInternal: SyncEngine?
+
+    /// Observable sync status forwarded to the Settings sync section.
+    public var syncStatus: SyncStatus? { syncEngineInternal?.status }
 
     // MARK: - Internal
 
@@ -225,8 +243,10 @@ public final class AppModel {
         )
         if let container {
             self.annotationRepository = LiveAnnotationRepository(container: container, apiClient: client)
+            self.syncEngineInternal = SyncEngine(apiClient: client, container: container)
         } else {
             self.annotationRepository = nil
+            self.syncEngineInternal = nil
         }
 
         self.reviewsRepository = ReviewsRepository(apiClient: client, modelContainer: container)
@@ -254,6 +274,9 @@ public final class AppModel {
             authorizer: authorizer
         )
 
+        let inboxRepo = LiveNotificationInboxRepository(apiClient: client)
+        self.notificationInboxModel = NotificationInboxModel(repository: inboxRepo)
+
         #if os(iOS)
         sm.registerBackgroundRefresh()
         #endif
@@ -280,11 +303,22 @@ public final class AppModel {
         apnsManager.start()
     }
 
+    /// Starts the offline sync engine for the currently signed-in user.
+    /// Call once after `authState` transitions to `.signedIn`.
+    public func startSyncEngine() {
+        guard case .signedIn(let user) = session.authState else { return }
+        let userId = user.userId
+        Task { [weak self] in
+            await self?.syncEngineInternal?.start(userId: userId)
+        }
+    }
+
     /// Signs the user out, unregistering the APNs token from the backend first.
     /// Also removes all Spotlight index entries to honour auth state.
     public func signOut() async {
         userIdBox.userId = nil
         await apnsManager.handleSignOut()
+        await syncEngineInternal?.stop()
         await session.signOut()
         isGuestMode = false
         await spotlightIndexer.removeAll()
@@ -464,6 +498,7 @@ public final class AppModel {
             selectedTab = .home
         case .notifications:
             selectedTab = .home
+            showNotificationInbox = true
         case .unknown:
             break
         }
