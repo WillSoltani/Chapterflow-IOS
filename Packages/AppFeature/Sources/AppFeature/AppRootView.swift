@@ -49,9 +49,16 @@ public struct AppRootView: View {
             }
             .onOpenURL { url in model.handle(url: url) }
             .onChange(of: scenePhase) { _, phase in
-                guard phase == .active else { return }
-                model.consumeAudioControlCommand()
-                model.consumePendingReadingMinutes()
+                switch phase {
+                case .active:
+                    model.consumeAudioControlCommand()
+                    model.consumePendingReadingMinutes()
+                    model.triggerForegroundSync()
+                case .background:
+                    model.scheduleBackgroundTasks()
+                default:
+                    break
+                }
             }
             .onChange(of: intentStore.pendingDeepLink) { _, link in
                 guard let link else { return }
@@ -440,7 +447,14 @@ public struct AppRootView: View {
                 settingsModel: SettingsModel(
                     repository: model.settingsRepository,
                     preferences: model.preferences,
-                    onSignOut: { await model.signOut() }
+                    onSignOut: { await model.signOut() },
+                    downloadInfoProvider: model.downloadInfoProvider,
+                    userId: {
+                        if case .signedIn(let user) = model.session.authState {
+                            return user.userId
+                        }
+                        return ""
+                    }()
                 ),
                 syncStatus: model.syncStatus,
                 userEmail: model.displayName.isEmpty ? nil : {

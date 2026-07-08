@@ -1,5 +1,5 @@
 import Foundation
-import UserNotifications
+@preconcurrency import UserNotifications
 import Models
 import CoreKit
 
@@ -91,22 +91,25 @@ public final class LocalNotificationScheduler {
 
     // MARK: - Shared singleton
 
-    public static let shared = LocalNotificationScheduler()
+    public static let shared = LocalNotificationScheduler(coordinator: NotificationCoordinator.shared)
 
     // MARK: - Dependencies
 
     private let center: any NotificationSchedulingCenter
     private let clock: any NotificationClock
+    private let coordinator: (any CoordinatorGate)?
     private let log = AppLog(category: .notifications)
 
     // MARK: - Init
 
     public init(
         center: any NotificationSchedulingCenter = SystemNotificationSchedulingCenter(),
-        clock: any NotificationClock = SystemNotificationClock()
+        clock: any NotificationClock = SystemNotificationClock(),
+        coordinator: (any CoordinatorGate)? = nil
     ) {
-        self.center = center
-        self.clock  = clock
+        self.center      = center
+        self.clock       = clock
+        self.coordinator = coordinator
     }
 
     // MARK: - Full reschedule
@@ -160,6 +163,57 @@ public final class LocalNotificationScheduler {
         log.info("Cancelled all local notifications (\(ours.count))")
     }
 
+    // MARK: - Snooze
+
+    /// Reschedule a pending notification with the same identifier at a new fire date.
+    ///
+    /// Bypasses the coordinator gate — snooze is a direct user action.
+    public func snoozeRequest(
+        identifier: String,
+        content: UNNotificationContent,
+        until fireDate: Date
+    ) async {
+        center.removeRequests(withIdentifiers: [identifier])
+        let cal = Calendar.current
+        let comps = cal.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
+        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+        do {
+            try await center.addRequest(request)
+            log.info("Snoozed \(identifier) until \(fireDate.formatted())")
+        } catch {
+            log.warning("Snooze failed for \(identifier): \(error)")
+        }
+    }
+
+    // MARK: - Coordinator-gated add helper
+
+    /// Asks the coordinator whether to schedule, adds the request if permitted,
+    /// then notifies the coordinator on success.
+    private func gatedAdd(
+        _ request: UNNotificationRequest,
+        type: PushNotificationType,
+        targetId: String?,
+        prefs: NotificationPreferences
+    ) async {
+        let priority = type.coordinatorPriority
+        if let gate = coordinator {
+            let ok = await gate.shouldSchedule(
+                type: type,
+                targetId: targetId,
+                prefs: prefs,
+                priority: priority
+            )
+            guard ok else { return }
+        }
+        do {
+            try await center.addRequest(request)
+            await coordinator?.didSchedule(type: type, targetId: targetId)
+        } catch {
+            log.warning("Failed to schedule \(type.rawValue): \(error)")
+        }
+    }
+
     // MARK: - Reading reminder
 
     private func scheduleReadingReminder(
@@ -206,12 +260,8 @@ public final class LocalNotificationScheduler {
             trigger: trigger
         )
 
-        do {
-            try await center.addRequest(request)
-            log.info("Scheduled daily reading reminder at \(adjHour):\(String(format: "%02d", adjMinute))")
-        } catch {
-            log.warning("Failed to schedule reading reminder: \(error)")
-        }
+        await gatedAdd(request, type: .readingReminder, targetId: nil, prefs: prefs)
+        log.info("Scheduled daily reading reminder at \(adjHour):\(String(format: "%02d", adjMinute))")
     }
 
     // MARK: - Streak-at-risk reminder
@@ -258,12 +308,8 @@ public final class LocalNotificationScheduler {
             trigger: trigger
         )
 
-        do {
-            try await center.addRequest(request)
-            log.info("Scheduled streak-at-risk reminder for \(fireDate.formatted())")
-        } catch {
-            log.warning("Failed to schedule streak-at-risk reminder: \(error)")
-        }
+        await gatedAdd(request, type: .streakAtRisk, targetId: nil, prefs: prefs)
+        log.info("Scheduled streak-at-risk reminder for \(fireDate.formatted())")
     }
 
     // MARK: - Review-due reminder
@@ -304,10 +350,10 @@ public final class LocalNotificationScheduler {
             ? "1 card is due for review."
             : "\(dueCount) cards are due for review."
         content.sound = .default
-        content.categoryIdentifier = PushNotificationType.readingReminder.categoryIdentifier
+        content.categoryIdentifier = PushNotificationType.reviewDue.categoryIdentifier
         content.threadIdentifier   = "cf.reviews"
         content.interruptionLevel  = .passive
-        content.userInfo           = ["type": "review_due"]
+        content.userInfo           = ["type": PushNotificationType.reviewDue.rawValue]
 
         let triggerComps = cal.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
         let trigger = UNCalendarNotificationTrigger(dateMatching: triggerComps, repeats: false)
@@ -317,12 +363,8 @@ public final class LocalNotificationScheduler {
             trigger: trigger
         )
 
-        do {
-            try await center.addRequest(request)
-            log.info("Scheduled review-due reminder for \(fireDate.formatted()) (\(dueCount) cards)")
-        } catch {
-            log.warning("Failed to schedule review-due reminder: \(error)")
-        }
+        await gatedAdd(request, type: .reviewDue, targetId: nil, prefs: prefs)
+        log.info("Scheduled review-due reminder for \(fireDate.formatted()) (\(dueCount) cards)")
     }
 
     // MARK: - Commitment follow-up reminders
@@ -373,12 +415,13 @@ public final class LocalNotificationScheduler {
                 trigger: trigger
             )
 
-            do {
-                try await center.addRequest(request)
-                log.info("Scheduled commitment reminder for \(commitment.id) at \(fireDate.formatted())")
-            } catch {
-                log.warning("Failed to schedule commitment reminder \(commitment.id): \(error)")
-            }
+            await gatedAdd(
+                request,
+                type: .commitmentFollowup,
+                targetId: commitment.id,
+                prefs: prefs
+            )
+            log.info("Scheduled commitment reminder for \(commitment.id) at \(fireDate.formatted())")
         }
     }
 

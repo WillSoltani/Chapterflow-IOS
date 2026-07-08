@@ -20,6 +20,7 @@ public struct NotificationSettingsView: View {
             if model.preferences != nil {
                 channelSection
                 remindersSection
+                quietHoursSection
                 alertsSection
                 digestSection
             }
@@ -156,6 +157,53 @@ public struct NotificationSettingsView: View {
             displayedComponents: .hourAndMinute
         )
         .accessibilityLabel("Daily reminder time")
+    }
+
+    // MARK: - Quiet hours section
+
+    @ViewBuilder
+    private var quietHoursSection: some View {
+        if let prefs = model.preferences {
+            Section {
+                Toggle(isOn: Binding(
+                    get: { prefs.quietHoursEnabled },
+                    set: { val in model.update { $0.quietHoursEnabled = val } }
+                )) {
+                    Label("Quiet Hours", systemImage: "moon.fill")
+                }
+                .accessibilityLabel("Quiet hours \(prefs.quietHoursEnabled ? "on" : "off")")
+
+                if prefs.quietHoursEnabled {
+                    DatePicker(
+                        "Start",
+                        selection: Binding(
+                            get: { date(from: prefs.quietHoursStart) },
+                            set: { newDate in model.update { prefs in prefs.quietHoursStart = formatTime(from: newDate) } }
+                        ),
+                        displayedComponents: .hourAndMinute
+                    )
+                    .accessibilityLabel("Quiet hours start time")
+
+                    DatePicker(
+                        "End",
+                        selection: Binding(
+                            get: { date(from: prefs.quietHoursEnd) },
+                            set: { newDate in model.update { prefs in prefs.quietHoursEnd = formatTime(from: newDate) } }
+                        ),
+                        displayedComponents: .hourAndMinute
+                    )
+                    .accessibilityLabel("Quiet hours end time")
+                }
+            } header: {
+                Text("Quiet Hours")
+            } footer: {
+                if prefs.quietHoursEnabled {
+                    Text("No notifications will be scheduled to fire between \(prefs.quietHoursStart) and \(prefs.quietHoursEnd). Reminders that fall in this window are moved to just after it ends.")
+                        .font(.cfCaption)
+                        .foregroundStyle(Color.cfSecondaryLabel)
+                }
+            }
+        }
     }
 
     // MARK: - Alerts section

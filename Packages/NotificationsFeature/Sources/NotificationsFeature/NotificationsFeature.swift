@@ -1,4 +1,5 @@
-// NotificationsFeature — permission priming, APNs registration, and denied recovery.
+// NotificationsFeature — permission priming, APNs registration, denied recovery, and
+// notification coordination (analytics, quiet hours, daily cap, deduplication, snooze).
 //
 // Wiring (P9.5 — permission priming):
 //   1. Create `NotificationAuthorizer(analytics:)` at app startup (one instance).
@@ -13,6 +14,16 @@
 //   3. Call `manager.start()` after sign-in resolves.
 //   4. Call `manager.handleSignOut()` on sign-out.
 //   5. Display `PushStatusView` in Settings.
+//
+// Wiring (P9.7 — notification coordinator):
+//   1. At app startup: `NotificationCoordinator.configure(analytics: analyticsClient)`.
+//   2. Set `PushRoutingBridge.shared.notificationCoordinator = NotificationCoordinator.shared`.
+//   3. Set `PushRoutingBridge.shared.onNotificationSnoozed` to call
+//      `LocalNotificationScheduler.shared.snoozeRequest(identifier:content:until:)` with
+//      `NotificationCoordinator.snoozeFireDate(from: Date())` as the target time.
+//   4. In `AppDelegate.userNotificationCenter(_:willPresent:)`:
+//      call `PushRoutingBridge.shared.willPresentNotification(notification)`.
+//   `LocalNotificationScheduler.shared` is already wired to the shared coordinator.
 //
 // Wiring (P9.3 — local notification scheduling):
 //   Call `LocalNotificationScheduler.shared.reschedule(input:)` from `AppModel`
