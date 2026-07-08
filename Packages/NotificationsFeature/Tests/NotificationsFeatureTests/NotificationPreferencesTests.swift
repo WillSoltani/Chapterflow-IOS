@@ -41,6 +41,27 @@ struct NotificationPreferencesTests {
         // Should use default values — no throw
         #expect(prefs.readingReminderEnabled == true)
         #expect(prefs.channels.push == true)
+        #expect(prefs.reviewReminderEnabled == true)
+        #expect(prefs.quietHoursEnabled == false)
+        #expect(prefs.quietHoursStart == "22:00")
+        #expect(prefs.quietHoursEnd == "08:00")
+    }
+
+    @Test("decodes new P9.3 fields when present")
+    func decodesP93Fields() throws {
+        let json = """
+        {
+            "reviewReminderEnabled": false,
+            "quietHoursEnabled": true,
+            "quietHoursStart": "23:00",
+            "quietHoursEnd": "07:30"
+        }
+        """.data(using: .utf8)!
+        let prefs = try JSONDecoder().decode(NotificationPreferences.self, from: json)
+        #expect(prefs.reviewReminderEnabled == false)
+        #expect(prefs.quietHoursEnabled == true)
+        #expect(prefs.quietHoursStart == "23:00")
+        #expect(prefs.quietHoursEnd == "07:30")
     }
 
     @Test("partially-specified JSON fills rest with defaults")
