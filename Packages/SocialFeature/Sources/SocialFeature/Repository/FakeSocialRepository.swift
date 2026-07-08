@@ -107,7 +107,7 @@ public actor FakeSocialRepository: SocialRepository {
         if let err = forcedError { throw err }
         return PairInvite(
             code: "FAKE-CODE-1234",
-            inviteLink: "https://chapterflow.app/pair/accept/FAKE-CODE-1234",
+            inviteLink: "https://app.chapterflow.ca/pair/accept/FAKE-CODE-1234",
             expiresAt: "2026-07-10T00:00:00Z"
         )
     }

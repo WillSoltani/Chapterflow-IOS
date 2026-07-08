@@ -176,7 +176,7 @@ public enum ShareCardInput: Sendable, Equatable {
     /// The referral link to embed in the card, if a code is available.
     public var referralLink: String? {
         guard let code = referralCode else { return nil }
-        return "chapterflow.app/ref/\(code)"
+        return "app.chapterflow.ca/ref/\(code)"
     }
 
     private var referralCode: String? {

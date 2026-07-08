@@ -152,7 +152,7 @@ public struct PaywallView: View {
                     .foregroundStyle(Color.cfSecondaryLabel)
                     .multilineTextAlignment(.center)
 
-                Text("To manage or cancel, visit chapterflow.app from any browser.")
+                Text("To manage or cancel, visit app.chapterflow.ca from any browser.")
                     .font(.cfFootnote)
                     .foregroundStyle(Color.cfTertiaryLabel)
                     .multilineTextAlignment(.center)
@@ -364,10 +364,10 @@ public struct PaywallView: View {
             }
 
             HStack(spacing: .cfSpacing16) {
-                if let termsURL = URL(string: "https://chapterflow.app/terms") {
+                if let termsURL = URL(string: "https://app.chapterflow.ca/terms") {
                     Link("Terms of Service", destination: termsURL)
                 }
-                if let privacyURL = URL(string: "https://chapterflow.app/privacy") {
+                if let privacyURL = URL(string: "https://app.chapterflow.ca/privacy") {
                     Link("Privacy Policy", destination: privacyURL)
                 }
             }
