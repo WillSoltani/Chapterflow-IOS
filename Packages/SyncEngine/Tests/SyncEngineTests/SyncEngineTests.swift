@@ -545,6 +545,7 @@ struct SyncEngineConflictTests {
         let count = await MainActor.run { engine.status.pendingCount }
         #expect(count == 0)
     }
+
 }
 
 // MARK: - Endpoint+Sync tests

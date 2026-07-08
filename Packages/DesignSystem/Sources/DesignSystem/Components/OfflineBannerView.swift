@@ -6,14 +6,17 @@ import SwiftUI
 /// may be stale. Animates in/out with a slide + fade when `isOffline` changes.
 ///
 /// ```swift
-/// OfflineBannerView(isOffline: !reachability.isConnected)
+/// OfflineBannerView(isOffline: !reachability.isConnected, pendingCount: syncStatus.pendingCount)
 /// ```
 public struct OfflineBannerView: View {
 
     public let isOffline: Bool
+    /// Number of mutations queued in the offline outbox. When > 0, shown in the pill.
+    public let pendingCount: Int
 
-    public init(isOffline: Bool) {
+    public init(isOffline: Bool, pendingCount: Int = 0) {
         self.isOffline = isOffline
+        self.pendingCount = pendingCount
     }
 
     public var body: some View {
@@ -21,7 +24,7 @@ public struct OfflineBannerView: View {
             HStack(spacing: .cfSpacing6) {
                 Image(systemName: "wifi.slash")
                     .font(.system(size: 11, weight: .medium))
-                Text("Offline")
+                Text(pillLabel)
                     .font(.cfCaption)
                     .fontWeight(.medium)
             }
@@ -30,7 +33,22 @@ public struct OfflineBannerView: View {
             .padding(.vertical, .cfSpacing6)
             .background(.regularMaterial, in: Capsule())
             .transition(.move(edge: .top).combined(with: .opacity))
-            .accessibilityLabel("You are offline. Showing cached content.")
+            .accessibilityLabel(accessLabel)
+        }
+    }
+
+    private var pillLabel: String {
+        pendingCount > 0 ? "Offline · \(pendingCount) queued" : "Offline"
+    }
+
+    private var accessLabel: String {
+        switch pendingCount {
+        case 0:
+            return "You are offline. Showing cached content."
+        case 1:
+            return "You are offline. 1 change queued to sync."
+        default:
+            return "You are offline. \(pendingCount) changes queued to sync."
         }
     }
 }
@@ -44,7 +62,7 @@ private extension CGFloat {
 // MARK: - Preview
 
 #if DEBUG
-#Preview("Offline banner") {
+#Preview("Offline banner — no queue") {
     VStack(spacing: .cfSpacing16) {
         OfflineBannerView(isOffline: true)
         OfflineBannerView(isOffline: false)
@@ -54,14 +72,19 @@ private extension CGFloat {
     .padding()
 }
 
+#Preview("Offline banner — with queue") {
+    OfflineBannerView(isOffline: true, pendingCount: 5)
+        .padding()
+}
+
 #Preview("Offline banner — dark") {
-    OfflineBannerView(isOffline: true)
+    OfflineBannerView(isOffline: true, pendingCount: 2)
         .padding()
         .preferredColorScheme(.dark)
 }
 
 #Preview("Offline banner — XXL") {
-    OfflineBannerView(isOffline: true)
+    OfflineBannerView(isOffline: true, pendingCount: 3)
         .padding()
         .dynamicTypeSize(.accessibility3)
 }
