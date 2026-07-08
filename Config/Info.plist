@@ -29,6 +29,8 @@
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.chapterflow.ios.tokenRefresh</string>
+		<string>com.chapterflow.ios.syncRefresh</string>
+		<string>com.chapterflow.ios.contentPrefetch</string>
 	</array>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
@@ -37,6 +39,8 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
+		<string>fetch</string>
+		<string>processing</string>
 		<string>remote-notification</string>
 	</array>
 	<key>CFBundleURLTypes</key>

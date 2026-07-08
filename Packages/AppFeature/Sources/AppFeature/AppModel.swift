@@ -186,7 +186,7 @@ public final class AppModel {
     /// clear the index on sign-out regardless of which screen is active.
     let spotlightIndexer = SpotlightIndexer()
 
-    // MARK: - Sync engine (P3.5)
+    // MARK: - Sync engine (P3.4)
 
     /// Drains the offline write outbox when connectivity is restored.
     /// `nil` only when SwiftData couldn't be initialised (edge case).
@@ -194,6 +194,15 @@ public final class AppModel {
 
     /// Observable sync status forwarded to the Settings sync section.
     public var syncStatus: SyncStatus? { syncEngineInternal?.status }
+
+    // MARK: - Download manager (P3.2 / P3.6)
+
+    private let downloadManagerInternal: DownloadManager?
+    public var downloadInfoProvider: (any DownloadInfoProviding)? { downloadManagerInternal }
+
+    #if os(iOS)
+    let bgSyncCoordinator: BackgroundSyncCoordinator
+    #endif
 
     // MARK: - Internal
 
@@ -241,12 +250,22 @@ public final class AppModel {
             reachability: reach,
             userId: userIdClosure
         )
+        let engine: SyncEngine?
+        let dlManager: DownloadManager?
         if let container {
             self.annotationRepository = LiveAnnotationRepository(container: container, apiClient: client)
-            self.syncEngineInternal = SyncEngine(apiClient: client, container: container)
+            let syncEngine = SyncEngine(apiClient: client, container: container)
+            self.syncEngineInternal = syncEngine
+            engine = syncEngine
+            let dm = Self.makeDownloadManager(container: container, apiClient: client)
+            self.downloadManagerInternal = dm
+            dlManager = dm
         } else {
             self.annotationRepository = nil
             self.syncEngineInternal = nil
+            self.downloadManagerInternal = nil
+            engine = nil
+            dlManager = nil
         }
 
         self.reviewsRepository = ReviewsRepository(apiClient: client, modelContainer: container)
@@ -255,12 +274,10 @@ public final class AppModel {
 
         let prefs = AppPreferences()
         self.preferences = prefs
-        let audioRepo = LiveAudioRepository(client: client)
-        let audioPlayer = AudioPlayer(repository: audioRepo)
+        let audioPlayer = AudioPlayer(repository: LiveAudioRepository(client: client))
         self.audioPlayerModel = AudioPlayerModel(player: audioPlayer, preferences: prefs)
 
-        let skConfig = StoreKitConfig.from(config)
-        let sks = StoreKitService(apiClient: client, config: skConfig)
+        let sks = StoreKitService(apiClient: client, config: StoreKitConfig.from(config))
         self.storeKitService = sks
         self.entitlementService = EntitlementService(storeKitService: sks, apiClient: client)
 
@@ -279,13 +296,14 @@ public final class AppModel {
 
         #if os(iOS)
         sm.registerBackgroundRefresh()
+        let coordinator = Self.makeCoordinator(
+            box: box, engine: engine, dlManager: dlManager, entSvc: self.entitlementService
+        )
+        coordinator.registerBackgroundTasks()
+        self.bgSyncCoordinator = coordinator
         #endif
         #if DEBUG
-        // `--demo-tab=library` (etc.) lets simulator runs jump to a specific tab.
-        if let arg = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--demo-tab=") }) {
-            let name = String(arg.dropFirst("--demo-tab=".count))
-            selectedTab = AppTab.allCases.first { $0.title.lowercased() == name.lowercased() } ?? .home
-        }
+        applyLaunchArguments()
         #endif
     }
 
