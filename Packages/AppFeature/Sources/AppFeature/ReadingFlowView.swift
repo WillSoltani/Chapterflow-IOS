@@ -119,7 +119,7 @@ struct ReadingFlowView: View {
                 HandoffKeys.variantFamily: variantRaw,
             ]
             activity.webpageURL = URL(
-                string: "https://\(DeepLink.universalLinkDomain)/book/\(bookId)/chapter/\(chapter)"
+                string: "https://\(DeepLink.webAppDomain)/book/\(bookId)/chapter/\(chapter)"
             )
         }
     }

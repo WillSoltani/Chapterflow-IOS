@@ -89,28 +89,28 @@ struct AppModelUniversalLinkTests {
     @Test("Universal Link book URL routes to library tab")
     func universalLinkBookRoutesToLibrary() async {
         let model = AppModel()
-        model.handle(url: URL(string: "https://chapterflow.app/book/abc123")!)
+        model.handle(url: URL(string: "https://app.chapterflow.ca/book/abc123")!)
         #expect(model.selectedTab == .library)
     }
 
     @Test("Universal Link chapter URL routes to library tab")
     func universalLinkChapterRoutesToLibrary() async {
         let model = AppModel()
-        model.handle(url: URL(string: "https://chapterflow.app/book/abc123/chapter/3")!)
+        model.handle(url: URL(string: "https://app.chapterflow.ca/book/abc123/chapter/3")!)
         #expect(model.selectedTab == .library)
     }
 
     @Test("Universal Link review URL routes to reviews tab")
     func universalLinkReviewRoutesToReviews() async {
         let model = AppModel()
-        model.handle(url: URL(string: "https://chapterflow.app/review")!)
+        model.handle(url: URL(string: "https://app.chapterflow.ca/review")!)
         #expect(model.selectedTab == .reviews)
     }
 
     @Test("Universal Link pair accept URL routes to profile tab")
     func universalLinkPairAcceptRoutesToProfile() async {
         let model = AppModel()
-        model.handle(url: URL(string: "https://chapterflow.app/pair/accept/XYZ")!)
+        model.handle(url: URL(string: "https://app.chapterflow.ca/pair/accept/XYZ")!)
         #expect(model.selectedTab == .profile)
         #expect(model.pendingPairAcceptCode == "XYZ")
     }
@@ -118,7 +118,7 @@ struct AppModelUniversalLinkTests {
     @Test("Universal Link gift URL routes to profile and sets code")
     func universalLinkGiftRoutesToProfile() async {
         let model = AppModel()
-        model.handle(url: URL(string: "https://chapterflow.app/gift/GIFTCODE")!)
+        model.handle(url: URL(string: "https://app.chapterflow.ca/gift/GIFTCODE")!)
         #expect(model.selectedTab == .profile)
         #expect(model.pendingGiftCode == "GIFTCODE")
     }
@@ -126,7 +126,7 @@ struct AppModelUniversalLinkTests {
     @Test("Universal Link paywall URL presents paywall")
     func universalLinkPaywallPresentsPaywall() async {
         let model = AppModel()
-        model.handle(url: URL(string: "https://chapterflow.app/paywall")!)
+        model.handle(url: URL(string: "https://app.chapterflow.ca/paywall")!)
         #expect(model.showPaywall)
     }
 

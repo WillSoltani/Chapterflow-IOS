@@ -96,10 +96,10 @@ public struct AppRootView: View {
                 else { return }
                 model.handle(url: url)
             }
-            // Universal Links — iOS delivers https://chapterflow.app/... taps as
-            // NSUserActivityTypeBrowsingWeb with the URL in `webpageURL`.
-            // onOpenURL only covers custom-scheme URLs, so this handler is needed
-            // for Universal Links from Safari, Messages, Mail, etc.
+            // Universal Links — iOS delivers https://chapterflow.ca/... and
+            // https://app.chapterflow.ca/... taps as NSUserActivityTypeBrowsingWeb
+            // with the URL in `webpageURL`. onOpenURL only covers custom-scheme
+            // URLs, so this handler is needed for Universal Links from Safari, etc.
             .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
                 guard let url = activity.webpageURL else { return }
                 model.handle(url: url)

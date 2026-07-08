@@ -2,28 +2,29 @@ import Foundation
 
 /// A parsed representation of an incoming deep link or universal-link URL.
 ///
-/// Supports both the `chapterflow://` custom scheme **and**
-/// `https://chapterflow.app` Universal Links:
+/// Supports both the `chapterflow://` custom scheme **and** Universal Links
+/// from the two live domains (`chapterflow.ca` and `app.chapterflow.ca`):
 ///
-/// | Custom scheme                          | Universal Link                                |
-/// |----------------------------------------|-----------------------------------------------|
-/// | `chapterflow://book/{id}`              | `https://chapterflow.app/book/{id}`           |
-/// | `chapterflow://book/{id}/chapter/{n}`  | `https://chapterflow.app/book/{id}/chapter/{n}` |
-/// | `chapterflow://pair/accept/{code}`     | `https://chapterflow.app/pair/accept/{code}`  |
-/// | `chapterflow://gift/{code}`            | `https://chapterflow.app/gift/{code}`         |
-/// | `chapterflow://ref/{code}`             | `https://chapterflow.app/ref/{code}`          |
-/// | `chapterflow://review`                 | `https://chapterflow.app/review`              |
-/// | `chapterflow://paywall`                | `https://chapterflow.app/paywall`             |
-/// | `chapterflow://journey/{id}`           | `https://chapterflow.app/journey/{id}`        |
-/// | `chapterflow://event/{id}`             | `https://chapterflow.app/event/{id}`          |
-/// | `chapterflow://library`                | `https://chapterflow.app/library`             |
-/// | `chapterflow://profile[/*]`            | `https://chapterflow.app/profile[/*]`         |
-/// | `chapterflow://engagement`             | `https://chapterflow.app/engagement`          |
-/// | `chapterflow://notifications`          | `https://chapterflow.app/notifications`       |
+/// | Custom scheme                          | Universal Link                                     |
+/// |----------------------------------------|----------------------------------------------------|
+/// | `chapterflow://book/{id}`              | `https://app.chapterflow.ca/book/{id}`             |
+/// | `chapterflow://book/{id}/chapter/{n}`  | `https://app.chapterflow.ca/book/{id}/chapter/{n}` |
+/// | `chapterflow://pair/accept/{code}`     | `https://app.chapterflow.ca/pair/accept/{code}`    |
+/// | `chapterflow://gift/{code}`            | `https://app.chapterflow.ca/gift/{code}`           |
+/// | `chapterflow://ref/{code}`             | `https://app.chapterflow.ca/ref/{code}`            |
+/// | `chapterflow://review`                 | `https://app.chapterflow.ca/review`                |
+/// | `chapterflow://paywall`                | `https://app.chapterflow.ca/paywall`               |
+/// | `chapterflow://journey/{id}`           | `https://app.chapterflow.ca/journey/{id}`          |
+/// | `chapterflow://event/{id}`             | `https://app.chapterflow.ca/event/{id}`            |
+/// | `chapterflow://library`                | `https://app.chapterflow.ca/library`               |
+/// | `chapterflow://profile[/*]`            | `https://app.chapterflow.ca/profile[/*]`           |
+/// | `chapterflow://engagement`             | `https://app.chapterflow.ca/engagement`            |
+/// | `chapterflow://notifications`          | `https://app.chapterflow.ca/notifications`         |
 ///
-/// Universal Links require the `applinks:chapterflow.app` Associated Domain entitlement
-/// **and** the AASA file served by the web team (B7). The custom scheme
-/// works independently of the web deploy.
+/// Both `chapterflow.ca` and `app.chapterflow.ca` are accepted so that links
+/// from either origin open the app. Both domains need `applinks:` entries in
+/// the entitlement **and** an AASA file served by the web team (B7). The
+/// `chapterflow://` custom scheme works independently of that deploy.
 ///
 /// iOS has no deferred deep-link API — a code link that sends a new user
 /// through the App Store loses the code. Views that handle code flows
@@ -59,22 +60,31 @@ public enum DeepLink: Sendable, Equatable {
     /// The custom URL scheme the app registers.
     public static let scheme = "chapterflow"
 
-    /// The web domain that serves Universal Links.
+    /// All web domains from which Universal Links are accepted.
     ///
-    /// - Requires `applinks:chapterflow.app` in the app's Associated Domains entitlement.
-    /// - Requires an `apple-app-site-association` file served at the root of that domain
-    ///   (coordinated with the web team via B7).
-    public static let universalLinkDomain = "chapterflow.app"
+    /// Both `chapterflow.ca` (root / marketing domain) and `app.chapterflow.ca`
+    /// (the hosted web app) are included so that links from either origin open
+    /// the app correctly. Both must appear in the `com.apple.developer.associated-domains`
+    /// entitlement (`applinks:chapterflow.ca` and `applinks:app.chapterflow.ca`).
+    public static let universalLinkDomains: Set<String> = [
+        "chapterflow.ca",
+        "app.chapterflow.ca",
+    ]
+
+    /// The primary web-app domain used when constructing `webpageURL` for Handoff,
+    /// so non-iOS devices can continue reading in a browser.
+    public static let webAppDomain = "app.chapterflow.ca"
 
     /// Parses a URL into a `DeepLink`.
     ///
-    /// Accepts both the `chapterflow://` custom-scheme links **and**
-    /// `https://chapterflow.app/...` Universal Links.
+    /// Accepts the `chapterflow://` custom-scheme links **and** HTTPS Universal
+    /// Links on `chapterflow.ca` or `app.chapterflow.ca`.
     /// Returns `nil` for any other URL (wrong scheme or wrong domain).
     public init?(url: URL) {
         let scheme = url.scheme?.lowercased()
         let isCustomScheme = scheme == DeepLink.scheme
-        let isUniversalLink = scheme == "https" && url.host?.lowercased() == DeepLink.universalLinkDomain
+        let isUniversalLink = scheme == "https"
+            && DeepLink.universalLinkDomains.contains(url.host?.lowercased() ?? "")
         guard isCustomScheme || isUniversalLink else { return nil }
         let segs = DeepLink.segments(from: url, isUniversalLink: isUniversalLink)
         self = DeepLink.parse(segments: segs, url: url)
@@ -85,7 +95,7 @@ public enum DeepLink: Sendable, Equatable {
     /// Extracts the ordered path segments for routing.
     ///
     /// Custom scheme (`chapterflow://book/abc`): host is the first segment.
-    /// Universal Link (`https://chapterflow.app/book/abc`): host is the domain;
+    /// Universal Link (`https://app.chapterflow.ca/book/abc`): host is the domain;
     /// segments come from path components only.
     private static func segments(from url: URL, isUniversalLink: Bool) -> [String] {
         if isUniversalLink {
