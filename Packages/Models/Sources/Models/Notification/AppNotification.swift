@@ -66,6 +66,24 @@ public struct AppNotification: Codable, Sendable, Identifiable {
     public let deepLink: String?
 
     public var id: String { notificationId }
+
+    public init(
+        notificationId: String,
+        type: NotificationKind,
+        title: String,
+        body: String,
+        isRead: Bool,
+        createdAt: String,
+        deepLink: String? = nil
+    ) {
+        self.notificationId = notificationId
+        self.type = type
+        self.title = title
+        self.body = body
+        self.isRead = isRead
+        self.createdAt = createdAt
+        self.deepLink = deepLink
+    }
 }
 
 // MARK: - NotificationsResponse
@@ -78,6 +96,11 @@ public struct NotificationsResponse: Codable, Sendable {
     public let unreadCount: Int
 
     private enum CodingKeys: String, CodingKey { case notifications, unreadCount }
+
+    public init(notifications: [AppNotification], unreadCount: Int) {
+        self.notifications = notifications
+        self.unreadCount = unreadCount
+    }
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
