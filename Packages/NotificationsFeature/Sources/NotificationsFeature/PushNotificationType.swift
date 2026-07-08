@@ -17,6 +17,8 @@ public enum PushNotificationType: Sendable, Equatable {
     case eventReminder
     case scenarioApproved
     case scenarioRejected
+    /// Local-only type for FSRS review-due notifications (not sent by the server).
+    case reviewDue
     /// A push type the client does not yet recognise. Route to a safe default; never crash.
     case unknown(String)
 
@@ -33,6 +35,7 @@ public enum PushNotificationType: Sendable, Equatable {
         case .eventReminder:        return "event_reminder"
         case .scenarioApproved:     return "scenario_approved"
         case .scenarioRejected:     return "scenario_rejected"
+        case .reviewDue:            return "review_due"
         case .unknown(let s):       return s
         }
     }
@@ -50,6 +53,7 @@ public enum PushNotificationType: Sendable, Equatable {
         case "event_reminder":        self = .eventReminder
         case "scenario_approved":     self = .scenarioApproved
         case "scenario_rejected":     self = .scenarioRejected
+        case "review_due":            self = .reviewDue
         default:                      self = .unknown(rawValue)
         }
     }
@@ -69,6 +73,7 @@ public enum PushNotificationType: Sendable, Equatable {
         case .eventReminder:        return "CF_EVENT_REMINDER"
         case .scenarioApproved:     return "CF_SCENARIO_APPROVED"
         case .scenarioRejected:     return "CF_SCENARIO_REJECTED"
+        case .reviewDue:            return "CF_REVIEW_DUE"
         case .unknown:              return "CF_GENERAL"
         }
     }
@@ -77,7 +82,7 @@ public enum PushNotificationType: Sendable, Equatable {
     public static let known: [PushNotificationType] = [
         .badgeEarned, .tierUp, .streakMilestone, .insightSpark,
         .readingReminder, .streakAtRisk, .partnerNudge, .commitmentFollowup,
-        .eventReminder, .scenarioApproved, .scenarioRejected
+        .eventReminder, .scenarioApproved, .scenarioRejected, .reviewDue
     ]
 }
 
@@ -92,4 +97,6 @@ public enum PushActionIdentifier {
     public static let viewBadge     = "CF_ACTION_VIEW_BADGE"
     /// Foreground action: opens the engagement dashboard.
     public static let viewProgress  = "CF_ACTION_VIEW_PROGRESS"
+    /// Background action: reschedules the reminder; no app open required.
+    public static let snooze        = "CF_ACTION_SNOOZE"
 }

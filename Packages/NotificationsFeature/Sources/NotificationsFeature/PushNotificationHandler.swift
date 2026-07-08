@@ -89,7 +89,7 @@ public enum PushNotificationHandler {
             return chapterOrFallback(bookId: bookId, chapter: chapter, fallback: "engagement")
         case .readingReminder, .commitmentFollowup:
             return chapterOrFallback(bookId: bookId, chapter: chapter, fallback: "library")
-        case .streakAtRisk:
+        case .streakAtRisk, .reviewDue:
             return deepLinkURL("review")
         case .partnerNudge:
             return deepLinkURL("profile")
@@ -112,7 +112,7 @@ public enum PushNotificationHandler {
 // MARK: - UIKit-only extensions
 
 #if canImport(UIKit)
-import UserNotifications
+@preconcurrency import UserNotifications
 
 public extension PushNotificationHandler {
     /// Extracts the routing URL from a `UNNotificationResponse` (a tap or action press).
@@ -126,28 +126,81 @@ public extension PushNotificationHandler {
 
 // MARK: - Push routing bridge
 
-/// A thread-safe bridge between the UIKit app-delegate notification tap callback
-/// and the @Observable `AppModel` that owns navigation.
+/// A thread-safe bridge between UIKit app-delegate notification callbacks and
+/// the `@Observable` `AppModel` that owns navigation.
 ///
-/// Pattern mirrors `APNSRegistrationBridge`: the bridge is a shared singleton that
-/// the `AppDelegate` calls into; `AppModel` / `AppRootView` sets the closure.
+/// **Wiring (P9.7):**
+/// 1. Set `notificationCoordinator` at app startup (before any notification fires).
+/// 2. Assign `onNotificationTapped` from `AppModel` / `AppRootView`.
+/// 3. Assign `onNotificationSnoozed` to handle snooze rescheduling (call
+///    `LocalNotificationScheduler.shared.snoozeRequest(identifier:content:until:)`).
+/// 4. Call `willPresentNotification(_:)` from `willPresent` delegate method to
+///    track foreground push-received analytics.
 public final class PushRoutingBridge: @unchecked Sendable {
     public static let shared = PushRoutingBridge()
 
-    /// Called on the main actor whenever the user taps a push notification or
-    /// an inline notification action. Set this from `AppModel` / `AppRootView`.
+    // MARK: - Callbacks
+
+    /// Called on the main actor when the user taps a notification or an inline action
+    /// (excluding snooze). Set from `AppModel` / `AppRootView`.
     @MainActor
     public var onNotificationTapped: ((URL) -> Void)?
 
+    /// Called on the main actor when the user triggers the Snooze inline action.
+    /// The handler should call `LocalNotificationScheduler.shared.snoozeRequest(…)`.
+    @MainActor
+    public var onNotificationSnoozed: ((UNNotificationResponse) -> Void)?
+
+    // MARK: - Coordinator (for analytics)
+
+    /// Set at app startup to enable open/received analytics attribution.
+    @MainActor
+    public var notificationCoordinator: NotificationCoordinator?
+
     private init() {}
 
-    /// Invoke from `AppDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:)`.
-    /// Nonisolated so UIKit delegate callbacks can call it freely; dispatches to
-    /// the main actor internally before invoking `onNotificationTapped`.
+    // MARK: - Delegate call-throughs
+
+    /// Call from `AppDelegate.userNotificationCenter(_:didReceive:withCompletionHandler:)`.
+    ///
+    /// Attributes the open or snooze action to analytics, then routes:
+    /// - Snooze action → `onNotificationSnoozed`
+    /// - All other actions / taps → `onNotificationTapped`
     public nonisolated func didReceiveResponse(_ response: UNNotificationResponse) {
         let url = PushNotificationHandler.routingURL(for: response)
+        let userInfo = response.notification.request.content.userInfo
+        let typeRaw  = userInfo["type"] as? String ?? ""
+        let pushType = PushNotificationType(rawValue: typeRaw)
+        let action   = response.actionIdentifier
+
         Task { @MainActor [self] in
-            self.onNotificationTapped?(url)
+            // Analytics: attribute the open (or snooze action) by type
+            if let coord = notificationCoordinator {
+                await coord.didOpenNotification(type: pushType, action: action, url: url)
+            }
+
+            if action == PushActionIdentifier.snooze {
+                onNotificationSnoozed?(response)
+            } else {
+                onNotificationTapped?(url)
+            }
+        }
+    }
+
+    /// Call from `AppDelegate.userNotificationCenter(_:willPresent:withCompletionHandler:)`.
+    ///
+    /// Tracks the foreground push-received event and marks the type in the dedup ledger
+    /// so a concurrent local reminder for the same topic is suppressed.
+    public nonisolated func willPresentNotification(_ notification: UNNotification) {
+        let userInfo = notification.request.content.userInfo
+        let typeRaw  = userInfo["type"] as? String ?? ""
+        let pushType = PushNotificationType(rawValue: typeRaw)
+        let targetId = userInfo["targetId"] as? String
+
+        Task { @MainActor [self] in
+            if let coord = notificationCoordinator {
+                await coord.didReceivePush(type: pushType, targetId: targetId)
+            }
         }
     }
 }

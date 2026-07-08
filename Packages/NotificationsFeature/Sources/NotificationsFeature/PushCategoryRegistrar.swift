@@ -42,19 +42,21 @@ public enum PushCategoryRegistrar {
         case .insightSpark:
             return makeCategory(type, actions: [openChapterAction])
         case .readingReminder:
-            return makeCategory(type, actions: [openChapterAction])
+            return makeCategory(type, actions: [openChapterAction, snoozeAction])
         case .streakAtRisk:
-            return makeCategory(type, actions: [readNowAction])
+            return makeCategory(type, actions: [readNowAction, snoozeAction])
         case .partnerNudge:
             return makeCategory(type, actions: [])
         case .commitmentFollowup:
-            return makeCategory(type, actions: [openChapterAction])
+            return makeCategory(type, actions: [openChapterAction, snoozeAction])
         case .eventReminder:
             return makeCategory(type, actions: [])
         case .scenarioApproved:
             return makeCategory(type, actions: [viewProgressAction])
         case .scenarioRejected:
             return makeCategory(type, actions: [viewProgressAction])
+        case .reviewDue:
+            return makeCategory(type, actions: [readNowAction, snoozeAction])
         case .unknown:
             return generalCategory
         }
@@ -95,6 +97,11 @@ public enum PushCategoryRegistrar {
 
     private static var viewProgressAction: UNNotificationAction {
         UNNotificationAction(identifier: PushActionIdentifier.viewProgress, title: "View Progress", options: [.foreground])
+    }
+
+    private static var snoozeAction: UNNotificationAction {
+        // Background action — no foreground launch required to snooze.
+        UNNotificationAction(identifier: PushActionIdentifier.snooze, title: "Snooze", options: [])
     }
 }
 #endif
