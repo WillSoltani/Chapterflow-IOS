@@ -13,7 +13,7 @@ public enum AskPhase: Equatable {
     case rateLimited(resetsAt: Date?)
     /// A recoverable error occurred; `message` is user-facing.
     case error(String)
-    /// The device has no network connection.
+    /// The device has no network connection and on-device AI is unavailable.
     case offline
 }
 
@@ -23,6 +23,11 @@ public enum AskPhase: Equatable {
 /// ``sendQuestion()`` fires the live repository and appends the result.
 /// The model stays alive as long as the sheet is presented; reopening the
 /// sheet within the same app session preserves the thread.
+///
+/// **Offline fallback (P6.5):** When the network is unavailable and an
+/// ``OnDeviceAIProviding`` service is supplied together with ``chapterText``,
+/// the model automatically answers using the on-device model — no user action
+/// required. Answers generated this way carry `isOnDeviceAnswer = true`.
 @Observable
 @MainActor
 public final class AskTheBookModel {
@@ -52,6 +57,10 @@ public final class AskTheBookModel {
     /// The reader's tone preference; forwarded to the API for grounded answers.
     public let tone: String?
 
+    /// Pre-extracted plain text of the current chapter used as grounding context
+    /// for the on-device offline fallback. Truncated internally before use.
+    public let chapterText: String?
+
     // MARK: - Navigation callback
 
     /// Called when the user taps a citation chip to jump to that chapter.
@@ -60,6 +69,7 @@ public final class AskTheBookModel {
     // MARK: - Private
 
     private let repository: any AIRepository
+    private let onDeviceService: (any OnDeviceAIProviding)?
 
     // MARK: - Init
 
@@ -67,17 +77,24 @@ public final class AskTheBookModel {
         bookId: String,
         repository: any AIRepository,
         selectionContext: String? = nil,
-        tone: String? = nil
+        tone: String? = nil,
+        chapterText: String? = nil,
+        onDeviceService: (any OnDeviceAIProviding)? = nil
     ) {
         self.bookId = bookId
         self.repository = repository
         self.selectionContext = selectionContext
         self.tone = tone
+        self.chapterText = chapterText
+        self.onDeviceService = onDeviceService
     }
 
     // MARK: - Actions
 
     /// Sends `inputText` as a question to the server and appends the answer.
+    ///
+    /// When the network is unavailable and an on-device service + chapter text
+    /// were provided, falls back to an on-device answer automatically.
     public func sendQuestion() async {
         let question = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !question.isEmpty, phase != .asking else { return }
@@ -103,7 +120,11 @@ public final class AskTheBookModel {
             }
             phase = .idle
         } catch let appError as AppError {
-            handleError(appError, question: question)
+            if case .offline = appError, let service = onDeviceService {
+                await handleOfflineWithOnDevice(question: question, service: service)
+            } else {
+                handleError(appError, question: question)
+            }
         } catch {
             phase = .error(error.localizedDescription)
         }
@@ -114,8 +135,7 @@ public final class AskTheBookModel {
         phase = .idle
     }
 
-    /// Triggers the chapter-jump callback and dismisses the rate-limit phase
-    /// so navigation can complete cleanly.
+    /// Triggers the chapter-jump callback.
     public func jumpToChapter(_ number: Int) {
         onJumpToChapter?(number)
     }
@@ -125,6 +145,55 @@ public final class AskTheBookModel {
     /// Whether a question can currently be submitted.
     public var canSend: Bool {
         phase == .idle && !inputText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// True when the on-device service and chapter text are both injected.
+    ///
+    /// Use this synchronous check to show/hide entry points and the privacy note
+    /// without awaiting the async availability check.
+    public var isOnDeviceWired: Bool {
+        onDeviceService != nil && !(chapterText ?? "").isEmpty
+    }
+
+    /// True when on-device offline answering is wired up and available.
+    ///
+    /// Views use this to decide whether to show the privacy note / on-device badge.
+    public var isOnDeviceAvailable: Bool {
+        get async {
+            guard let service = onDeviceService,
+                  let text = chapterText, !text.isEmpty else { return false }
+            return await service.availability.isAvailable && !text.isEmpty
+        }
+    }
+
+    // MARK: - Private helpers
+
+    /// Attempts an on-device answer when the network is offline.
+    /// Falls back to `.offline` phase if unavailable or the generation fails.
+    private func handleOfflineWithOnDevice(question: String, service: any OnDeviceAIProviding) async {
+        let state = await service.availability
+        guard state.isAvailable, let text = chapterText, !text.isEmpty else {
+            phase = .offline
+            return
+        }
+        // phase is already .asking from sendQuestion — keep the "Thinking..." indicator
+        do {
+            let answer = try await service.answerQuestion(
+                question,
+                chapterText: text,
+                selectionContext: selectionContext
+            )
+            messages.append(AskMessage(
+                question: question,
+                selectionContext: selectionContext,
+                answer: answer,
+                citations: [],
+                isOnDeviceAnswer: true
+            ))
+            phase = .idle
+        } catch {
+            phase = .offline
+        }
     }
 
     private func handleError(_ error: AppError, question: String) {
