@@ -451,4 +451,47 @@ public final class AppModel {
         }
         #endif
     }
+
+    // MARK: - App Intent integration
+
+    /// Reads a pending audio control command written by P8.2 Live Activity buttons
+    /// (``PauseAudioIntent`` / ``ResumeAudioIntent``) via App Group UserDefaults.
+    ///
+    /// Call when the app becomes active (scenePhase → `.active`) so commands from
+    /// Dynamic Island taps are processed even after the app was backgrounded.
+    public func consumeAudioControlCommand() {
+        let defaults = UserDefaults(suiteName: AppGroup.identifier)
+        guard let command = defaults?.string(forKey: IntentKeys.audioControlCommand),
+              !command.isEmpty else { return }
+        defaults?.removeObject(forKey: IntentKeys.audioControlCommand)
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            switch command {
+            case "pause":
+                if audioPlayerModel.isPlaying { await audioPlayerModel.togglePlayPause() }
+            case "play":
+                if !audioPlayerModel.isPlaying, audioPlayerModel.phase != .idle {
+                    await audioPlayerModel.togglePlayPause()
+                }
+            default:
+                break
+            }
+        }
+    }
+
+    /// Reads accumulated offline reading minutes written by ``LogDailyReadingIntent``,
+    /// adds them to today's goal progress in the App Group snapshot, and publishes.
+    ///
+    /// Call when the app becomes active so the goal-ring widget reflects minutes
+    /// logged via Siri since the last foreground session.
+    public func consumePendingReadingMinutes() {
+        let defaults = UserDefaults(suiteName: AppGroup.identifier)
+        let pending = defaults?.integer(forKey: IntentKeys.pendingReadingMinutes) ?? 0
+        guard pending > 0 else { return }
+        defaults?.removeObject(forKey: IntentKeys.pendingReadingMinutes)
+        var updated = SharedStateReader().load()
+        updated.goalProgressMinutes += pending
+        updated.lastUpdated = Date()
+        Task { await SharedStateWriter.shared.publish(updated) }
+    }
 }

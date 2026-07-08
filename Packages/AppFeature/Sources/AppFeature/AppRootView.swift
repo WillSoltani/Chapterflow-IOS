@@ -27,6 +27,10 @@ import SettingsFeature
 public struct AppRootView: View {
     @State private var model: AppModel
     @State private var readingFlow: ReadingFlow?
+    @Environment(\.scenePhase) private var scenePhase
+
+    // Observed so SwiftUI tracks changes written by App Intents perform().
+    private let intentStore = IntentActionStore.shared
 
     public init(config: AppConfig = .fromInfoPlist()) {
         _model = State(initialValue: AppModel(config: config))
@@ -38,8 +42,29 @@ public struct AppRootView: View {
             .task {
                 try? model.configure()
                 model.wirePushRouting()
+                IntentDonationManager.update()
             }
             .onOpenURL { url in model.handle(url: url) }
+            .onChange(of: scenePhase) { _, phase in
+                guard phase == .active else { return }
+                model.consumeAudioControlCommand()
+                model.consumePendingReadingMinutes()
+            }
+            .onChange(of: intentStore.pendingDeepLink) { _, link in
+                guard let link else { return }
+                intentStore.pendingDeepLink = nil
+                model.handle(deepLink: link)
+            }
+            .onChange(of: intentStore.pendingAudioPlay) { _, request in
+                guard let request else { return }
+                intentStore.pendingAudioPlay = nil
+                Task {
+                    await model.audioPlayerModel.play(
+                        bookId: request.bookId,
+                        chapterNumber: request.chapterNumber
+                    )
+                }
+            }
             .onChange(of: model.session.authState) { _, newState in
                 switch newState {
                 case .signedIn:
