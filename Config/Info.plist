@@ -63,5 +63,38 @@
 	<array>
 		<string>com.chapterflow.ios.reading</string>
 	</array>
+	<!--
+	  UIApplicationShortcutItems — static Home-screen quick actions (P8.6).
+	  Taps are routed via QuickActionBridge → AppModel.consumeQuickAction().
+	  A dynamic "Continue Reading" entry (with current book title) is set by
+	  IntentDonationManager.update() after each session to supplement these.
+	-->
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.chapterflow.ios.continue-reading</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Continue Reading</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>book.fill</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.chapterflow.ios.reviews</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Reviews</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>star.fill</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.chapterflow.ios.ask</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Ask the Book</string>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>sparkles</string>
+		</dict>
+	</array>
 </dict>
 </plist>

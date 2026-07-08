@@ -54,6 +54,8 @@ public struct AppRootView: View {
                     model.consumeAudioControlCommand()
                     model.consumePendingReadingMinutes()
                     model.triggerForegroundSync()
+                    model.consumeQuickAction()
+                    model.consumeFocusFilter()
                 case .background:
                     model.scheduleBackgroundTasks()
                 default:
@@ -276,7 +278,7 @@ public struct AppRootView: View {
             Tab("Home", systemImage: "house", value: AppTab.home) {
                 tabContent(for: .home)
             }
-            .badge(model.notificationInboxModel.unreadCount)
+            .badge(model.isReadingFocusActive ? 0 : model.notificationInboxModel.unreadCount)
             Tab("Library", systemImage: "books.vertical", value: AppTab.library) {
                 tabContent(for: .library)
             }
@@ -368,6 +370,11 @@ public struct AppRootView: View {
                 }
             )
         }
+        // iPad keyboard shortcuts — invisible buttons registered in the responder
+        // chain so ⌘1-5 navigate tabs on hardware keyboards (iPad + Mac Catalyst).
+        .background {
+            IPadKeyboardShortcutsView(selectedTab: $model.selectedTab)
+        }
     }
 
     // MARK: - Tab content
@@ -419,6 +426,13 @@ public struct AppRootView: View {
                 pendingPairAcceptCode: $model.pendingPairAcceptCode,
                 pendingReferralCode: $model.pendingReferralCode
             )
+            .overlay {
+                if model.isReadingFocusActive {
+                    ReadingFocusOverlayView {
+                        model.selectedTab = .library
+                    }
+                }
+            }
         case .reviews:
             ReviewsView(model: ReviewsModel(repository: model.reviewsRepository))
         case .settings:
@@ -543,33 +557,6 @@ public struct AppRootView: View {
                 #endif
             }
         }
-    }
-}
-
-// MARK: - Reconnecting banner
-
-/// A floating glass pill shown when the app is attempting to reconnect.
-private struct ReconnectingBanner: View {
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-
-    var body: some View {
-        HStack(spacing: .cfSpacing8) {
-            ProgressView().scaleEffect(0.8)
-            Text("Reconnecting…").font(.cfFootnote)
-        }
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, .cfSpacing16)
-        .padding(.vertical, .cfSpacing8)
-        .background(bannerBackground, in: Capsule())
-        .padding(.top, .cfSpacing8)
-        .transition(.move(edge: .top).combined(with: .opacity))
-        .accessibilityLabel("Reconnecting to the server")
-    }
-
-    private var bannerBackground: some ShapeStyle {
-        reduceTransparency
-            ? AnyShapeStyle(Color.cfSecondaryBackground)
-            : AnyShapeStyle(.regularMaterial)
     }
 }
 

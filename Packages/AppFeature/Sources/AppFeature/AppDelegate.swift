@@ -13,6 +13,7 @@ import CoreKit
 /// - Implement `UNUserNotificationCenterDelegate` to:
 ///     • Show alerts while the app is foregrounded.
 ///     • Route taps + inline actions to `PushRoutingBridge` → `AppModel`.
+/// - Handle Home-screen Quick Action taps via `QuickActionBridge`.
 public final class AppDelegate: NSObject, UIApplicationDelegate, @unchecked Sendable {
 
     private let log = AppLog(category: .notifications)
@@ -27,7 +28,25 @@ public final class AppDelegate: NSObject, UIApplicationDelegate, @unchecked Send
         PushCategoryRegistrar.registerCategories()
         // Set this delegate as the UNUserNotificationCenter delegate.
         UNUserNotificationCenter.current().delegate = self
+        // Capture any quick action that launched the app cold.
+        if let item = launchOptions?[.shortcutItem] as? UIApplicationShortcutItem {
+            QuickActionBridge.shared.pendingShortcutType = item.type
+        }
         return true
+    }
+
+    // MARK: - Quick Actions
+
+    /// Called when the user selects a Home-screen quick action while the app is running.
+    /// Stores the shortcut type in `QuickActionBridge`; `AppModel` reads it on next
+    /// scene activation and routes to the correct tab via the `DeepLinkParser`.
+    public func application(
+        _ application: UIApplication,
+        performActionFor shortcutItem: UIApplicationShortcutItem,
+        completionHandler: @escaping (Bool) -> Void
+    ) {
+        QuickActionBridge.shared.pendingShortcutType = shortcutItem.type
+        completionHandler(true)
     }
 
     // MARK: - APNs registration callbacks
