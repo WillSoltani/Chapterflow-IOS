@@ -20,6 +20,20 @@
                ReferencedContainer = "container:ChapterFlow.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "A066BCAEA69222B49E1A8F3C"
+               BuildableName = "ChapterFlowUITests.xctest"
+               BlueprintName = "ChapterFlowUITests"
+               ReferencedContainer = "container:ChapterFlow.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction

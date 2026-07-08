@@ -10,6 +10,14 @@
     "codeCoverage" : false
   },
   "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:ChapterFlow.xcodeproj",
+        "identifier" : "A066BCAEA69222B49E1A8F3C",
+        "name" : "ChapterFlowUITests"
+      }
+    }
   ],
   "version" : 1
 }
