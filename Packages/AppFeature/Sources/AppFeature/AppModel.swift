@@ -166,6 +166,14 @@ public final class AppModel {
     /// pass it to `NotificationSettingsView` as a navigation destination.
     public let notificationSettingsModel: NotificationSettingsModel
 
+    // MARK: - Notification inbox
+
+    /// Drives the in-app notification inbox (P9.4).
+    public let notificationInboxModel: NotificationInboxModel
+
+    /// Whether the notification inbox sheet is currently presented.
+    public var showNotificationInbox: Bool = false
+
     // MARK: - Reachability
 
     /// Shared reachability service — consumed by repositories and views.
@@ -258,6 +266,9 @@ public final class AppModel {
             repository: notifPrefsRepo,
             authorizer: authorizer
         )
+
+        let inboxRepo = LiveNotificationInboxRepository(apiClient: client)
+        self.notificationInboxModel = NotificationInboxModel(repository: inboxRepo)
 
         #if os(iOS)
         sm.registerBackgroundRefresh()
@@ -458,6 +469,7 @@ public final class AppModel {
             selectedTab = .home
         case .notifications:
             selectedTab = .home
+            showNotificationInbox = true
         case .unknown:
             break
         }

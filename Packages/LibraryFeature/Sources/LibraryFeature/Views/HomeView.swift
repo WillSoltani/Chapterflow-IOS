@@ -25,6 +25,8 @@ public struct HomeView: View {
     private let onRequireAuth: (() -> Void)?
     /// Called when a guest taps "Sign in to Read" on a book detail screen.
     private let onSignInRequired: ((String, VariantFamily) -> Void)?
+    /// Called when the user taps the bell icon to open the notification inbox.
+    private let onShowNotificationInbox: (() -> Void)?
 
     public init(
         repository: any LibraryRepository,
@@ -34,7 +36,8 @@ public struct HomeView: View {
         onOpenReader: ((String, Int, VariantFamily) -> Void)? = nil,
         onShowPaywall: (() -> Void)? = nil,
         onRequireAuth: (() -> Void)? = nil,
-        onSignInRequired: ((String, VariantFamily) -> Void)? = nil
+        onSignInRequired: ((String, VariantFamily) -> Void)? = nil,
+        onShowNotificationInbox: (() -> Void)? = nil
     ) {
         _model = State(initialValue: HomeModel(repository: repository))
         self.repository = repository
@@ -45,6 +48,7 @@ public struct HomeView: View {
         self.onShowPaywall = onShowPaywall
         self.onRequireAuth = onRequireAuth
         self.onSignInRequired = onSignInRequired
+        self.onShowNotificationInbox = onShowNotificationInbox
     }
 
     public var body: some View {
@@ -106,6 +110,16 @@ public struct HomeView: View {
     @ToolbarContentBuilder
     private var searchToolbarItem: some ToolbarContent {
         #if os(iOS)
+        if let onShowNotificationInbox {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
+                    onShowNotificationInbox()
+                } label: {
+                    Image(systemName: "bell")
+                        .accessibilityLabel("Open notification inbox")
+                }
+            }
+        }
         ToolbarItem(placement: .navigationBarTrailing) {
             Button {
                 router.push(LibraryRoute.globalSearch)
