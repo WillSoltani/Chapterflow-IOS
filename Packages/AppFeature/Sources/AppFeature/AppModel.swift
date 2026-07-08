@@ -14,6 +14,7 @@ import PaywallFeature
 import NotificationsFeature
 import OnboardingFeature
 import SettingsFeature
+import CoreSpotlight
 import SyncEngine
 
 /// The top-level observable app state that drives `AppRootView`.
@@ -179,6 +180,12 @@ public final class AppModel {
     /// Shared reachability service — consumed by repositories and views.
     public let reachability: ReachabilityService
 
+    // MARK: - Spotlight
+
+    /// Indexes books and chapters into Core Spotlight. Owned here so the app can
+    /// clear the index on sign-out regardless of which screen is active.
+    let spotlightIndexer = SpotlightIndexer()
+
     // MARK: - Sync engine (P3.5)
 
     /// Drains the offline write outbox when connectivity is restored.
@@ -307,12 +314,34 @@ public final class AppModel {
     }
 
     /// Signs the user out, unregistering the APNs token from the backend first.
+    /// Also removes all Spotlight index entries to honour auth state.
     public func signOut() async {
         userIdBox.userId = nil
         await apnsManager.handleSignOut()
         await syncEngineInternal?.stop()
         await session.signOut()
         isGuestMode = false
+        await spotlightIndexer.removeAll()
+    }
+
+    // MARK: - Spotlight indexing
+
+    /// Fetches the library catalog and chapter index off the main thread and
+    /// submits them to Core Spotlight. Idempotent — safe to call on every sign-in
+    /// and whenever the library reloads.
+    public func startSpotlightIndexing() {
+        let indexer = spotlightIndexer
+        let repo = libraryRepository
+        Task.detached(priority: .utility) {
+            do {
+                async let catalogTask = repo.getCatalog()
+                async let searchTask = repo.getSearchIndex()
+                let (catalog, searchIndex) = try await (catalogTask, searchTask)
+                await indexer.index(books: catalog, searchBooks: searchIndex.books)
+            } catch {
+                // Spotlight indexing is best-effort; never surface errors to the user.
+            }
+        }
     }
 
     // MARK: - Guest browse mode
