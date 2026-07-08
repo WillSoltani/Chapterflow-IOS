@@ -14,6 +14,7 @@ let package = Package(
     dependencies: [
         .package(path: "../CoreKit"),
         .package(path: "../DesignSystem"),
+        .package(path: "../Models"),
         .package(path: "../Networking"),
     ],
     targets: [
@@ -28,6 +29,7 @@ let package = Package(
             dependencies: [
                 .product(name: "CoreKit", package: "CoreKit"),
                 .product(name: "DesignSystem", package: "DesignSystem"),
+                .product(name: "Models", package: "Models"),
                 .product(name: "Networking", package: "Networking"),
             ]
         ),
@@ -36,6 +38,7 @@ let package = Package(
             dependencies: [
                 "NotificationsFeature",
                 .product(name: "CoreKit", package: "CoreKit"),
+                .product(name: "Models", package: "Models"),
                 .product(name: "Networking", package: "Networking"),
             ]
         ),
