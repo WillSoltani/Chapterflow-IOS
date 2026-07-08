@@ -13,6 +13,16 @@
 //   3. Call `manager.start()` after sign-in resolves.
 //   4. Call `manager.handleSignOut()` on sign-out.
 //   5. Display `PushStatusView` in Settings.
+//
+// Wiring (P9.3 — local notification scheduling):
+//   Call `LocalNotificationScheduler.shared.reschedule(input:)` from `AppModel`
+//   whenever the user's state changes:
+//     - On app launch / foreground resume (after prefs + reviews load)
+//     - After a reading session ends → pass `readToday: true`
+//     - After the review session completes → also call `cancelReviewReminder()`
+//     - When prefs change (NotificationSettingsModel calls reschedule after every update)
+//     - When a new commitment is created (CommitmentRepository triggers reschedule)
+//   Call `cancelAll()` on sign-out.
 public enum NotificationsFeature {
     public static let moduleName = "NotificationsFeature"
 }
