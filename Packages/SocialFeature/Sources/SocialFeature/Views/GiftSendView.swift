@@ -168,7 +168,7 @@ public struct GiftSendView: View {
                         .font(.cfTitle2)
                         .foregroundStyle(Color.cfLabel)
 
-                    Text("Share this code with a friend. They can redeem it at chapterflow.app or in the app.")
+                    Text("Share this code with a friend. They can redeem it at app.chapterflow.ca or in the app.")
                         .font(.cfBody)
                         .foregroundStyle(Color.cfSecondaryLabel)
                         .multilineTextAlignment(.center)
@@ -182,7 +182,7 @@ public struct GiftSendView: View {
                     ShareLink(
                         item: shareURL,
                         subject: Text("A gift for you 🎁"),
-                        message: Text("Here's your ChapterFlow gift code: \(gift.code)\n\nRedeem at chapterflow.app or in the app.")
+                        message: Text("Here's your ChapterFlow gift code: \(gift.code)\n\nRedeem at app.chapterflow.ca or in the app.")
                     ) {
                         HStack(spacing: .cfSpacing8) {
                             Image(systemName: "square.and.arrow.up")

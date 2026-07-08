@@ -167,11 +167,11 @@ struct ReadingPairTests {
     @Test("PairInvite decodes with and without expiresAt")
     func pairInviteDecoding() throws {
         let withExpiry = """
-        { "code": "ABCD-1234", "inviteLink": "https://chapterflow.app/pair/ABCD-1234",
+        { "code": "ABCD-1234", "inviteLink": "https://app.chapterflow.ca/pair/ABCD-1234",
           "expiresAt": "2024-12-31T23:59:59Z" }
         """.data(using: .utf8)!
         let withoutExpiry = """
-        { "code": "WXYZ-5678", "inviteLink": "https://chapterflow.app/pair/WXYZ-5678" }
+        { "code": "WXYZ-5678", "inviteLink": "https://app.chapterflow.ca/pair/WXYZ-5678" }
         """.data(using: .utf8)!
         let invite1 = try JSONDecoder().decode(PairInvite.self, from: withExpiry)
         let invite2 = try JSONDecoder().decode(PairInvite.self, from: withoutExpiry)

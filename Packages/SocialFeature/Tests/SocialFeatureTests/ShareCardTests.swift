@@ -148,7 +148,7 @@ struct ShareCardInputTests {
         let input = ShareCardInput.streak(
             days: 30, userName: "Alice", tier: .analyst, referralCode: "ALICE42"
         )
-        #expect(input.referralLink == "chapterflow.app/ref/ALICE42")
+        #expect(input.referralLink == "app.chapterflow.ca/ref/ALICE42")
     }
 
     @Test("referralLink is nil when no code provided")
@@ -172,7 +172,7 @@ struct ShareCardInputTests {
                   totalChapters: 3, userName: nil, tier: .reader, referralCode: code),
         ]
         for input in inputs {
-            #expect(input.referralLink == "chapterflow.app/ref/\(code)")
+            #expect(input.referralLink == "app.chapterflow.ca/ref/\(code)")
         }
     }
 }

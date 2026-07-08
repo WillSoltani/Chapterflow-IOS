@@ -92,7 +92,7 @@ private struct CardReferralFooter: View {
         HStack(spacing: .cfSpacing4) {
             Image(systemName: "link")
                 .font(.system(size: 9, weight: .medium))
-            Text(referralLink.map { "Join me → \($0)" } ?? "chapterflow.app")
+            Text(referralLink.map { "Join me → \($0)" } ?? "app.chapterflow.ca")
                 .font(.system(size: 9, weight: .medium))
                 .lineLimit(1)
         }

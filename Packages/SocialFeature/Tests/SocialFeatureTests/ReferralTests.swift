@@ -59,7 +59,7 @@ struct ReferralProfileTests {
         {
           "referral": {
             "code": "ALICE42",
-            "shareUrl": "https://chapterflow.app/ref/ALICE42",
+            "shareUrl": "https://app.chapterflow.ca/ref/ALICE42",
             "stats": { "pending": 3, "activated": 5, "pro": 2 },
             "rewards": [
               {
@@ -78,7 +78,7 @@ struct ReferralProfileTests {
         let profile = response.referral
 
         #expect(profile.code == "ALICE42")
-        #expect(profile.shareUrl == "https://chapterflow.app/ref/ALICE42")
+        #expect(profile.shareUrl == "https://app.chapterflow.ca/ref/ALICE42")
         #expect(profile.stats.pending == 3)
         #expect(profile.stats.activated == 5)
         #expect(profile.stats.pro == 2)
