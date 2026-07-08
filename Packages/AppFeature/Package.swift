@@ -20,6 +20,7 @@ let modules = [
     "NotificationsFeature",
     "OnboardingFeature",
     "SettingsFeature",
+    "SyncEngine",
 ]
 
 let package = Package(
