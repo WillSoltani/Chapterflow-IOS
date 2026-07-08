@@ -25,6 +25,12 @@ public enum AnalyticsEvent: Sendable, Equatable {
     case notificationOSGranted
     case notificationOSDenied
     case notificationProvisionalGranted
+    /// A local notification was successfully scheduled (i.e. added to UNUserNotificationCenter).
+    case notificationSent(type: String)
+    /// A server push notification was received by the device (foreground or background).
+    case notificationReceived(type: String)
+    /// The user tapped a notification or triggered an inline action on one.
+    case notificationOpened(type: String, action: String)
     case custom(name: String, properties: [String: String])
 
     /// The stable wire name for this event.
@@ -48,6 +54,9 @@ public enum AnalyticsEvent: Sendable, Equatable {
         case .notificationOSGranted: return "notification_os_granted"
         case .notificationOSDenied: return "notification_os_denied"
         case .notificationProvisionalGranted: return "notification_provisional_granted"
+        case .notificationSent:              return "notification_sent"
+        case .notificationReceived:          return "notification_received"
+        case .notificationOpened:            return "notification_opened"
         case .custom(let name, _): return name
         }
     }
@@ -75,6 +84,12 @@ public enum AnalyticsEvent: Sendable, Equatable {
             return ["source": source]
         case .purchase(let productId):
             return ["productId": productId]
+        case .notificationSent(let type):
+            return ["type": type]
+        case .notificationReceived(let type):
+            return ["type": type]
+        case .notificationOpened(let type, let action):
+            return ["type": type, "action": action]
         case .custom(_, let properties):
             return properties
         }

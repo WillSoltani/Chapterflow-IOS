@@ -64,6 +64,11 @@ struct PushNotificationTypeTests {
         #expect(PushNotificationType(rawValue: "scenario_rejected") == .scenarioRejected)
     }
 
+    @Test("review_due decodes correctly")
+    func reviewDue() {
+        #expect(PushNotificationType(rawValue: "review_due") == .reviewDue)
+    }
+
     // MARK: RF2 — unknown raw values
 
     @Test("RF2: unrecognised type decodes to .unknown, never crashes")
