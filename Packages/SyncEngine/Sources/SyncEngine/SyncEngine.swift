@@ -95,6 +95,17 @@ public actor SyncEngine {
         }
     }
 
+    /// Cancels any in-flight drain and performs a full drain pass to completion.
+    ///
+    /// Unlike ``triggerDrain(userId:)`` (which returns immediately), this method
+    /// awaits the drain loop. Use it from BGTask handlers so the task is marked
+    /// complete only when the outbox is truly empty.
+    public func drainAndWait(userId: String) async {
+        drainTask?.cancel()
+        drainTask = nil
+        await drain(userId: userId)
+    }
+
     private func clearDrainTask() {
         drainTask = nil
         // Reset the quiz idempotency set so the next drain pass starts fresh.

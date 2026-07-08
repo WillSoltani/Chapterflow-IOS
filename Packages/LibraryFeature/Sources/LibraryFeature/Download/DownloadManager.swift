@@ -88,19 +88,19 @@ public actor DownloadManager: DownloadInfoProviding {
 
     // MARK: - Dependencies
 
-    private let container: ModelContainer
-    private let fileStore: FileStore
-    private let apiClient: any APIClientProtocol
-    private let preferences: AppPreferences
+    let container: ModelContainer
+    let fileStore: FileStore
+    let apiClient: any APIClientProtocol
+    let preferences: AppPreferences
     private let segmentSession: SegmentDownloadSession
 
     // MARK: - Active task registry
 
-    private var activeTasks: [String: Task<Void, Never>] = [:]
+    var activeTasks: [String: Task<Void, Never>] = [:]
 
     // MARK: - Logger
 
-    private let logger = Logger(subsystem: "com.chapterflow.ios", category: "DownloadManager")
+    let logger = Logger(subsystem: "com.chapterflow.ios", category: "DownloadManager")
 
     // MARK: - Init
 
@@ -352,7 +352,7 @@ public actor DownloadManager: DownloadInfoProviding {
         }
     }
 
-    private func downloadChapter(
+    func downloadChapter(
         bookId: String,
         chapterNumber: Int,
         userId: String,
