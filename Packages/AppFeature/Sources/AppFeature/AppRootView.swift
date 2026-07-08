@@ -217,6 +217,7 @@ public struct AppRootView: View {
             Tab("Home", systemImage: "house", value: AppTab.home) {
                 tabContent(for: .home)
             }
+            .badge(model.notificationInboxModel.unreadCount)
             Tab("Library", systemImage: "books.vertical", value: AppTab.library) {
                 tabContent(for: .library)
             }
@@ -283,6 +284,20 @@ public struct AppRootView: View {
                 }
             )
         }
+        // Notification inbox — presented by the bell button in the Home toolbar
+        // or by a chapterflow://notifications deep link.
+        .sheet(isPresented: Binding(
+            get: { model.showNotificationInbox },
+            set: { model.showNotificationInbox = $0 }
+        )) {
+            NotificationInboxView(
+                model: model.notificationInboxModel,
+                onOpenURL: { url in
+                    model.showNotificationInbox = false
+                    model.handle(url: url)
+                }
+            )
+        }
     }
 
     // MARK: - Tab content
@@ -306,6 +321,9 @@ public struct AppRootView: View {
                 onShowPaywall: {
                     model.paywallContext = .lockedFeature(featureName: "Book")
                     model.showPaywall = true
+                },
+                onShowNotificationInbox: {
+                    model.showNotificationInbox = true
                 }
             )
         case .library:

@@ -15,4 +15,14 @@ public extension Endpoints {
     static func patchNotificationSettings<Body: Encodable & Sendable>(_ body: Body) throws -> Endpoint {
         try Endpoint(method: .patch, path: "/book/me/settings", body: body)
     }
+
+    /// `GET /book/me/notifications` — returns the user's in-app notification inbox.
+    static func getNotifications() -> Endpoint {
+        Endpoint(method: .get, path: "/book/me/notifications", requiresAuth: true)
+    }
+
+    /// `POST /book/me/notifications/read-all` — marks all inbox notifications as read.
+    static func postMarkAllNotificationsRead() -> Endpoint {
+        Endpoint(method: .post, path: "/book/me/notifications/read-all", requiresAuth: true)
+    }
 }
