@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreKit
+import CoreSpotlight
 import DesignSystem
 import Models
 import Networking
@@ -71,6 +72,7 @@ public struct AppRootView: View {
                     model.hydrateDisplayName()
                     model.startAPNS()
                     model.showAuthGate = false
+                    model.startSpotlightIndexing()
                     // Replay any action the guest was attempting before signing in.
                     if !model.pendingAuthIntent.isNone {
                         Task { await model.replayPendingIntent { readingFlow = $0 } }
@@ -82,6 +84,13 @@ public struct AppRootView: View {
                 default:
                     break
                 }
+            }
+            .onContinueUserActivity(CSSearchableItemActionType) { activity in
+                guard
+                    let urlString = activity.userInfo?[CSSearchableItemActivityIdentifier] as? String,
+                    let url = URL(string: urlString)
+                else { return }
+                model.handle(url: url)
             }
     }
 
