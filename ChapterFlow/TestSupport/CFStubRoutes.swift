@@ -4,11 +4,11 @@ import Foundation
 // swiftlint:disable line_length
 /// Route table for ``CFStubURLProtocol``.
 /// Maps URL path prefixes → (statusCode, JSON body) used by XCUITests.
-enum CFStubRoutes {
+nonisolated enum CFStubRoutes {
 
     // MARK: - Lookup
 
-    static func response(for path: String, method: String) -> (statusCode: Int, body: Data)? {
+    nonisolated static func response(for path: String, method: String) -> (statusCode: Int, body: Data)? {
         for (route, handler) in routes {
             if path.hasPrefix(route.path) && (route.method == nil || route.method == method) {
                 let body = handler().data(using: .utf8) ?? Data()
@@ -25,7 +25,7 @@ enum CFStubRoutes {
         let method: String?
     }
 
-    private static let routes: [(Route, () -> String)] = [
+    nonisolated(unsafe) private static let routes: [(Route, @Sendable () -> String)] = [
 
         // ── Auth / identity ────────────────────────────────────────────────────
         (Route(path: "/auth/session", method: nil), { session }),

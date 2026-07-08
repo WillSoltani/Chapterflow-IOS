@@ -6,7 +6,7 @@ import Foundation
 ///
 /// Registered at app launch when ``CF_STUB_SERVER=1`` is set in the
 /// test's ``launchEnvironment``. Never compiled into release builds.
-final class CFStubURLProtocol: URLProtocol, @unchecked Sendable {
+nonisolated final class CFStubURLProtocol: URLProtocol, @unchecked Sendable {
 
     override class func canInit(with request: URLRequest) -> Bool { true }
 
