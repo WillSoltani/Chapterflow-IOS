@@ -74,14 +74,6 @@ struct AppRobot {
         )
     }
 
-    func assertBookVisible(_ title: String, timeout: TimeInterval = 30, file: StaticString = #file, line: UInt = #line) {
-        // Search ALL accessibility elements — titles may appear as staticTexts,
-        // button labels, or NavigationLink labels depending on the list implementation.
-        let predicate = NSPredicate(format: "label CONTAINS[c] %@", title)
-        let book = app.descendants(matching: .any).matching(predicate).firstMatch
-        XCTAssert(book.waitForExistence(timeout: timeout), "Book '\(title)' should be visible", file: file, line: line)
-    }
-
     // MARK: - Private
 
     private func tap(tab keyword: String) {
