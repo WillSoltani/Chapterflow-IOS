@@ -71,9 +71,17 @@ struct ReviewSmallView: View {
 
             if snapshot.dueReviewCount > 0 {
                 Spacer(minLength: .wS8)
-                Text("Review now →")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(Color.cfWidgetAccent)
+                // Interactive button: opens the app directly to the review session
+                Button(intent: StartReviewControlIntent()) {
+                    Label("Review Now", systemImage: "arrow.right")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, .wS8)
+                        .padding(.vertical, 4)
+                        .background(Color.cfWidgetAccent, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Start review session — \(snapshot.dueReviewCount) cards due")
             }
         }
         .padding(.wS16)

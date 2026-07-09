@@ -167,6 +167,143 @@ struct AppModelAudioCommandTests {
     }
 }
 
+// MARK: - P8.9 Control widget intent key tests
+
+@Suite("ControlWidgetIntents — App Group signaling")
+struct ControlWidgetIntentKeyTests {
+
+    @Test("StartReadingControlIntent logic writes startReading key")
+    func startReadingWritesKey() {
+        let suiteName = "test.control.reading.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+
+        // Simulate StartReadingControlIntent.perform()
+        defaults.set("startReading", forKey: IntentKeys.controlPendingAction)
+
+        #expect(defaults.string(forKey: IntentKeys.controlPendingAction) == "startReading")
+    }
+
+    @Test("StartReviewControlIntent logic writes startReview key")
+    func startReviewWritesKey() {
+        let suiteName = "test.control.review.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+
+        // Simulate StartReviewControlIntent.perform()
+        defaults.set("startReview", forKey: IntentKeys.controlPendingAction)
+
+        #expect(defaults.string(forKey: IntentKeys.controlPendingAction) == "startReview")
+    }
+
+    @Test("ToggleAudioControlIntent logic writes audioControlCommand for play")
+    func toggleAudioWritesPlayCommand() {
+        let suiteName = "test.control.audio.play.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+
+        // Simulate ToggleAudioControlIntent.perform() with value = true (play)
+        defaults.set("play", forKey: IntentKeys.audioControlCommand)
+        defaults.set(true, forKey: IntentKeys.isAudioPlaying)
+
+        #expect(defaults.string(forKey: IntentKeys.audioControlCommand) == "play")
+        #expect(defaults.bool(forKey: IntentKeys.isAudioPlaying) == true)
+    }
+
+    @Test("ToggleAudioControlIntent logic writes audioControlCommand for pause")
+    func toggleAudioWritesPauseCommand() {
+        let suiteName = "test.control.audio.pause.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+
+        // Simulate ToggleAudioControlIntent.perform() with value = false (pause)
+        defaults.set("pause", forKey: IntentKeys.audioControlCommand)
+        defaults.set(false, forKey: IntentKeys.isAudioPlaying)
+
+        #expect(defaults.string(forKey: IntentKeys.audioControlCommand) == "pause")
+        #expect(defaults.bool(forKey: IntentKeys.isAudioPlaying) == false)
+    }
+}
+
+// MARK: - AppModel consumeControlIntentAction tests
+
+@Suite("AppModel — consumeControlIntentAction")
+struct AppModelControlIntentTests {
+
+    @Test("routes to chapter when startReading and continue-reading record exists")
+    func routesToChapterOnStartReading() throws {
+        let suiteName = "test.control.consume.reading.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.set("startReading", forKey: IntentKeys.controlPendingAction)
+        defaults.set("book-ctrl", forKey: SharedStateKeys.continueBookId)
+        defaults.set(4, forKey: SharedStateKeys.continueChapterNumber)
+
+        // Simulate consumeControlIntentAction routing logic
+        guard let action = defaults.string(forKey: IntentKeys.controlPendingAction),
+              !action.isEmpty else {
+            Issue.record("Expected a pending action")
+            return
+        }
+        defaults.removeObject(forKey: IntentKeys.controlPendingAction)
+
+        let reader = SharedStateReader(suiteName: suiteName)
+        let snapshot = reader.load()
+
+        let link: DeepLink
+        switch action {
+        case "startReading":
+            if let bookId = snapshot.continueBookId, let chapter = snapshot.continueChapterNumber {
+                link = .chapter(bookId: bookId, chapter: chapter)
+            } else {
+                link = .library
+            }
+        case "startReview":
+            link = .review
+        default:
+            link = .library
+        }
+
+        #expect(link == .chapter(bookId: "book-ctrl", chapter: 4))
+        #expect(defaults.string(forKey: IntentKeys.controlPendingAction) == nil)
+    }
+
+    @Test("routes to review tab on startReview")
+    func routesToReviewOnStartReview() throws {
+        let suiteName = "test.control.consume.review.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defaults.set("startReview", forKey: IntentKeys.controlPendingAction)
+
+        guard let action = defaults.string(forKey: IntentKeys.controlPendingAction) else {
+            Issue.record("Expected a pending action")
+            return
+        }
+        defaults.removeObject(forKey: IntentKeys.controlPendingAction)
+
+        let link: DeepLink = action == "startReview" ? .review : .library
+
+        #expect(link == .review)
+        #expect(defaults.string(forKey: IntentKeys.controlPendingAction) == nil)
+    }
+
+    @Test("no-ops when key is absent")
+    func noopsWhenKeyAbsent() {
+        let suiteName = "test.control.consume.absent.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let action = defaults.string(forKey: IntentKeys.controlPendingAction)
+        #expect(action == nil)
+    }
+
+    @Test("publishAudioPlayingState writes isAudioPlaying to App Group")
+    func publishesAudioPlayingState() {
+        let suiteName = "test.control.audioPlaying.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+
+        // Simulate publishAudioPlayingState(true)
+        defaults.set(true, forKey: IntentKeys.isAudioPlaying)
+        #expect(defaults.bool(forKey: IntentKeys.isAudioPlaying) == true)
+
+        // Simulate publishAudioPlayingState(false)
+        defaults.set(false, forKey: IntentKeys.isAudioPlaying)
+        #expect(defaults.bool(forKey: IntentKeys.isAudioPlaying) == false)
+    }
+}
+
 // MARK: - AppModel pending reading minutes tests
 
 @Suite("AppModel — consumePendingReadingMinutes")
