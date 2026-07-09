@@ -220,11 +220,11 @@ public actor DefaultAnalyticsClient: AnalyticsClient {
         }
     }
 
-    /// Current number of in-memory buffered events (test seam for memory path).
-    var bufferedCount: Int { memoryBuffer.count }
+    /// Current number of in-memory buffered events (test seam + debug menu).
+    public var bufferedCount: Int { memoryBuffer.count }
 
     /// Number of events currently persisted on disk (available when disk-backed).
-    func diskQueueCount() async -> Int {
+    public func diskQueueCount() async -> Int {
         await diskQueue?.count ?? 0
     }
 }
