@@ -309,7 +309,6 @@ actor CapturingAIRepository: AIRepository {
         let question: String
         let selectionContext: String?
         let tone: String?
-        let conversationHistory: [AIConversationTurn]?
     }
     private(set) var lastCall: Call?
 
@@ -317,16 +316,9 @@ actor CapturingAIRepository: AIRepository {
         bookId: String,
         question: String,
         selectionContext: String?,
-        tone: String?,
-        conversationHistory: [AIConversationTurn]? = nil
+        tone: String?
     ) async throws -> BookAskResponse {
-        lastCall = Call(
-            bookId: bookId,
-            question: question,
-            selectionContext: selectionContext,
-            tone: tone,
-            conversationHistory: conversationHistory
-        )
+        lastCall = Call(bookId: bookId, question: question, selectionContext: selectionContext, tone: tone)
         return FakeAIRepository.sampleResponse
     }
 

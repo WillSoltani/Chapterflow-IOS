@@ -34,14 +34,14 @@ struct SchemaMigrationTests {
 
     @Test("currentVersion constant matches the latest VersionedSchema")
     func currentVersionMatchesLatest() {
-        #expect(PersistenceMigrationPlan.currentVersion == PersistenceSchemaV8.versionIdentifier)
-        #expect(PersistenceMigrationPlan.currentVersion == Schema.Version(8, 0, 0))
+        #expect(PersistenceMigrationPlan.currentVersion == PersistenceSchemaV7.versionIdentifier)
+        #expect(PersistenceMigrationPlan.currentVersion == Schema.Version(7, 0, 0))
     }
 
-    @Test("migration plan has 8 schemas and 7 lightweight stages")
+    @Test("migration plan has 7 schemas and 6 lightweight stages")
     func planShape() {
-        #expect(PersistenceMigrationPlan.schemas.count == 8)
-        #expect(PersistenceMigrationPlan.stages.count == 7)
+        #expect(PersistenceMigrationPlan.schemas.count == 7)
+        #expect(PersistenceMigrationPlan.stages.count == 6)
     }
 
     // MARK: - V1 → V2 lightweight migration with seeded data
@@ -233,65 +233,5 @@ struct SchemaMigrationTests {
         let mutation = try ctx.fetch(FetchDescriptor<PendingMutation>()).first
         let decoded = try mutation?.decodePayload(as: ProgressPayload.self)
         #expect(decoded == original)
-    }
-
-    // MARK: - V7 → V8 lightweight migration (CachedAskThread)
-
-    /// Seeds a V7 store with a PendingMutation, migrates to V8, confirms that the
-    /// mutation survives and that the new CachedAskThread table exists but is empty.
-    @Test("V7 data survives lightweight migration to V8 (CachedAskThread added)")
-    func v7ToV8MigrationPreservesData() throws {
-        let url = tempStoreURL()
-        defer { cleanup(url) }
-
-        // Step 1 — seed a V7 store.
-        do {
-            let v7Schema = Schema(PersistenceSchemaV7.models)
-            let v7Config = ModelConfiguration(schema: v7Schema, url: url)
-            let v7Container = try ModelContainer(for: v7Schema, configurations: v7Config)
-            let ctx = ModelContext(v7Container)
-            ctx.insert(CachedKeyValue(key: "ask-test", value: "hello"))
-            ctx.insert(PendingMutation(
-                mutationId: "mut-ask-v7",
-                userId: "user-ask",
-                kindRaw: MutationKind.notebookWrite.rawValue,
-                payloadJSON: "{\"bookId\":\"b-test\",\"type\":\"note\",\"content\":\"Q: What?\\nA: Because.\"}"
-            ))
-            try ctx.save()
-        }
-
-        // Step 2 — reopen with V8 schema + full migration plan.
-        let v8Schema = Schema(PersistenceSchemaV8.models)
-        let v8Config = ModelConfiguration(schema: v8Schema, url: url)
-        let v8Container = try ModelContainer(
-            for: v8Schema,
-            migrationPlan: PersistenceMigrationPlan.self,
-            configurations: v8Config
-        )
-        let ctx2 = ModelContext(v8Container)
-
-        // Step 3 — assert V7 data survived.
-        let kvRecords = try ctx2.fetch(FetchDescriptor<CachedKeyValue>())
-        #expect(kvRecords.count == 1)
-        #expect(kvRecords[0].key == "ask-test")
-
-        let mutations = try ctx2.fetch(FetchDescriptor<PendingMutation>())
-        #expect(mutations.count == 1)
-        #expect(mutations[0].mutationId == "mut-ask-v7")
-
-        // Step 4 — new V8 table exists and is empty.
-        #expect(try ctx2.fetchCount(FetchDescriptor<CachedAskThread>()) == 0)
-
-        // Step 5 — new V8 table is writable.
-        let thread = CachedAskThread(
-            threadId: "user-ask:b-test",
-            userId: "user-ask",
-            bookId: "b-test",
-            messagesJSON: "[]",
-            messageCount: 0
-        )
-        ctx2.insert(thread)
-        try ctx2.save()
-        #expect(try ctx2.fetchCount(FetchDescriptor<CachedAskThread>()) == 1)
     }
 }

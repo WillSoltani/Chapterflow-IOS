@@ -15,18 +15,13 @@ public actor LiveAIRepository: AIRepository {
         bookId: String,
         question: String,
         selectionContext: String?,
-        tone: String?,
-        conversationHistory: [AIConversationTurn]? = nil
+        tone: String?
     ) async throws -> BookAskResponse {
-        let networkHistory = conversationHistory?.map {
-            AskConversationTurn(question: $0.question, answer: $0.answer)
-        }
         let endpoint = try Endpoints.askBook(
             bookId: bookId,
             question: question,
             selectionContext: selectionContext,
-            tone: tone,
-            conversationHistory: networkHistory
+            tone: tone
         )
         return try await client.send(endpoint)
     }
