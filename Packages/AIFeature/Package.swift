@@ -5,7 +5,7 @@ let package = Package(
     name: "AIFeature",
     platforms: [.iOS(.v18), .macOS(.v14)],
     products: [
-        .library(name: "AIFeature", targets: ["AIFeature"]),
+        .library(name: "AIFeature", targets: ["AIFeature"])
     ],
     dependencies: [
         .package(path: "../CoreKit"),
@@ -13,7 +13,7 @@ let package = Package(
         .package(path: "../Networking"),
         .package(path: "../DesignSystem"),
         .package(path: "../Persistence"),
-        .package(path: "../Fixtures"),
+        .package(path: "../Fixtures")
     ],
     targets: [
         .target(
@@ -23,12 +23,12 @@ let package = Package(
                 .product(name: "Models", package: "Models"),
                 .product(name: "Networking", package: "Networking"),
                 .product(name: "DesignSystem", package: "DesignSystem"),
-                .product(name: "Persistence", package: "Persistence"),
+                .product(name: "Persistence", package: "Persistence")
             ],
             linkerSettings: [
                 .linkedFramework("AVFoundation", .when(platforms: [.iOS])),
                 .linkedFramework("MediaPlayer", .when(platforms: [.iOS])),
-                .linkedFramework("AVKit", .when(platforms: [.iOS])),
+                .linkedFramework("AVKit", .when(platforms: [.iOS]))
             ]
         ),
         .testTarget(
@@ -38,8 +38,8 @@ let package = Package(
                 .product(name: "CoreKit", package: "CoreKit"),
                 .product(name: "Models", package: "Models"),
                 .product(name: "Networking", package: "Networking"),
-                .product(name: "Fixtures", package: "Fixtures"),
+                .product(name: "Fixtures", package: "Fixtures")
             ]
-        ),
+        )
     ]
 )

@@ -140,7 +140,7 @@ struct AudioSegmentKindEvolutionTests {
         let pairs: [(String, AudioSegmentKind)] = [
             ("greeting", .greeting),
             ("body", .body),
-            ("takeaway", .takeaway),
+            ("takeaway", .takeaway)
         ]
         for (raw, expected) in pairs {
             let json = "\"\(raw)\""

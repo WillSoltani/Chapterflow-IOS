@@ -35,7 +35,7 @@ public enum SleepTimerOption: Sendable, Equatable, CaseIterable, Hashable {
     public static let allCases: [SleepTimerOption] = [
         .off, .endOfChapter,
         .minutes(5), .minutes(10), .minutes(15), .minutes(20),
-        .minutes(30), .minutes(45), .minutes(60),
+        .minutes(30), .minutes(45), .minutes(60)
     ]
 
     public var displayName: String {
@@ -116,6 +116,24 @@ public actor AudioPlayer {
 
     public init(repository: any AudioRepository) {
         self.repository = repository
+    }
+
+    // MARK: - Deinit
+
+    deinit {
+        // Remove the periodic time observer BEFORE AVQueuePlayer is released.
+        // AVFoundation traps (signal 5 / SIGTRAP) on macOS 26 when an AVPlayer
+        // is deallocated while a live observer token is still registered — the
+        // timer can fire into the partially-freed player. removeTimeObserver(_:)
+        // must be balanced with every addPeriodicTimeObserver call.
+        // timeObserverToken is nonisolated(unsafe) so it is reachable from deinit.
+        if let token = timeObserverToken {
+            player.removeTimeObserver(token)
+        }
+        // Cancel background tasks so their for-await loops exit and stop posting
+        // notifications or timer callbacks after the actor has been freed.
+        sleepTimerTask?.cancel()
+        notificationTask?.cancel()
     }
 
     // MARK: - AsyncStream
