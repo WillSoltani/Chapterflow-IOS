@@ -10,5 +10,12 @@ let package = Package(
     targets: [
         .target(name: "DesignSystem"),
         .testTarget(name: "DesignSystemTests", dependencies: ["DesignSystem"]),
+        // Snapshot / render tests — run on macOS via `swift test`.
+        // Generate references: SNAPSHOT_RECORD=1 swift test --filter "DesignSystemSnapshotTests"
+        .testTarget(
+            name: "DesignSystemSnapshotTests",
+            dependencies: ["DesignSystem"],
+            path: "Tests/DesignSystemSnapshotTests"
+        ),
     ]
 )

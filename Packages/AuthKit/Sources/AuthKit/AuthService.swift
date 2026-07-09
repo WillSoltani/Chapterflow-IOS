@@ -260,6 +260,15 @@ public final class AuthService: TokenRefreshing {
     // MARK: - Private Helpers
 
     private func syncAuthState() async {
+        #if DEBUG
+        // In UITest mode, skip Amplify entirely and emit .signedIn immediately.
+        // CF_STUB_SERVER intercepts all network calls; no real Cognito session needed.
+        if ProcessInfo.processInfo.environment["CF_UITEST_BYPASS_AUTH"] == "1" {
+            let user = UserSummary(userId: "uitest-user-123", username: "uitest-user-123", email: nil)
+            eventsContinuation.yield(.signedIn(user))
+            return
+        }
+        #endif
         do {
             let session = try await Amplify.Auth.fetchAuthSession()
             if session.isSignedIn, let tokens = try? Self.extractTokens(from: session) {
