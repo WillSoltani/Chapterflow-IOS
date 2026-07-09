@@ -50,6 +50,12 @@ public final class AppModel {
     /// Cleared and replayed by `replayPendingIntent()` after sign-in.
     public var pendingAuthIntent: AuthGateIntent = .none
 
+    // MARK: - Focus filter
+
+    /// `true` when a Reading Focus filter is active. Written by `consumeFocusFilter()`
+    /// on every foreground activation. `AppRootView` uses this to overlay non-reading tabs.
+    public var isReadingFocusActive: Bool = false
+
     // MARK: - User profile
 
     /// Display name resolved from the Cognito id_token JWT.
@@ -187,11 +193,6 @@ public final class AppModel {
 
     /// Shared reachability service — consumed by repositories and views.
     public let reachability: ReachabilityService
-
-    // MARK: - Focus filter (P8.6)
-
-    /// `true` while Reading Focus is active; suppresses social features and the notification badge.
-    public var isReadingFocusActive: Bool = false
 
     // MARK: - Spotlight
 
@@ -580,21 +581,5 @@ public final class AppModel {
                 break
             }
         }
-    }
-
-    /// Reads accumulated offline reading minutes written by ``LogDailyReadingIntent``,
-    /// adds them to today's goal progress in the App Group snapshot, and publishes.
-    ///
-    /// Call when the app becomes active so the goal-ring widget reflects minutes
-    /// logged via Siri since the last foreground session.
-    public func consumePendingReadingMinutes() {
-        let defaults = UserDefaults(suiteName: AppGroup.identifier)
-        let pending = defaults?.integer(forKey: IntentKeys.pendingReadingMinutes) ?? 0
-        guard pending > 0 else { return }
-        defaults?.removeObject(forKey: IntentKeys.pendingReadingMinutes)
-        var updated = SharedStateReader().load()
-        updated.goalProgressMinutes += pending
-        updated.lastUpdated = Date()
-        Task { await SharedStateWriter.shared.publish(updated) }
     }
 }

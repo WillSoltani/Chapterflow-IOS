@@ -53,14 +53,16 @@ public struct AppRootView: View {
                 case .active:
                     model.consumeAudioControlCommand()
                     model.consumePendingReadingMinutes()
+                    model.consumeControlIntentAction()
                     model.triggerForegroundSync()
-                    model.consumeQuickAction()
-                    model.consumeFocusFilter()
                 case .background:
                     model.scheduleBackgroundTasks()
                 default:
                     break
                 }
+            }
+            .onChange(of: model.audioPlayerModel.isPlaying) { _, isPlaying in
+                model.publishAudioPlayingState(isPlaying)
             }
             .onChange(of: intentStore.pendingDeepLink) { _, link in
                 guard let link else { return }
@@ -278,7 +280,7 @@ public struct AppRootView: View {
             Tab("Home", systemImage: "house", value: AppTab.home) {
                 tabContent(for: .home)
             }
-            .badge(model.isReadingFocusActive ? 0 : model.notificationInboxModel.unreadCount)
+            .badge(model.notificationInboxModel.unreadCount)
             Tab("Library", systemImage: "books.vertical", value: AppTab.library) {
                 tabContent(for: .library)
             }
@@ -370,11 +372,6 @@ public struct AppRootView: View {
                 }
             )
         }
-        // iPad keyboard shortcuts — invisible buttons registered in the responder
-        // chain so ⌘1-5 navigate tabs on hardware keyboards (iPad + Mac Catalyst).
-        .background {
-            IPadKeyboardShortcutsView(selectedTab: $model.selectedTab)
-        }
     }
 
     // MARK: - Tab content
@@ -426,13 +423,6 @@ public struct AppRootView: View {
                 pendingPairAcceptCode: $model.pendingPairAcceptCode,
                 pendingReferralCode: $model.pendingReferralCode
             )
-            .overlay {
-                if model.isReadingFocusActive {
-                    ReadingFocusOverlayView {
-                        model.selectedTab = .library
-                    }
-                }
-            }
         case .reviews:
             ReviewsView(model: ReviewsModel(repository: model.reviewsRepository))
         case .settings:

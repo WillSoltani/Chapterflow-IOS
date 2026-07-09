@@ -121,23 +121,36 @@ struct ContinueMediumView: View {
 
                 Spacer()
 
-                // Progress bar
+                // Progress bar + interactive CTA
                 if let progress = snapshot.continueProgress {
-                    VStack(alignment: .leading, spacing: 2) {
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                RoundedRectangle(cornerRadius: 2)
-                                    .fill(Color.cfWidgetAccent.opacity(0.15))
-                                    .frame(height: 4)
-                                RoundedRectangle(cornerRadius: 2)
-                                    .fill(Color.cfWidgetAccent)
-                                    .frame(width: geo.size.width * progress, height: 4)
+                    VStack(alignment: .leading, spacing: .wS8) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            GeometryReader { geo in
+                                ZStack(alignment: .leading) {
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(Color.cfWidgetAccent.opacity(0.15))
+                                        .frame(height: 4)
+                                    RoundedRectangle(cornerRadius: 2)
+                                        .fill(Color.cfWidgetAccent)
+                                        .frame(width: geo.size.width * progress, height: 4)
+                                }
                             }
+                            .frame(height: 4)
+                            Text("\(Int(progress * 100))% complete")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
                         }
-                        .frame(height: 4)
-                        Text("\(Int(progress * 100))% complete")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                        // Interactive button: opens the app directly to the reader
+                        Button(intent: StartReadingControlIntent()) {
+                            Label("Continue Reading", systemImage: "play.fill")
+                                .font(.caption2.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, .wS8)
+                                .padding(.vertical, 4)
+                                .background(Color.cfWidgetAccent, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Continue reading \(snapshot.continueBookTitle ?? "your book")")
                     }
                 }
             }
