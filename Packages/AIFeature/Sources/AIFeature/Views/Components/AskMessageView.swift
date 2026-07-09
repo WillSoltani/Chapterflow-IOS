@@ -6,9 +6,30 @@ import DesignSystem
 /// The user's question appears right-aligned in an accent bubble.
 /// The answer appears left-aligned in a neutral material card, with
 /// tappable citation chips below it.
+///
+/// Long-pressing the answer card reveals a context menu with actions
+/// to save the answer to the Notebook, copy it to the clipboard, and
+/// share it with attribution (P6.7).
 struct AskMessageView: View {
     let message: AskMessage
+    let isPinned: Bool
     let onJumpToChapter: (Int) -> Void
+    var onSaveToNotebook: ((AskMessage) -> Void)?
+    var shareText: String?
+
+    init(
+        message: AskMessage,
+        isPinned: Bool = false,
+        onJumpToChapter: @escaping (Int) -> Void,
+        onSaveToNotebook: ((AskMessage) -> Void)? = nil,
+        shareText: String? = nil
+    ) {
+        self.message = message
+        self.isPinned = isPinned
+        self.onJumpToChapter = onJumpToChapter
+        self.onSaveToNotebook = onSaveToNotebook
+        self.shareText = shareText
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: .cfSpacing12) {
@@ -58,7 +79,17 @@ struct AskMessageView: View {
 
     private var answerCard: some View {
         VStack(alignment: .leading, spacing: .cfSpacing12) {
-            AskAnswerText(text: message.answer)
+            HStack(alignment: .top) {
+                AskAnswerText(text: message.answer)
+                Spacer(minLength: 0)
+                if isPinned {
+                    Image(systemName: "bookmark.fill")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.cfAccent)
+                        .padding(.top, 2)
+                        .accessibilityLabel("Saved to Notebook")
+                }
+            }
 
             if !message.citations.isEmpty {
                 citationsRow
@@ -71,6 +102,32 @@ struct AskMessageView: View {
         .padding(.cfSpacing16)
         .background(answerBackground, in: RoundedRectangle(cornerRadius: .cfRadius16, style: .continuous))
         .accessibilityElement(children: .contain)
+        .contextMenu { contextMenuItems }
+    }
+
+    @ViewBuilder
+    private var contextMenuItems: some View {
+        if let save = onSaveToNotebook, !isPinned {
+            Button {
+                save(message)
+            } label: {
+                Label("Save to Notebook", systemImage: "bookmark")
+            }
+        }
+
+        if let text = shareText {
+            Button {
+                #if os(iOS)
+                UIPasteboard.general.string = text
+                #endif
+            } label: {
+                Label("Copy Answer", systemImage: "doc.on.doc")
+            }
+
+            ShareLink(item: text) {
+                Label("Share with Attribution", systemImage: "square.and.arrow.up")
+            }
+        }
     }
 
     private var onDeviceBadge: some View {

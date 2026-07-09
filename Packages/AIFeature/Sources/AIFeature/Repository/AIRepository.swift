@@ -1,5 +1,19 @@
 import Models
 
+/// A single prior Q&A exchange sent to the server for conversation threading.
+///
+/// Included in the body of `POST /book/books/{bookId}/ask` so the server can
+/// generate coherent follow-up answers. Up to the last 5 turns are sent.
+public struct AIConversationTurn: Codable, Sendable {
+    public let question: String
+    public let answer: String
+
+    public init(question: String, answer: String) {
+        self.question = question
+        self.answer = answer
+    }
+}
+
 /// The data contract for the AI features lane (P6.*).
 ///
 /// Concrete implementations: ``LiveAIRepository`` (production) and
@@ -12,13 +26,16 @@ public protocol AIRepository: Sendable {
     ///   - question: The user's question.
     ///   - selectionContext: Optional highlighted passage that grounds the answer.
     ///   - tone: Optional reading-tone raw value (`"gentle"`, `"direct"`, `"competitive"`).
+    ///   - conversationHistory: Prior Q&A turns to give the server conversation context.
+    ///     Pass the last few exchanges so follow-up questions are coherent. Nil → fresh question.
     /// - Throws: `AppError.rateLimited` on HTTP 429; `AppError.offline` when
     ///   there is no network; other `AppError` cases for server or auth failures.
     func askBook(
         bookId: String,
         question: String,
         selectionContext: String?,
-        tone: String?
+        tone: String?,
+        conversationHistory: [AIConversationTurn]?
     ) async throws -> BookAskResponse
 
     /// Fetches the concept dependency graph for a book.
