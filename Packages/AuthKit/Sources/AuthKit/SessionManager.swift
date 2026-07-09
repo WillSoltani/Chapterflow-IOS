@@ -204,7 +204,27 @@ extension SessionManager: TokenRefreshing {
 
 extension SessionManager: TokenProviding {
 
+    #if DEBUG
+    /// A structurally-valid but unsigned JWT used only in XCUITest bypass mode.
+    /// The stub server never verifies signatures, so this satisfies the
+    /// `Authorization: Bearer` header for fixture-backed requests.
+    static let uitestFakeIDToken =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
+        "eyJzdWIiOiJ1aXRlc3QtdXNlci0xMjMiLCJuYW1lIjoiVGVzdCBVc2VyIiwiZXhwIjo5OTk5OTk5OTk5fQ." +
+        "uitestfakesignature"
+    #endif
+
     public func validToken() async throws -> String? {
+        #if DEBUG
+        // UITest bypass: the stub server (CFStubURLProtocol) accepts any bearer
+        // token, and the auth state is forced signed-in in AuthService.syncAuthState().
+        // Return a fixed fake token here so authed requests carry an Authorization
+        // header WITHOUT depending on a Keychain write — the keychain access-group
+        // write is unreliable in the unsigned XCUITest host app.
+        if ProcessInfo.processInfo.environment["CF_UITEST_BYPASS_AUTH"] == "1" {
+            return Self.uitestFakeIDToken
+        }
+        #endif
         guard let tokens = tokenStore.load() else { return nil }
         // Proactively refresh when within 5 minutes of expiry to avoid a
         // predictable 401 round-trip. On failure, fall through and return

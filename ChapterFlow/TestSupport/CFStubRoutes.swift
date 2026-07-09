@@ -9,13 +9,17 @@ nonisolated enum CFStubRoutes {
     // MARK: - Lookup
 
     nonisolated static func response(for path: String, method: String) -> (statusCode: Int, body: Data)? {
-        for (route, handler) in routes {
-            if path.hasPrefix(route.path) && (route.method == nil || route.method == method) {
-                let body = handler().data(using: .utf8) ?? Data()
-                return (200, body)
+        // Longest-prefix wins: a specific route like `/book/books/{id}` must beat
+        // the shorter `/book/books` (catalog) prefix, regardless of table order.
+        var best: (route: Route, handler: () -> String)?
+        for (route, handler) in routes
+        where path.hasPrefix(route.path) && (route.method == nil || route.method == method) {
+            if best == nil || route.path.count > best!.route.path.count {
+                best = (route, handler)
             }
         }
-        return nil
+        guard let handler = best?.handler else { return nil }
+        return (200, handler().data(using: .utf8) ?? Data())
     }
 
     // MARK: - Route table
@@ -71,7 +75,7 @@ nonisolated enum CFStubRoutes {
         (Route(path: "/book/me/onboarding", method: nil), { emptyOK }),
 
         // ── Search index ─────────────────────────────────────────────────────
-        (Route(path: "/book/search-index", method: nil), { emptyOK }),
+        (Route(path: "/book/search-index", method: nil), { searchIndex }),
 
         // ── Core Spotlight / analytics ───────────────────────────────────────
         (Route(path: "/book/me/analytics", method: nil), { emptyOK }),
@@ -124,7 +128,11 @@ nonisolated enum CFStubRoutes {
     """
 
     private static let progress = """
-    {"books":[{"bookId":"b-atomic-habits","currentChapterNumber":1,"unlockedThroughChapterNumber":1,"completedChapters":[],"bestScoreByChapter":{},"progressRev":1}]}
+    {"progress":[{"bookId":"b-atomic-habits","currentChapterNumber":1,"totalChapters":2,"completedChapterCount":0,"lastReadAt":null}]}
+    """
+
+    private static let searchIndex = """
+    {"books":[]}
     """
 
     private static let dashboard = """
@@ -136,7 +144,7 @@ nonisolated enum CFStubRoutes {
     """
 
     private static let savedBooks = """
-    {"saved":[]}
+    {"savedBookIds":[]}
     """
 
     private static let emptyReviews = """

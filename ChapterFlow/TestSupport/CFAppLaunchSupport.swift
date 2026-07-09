@@ -27,6 +27,14 @@ enum CFAppLaunchSupport {
             // Seed tokens BEFORE AppModel / AuthService initialise so the
             // auth state resolves as signed-in from the very first check.
             CFUITestSessionSeeder.seedIfNeeded()
+
+            // Mark first-run onboarding complete so the app lands directly in the
+            // main tab UI. Otherwise AppRootView presents OnboardingFlowView as a
+            // full-screen cover (gated on `!preferences.onboardingCompleted`),
+            // which blocks tab navigation and makes signed-in flow tests hang.
+            // Key + suite mirror AppPreferences.Keys.onboardingCompleted + AppGroup.identifier.
+            UserDefaults(suiteName: "group.com.chapterflow")?
+                .set(true, forKey: "pref.onboardingCompleted")
         }
     }
 }
