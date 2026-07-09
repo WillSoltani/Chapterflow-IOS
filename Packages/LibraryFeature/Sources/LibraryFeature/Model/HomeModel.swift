@@ -25,6 +25,9 @@ public final class HomeModel {
     public private(set) var progressItems: [ProgressOverviewItem] = []
     public private(set) var savedBookIds: Set<String> = []
 
+    /// O(1) lookup map rebuilt once per fetch — avoids O(n×m) scan in `continueReadingBooks`.
+    @ObservationIgnored private var bookMap: [String: BookCatalogItem] = [:]
+
     private let repository: any LibraryRepository
 
     // MARK: - Init
@@ -36,17 +39,15 @@ public final class HomeModel {
     // MARK: - Derived data
 
     /// Books the user is currently reading, sorted by most-recently-opened first.
+    ///
+    /// Uses the pre-built `bookMap` dictionary (O(1) per lookup) built in `fetch()`.
     public var continueReadingBooks: [(book: BookCatalogItem, progress: ProgressOverviewItem)] {
         progressItems
             .compactMap { item -> (BookCatalogItem, ProgressOverviewItem)? in
-                guard let book = books.first(where: { $0.bookId == item.bookId }) else {
-                    return nil
-                }
+                guard let book = bookMap[item.bookId] else { return nil }
                 return (book, item)
             }
-            .sorted { lhs, rhs in
-                (lhs.1.lastReadAt ?? "") > (rhs.1.lastReadAt ?? "")
-            }
+            .sorted { ($0.1.lastReadAt ?? "") > ($1.1.lastReadAt ?? "") }
     }
 
     /// The user's saved books as full catalog items.
@@ -77,6 +78,7 @@ public final class HomeModel {
             async let savedTask = repository.getSaved()
             let (catalog, progress, saved) = try await (catalogTask, progressTask, savedTask)
             books = catalog
+            bookMap = Dictionary(uniqueKeysWithValues: catalog.map { ($0.bookId, $0) })
             progressItems = progress.progress
             savedBookIds = Set(saved)
             loadState = .loaded
