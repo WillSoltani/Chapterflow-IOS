@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import Accessibility
 import Models
 import DesignSystem
 
@@ -34,7 +35,15 @@ struct ReadingTimeTrendChart: View {
                 chart
             }
         }
-        .accessibilityLabel("Daily reading time chart")
+        .accessibilityLabel("Daily reading time chart. \(audioGraphSummary)")
+    }
+
+    private var audioGraphSummary: String {
+        let total = points.reduce(0) { $0 + $1.minutes }
+        guard let peak = points.max(by: { $0.minutes < $1.minutes }), peak.minutes > 0 else {
+            return "No reading recorded."
+        }
+        return "Total \(total) minutes over \(points.count) days. Peak: \(peak.minutes) min on \(peak.label)."
     }
 
     private var chart: some View {
@@ -49,7 +58,10 @@ struct ReadingTimeTrendChart: View {
                     : Color.cfFill.gradient
             )
             .cornerRadius(4)
+            .accessibilityLabel("\(point.label)")
+            .accessibilityValue(point.minutes > 0 ? "\(point.minutes) minutes" : "No reading")
         }
+        .accessibilityChartDescriptor(self)
         .chartYAxis {
             AxisMarks(values: .automatic(desiredCount: 4)) { value in
                 AxisGridLine()
@@ -114,6 +126,38 @@ struct ReadingTimeTrendChart: View {
 
     private func dayLabel(_ date: Date) -> String {
         Self.dayFormatter.string(from: date)
+    }
+}
+
+// MARK: - Audio Graph (AXChartDescriptorRepresentable)
+
+extension ReadingTimeTrendChart: @preconcurrency AXChartDescriptorRepresentable {
+    func makeChartDescriptor() -> AXChartDescriptor {
+        let maxMinutes = points.max(by: { $0.minutes < $1.minutes })?.minutes ?? 60
+        let xAxis = AXCategoricalDataAxisDescriptor(
+            title: "Day",
+            categoryOrder: points.map { $0.label }
+        )
+        let yAxis = AXNumericDataAxisDescriptor(
+            title: "Minutes read",
+            range: 0...Double(max(maxMinutes, 1)),
+            gridlinePositions: []
+        ) { v in v.isFinite ? "\(Int(v)) min" : "" }
+        let series = AXDataSeriesDescriptor(
+            name: "Minutes read",
+            isContinuous: false,
+            dataPoints: points.map { point in
+                AXDataPoint(x: point.label, y: Double(point.minutes))
+            }
+        )
+        return AXChartDescriptor(
+            title: "Daily Reading Time",
+            summary: audioGraphSummary,
+            xAxis: xAxis,
+            yAxis: yAxis,
+            additionalAxes: [],
+            series: [series]
+        )
     }
 }
 

@@ -99,7 +99,7 @@ public struct StreakView: View {
         Image(systemName: currentStreak > 0 ? "flame.fill" : "flame")
             .font(.system(size: 44))
             .foregroundStyle(streakColor(currentStreak))
-            .symbolEffect(.bounce, value: currentStreak)
+            .symbolEffect(.bounce, value: reduceMotion ? 0 : currentStreak)
     }
 
     // MARK: - At-risk banner

@@ -24,6 +24,7 @@ public struct ReaderControlSurface: View {
     @State private var scrollPositionID: Int?
     @State private var paginatedPage = 0
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// When non-nil, highlights, notes, and bookmarks are enabled for this chapter.
     var annotationModel: AnnotationModel?
@@ -229,7 +230,11 @@ public struct ReaderControlSurface: View {
                     currentTopIndex: scrollPositionID ?? 0,
                     navModel: navModel
                 )
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .transition(
+                    reduceMotion
+                        ? .opacity
+                        : .move(edge: .bottom).combined(with: .opacity)
+                )
             }
         }
     }
@@ -237,9 +242,20 @@ public struct ReaderControlSurface: View {
     // MARK: - Focus mode exit hint
 
     private var focusModeHint: some View {
-        Text("Tap to show controls")
-            .font(.cfCaption2)
-            .foregroundStyle(Color.cfTertiaryLabel)
-            .padding(.bottom, .cfSpacing32)
+        Button {
+            withAnimation(reduceMotion ? .easeInOut(duration: 0.15) : .easeInOut(duration: 0.3)) {
+                model.toggleFocusMode()
+            }
+        } label: {
+            Text("Tap to show controls")
+                .font(.cfCaption2)
+                .foregroundStyle(Color.cfTertiaryLabel)
+                .padding(.bottom, .cfSpacing32)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Show reader controls")
+        .accessibilityHint("Exits focus mode")
     }
 }

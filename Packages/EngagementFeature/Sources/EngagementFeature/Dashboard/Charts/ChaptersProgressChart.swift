@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import Accessibility
 import Models
 import DesignSystem
 
@@ -40,7 +41,13 @@ struct ChaptersProgressChart: View {
                 chart
             }
         }
-        .accessibilityLabel("Chapters completed by book chart")
+        .accessibilityLabel("Chapters completed by book chart. \(audioGraphSummary)")
+    }
+
+    private var audioGraphSummary: String {
+        guard !barItems.isEmpty else { return "No data." }
+        let parts = barItems.map { "\($0.shortTitle): \($0.completed) of \($0.completed + $0.remaining) chapters" }
+        return parts.joined(separator: ". ")
     }
 
     private var chart: some View {
@@ -51,6 +58,8 @@ struct ChaptersProgressChart: View {
             )
             .foregroundStyle(Color.cfAccent.gradient)
             .cornerRadius(4)
+            .accessibilityLabel(item.shortTitle)
+            .accessibilityValue("\(item.completed) of \(item.completed + item.remaining) chapters completed")
 
             BarMark(
                 x: .value("Remaining", item.remaining),
@@ -58,7 +67,9 @@ struct ChaptersProgressChart: View {
             )
             .foregroundStyle(Color.cfFill)
             .cornerRadius(4)
+            .accessibilityHidden(true)
         }
+        .accessibilityChartDescriptor(self)
         .chartXAxis {
             AxisMarks(values: .automatic(desiredCount: 4)) { value in
                 AxisGridLine()
@@ -108,6 +119,43 @@ struct ChaptersProgressChart: View {
         // In production this is replaced by a catalog lookup; fallback to a truncated id.
         let parts = bookId.split(separator: "-")
         return parts.prefix(2).joined(separator: "-").capitalized
+    }
+}
+
+// MARK: - Audio Graph (AXChartDescriptorRepresentable)
+
+extension ChaptersProgressChart: @preconcurrency AXChartDescriptorRepresentable {
+    func makeChartDescriptor() -> AXChartDescriptor {
+        let maxChapters = barItems.map { $0.completed + $0.remaining }.max() ?? 1
+        // Use book title as categorical x so AXDataPoint.x (String) maps correctly.
+        let xAxis = AXCategoricalDataAxisDescriptor(
+            title: "Book",
+            categoryOrder: barItems.map { $0.shortTitle }
+        )
+        let yAxis = AXNumericDataAxisDescriptor(
+            title: "Chapters completed",
+            range: 0...Double(max(maxChapters, 1)),
+            gridlinePositions: []
+        ) { v in v.isFinite ? "\(Int(v)) chapters" : "" }
+        let series = AXDataSeriesDescriptor(
+            name: "Chapters completed",
+            isContinuous: false,
+            dataPoints: barItems.map { item in
+                AXDataPoint(
+                    x: item.shortTitle,
+                    y: Double(item.completed),
+                    label: "\(item.completed) of \(item.completed + item.remaining)"
+                )
+            }
+        )
+        return AXChartDescriptor(
+            title: "Chapters Completed",
+            summary: audioGraphSummary,
+            xAxis: xAxis,
+            yAxis: yAxis,
+            additionalAxes: [],
+            series: [series]
+        )
     }
 }
 
