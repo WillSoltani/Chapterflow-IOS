@@ -111,10 +111,10 @@ struct TokenStoreTests {
 
 @Suite("PersistenceSchema")
 struct PersistenceSchemaTests {
-    @Test("migration plan is well-formed with V1 → V2 → V3 → V4 → V5 → V6 → V7 → V8 stages")
+    @Test("migration plan is well-formed with V1 → V2 → V3 → V4 → V5 → V6 → V7 stages")
     func migrationPlan() {
-        #expect(PersistenceMigrationPlan.schemas.count == 8)
-        #expect(PersistenceMigrationPlan.stages.count == 7)
+        #expect(PersistenceMigrationPlan.schemas.count == 7)
+        #expect(PersistenceMigrationPlan.stages.count == 6)
         #expect(PersistenceSchemaV1.versionIdentifier == Schema.Version(1, 0, 0))
         #expect(PersistenceSchemaV2.versionIdentifier == Schema.Version(2, 0, 0))
         #expect(PersistenceSchemaV3.versionIdentifier == Schema.Version(3, 0, 0))
@@ -122,7 +122,6 @@ struct PersistenceSchemaTests {
         #expect(PersistenceSchemaV5.versionIdentifier == Schema.Version(5, 0, 0))
         #expect(PersistenceSchemaV6.versionIdentifier == Schema.Version(6, 0, 0))
         #expect(PersistenceSchemaV7.versionIdentifier == Schema.Version(7, 0, 0))
-        #expect(PersistenceSchemaV8.versionIdentifier == Schema.Version(8, 0, 0))
     }
 }
 

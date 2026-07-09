@@ -43,7 +43,7 @@ public struct StoreOpenResult: Sendable {
 /// 1. Attempts to salvage ``PendingMutation`` outbox records (unsynced writes)
 ///    by opening the corrupted store with a minimal schema.
 /// 2. Deletes the corrupted store files (the rebuildable server-backed cache).
-/// 3. Creates a fresh V8 store and re-inserts any salvaged outbox records.
+/// 3. Creates a fresh V7 store and re-inserts any salvaged outbox records.
 /// 4. Returns the fresh controller with ``StoreRecoveryOutcome/recoveredCacheRebuilt(salvaged:)``
 ///    or ``StoreRecoveryOutcome/recoveredCacheRebuiltOutboxLost``.
 ///
@@ -63,7 +63,7 @@ public enum StoreRecoveryManager {
 
     // MARK: - Public API
 
-    /// Opens the store at `storage` with the full V8 schema and migration plan.
+    /// Opens the store at `storage` with the full V7 schema and migration plan.
     ///
     /// Falls back to corruption recovery if the store cannot be opened.
     ///
@@ -77,7 +77,7 @@ public enum StoreRecoveryManager {
     ) throws -> StoreOpenResult {
         do {
             let controller = try PersistenceController(
-                models: PersistenceSchemaV8.models,
+                models: PersistenceSchemaV7.models,
                 storage: storage,
                 migrationPlan: PersistenceMigrationPlan.self
             )
@@ -123,7 +123,7 @@ public enum StoreRecoveryManager {
 
         // Step 3: Create a fresh V7 store (no migration plan — writing from scratch).
         let controller = try PersistenceController(
-            models: PersistenceSchemaV8.models,
+            models: PersistenceSchemaV7.models,
             storage: .privateStore(url)
         )
         logger.info("Fresh store created at '\(url.lastPathComponent)'")
