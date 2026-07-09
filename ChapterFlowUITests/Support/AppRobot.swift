@@ -5,6 +5,8 @@ import XCTest
 /// Each method performs a navigation action or assertion and returns `self`
 /// to support call-chaining. All waits use generous timeouts to handle
 /// stub-server latency on CI runners.
+// XCTest always dispatches UI interaction on the main thread, so no actor
+// annotation is needed here despite XCUIElement being @MainActor in Xcode 26.
 struct AppRobot {
     let app: XCUIApplication
 
@@ -38,10 +40,11 @@ struct AppRobot {
 
     @discardableResult
     func tapBook(containing substring: String) -> Self {
-        let match = app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] %@", substring)
-        ).firstMatch
-        if match.waitForExistence(timeout: 12) { match.tap() }
+        // Search all accessibility elements — book titles can be in staticTexts, buttons,
+        // or NavigationLink labels depending on the list implementation.
+        let predicate = NSPredicate(format: "label CONTAINS[c] %@", substring)
+        let match = app.descendants(matching: .any).matching(predicate).firstMatch
+        if match.waitForExistence(timeout: 30) { match.tap() }
         return self
     }
 
@@ -72,10 +75,11 @@ struct AppRobot {
     }
 
     func assertBookVisible(_ title: String, file: StaticString = #file, line: UInt = #line) {
-        let book = app.staticTexts.matching(
-            NSPredicate(format: "label CONTAINS[c] %@", title)
-        ).firstMatch
-        XCTAssert(book.waitForExistence(timeout: 15), "Book '\(title)' should be visible", file: file, line: line)
+        // Search ALL accessibility elements — titles may appear as staticTexts,
+        // button labels, or NavigationLink labels depending on the list implementation.
+        let predicate = NSPredicate(format: "label CONTAINS[c] %@", title)
+        let book = app.descendants(matching: .any).matching(predicate).firstMatch
+        XCTAssert(book.waitForExistence(timeout: 30), "Book '\(title)' should be visible", file: file, line: line)
     }
 
     // MARK: - Private

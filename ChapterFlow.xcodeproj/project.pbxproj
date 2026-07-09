@@ -10,7 +10,7 @@
 		04FEC734CE8CA7DA3F93E69F /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 01BF66985E4B1ED2CC4984CF /* Foundation.framework */; };
 		154FAC4F259F770A660CDCFF /* AppRobot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13EF5D4DCFFA62699AA5D2DB /* AppRobot.swift */; };
 		236EFD36ECB2C27CFDF7A0E4 /* SmokeLaneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D23EAB3CE617CB627A5CD649 /* SmokeLaneTests.swift */; };
-		2407C1347F9A7DADCB0E9201 /* ChapterflowWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 8EA7DDEFAE3D456CE7B77F71 /* ChapterflowWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		2407C1347F9A7DADCB0E9201 /* ChapterflowWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8EA7DDEFAE3D456CE7B77F71 /* ChapterflowWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		34386934FB1068D522F52A08 /* AppFeature in Frameworks */ = {isa = PBXBuildFile; productRef = A8255B985D25AB005A4FF769 /* AppFeature */; };
 		346509D5276568F14B96672B /* StreakAtRiskLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 165F7C41C20A17C133A0F496 /* StreakAtRiskLiveActivity.swift */; };
 		395D4114A7DCE61D8B617E05 /* ContinueReadingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C9D4C311CC0366A2B5B4008 /* ContinueReadingWidget.swift */; };
@@ -21,13 +21,13 @@
 		66BC2819ABEF0EBFE1FD08FC /* NotificationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DCF192CB7B14D42D2B19DBE /* NotificationViewController.swift */; };
 		672130A2E2A1DC9408EA8269 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 01BF66985E4B1ED2CC4984CF /* Foundation.framework */; };
 		6AC86007FC11CFC4EF060487 /* ReadingSessionLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20B11F247829B40CD01C223C /* ReadingSessionLiveActivity.swift */; };
-		722B1BC219CE90F9818CF60D /* NotificationContent.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 050A996D551F59F957401E6D /* NotificationContent.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		722B1BC219CE90F9818CF60D /* NotificationContent.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 050A996D551F59F957401E6D /* NotificationContent.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		72F48B3486D36A62CBAA775C /* AttachmentBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA027BFD0C054E6CFEC8BC3E /* AttachmentBuilder.swift */; };
 		8AB972D70AF3F6E524667A5B /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E9800A4BEA2EA1A39922A3A3 /* WidgetKit.framework */; };
 		98AECF0B4841871979E1D0BE /* BadgeCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A18BD4A98A6DFECCF5AC3CC /* BadgeCelebrationView.swift */; };
 		A016F644B8B745B8C35910CF /* ChapterflowWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F0CE0636209E9DAAC909D4A /* ChapterflowWidgetsBundle.swift */; };
 		A1E3CE47077E18E227BC75D7 /* NotificationServiceExtension.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4F52C53E7B459419F05C983 /* NotificationServiceExtension.swift */; };
-		AD3A8B5E08AA699B95905A77 /* NotificationService.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = E04CAB02AF39E4B3C81F199F /* NotificationService.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		AD3A8B5E08AA699B95905A77 /* NotificationService.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E04CAB02AF39E4B3C81F199F /* NotificationService.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AFA0E2C970BC6887892A157A /* RichNotificationCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8EE91B935F78B8ABFC1C1B6A /* RichNotificationCore */; };
 		BB3658E7AA5FE592823E62D4 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 01BF66985E4B1ED2CC4984CF /* Foundation.framework */; };
 		C151E694C33493B64A6581CA /* StreakAtRiskAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E8ABE24781E94C6EBB7C0AC /* StreakAtRiskAttributes.swift */; };
@@ -74,17 +74,17 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		AB19B25E6F38D33C60D1BE9B /* Embed App Extensions */ = {
+		AB19B25E6F38D33C60D1BE9B /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				AD3A8B5E08AA699B95905A77 /* NotificationService.appex in Embed App Extensions */,
-				722B1BC219CE90F9818CF60D /* NotificationContent.appex in Embed App Extensions */,
-				2407C1347F9A7DADCB0E9201 /* ChapterflowWidgets.appex in Embed App Extensions */,
+				AD3A8B5E08AA699B95905A77 /* NotificationService.appex in Embed Foundation Extensions */,
+				722B1BC219CE90F9818CF60D /* NotificationContent.appex in Embed Foundation Extensions */,
+				2407C1347F9A7DADCB0E9201 /* ChapterflowWidgets.appex in Embed Foundation Extensions */,
 			);
-			name = "Embed App Extensions";
+			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -327,7 +327,7 @@
 				15E751792FF4A90000FA8025 /* Sources */,
 				15E7517A2FF4A90000FA8025 /* Frameworks */,
 				15E7517B2FF4A90000FA8025 /* Resources */,
-				AB19B25E6F38D33C60D1BE9B /* Embed App Extensions */,
+				AB19B25E6F38D33C60D1BE9B /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
@@ -417,6 +417,9 @@
 				TargetAttributes = {
 					15E7517C2FF4A90000FA8025 = {
 						CreatedOnToolsVersion = 26.6;
+					};
+					A066BCAEA69222B49E1A8F3C = {
+						TestTargetID = 15E7517C2FF4A90000FA8025;
 					};
 				};
 			};
@@ -630,6 +633,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -686,6 +690,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -791,7 +796,6 @@
 		2F8AD037F518B66C8DF1B589 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_STYLE = Automatic;
@@ -806,6 +810,7 @@
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "";
+				TEST_TARGET_NAME = ChapterFlow;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
@@ -895,7 +900,6 @@
 		9EB28070023E5561414146BE /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_STYLE = Automatic;
@@ -910,6 +914,7 @@
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				TEST_HOST = "";
+				TEST_TARGET_NAME = ChapterFlow;
 			};
 			name = Debug;
 		};

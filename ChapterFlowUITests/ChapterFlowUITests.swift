@@ -28,7 +28,9 @@ enum TestEnv {
 /// ``extraLaunchEnvironment`` to pass additional env vars.
 class CFUITestCase: XCTestCase {
 
-    private(set) var app: XCUIApplication!
+    // XCTest always calls setUp/tearDown on the main thread so accessing
+    // XCUIApplication here is safe at runtime despite compiler actor warnings.
+    private(set) var app: XCUIApplication! // swiftlint:disable:this implicitly_unwrapped_optional
 
     /// Return `true` (default) to launch with a pre-seeded test session.
     /// Return `false` to start the app in the unauthenticated state.
@@ -40,7 +42,6 @@ class CFUITestCase: XCTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false
-
         app = XCUIApplication()
         app.launchEnvironment[TestEnv.stubServer] = "1"
         if needsAuth {

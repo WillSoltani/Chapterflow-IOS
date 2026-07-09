@@ -81,12 +81,18 @@ public final class BackgroundSyncCoordinator {
 
     // MARK: - Registration
 
+    // BGTaskScheduler throws if the same identifier is registered twice.
+    // AppModel.init is called on every SwiftUI body evaluation so guard with
+    // a static flag (the coordinator instance changes but the scheduler does not).
+    nonisolated(unsafe) private static var bgTasksRegistered = false
+
     /// Registers both BG task handlers with `BGTaskScheduler`.
     ///
     /// Must be called before the app finishes launching (i.e. from `AppModel.init`).
-    /// Safe to call multiple times — subsequent registrations for the same identifier
-    /// are no-ops.
+    /// No-op after the first call (BGTaskScheduler throws on duplicate registration).
     public nonisolated func registerBackgroundTasks() {
+        guard !Self.bgTasksRegistered else { return }
+        Self.bgTasksRegistered = true
         BGTaskScheduler.shared.register(
             forTaskWithIdentifier: Self.appRefreshIdentifier,
             using: nil

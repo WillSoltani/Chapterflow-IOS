@@ -11,7 +11,7 @@
   },
   "testTargets" : [
     {
-      "parallelizable" : true,
+      "parallelizable" : false,
       "target" : {
         "containerPath" : "container:ChapterFlow.xcodeproj",
         "identifier" : "A066BCAEA69222B49E1A8F3C",

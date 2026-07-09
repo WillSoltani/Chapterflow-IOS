@@ -2,21 +2,58 @@
 import Foundation
 import Security
 
-/// Seeds the Keychain with a fake test JWT so the app presents as signed-in
-/// when ``CF_UITEST_BYPASS_AUTH=1`` is set in the XCUITest launch environment.
+/// Seeds the Keychain with a fake StoredTokens record so the app presents as
+/// signed-in when ``CF_UITEST_BYPASS_AUTH=1`` is set in the XCUITest launch
+/// environment.
 ///
 /// Called from ``CFAppLaunchSupport.applyUITestOverrides()`` before AppFeature
 /// initializes any auth-touching code. Never compiled into release builds.
+///
+/// The Keychain item is written to the exact location that ``TokenStore.load()``
+/// reads from:
+///   service = "com.chapterflow.tokens"
+///   account = "auth.tokens"
+///   accessGroup = "group.com.chapterflow"
+///   format = JSONEncoder().encode(StoredTokens) — Date encoded as
+///            timeIntervalSinceReferenceDate (Swift Foundation default)
 enum CFUITestSessionSeeder {
 
     // MARK: - Public API
 
     static func seedIfNeeded() {
-        write(service: "com.chapterflow.tokens.idToken",     value: fakeIdToken)
-        write(service: "com.chapterflow.tokens.accessToken", value: "fake-access-token-uitest")
-        write(service: "com.chapterflow.tokens.refreshToken",value: "fake-refresh-token-uitest")
-        // expiresAt as a Unix timestamp string far in the future (year 2286)
-        write(service: "com.chapterflow.tokens.expiresAt",   value: "9999999999.0")
+        // Encode a StoredTokens-compatible JSON blob.
+        // StoredTokens uses JSONEncoder/Decoder with the default Date strategy
+        // (timeIntervalSinceReferenceDate). We produce the same encoding manually
+        // so we don't need to import Persistence here.
+        //
+        // expiresAt = 9_999_999_999 seconds since 1970
+        //           = 9_999_999_999 - 978_307_200 = 9_021_692_799 since reference date
+        let expiresAtRef: Double = 9_021_692_799.0
+        let json = """
+        {"idToken":"\(fakeIdToken)",\
+        "accessToken":"fake-access-token-uitest",\
+        "refreshToken":"fake-refresh-token-uitest",\
+        "expiresAt":\(expiresAtRef)}
+        """
+        guard let data = json.data(using: .utf8) else { return }
+
+        // Write to the same Keychain slot that TokenStore reads from.
+        // In the iOS Simulator, access-group restrictions are not enforced for
+        // unsigned builds, so writing with the App Group identifier works.
+        var attrs: [CFString: Any] = [
+            kSecClass:            kSecClassGenericPassword,
+            kSecAttrService:      "com.chapterflow.tokens",
+            kSecAttrAccount:      "auth.tokens",
+            kSecAttrAccessGroup:  "group.com.chapterflow",
+            kSecAttrAccessible:   kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+            kSecValueData:        data,
+        ]
+        // Remove any stale item, then add the fresh seed.
+        var deleteQuery = attrs
+        deleteQuery.removeValue(forKey: kSecValueData)
+        deleteQuery.removeValue(forKey: kSecAttrAccessible)
+        SecItemDelete(deleteQuery as CFDictionary)
+        SecItemAdd(attrs as CFDictionary, nil)
     }
 
     // MARK: - Fake JWT
@@ -36,23 +73,6 @@ enum CFUITestSessionSeeder {
         )
         return "\(header).\(payload).fakesig"
     }()
-
-    // MARK: - Keychain writes
-
-    private static func write(service: String, value: String) {
-        guard let data = value.data(using: .utf8) else { return }
-        let query: [CFString: Any] = [
-            kSecClass:            kSecClassGenericPassword,
-            kSecAttrService:      service,
-            kSecAttrAccount:      "chapterflow",
-            kSecAttrAccessible:   kSecAttrAccessibleAfterFirstUnlock,
-        ]
-        // Delete any stale item, then add fresh.
-        SecItemDelete(query as CFDictionary)
-        var addQuery = query
-        addQuery[kSecValueData] = data
-        SecItemAdd(addQuery as CFDictionary, nil)
-    }
 
     // MARK: - Base64url (no padding)
 
