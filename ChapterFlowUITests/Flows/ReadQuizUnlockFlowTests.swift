@@ -20,10 +20,10 @@ final class ReadQuizUnlockFlowTests: CFUITestCase {
         // Navigate to Library tab.
         robot.goToLibrary()
 
-        // Wait for any cell to appear first (content loaded from stub), then verify
-        // the specific book title. Two-phase wait is more robust than waiting on text alone.
-        _ = app.cells.firstMatch.waitForExistence(timeout: 20)
-        robot.assertBookVisible("Atomic Habits")
+        // 60 s gives generous runway: with the reachability bypass the stub responds
+        // instantly, so books typically appear within a few seconds. The large timeout
+        // absorbs any remaining CI cold-start latency.
+        robot.assertBookVisible("Atomic Habits", timeout: 60)
     }
 
     func testHomeScreenShowsContinueReadingOrDiscover() {

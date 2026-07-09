@@ -58,6 +58,13 @@ public final class ReachabilityService: @unchecked Sendable {
     /// is a point-in-time snapshot and may lag behind `isConnected` by one
     /// path-update cycle (~100 ms maximum).
     public nonisolated var isConnectedSync: Bool {
-        monitor.currentPath.status == .satisfied
+        // In UITest stub mode every request is intercepted by CFStubURLProtocol, so
+        // the real network path is irrelevant. Skip the monitor check to avoid a race
+        // where NWPathMonitor hasn't fired its first callback yet and reports .unsatisfied,
+        // which would make repositories throw AppError.offline before any request is made.
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["CF_STUB_SERVER"] == "1" { return true }
+        #endif
+        return monitor.currentPath.status == .satisfied
     }
 }
