@@ -60,20 +60,23 @@ public struct LiveReaderRepository: ReaderRepository, @unchecked Sendable {
     private func loadCachedChapter(bookId: String, n: Int) throws -> ChapterResponse? {
         guard let container else { return nil }
         let ctx = ModelContext(container)
-        let descriptor = FetchDescriptor<CachedChapter>(
-            predicate: #Predicate { $0.bookId == bookId && $0.number == n }
-        )
+        // Use the composite rowId (has @Attribute(.unique) → SQLite index) instead of
+        // querying on bookId+number, which are unindexed columns and force a table scan.
+        let uid = userId() ?? "anon"
+        let rowId = CachedChapter.makeRowId(userId: uid, bookId: bookId, number: n)
+        let descriptor = FetchDescriptor<CachedChapter>(predicate: #Predicate { $0.rowId == rowId })
         guard let row = try ctx.fetch(descriptor).first else { return nil }
         let chapter = try row.toDomain()
-        let progress = try loadCachedProgress(bookId: bookId, ctx: ctx)
+        let progress = try loadCachedProgress(bookId: bookId, userId: uid, ctx: ctx)
             ?? .placeholder(chapterNumber: n)
         return ChapterResponse(chapter: chapter, progress: progress)
     }
 
-    private func loadCachedProgress(bookId: String, ctx: ModelContext) throws -> BookProgress? {
-        let descriptor = FetchDescriptor<CachedProgress>(
-            predicate: #Predicate { $0.bookId == bookId }
-        )
+    // userId is threaded from the caller so both reads hit the same indexed rowId format.
+    private func loadCachedProgress(bookId: String, userId: String, ctx: ModelContext) throws -> BookProgress? {
+        // rowId format mirrors the write path: "\(userId):\(bookId)" with @Attribute(.unique).
+        let rowId = "\(userId):\(bookId)"
+        let descriptor = FetchDescriptor<CachedProgress>(predicate: #Predicate { $0.rowId == rowId })
         return try ctx.fetch(descriptor).first.flatMap { try? $0.toDomain() }
     }
 
@@ -242,9 +245,10 @@ public struct LiveReaderRepository: ReaderRepository, @unchecked Sendable {
     private func loadCachedBookState(bookId: String) throws -> BookStateResponse? {
         guard let container else { return nil }
         let ctx = ModelContext(container)
-        let descriptor = FetchDescriptor<CachedBookState>(
-            predicate: #Predicate { $0.bookId == bookId }
-        )
+        // Use indexed rowId (same format as the write path) to avoid a full table scan.
+        let uid = userId() ?? "anon"
+        let rowId = "\(uid):\(bookId)"
+        let descriptor = FetchDescriptor<CachedBookState>(predicate: #Predicate { $0.rowId == rowId })
         return try ctx.fetch(descriptor).first.flatMap { try? $0.toDomain() }
     }
 

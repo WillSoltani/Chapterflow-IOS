@@ -164,6 +164,8 @@ public final class ReaderModel {
     @ObservationIgnored private var bookStateTask: Task<Void, Never>?
     @ObservationIgnored private var recommendationTask: Task<Void, Never>?
     @ObservationIgnored private var navTask: Task<Void, Never>?
+    /// Debounce token for `saveScrollPosition` — cancelled and replaced on every scroll event.
+    @ObservationIgnored private var scrollSaveTask: Task<Void, Never>?
 
     /// readPercent threshold above which chapter-end state triggers.
     public static let chapterEndThreshold: Double = 0.95
@@ -174,6 +176,15 @@ public final class ReaderModel {
     /// Seconds of scroll inactivity after which heartbeats are suppressed.
     /// Avoids counting idle time (e.g. user walked away with reader open).
     static let inactivityThreshold: TimeInterval = 60
+
+    // MARK: - Perf tuning
+
+    /// How long to wait after a scroll event before flushing the position to UserDefaults.
+    ///
+    /// A non-zero delay prevents UserDefaults thrash during fast scrolling on ProMotion
+    /// displays (up to 120 events/s). The position is only written once the user pauses.
+    /// Override to `.zero` in unit tests so position saves are observable synchronously.
+    public var scrollSaveDelay: Duration = .milliseconds(500)
 
     // MARK: - Init
 
@@ -224,6 +235,7 @@ public final class ReaderModel {
     /// Call from `.onDisappear` on the hosting view.
     public func onDisappear() {
         stopHeartbeats()
+        scrollSaveTask?.cancel()
         loadTask?.cancel()
         bookStateTask?.cancel()
         recommendationTask?.cancel()
@@ -257,11 +269,19 @@ public final class ReaderModel {
         isAtChapterEnd = newPercent >= Self.chapterEndThreshold
         showQuizCTA = newPercent >= Self.quizCTAThreshold
 
-        repository.saveScrollPosition(
-            bookId: bookId,
-            chapterNumber: chapterNumber,
-            blockIndex: blockIndex
-        )
+        // Debounce: cancel any in-flight save and reschedule. This avoids UserDefaults
+        // writes on every scroll event at 120 Hz — the position is only persisted once
+        // the scroll settles. (scrollSaveDelay is .zero in unit tests.)
+        scrollSaveTask?.cancel()
+        let bId = bookId
+        let chNum = chapterNumber
+        let repo = repository
+        let delay = scrollSaveDelay
+        scrollSaveTask = Task {
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled else { return }
+            repo.saveScrollPosition(bookId: bId, chapterNumber: chNum, blockIndex: blockIndex)
+        }
 
         if isAtChapterEnd {
             patchCursorIfNeeded(chapterId: chapterId)

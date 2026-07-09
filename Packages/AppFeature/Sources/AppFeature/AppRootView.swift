@@ -48,9 +48,14 @@ public struct AppRootView: View {
             .task {
                 try? model.configure()
                 model.wirePushRouting()
-                IntentDonationManager.update()
                 model.analytics.track(.appOpen)
-                await model.analytics.flush()
+                // Defer non-critical work so the first interactive frame lands quickly.
+                // analytics.flush() is a network call — fire and forget, don't await.
+                // IntentDonationManager reads the App Intents catalog — background-safe.
+                Task(priority: .utility) {
+                    IntentDonationManager.update()
+                }
+                Task { await model.analytics.flush() }
             }
             .onOpenURL { url in model.handle(url: url) }
             .onChange(of: scenePhase) { _, phase in
