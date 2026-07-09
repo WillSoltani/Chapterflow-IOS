@@ -53,6 +53,12 @@ public final class AppModel {
     /// Cleared and replayed by `replayPendingIntent()` after sign-in.
     public var pendingAuthIntent: AuthGateIntent = .none
 
+    // MARK: - Focus filter
+
+    /// `true` when a Reading Focus filter is active. Written by `consumeFocusFilter()`
+    /// on every foreground activation. `AppRootView` uses this to overlay non-reading tabs.
+    public var isReadingFocusActive: Bool = false
+
     // MARK: - User profile
 
     /// Display name resolved from the Cognito id_token JWT.
@@ -593,4 +599,30 @@ public final class AppModel {
         #endif
     }
 
+    // MARK: - App Intent integration
+
+    /// Reads a pending audio control command written by P8.2 Live Activity buttons
+    /// (``PauseAudioIntent`` / ``ResumeAudioIntent``) via App Group UserDefaults.
+    ///
+    /// Call when the app becomes active (scenePhase → `.active`) so commands from
+    /// Dynamic Island taps are processed even after the app was backgrounded.
+    public func consumeAudioControlCommand() {
+        let defaults = UserDefaults(suiteName: AppGroup.identifier)
+        guard let command = defaults?.string(forKey: IntentKeys.audioControlCommand),
+              !command.isEmpty else { return }
+        defaults?.removeObject(forKey: IntentKeys.audioControlCommand)
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            switch command {
+            case "pause":
+                if audioPlayerModel.isPlaying { await audioPlayerModel.togglePlayPause() }
+            case "play":
+                if !audioPlayerModel.isPlaying, audioPlayerModel.phase != .idle {
+                    await audioPlayerModel.togglePlayPause()
+                }
+            default:
+                break
+            }
+        }
+    }
 }

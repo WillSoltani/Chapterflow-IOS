@@ -63,10 +63,25 @@ struct AskMessageView: View {
             if !message.citations.isEmpty {
                 citationsRow
             }
+
+            if message.isOnDeviceAnswer {
+                onDeviceBadge
+            }
         }
         .padding(.cfSpacing16)
         .background(answerBackground, in: RoundedRectangle(cornerRadius: .cfRadius16, style: .continuous))
         .accessibilityElement(children: .contain)
+    }
+
+    private var onDeviceBadge: some View {
+        HStack(spacing: .cfSpacing4) {
+            Image(systemName: "cpu")
+                .font(.system(size: 10, weight: .medium))
+            Text("Offline answer · Runs on your device")
+                .font(.cfCaption2)
+        }
+        .foregroundStyle(Color.cfSecondaryLabel)
+        .accessibilityLabel("This answer was generated on your device while offline")
     }
 
     private var citationsRow: some View {

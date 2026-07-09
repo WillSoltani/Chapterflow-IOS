@@ -112,6 +112,10 @@ public struct AskTheBookSheet: View {
                     .foregroundStyle(Color.cfSecondaryLabel)
                     .multilineTextAlignment(.center)
             }
+
+            if model.isOnDeviceWired {
+                OnDevicePrivacyNote()
+            }
         }
         .padding(.cfSpacing32)
         .frame(maxWidth: .infinity)
@@ -336,7 +340,7 @@ public struct AskTheBookSheet: View {
     return AskTheBookSheet(model: model)
 }
 
-#Preview("Ask — offline") {
+#Preview("Ask — offline (no on-device)") {
     let model = AskTheBookModel(
         bookId: "b-atomic-habits",
         repository: FakeAIRepository(error: FakeAIRepository.offlineError, delay: 0)
@@ -345,6 +349,51 @@ public struct AskTheBookSheet: View {
         model.inputText = "Test"
         await model.sendQuestion()
     }
+    return AskTheBookSheet(model: model)
+}
+
+#Preview("Ask — offline answered on-device (light)") {
+    let chapterText = """
+    Habits are the compound interest of self-improvement. The effects of your habits multiply \
+    as you repeat them. Small changes often appear to make no difference until you cross a \
+    critical threshold. The most powerful outcomes of any compounding process are delayed.
+    """
+    let model = AskTheBookModel(
+        bookId: "b-atomic-habits",
+        repository: FakeAIRepository(error: FakeAIRepository.offlineError, delay: 0),
+        chapterText: chapterText,
+        onDeviceService: FakeOnDeviceAIService(availability: .available, delay: 0)
+    )
+    Task { @MainActor in
+        model.inputText = "What is the core concept?"
+        await model.sendQuestion()
+    }
+    return AskTheBookSheet(model: model)
+}
+
+#Preview("Ask — offline answered on-device (dark)") {
+    let chapterText = "Habits are the compound interest of self-improvement."
+    let model = AskTheBookModel(
+        bookId: "b-atomic-habits",
+        repository: FakeAIRepository(error: FakeAIRepository.offlineError, delay: 0),
+        chapterText: chapterText,
+        onDeviceService: FakeOnDeviceAIService(availability: .available, delay: 0)
+    )
+    Task { @MainActor in
+        model.inputText = "What is the core concept?"
+        await model.sendQuestion()
+    }
+    return AskTheBookSheet(model: model)
+        .preferredColorScheme(.dark)
+}
+
+#Preview("Ask — on-device wired, idle with privacy note") {
+    let model = AskTheBookModel(
+        bookId: "b-atomic-habits",
+        repository: FakeAIRepository(delay: 0),
+        chapterText: "Habits are the compound interest of self-improvement.",
+        onDeviceService: FakeOnDeviceAIService(availability: .available)
+    )
     return AskTheBookSheet(model: model)
 }
 

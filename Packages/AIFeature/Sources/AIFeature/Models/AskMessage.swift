@@ -15,18 +15,23 @@ public struct AskMessage: Sendable, Identifiable {
     public let answer: String
     /// Chapter numbers cited as supporting evidence.
     public let citations: [Int]
+    /// True when the answer was generated on-device (offline, no network).
+    /// The UI labels these answers to distinguish them from server responses.
+    public let isOnDeviceAnswer: Bool
 
     public init(
         id: UUID = UUID(),
         question: String,
         selectionContext: String?,
         answer: String,
-        citations: [Int]
+        citations: [Int],
+        isOnDeviceAnswer: Bool = false
     ) {
         self.id = id
         self.question = question
         self.selectionContext = selectionContext
         self.answer = answer
         self.citations = citations
+        self.isOnDeviceAnswer = isOnDeviceAnswer
     }
 }

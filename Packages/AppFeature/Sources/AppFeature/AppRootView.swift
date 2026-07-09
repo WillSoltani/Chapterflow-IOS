@@ -561,32 +561,9 @@ public struct AppRootView: View {
     }
 }
 
-// MARK: - Reconnecting banner
-
-/// A floating glass pill shown when the app is attempting to reconnect.
-private struct ReconnectingBanner: View {
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
-
-    var body: some View {
-        HStack(spacing: .cfSpacing8) {
-            ProgressView().scaleEffect(0.8)
-            Text("Reconnecting…").font(.cfFootnote)
-        }
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, .cfSpacing16)
-        .padding(.vertical, .cfSpacing8)
-        .background(bannerBackground, in: Capsule())
-        .padding(.top, .cfSpacing8)
-        .transition(.move(edge: .top).combined(with: .opacity))
-        .accessibilityLabel("Reconnecting to the server")
-    }
-
-    private var bannerBackground: some ShapeStyle {
-        reduceTransparency
-            ? AnyShapeStyle(Color.cfSecondaryBackground)
-            : AnyShapeStyle(.regularMaterial)
-    }
-}
+// `ReconnectingBanner` is defined in AppRootView+Banners.swift (P8.6). A stray
+// duplicate that leaked into this file via the cross-session checkout collision was
+// removed to fix `invalid redeclaration of 'ReconnectingBanner'`.
 
 // MARK: - Previews
 
