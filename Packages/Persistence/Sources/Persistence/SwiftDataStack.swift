@@ -111,6 +111,27 @@ public enum PersistenceSchemaV7: VersionedSchema {
     }
 }
 
+/// V8: adds the "Ask the book" Q&A thread cache (P6.7).
+///
+/// New model: CachedAskThread — one row per (userId, bookId) pair; stores
+/// all Q&A exchanges as a JSON blob so past answers are browsable offline.
+public enum PersistenceSchemaV8: VersionedSchema {
+    public static var versionIdentifier: Schema.Version { Schema.Version(8, 0, 0) }
+
+    public static var models: [any PersistentModel.Type] {
+        [
+            CachedKeyValue.self, LocalAnnotation.self, PendingAnnotationUpload.self,
+            PendingReviewGrade.self, PendingCommitmentUpload.self, PendingScenarioUpload.self,
+            CachedBook.self, CachedChapter.self, CachedManifest.self,
+            CachedProgress.self, CachedBookState.self, CachedQuizState.self,
+            CachedNotebookEntry.self, CachedHighlight.self, CachedReviewCard.self,
+            PendingMutation.self,
+            CachedBookDownload.self, CachedDownloadedSegment.self,
+            CachedAskThread.self,
+        ]
+    }
+}
+
 /// Migration plan. Lightweight migrations require no field renames or transformations.
 ///
 /// ## Adding a lightweight stage (additive model changes only)
@@ -134,13 +155,13 @@ public enum PersistenceSchemaV7: VersionedSchema {
 public enum PersistenceMigrationPlan: SchemaMigrationPlan {
     /// The schema version the app is currently shipping. Update this whenever a
     /// new `VersionedSchema` is added so diagnostics and tests can reference it.
-    public static let currentVersion: Schema.Version = PersistenceSchemaV7.versionIdentifier
+    public static let currentVersion: Schema.Version = PersistenceSchemaV8.versionIdentifier
 
     public static var schemas: [any VersionedSchema.Type] {
         [PersistenceSchemaV1.self, PersistenceSchemaV2.self,
          PersistenceSchemaV3.self, PersistenceSchemaV4.self,
          PersistenceSchemaV5.self, PersistenceSchemaV6.self,
-         PersistenceSchemaV7.self]
+         PersistenceSchemaV7.self, PersistenceSchemaV8.self]
     }
 
     public static var stages: [MigrationStage] {
@@ -151,6 +172,7 @@ public enum PersistenceMigrationPlan: SchemaMigrationPlan {
             .lightweight(fromVersion: PersistenceSchemaV4.self, toVersion: PersistenceSchemaV5.self),
             .lightweight(fromVersion: PersistenceSchemaV5.self, toVersion: PersistenceSchemaV6.self),
             .lightweight(fromVersion: PersistenceSchemaV6.self, toVersion: PersistenceSchemaV7.self),
+            .lightweight(fromVersion: PersistenceSchemaV7.self, toVersion: PersistenceSchemaV8.self),
         ]
     }
 }
@@ -194,7 +216,7 @@ public struct PersistenceController: Sendable {
     ///   - migrationPlan: Optional migration plan; pass `PersistenceMigrationPlan.self`
     ///     when the model set matches the versioned schema.
     public init(
-        models: [any PersistentModel.Type] = PersistenceSchemaV7.models,
+        models: [any PersistentModel.Type] = PersistenceSchemaV8.models,
         storage: StorageMode = .appGroup,
         migrationPlan: (any SchemaMigrationPlan.Type)? = nil
     ) throws {
@@ -241,10 +263,10 @@ public struct PersistenceController: Sendable {
         self.container = container
     }
 
-    /// Convenience: the default core schema (V7) with its migration plan.
+    /// Convenience: the default core schema (V8) with its migration plan.
     public static func makeDefault(storage: StorageMode = .appGroup) throws -> PersistenceController {
         try PersistenceController(
-            models: PersistenceSchemaV7.models,
+            models: PersistenceSchemaV8.models,
             storage: storage,
             migrationPlan: PersistenceMigrationPlan.self
         )
