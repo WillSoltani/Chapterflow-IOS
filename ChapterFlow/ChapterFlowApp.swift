@@ -19,6 +19,14 @@ struct ChapterFlowApp: App {
     /// App configuration read once at launch from Info.plist (backed by Secrets.xcconfig).
     private let appConfig = AppConfig.fromInfoPlist()
 
+    init() {
+        #if DEBUG
+        // Apply XCUITest stub-server and auth-bypass overrides before any
+        // SwiftUI body or AppFeature initialisation touches the network.
+        CFAppLaunchSupport.applyUITestOverrides()
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup {
             AppRootView(config: appConfig)
