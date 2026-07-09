@@ -165,7 +165,31 @@ struct CrashBreadcrumbAPIObserverTests {
     }
 }
 
-// MARK: - Spy
+// MARK: - MetricKitCrashSubscriber analytics wiring
+
+#if os(iOS)
+@Suite("MetricKitCrashSubscriber")
+struct MetricKitCrashSubscriberTests {
+
+    @Test("initialises with analytics and reporter without crashing")
+    func initWithAnalytics() {
+        let reporter = NoopCrashReporter()
+        let analytics = SpyAnalyticsClient()
+        let subscriber = MetricKitCrashSubscriber(reporter: reporter, analytics: analytics)
+        // Just verify the object is created — `register()` requires a real device.
+        #expect(subscriber != nil)
+    }
+
+    @Test("initialises with nil analytics (backward compatibility)")
+    func initWithoutAnalytics() {
+        let reporter = NoopCrashReporter()
+        let subscriber = MetricKitCrashSubscriber(reporter: reporter)
+        #expect(subscriber != nil)
+    }
+}
+#endif
+
+// MARK: - Spies
 
 /// A test double that captures breadcrumbs added to a crash reporter.
 private final class SpyCrashReporter: CrashReporter, @unchecked Sendable {
@@ -179,4 +203,12 @@ private final class SpyCrashReporter: CrashReporter, @unchecked Sendable {
     func addBreadcrumb(_ breadcrumb: CrashBreadcrumb) { onBreadcrumb(breadcrumb) }
     func captureError(_ error: any Error, context: [String: String]) {}
     func captureMessage(_ message: String, level: CrashBreadcrumb.Level) {}
+}
+
+/// A test double that records tracked analytics events.
+private final class SpyAnalyticsClient: AnalyticsClient, @unchecked Sendable {
+    private(set) var tracked: [AnalyticsEvent] = []
+    func track(_ event: AnalyticsEvent) { tracked.append(event) }
+    func beacon(_ name: String, properties: [String: String]) {}
+    func flush() async {}
 }

@@ -25,6 +25,7 @@ public struct LibraryView: View {
     private let bookDetailRepository: any BookDetailRepository
     private let aiRepository: (any AIRepository)?
     private let isGuest: Bool
+    private let analytics: any AnalyticsClient
     private let onOpenReader: ((String, Int, VariantFamily) -> Void)?
     private let onShowPaywall: (() -> Void)?
     private let onRequireAuth: (() -> Void)?
@@ -35,6 +36,7 @@ public struct LibraryView: View {
         bookDetailRepository: any BookDetailRepository,
         aiRepository: (any AIRepository)? = nil,
         isGuest: Bool = false,
+        analytics: any AnalyticsClient = NoopAnalyticsClient(),
         onOpenReader: ((String, Int, VariantFamily) -> Void)? = nil,
         onShowPaywall: (() -> Void)? = nil,
         onRequireAuth: (() -> Void)? = nil,
@@ -45,6 +47,7 @@ public struct LibraryView: View {
         self.bookDetailRepository = bookDetailRepository
         self.aiRepository = aiRepository
         self.isGuest = isGuest
+        self.analytics = analytics
         self.onOpenReader = onOpenReader
         self.onShowPaywall = onShowPaywall
         self.onRequireAuth = onRequireAuth
@@ -69,6 +72,7 @@ public struct LibraryView: View {
                             repository: bookDetailRepository,
                             aiRepository: aiRepository,
                             isGuest: isGuest,
+                            analytics: analytics,
                             onOpenReader: onOpenReader,
                             onShowPaywall: onShowPaywall,
                             onSignInRequired: onSignInRequired

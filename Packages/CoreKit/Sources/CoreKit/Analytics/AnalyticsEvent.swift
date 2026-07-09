@@ -31,6 +31,10 @@ public enum AnalyticsEvent: Sendable, Equatable {
     case notificationReceived(type: String)
     /// The user tapped a notification or triggered an inline action on one.
     case notificationOpened(type: String, action: String)
+    /// A spaced-repetition review session completed.
+    case reviewCompleted(reviewed: Int)
+    /// The user shared a card (streak, badge, chapter, or book) via the share sheet.
+    case share(cardType: String)
     case custom(name: String, properties: [String: String])
 
     /// The stable wire name for this event.
@@ -57,6 +61,8 @@ public enum AnalyticsEvent: Sendable, Equatable {
         case .notificationSent:              return "notification_sent"
         case .notificationReceived:          return "notification_received"
         case .notificationOpened:            return "notification_opened"
+        case .reviewCompleted:               return "review_completed"
+        case .share:                         return "share"
         case .custom(let name, _): return name
         }
     }
@@ -90,6 +96,10 @@ public enum AnalyticsEvent: Sendable, Equatable {
             return ["type": type]
         case .notificationOpened(let type, let action):
             return ["type": type, "action": action]
+        case .reviewCompleted(let reviewed):
+            return ["reviewed": String(reviewed)]
+        case .share(let cardType):
+            return ["cardType": cardType]
         case .custom(_, let properties):
             return properties
         }

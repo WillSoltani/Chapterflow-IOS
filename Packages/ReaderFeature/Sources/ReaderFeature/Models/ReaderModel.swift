@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import Models
 import Persistence
+import CoreKit
 
 // MARK: - Load phase
 
@@ -142,6 +143,7 @@ public final class ReaderModel {
     @ObservationIgnored private let annotationRepository: (any AnnotationRepository)?
     @ObservationIgnored private let preferences: AppPreferences
     @ObservationIgnored private let store: KeyValueStore
+    @ObservationIgnored private let analytics: any AnalyticsClient
 
     /// The chapter number of the last successful cursor PATCH sent to the server.
     /// Used to enforce forward-only semantics.
@@ -182,7 +184,8 @@ public final class ReaderModel {
         repository: any ReaderRepository,
         preferences: AppPreferences,
         store: KeyValueStore = KeyValueStore(),
-        annotationRepository: (any AnnotationRepository)? = nil
+        annotationRepository: (any AnnotationRepository)? = nil,
+        analytics: any AnalyticsClient = NoopAnalyticsClient()
     ) {
         self.bookId = bookId
         self.chapterNumber = chapterNumber
@@ -191,6 +194,7 @@ public final class ReaderModel {
         self.preferences = preferences
         self.store = store
         self.annotationRepository = annotationRepository
+        self.analytics = analytics
     }
 
     // MARK: - Lifecycle
@@ -360,6 +364,7 @@ public final class ReaderModel {
             }
 
             phase = .loaded(controlsModel)
+            analytics.track(.chapterOpened(bookId: bookId, chapter: chapterNumber))
             lastActivityDate = Date()
 
             // Start session and heartbeats.

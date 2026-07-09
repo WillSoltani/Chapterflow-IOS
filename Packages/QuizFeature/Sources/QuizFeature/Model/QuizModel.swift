@@ -61,6 +61,7 @@ public final class QuizModel {
     // MARK: - Private
 
     private let repository: any QuizRepository
+    private let analytics: any AnalyticsClient
     private nonisolated(unsafe) var connectivityMonitor: NWPathMonitor?
     private var connectivityTask: Task<Void, Never>?
 
@@ -70,12 +71,14 @@ public final class QuizModel {
         bookId: String,
         chapterNumber: Int,
         tone: ToneKey? = nil,
-        repository: any QuizRepository
+        repository: any QuizRepository,
+        analytics: any AnalyticsClient = NoopAnalyticsClient()
     ) {
         self.bookId = bookId
         self.chapterNumber = chapterNumber
         self.tone = tone
         self.repository = repository
+        self.analytics = analytics
     }
 
     // MARK: - Lifecycle
@@ -160,7 +163,16 @@ public final class QuizModel {
             result = graded
             phase = .result
 
-            // Fire-and-forget analytics event.
+            let score = graded.scorePercent
+            analytics.track(.quizSubmitted(bookId: bookId, chapter: chapterNumber, score: score))
+            if graded.passed {
+                analytics.track(.custom(name: "quiz_passed", properties: [
+                    "bookId": bookId,
+                    "chapter": String(chapterNumber),
+                    "score": String(score),
+                ]))
+            }
+            // Fire-and-forget server lifecycle event (separate from client analytics).
             Task { [weak self] in
                 guard let self else { return }
                 let event = QuizEventPayload(

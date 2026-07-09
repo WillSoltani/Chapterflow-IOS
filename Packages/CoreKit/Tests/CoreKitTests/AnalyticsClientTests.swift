@@ -126,3 +126,51 @@ struct AnalyticsClientTests {
         await client.flush()
     }
 }
+
+// MARK: - AnalyticsEvent tests
+
+@Suite("AnalyticsEvent")
+struct AnalyticsEventTests {
+
+    @Test("reviewCompleted has correct name and reviewed property")
+    func reviewCompletedEvent() {
+        let event = AnalyticsEvent.reviewCompleted(reviewed: 7)
+        #expect(event.name == "review_completed")
+        #expect(event.properties["reviewed"] == "7")
+        #expect(event.properties.count == 1)
+    }
+
+    @Test("share has correct name and cardType property")
+    func shareEvent() {
+        let event = AnalyticsEvent.share(cardType: "streak")
+        #expect(event.name == "share")
+        #expect(event.properties["cardType"] == "streak")
+        #expect(event.properties.count == 1)
+    }
+
+    @Test("reviewCompleted encodes through the client")
+    func reviewCompletedEncodes() async {
+        let spy = SpyTransport()
+        let client = DefaultAnalyticsClient(transport: spy, batchSize: 1,
+                                            now: { Date(timeIntervalSince1970: 1_700_000_000) })
+        await client.record(.reviewCompleted(reviewed: 3))
+        #expect(await spy.count == 1)
+        let data = await spy.sent.last?.payload
+        let json = try? JSONSerialization.jsonObject(with: data!) as? [String: Any]
+        let events = json?["events"] as? [[String: Any]]
+        #expect(events?.first?["name"] as? String == "review_completed")
+    }
+
+    @Test("share encodes through the client")
+    func shareEncodes() async {
+        let spy = SpyTransport()
+        let client = DefaultAnalyticsClient(transport: spy, batchSize: 1,
+                                            now: { Date(timeIntervalSince1970: 1_700_000_000) })
+        await client.record(.share(cardType: "badge"))
+        #expect(await spy.count == 1)
+        let data = await spy.sent.last?.payload
+        let json = try? JSONSerialization.jsonObject(with: data!) as? [String: Any]
+        let events = json?["events"] as? [[String: Any]]
+        #expect(events?.first?["name"] as? String == "share")
+    }
+}

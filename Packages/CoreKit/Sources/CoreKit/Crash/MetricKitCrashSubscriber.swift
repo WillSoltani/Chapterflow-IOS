@@ -13,10 +13,12 @@ import MetricKit
 public final class MetricKitCrashSubscriber: NSObject, MXMetricManagerSubscriber, @unchecked Sendable {
 
     private let reporter: any CrashReporter
+    private let analytics: (any AnalyticsClient)?
     private let log = AppLog(category: .app)
 
-    public init(reporter: any CrashReporter) {
+    public init(reporter: any CrashReporter, analytics: (any AnalyticsClient)? = nil) {
         self.reporter = reporter
+        self.analytics = analytics
         super.init()
     }
 
@@ -51,6 +53,7 @@ public final class MetricKitCrashSubscriber: NSObject, MXMetricManagerSubscriber
 
             if crashes > 0 {
                 log.error("MetricKit: \(crashes) crash diagnostic(s)")
+                analytics?.track(.custom(name: "metrickit_crash", properties: ["count": String(crashes)]))
                 reporter.addBreadcrumb(CrashBreadcrumb(
                     category: "metrickit",
                     message: "MetricKit crash diagnostic: \(crashes) crash(es)",
@@ -64,6 +67,7 @@ public final class MetricKitCrashSubscriber: NSObject, MXMetricManagerSubscriber
 
             if hangs > 0 {
                 log.warning("MetricKit: \(hangs) hang diagnostic(s)")
+                analytics?.track(.custom(name: "metrickit_hang", properties: ["count": String(hangs)]))
                 reporter.addBreadcrumb(CrashBreadcrumb(
                     category: "metrickit",
                     message: "MetricKit hang diagnostic: \(hangs) hang(s)",
@@ -77,6 +81,7 @@ public final class MetricKitCrashSubscriber: NSObject, MXMetricManagerSubscriber
 
             if cpuExceptions > 0 {
                 log.warning("MetricKit: \(cpuExceptions) CPU exception(s)")
+                analytics?.track(.custom(name: "metrickit_cpu_exception", properties: ["count": String(cpuExceptions)]))
                 reporter.captureMessage(
                     "MetricKit CPU exception: \(cpuExceptions) event(s)",
                     level: .warning
@@ -84,6 +89,7 @@ public final class MetricKitCrashSubscriber: NSObject, MXMetricManagerSubscriber
             }
 
             if diskWrites > 0 {
+                analytics?.track(.custom(name: "metrickit_disk_write_exception", properties: ["count": String(diskWrites)]))
                 reporter.captureMessage(
                     "MetricKit disk-write exception: \(diskWrites) event(s)",
                     level: .warning

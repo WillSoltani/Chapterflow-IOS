@@ -19,6 +19,7 @@ public struct HomeView: View {
     private let bookDetailRepository: any BookDetailRepository
     private let aiRepository: (any AIRepository)?
     private let isGuest: Bool
+    private let analytics: any AnalyticsClient
     private let onOpenReader: ((String, Int, VariantFamily) -> Void)?
     private let onShowPaywall: (() -> Void)?
     /// Called when a guest taps a gated action (save, etc.). Triggers the auth gate.
@@ -33,6 +34,7 @@ public struct HomeView: View {
         bookDetailRepository: any BookDetailRepository,
         aiRepository: (any AIRepository)? = nil,
         isGuest: Bool = false,
+        analytics: any AnalyticsClient = NoopAnalyticsClient(),
         onOpenReader: ((String, Int, VariantFamily) -> Void)? = nil,
         onShowPaywall: (() -> Void)? = nil,
         onRequireAuth: (() -> Void)? = nil,
@@ -44,6 +46,7 @@ public struct HomeView: View {
         self.bookDetailRepository = bookDetailRepository
         self.aiRepository = aiRepository
         self.isGuest = isGuest
+        self.analytics = analytics
         self.onOpenReader = onOpenReader
         self.onShowPaywall = onShowPaywall
         self.onRequireAuth = onRequireAuth
@@ -68,6 +71,7 @@ public struct HomeView: View {
                             repository: bookDetailRepository,
                             aiRepository: aiRepository,
                             isGuest: isGuest,
+                            analytics: analytics,
                             onOpenReader: onOpenReader,
                             onShowPaywall: onShowPaywall,
                             onSignInRequired: onSignInRequired

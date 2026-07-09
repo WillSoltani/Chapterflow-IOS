@@ -2,6 +2,7 @@ import SwiftUI
 import DesignSystem
 import Persistence
 import Networking
+import CoreKit
 
 // MARK: - Onboarding flow view
 
@@ -12,10 +13,15 @@ import Networking
 public struct OnboardingFlowView: View {
     @State private var model: OnboardingModel
 
-    public init(preferences: AppPreferences, repository: any OnboardingRepository) {
+    public init(
+        preferences: AppPreferences,
+        repository: any OnboardingRepository,
+        analytics: any AnalyticsClient = NoopAnalyticsClient()
+    ) {
         _model = State(initialValue: OnboardingModel(
             preferences: preferences,
-            repository: repository
+            repository: repository,
+            analytics: analytics
         ))
     }
 

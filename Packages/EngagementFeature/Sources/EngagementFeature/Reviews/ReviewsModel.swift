@@ -20,6 +20,7 @@ public final class ReviewsModel {
     // MARK: Dependency
 
     private let repository: ReviewsRepository
+    private let analytics: any AnalyticsClient
 
     // MARK: Load state
 
@@ -77,8 +78,9 @@ public final class ReviewsModel {
 
     // MARK: Init
 
-    public init(repository: ReviewsRepository) {
+    public init(repository: ReviewsRepository, analytics: any AnalyticsClient = NoopAnalyticsClient()) {
         self.repository = repository
+        self.analytics = analytics
     }
 
     // MARK: - Load
@@ -164,6 +166,7 @@ public final class ReviewsModel {
     private func advanceSession() {
         sessionIndex += 1
         if sessionIndex >= sessionCards.count {
+            analytics.track(.reviewCompleted(reviewed: sessionCards.count))
             sessionState = .done(reviewed: sessionCards.count)
             Task { await fetch(forceRefresh: true) }
         } else {

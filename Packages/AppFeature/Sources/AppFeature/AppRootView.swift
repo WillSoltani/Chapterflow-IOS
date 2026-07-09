@@ -41,11 +41,16 @@ public struct AppRootView: View {
 
     public var body: some View {
         gatedContent
+            #if DEBUG
+            .shakeToDebug(model: model)
+            #endif
             .environment(model.reachability)
             .task {
                 try? model.configure()
                 model.wirePushRouting()
                 IntentDonationManager.update()
+                model.analytics.track(.appOpen)
+                await model.analytics.flush()
             }
             .onOpenURL { url in model.handle(url: url) }
             .onChange(of: scenePhase) { _, phase in
@@ -57,6 +62,8 @@ public struct AppRootView: View {
                     model.triggerForegroundSync()
                 case .background:
                     model.scheduleBackgroundTasks()
+                    model.analytics.beacon("app_background")
+                    Task { await model.analytics.flush() }
                 default:
                     break
                 }
@@ -199,7 +206,8 @@ public struct AppRootView: View {
                 ) {
                     OnboardingFlowView(
                         preferences: model.preferences,
-                        repository: model.onboardingRepository
+                        repository: model.onboardingRepository,
+                        analytics: model.analytics
                     )
                 }
                 #endif
@@ -309,6 +317,7 @@ public struct AppRootView: View {
                 quizRepository: model.quizRepository,
                 annotationRepository: model.annotationRepository,
                 preferences: model.preferences,
+                analytics: model.analytics,
                 onDismiss: { readingFlow = nil }
             )
         }
@@ -385,6 +394,7 @@ public struct AppRootView: View {
                 repository: model.libraryRepository,
                 bookDetailRepository: model.bookDetailRepository,
                 aiRepository: model.aiRepository,
+                analytics: model.analytics,
                 onOpenReader: { bookId, chapterNumber, variantFamily in
                     readingFlow = ReadingFlow(
                         bookId: bookId,
@@ -405,6 +415,7 @@ public struct AppRootView: View {
                 repository: model.libraryRepository,
                 bookDetailRepository: model.bookDetailRepository,
                 aiRepository: model.aiRepository,
+                analytics: model.analytics,
                 onOpenReader: { bookId, chapterNumber, variantFamily in
                     readingFlow = ReadingFlow(
                         bookId: bookId,
@@ -424,7 +435,7 @@ public struct AppRootView: View {
                 pendingReferralCode: $model.pendingReferralCode
             )
         case .reviews:
-            ReviewsView(model: ReviewsModel(repository: model.reviewsRepository))
+            ReviewsView(model: ReviewsModel(repository: model.reviewsRepository, analytics: model.analytics))
         case .settings:
             SettingsView(
                 isPro: model.entitlementService.isPro,
@@ -550,6 +561,10 @@ public struct AppRootView: View {
     }
 }
 
+// `ReconnectingBanner` is defined in AppRootView+Banners.swift (P8.6). A stray
+// duplicate that leaked into this file via the cross-session checkout collision was
+// removed to fix `invalid redeclaration of 'ReconnectingBanner'`.
+
 // MARK: - Previews
 
 #Preview("Tab Shell — signed in") {
@@ -559,10 +574,3 @@ public struct AppRootView: View {
 #Preview("Reconnecting banner") {
     ReconnectingBanner()
 }
-
-#if DEBUG
-#Preview("Guest Home — browsing") {
-    let view = AppRootView()
-    return view
-}
-#endif

@@ -52,6 +52,7 @@ struct ReadingFlowView: View {
         quizRepository: any QuizRepository,
         annotationRepository: (any AnnotationRepository)?,
         preferences: AppPreferences,
+        analytics: any AnalyticsClient = NoopAnalyticsClient(),
         onDismiss: @escaping () -> Void
     ) {
         _readerModel = State(initialValue: ReaderModel(
@@ -60,7 +61,8 @@ struct ReadingFlowView: View {
             variantFamily: flow.variantFamily,
             repository: readerRepository,
             preferences: preferences,
-            annotationRepository: annotationRepository
+            annotationRepository: annotationRepository,
+            analytics: analytics
         ))
         self.quizRepository = quizRepository
         self.onDismiss = onDismiss
