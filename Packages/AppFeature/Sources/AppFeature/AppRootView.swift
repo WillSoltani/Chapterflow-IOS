@@ -52,7 +52,7 @@ public struct AppRootView: View {
                 // Defer non-critical work so the first interactive frame lands quickly.
                 // analytics.flush() is a network call — fire and forget, don't await.
                 // IntentDonationManager reads the App Intents catalog — background-safe.
-                Task.detached(priority: .utility) {
+                Task(priority: .utility) {
                     IntentDonationManager.update()
                 }
                 Task { await model.analytics.flush() }
