@@ -76,6 +76,36 @@ struct ReadingFocusOverlayView: View {
     }
 }
 
+// MARK: - Extension inbox banner
+
+/// A floating confirmation pill shown when the Share or Action extension saved items.
+struct ExtensionInboxBanner: View {
+    let count: Int
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    var body: some View {
+        HStack(spacing: .cfSpacing8) {
+            Image(systemName: "square.and.arrow.down")
+                .font(.cfCaption.weight(.semibold))
+                .foregroundStyle(Color.cfAccent)
+            Text(count == 1 ? "1 item saved to Notebook" : "\(count) items saved to Notebook")
+                .font(.cfFootnote)
+        }
+        .foregroundStyle(.primary)
+        .padding(.horizontal, .cfSpacing16)
+        .padding(.vertical, .cfSpacing8)
+        .background(bannerBackground, in: Capsule())
+        .padding(.top, .cfSpacing8)
+        .accessibilityLabel(count == 1 ? "1 item saved to Notebook" : "\(count) items saved to Notebook")
+    }
+
+    private var bannerBackground: some ShapeStyle {
+        reduceTransparency
+            ? AnyShapeStyle(Color.cfSecondaryBackground)
+            : AnyShapeStyle(.regularMaterial)
+    }
+}
+
 // MARK: - iPad keyboard shortcuts
 
 /// Zero-size, fully transparent button group that registers ⌘1–5 and ⌘F

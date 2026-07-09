@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- App Group: required to write to the shared UserDefaults outbox -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.chapterflow</string>
+	</array>
+	<!-- Keychain access group: required to read the shared auth token -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)group.com.chapterflow</string>
+	</array>
+</dict>
+</plist>

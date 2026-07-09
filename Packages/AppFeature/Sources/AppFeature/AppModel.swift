@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import SwiftUI
 import CoreKit
 import Models
@@ -188,6 +189,17 @@ public final class AppModel {
 
     /// Whether the notification inbox sheet is currently presented.
     public var showNotificationInbox: Bool = false
+
+    // MARK: - Extension inbox
+
+    /// Number of items drained from the extension outbox on the last foreground cycle.
+    /// `AppRootView` observes this to show a confirmation banner.
+    public var extensionInboxCount: Int = 0
+
+    /// `true` while the "Saved to Notebook" confirmation banner is visible.
+    /// Set by ``drainExtensionOutbox()``; cleared by `AppRootView` after the
+    /// banner auto-dismisses.
+    public var showExtensionInboxBanner: Bool = false
 
     // MARK: - Reachability
 
