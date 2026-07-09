@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "1600"
+   LastUpgradeVersion = "2660"
    version = "1.7">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -17,6 +17,20 @@
                BlueprintIdentifier = "15E7517C2FF4A90000FA8025"
                BuildableName = "ChapterFlow.app"
                BlueprintName = "ChapterFlow"
+               ReferencedContainer = "container:ChapterFlow.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "A066BCAEA69222B49E1A8F3C"
+               BuildableName = "ChapterFlowUITests.xctest"
+               BlueprintName = "ChapterFlowUITests"
                ReferencedContainer = "container:ChapterFlow.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>

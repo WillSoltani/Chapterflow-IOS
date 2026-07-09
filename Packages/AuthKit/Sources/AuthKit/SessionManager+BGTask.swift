@@ -15,11 +15,19 @@ extension SessionManager {
     /// honour the registration.
     public nonisolated static let bgRefreshIdentifier = "com.chapterflow.ios.tokenRefresh"
 
+    // BGTaskScheduler throws if the same identifier is registered twice.
+    // AppModel.init is called on every SwiftUI body evaluation (the @State
+    // initialValue is discarded after the first), so guard with a static flag.
+    nonisolated(unsafe) private static var bgRefreshRegistered = false
+
     /// Registers the background app-refresh handler with `BGTaskScheduler`.
     ///
-    /// Call once at app launch. Safe to call multiple times — subsequent
-    /// registrations for the same identifier are no-ops in the OS.
+    /// Call once at app launch. BGTaskScheduler throws an NSException if the
+    /// same identifier is registered twice, so this method is a no-op after
+    /// the first call.
     public nonisolated func registerBackgroundRefresh() {
+        guard !Self.bgRefreshRegistered else { return }
+        Self.bgRefreshRegistered = true
         BGTaskScheduler.shared.register(
             forTaskWithIdentifier: Self.bgRefreshIdentifier,
             using: nil

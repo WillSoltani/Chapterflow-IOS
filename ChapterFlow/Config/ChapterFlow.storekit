@@ -1,0 +1,66 @@
+{
+  "identifier" : "CF_UITEST_STOREKIT",
+  "nonConsumableProducts" : [],
+  "nonRenewingSubscriptionProducts" : [],
+  "products" : [],
+  "settings" : {
+    "_askToBuyEnabled" : false,
+    "_askToBuyInterruptionEnabledForAllTransactions" : false,
+    "_billingIssueDialogEnabled" : false,
+    "_enableIntroductoryOfferEligibilityForAllTransactions" : false,
+    "_enableTransactionExpirationTime" : true,
+    "_expirationTimeRate" : 0.01666600000000000077,
+    "_shouldUseServerFeedTransactions" : false
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "group.chapterflow.pro",
+      "localizations" : [],
+      "name" : "ChapterFlow Pro",
+      "subscriptions" : [
+        {
+          "adHocOfferCodes" : [],
+          "displayPrice" : "9.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "CF_PRO_MONTHLY",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Full access to ChapterFlow — all books, all depths, all tones.",
+              "displayName" : "ChapterFlow Pro Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.chapterflow.ios.pro_monthly",
+          "referenceName" : "Pro Monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOfferCodes" : [],
+          "displayPrice" : "79.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "CF_PRO_ANNUAL",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Full annual access to ChapterFlow — save 33% vs monthly.",
+              "displayName" : "ChapterFlow Pro Annual",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.chapterflow.ios.pro_annual",
+          "referenceName" : "Pro Annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 2,
+    "minor" : 0
+  }
+}
