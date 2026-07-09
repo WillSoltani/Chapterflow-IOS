@@ -1,5 +1,6 @@
 import SwiftUI
 import Models
+import CoreKit
 import DesignSystem
 #if canImport(UIKit)
 import UIKit
@@ -28,13 +29,15 @@ public struct QuizView: View {
         chapterNumber: Int,
         tone: ToneKey? = nil,
         repository: any QuizRepository,
+        analytics: any AnalyticsClient = NoopAnalyticsClient(),
         onContinue: @escaping () -> Void
     ) {
         _model = State(initialValue: QuizModel(
             bookId: bookId,
             chapterNumber: chapterNumber,
             tone: tone,
-            repository: repository
+            repository: repository,
+            analytics: analytics
         ))
         self.onContinue = onContinue
     }

@@ -2,6 +2,7 @@ import SwiftUI
 import Persistence
 import Networking
 import UserNotifications
+import CoreKit
 
 // MARK: - OnboardingModel
 
@@ -51,17 +52,20 @@ public final class OnboardingModel {
     @ObservationIgnored private let repository: any OnboardingRepository
     @ObservationIgnored private let preferences: AppPreferences
     @ObservationIgnored private let goalStore: DailyGoalStore
+    @ObservationIgnored private let analytics: any AnalyticsClient
 
     // MARK: Init
 
     public init(
         preferences: AppPreferences,
         repository: any OnboardingRepository,
-        goalStore: DailyGoalStore? = nil
+        goalStore: DailyGoalStore? = nil,
+        analytics: any AnalyticsClient = NoopAnalyticsClient()
     ) {
         self.preferences = preferences
         self.repository = repository
         self.goalStore = goalStore ?? DailyGoalStore.shared
+        self.analytics = analytics
 
         // Seed from persisted stores so the user sees their last-saved values.
         self.readingTone = preferences.readingTone
@@ -137,6 +141,7 @@ public final class OnboardingModel {
     // MARK: Private helpers
 
     private func moveToStep(_ step: OnboardingStep) {
+        analytics.track(.onboardingStep(index: OnboardingStep.allCases.firstIndex(of: step) ?? 0))
         withAnimation(.easeInOut(duration: 0.35)) {
             currentStep = step
         }
@@ -163,6 +168,7 @@ public final class OnboardingModel {
             // Non-fatal: local stores are already written above.
         }
 
+        analytics.track(.onboardingStep(index: OnboardingStep.allCases.firstIndex(of: step) ?? 0))
         withAnimation(.easeInOut(duration: 0.35)) {
             currentStep = step
         }

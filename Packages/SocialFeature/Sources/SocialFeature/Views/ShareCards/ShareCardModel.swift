@@ -38,6 +38,7 @@ public final class ShareCardModel {
 
     private let input: ShareCardInput
     private let repository: any SocialRepository
+    private let analytics: any AnalyticsClient
     private let scale: CGFloat
 
     // MARK: Init
@@ -45,14 +46,17 @@ public final class ShareCardModel {
     /// - Parameters:
     ///   - input: The card content to render.
     ///   - repository: The SocialRepository used to post the share event.
+    ///   - analytics: Analytics client for funnel tracking.
     ///   - scale: Render scale. Default 3.0 for crisp 1125×1125 px output.
     public init(
         input: ShareCardInput,
         repository: any SocialRepository,
+        analytics: any AnalyticsClient = NoopAnalyticsClient(),
         scale: CGFloat = 3.0
     ) {
         self.input = input
         self.repository = repository
+        self.analytics = analytics
         self.scale = scale
     }
 
@@ -72,6 +76,7 @@ public final class ShareCardModel {
 
         shareItems = [image]
         phase = .ready
+        analytics.track(.share(cardType: input.cardType.rawValue))
 
         // Fire-and-forget: a dropped analytics event is not fatal.
         Task {
@@ -140,9 +145,10 @@ public struct ShareCardButton<Label: View>: View {
     public init(
         input: ShareCardInput,
         repository: any SocialRepository,
+        analytics: any AnalyticsClient = NoopAnalyticsClient(),
         @ViewBuilder label: () -> Label
     ) {
-        self._model = State(initialValue: ShareCardModel(input: input, repository: repository))
+        self._model = State(initialValue: ShareCardModel(input: input, repository: repository, analytics: analytics))
         self.label = label()
     }
 

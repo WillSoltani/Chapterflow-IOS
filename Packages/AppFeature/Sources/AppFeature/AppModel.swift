@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(WidgetKit)
+import WidgetKit
+#endif
 import CoreKit
 import Models
 import AuthKit
@@ -188,11 +191,6 @@ public final class AppModel {
     /// Shared reachability service — consumed by repositories and views.
     public let reachability: ReachabilityService
 
-    // MARK: - Focus filter (P8.6)
-
-    /// `true` while Reading Focus is active; suppresses social features and the notification badge.
-    public var isReadingFocusActive: Bool = false
-
     // MARK: - Spotlight
 
     /// Indexes books and chapters into Core Spotlight. Owned here so the app can
@@ -217,6 +215,18 @@ public final class AppModel {
     let bgSyncCoordinator: BackgroundSyncCoordinator
     #endif
 
+    // MARK: - Analytics & crash reporting
+
+    /// The production analytics sink — shared across all feature models.
+    public let analytics: any AnalyticsClient
+
+    /// The crash reporter (Sentry-backed in prod, no-op in debug when DSN is empty).
+    public let crashReporter: any CrashReporter
+
+    #if os(iOS)
+    private let metricKitSubscriber: MetricKitCrashSubscriber
+    #endif
+
     // MARK: - Internal
 
     /// Retained so `makePaywallModel(context:)` can build `PaywallModel` without re-creating the client.
@@ -229,6 +239,7 @@ public final class AppModel {
 
     // MARK: - Init
 
+    // swiftlint:disable:next function_body_length
     public init(config: AppConfig = .fromInfoPlist()) {
         let svc = AuthService(config: config)
         self.authService = svc
@@ -238,6 +249,33 @@ public final class AppModel {
         let container = try? PersistenceController.makeDefault().container
         let client = APIClient(config: config, tokenProvider: sm)
         self.apiClient = client
+
+        let reporter = CrashReporterFactory.make(
+            dsn: config.sentryDSN,
+            environment: {
+                #if DEBUG
+                return "development"
+                #else
+                return "production"
+                #endif
+            }()
+        )
+        self.crashReporter = reporter
+
+        let analyticsBaseURL = URL(string: config.apiBaseURL) ?? URL(string: "https://api.chapterflow.ca")!
+        let analyticsTransport = URLSessionAnalyticsTransport(
+            baseURL: analyticsBaseURL,
+            tokenProvider: { [sm] in try? await sm.validToken() }
+        )
+        let analyticsClient = DefaultAnalyticsClient.makeDurable(transport: analyticsTransport)
+        self.analytics = analyticsClient
+
+        #if os(iOS)
+        let mkSubscriber = MetricKitCrashSubscriber(reporter: reporter, analytics: analyticsClient)
+        mkSubscriber.register()
+        self.metricKitSubscriber = mkSubscriber
+        #endif
+
         let reach = ReachabilityService()
         self.reachability = reach
         let box = UserIdBox()
@@ -437,7 +475,7 @@ public final class AppModel {
     /// Creates a fresh `PaywallModel` for the given context.
     /// Called by `AppRootView` each time the paywall sheet is presented.
     public func makePaywallModel(context: PaywallContext) -> PaywallModel {
-        PaywallModel(storeKitService: storeKitService, apiClient: apiClient, context: context)
+        PaywallModel(storeKitService: storeKitService, apiClient: apiClient, analytics: analytics, context: context)
     }
 
     /// Creates a fresh `SubscriptionManagementModel`.
@@ -555,46 +593,4 @@ public final class AppModel {
         #endif
     }
 
-    // MARK: - App Intent integration
-
-    /// Reads a pending audio control command written by P8.2 Live Activity buttons
-    /// (``PauseAudioIntent`` / ``ResumeAudioIntent``) via App Group UserDefaults.
-    ///
-    /// Call when the app becomes active (scenePhase → `.active`) so commands from
-    /// Dynamic Island taps are processed even after the app was backgrounded.
-    public func consumeAudioControlCommand() {
-        let defaults = UserDefaults(suiteName: AppGroup.identifier)
-        guard let command = defaults?.string(forKey: IntentKeys.audioControlCommand),
-              !command.isEmpty else { return }
-        defaults?.removeObject(forKey: IntentKeys.audioControlCommand)
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            switch command {
-            case "pause":
-                if audioPlayerModel.isPlaying { await audioPlayerModel.togglePlayPause() }
-            case "play":
-                if !audioPlayerModel.isPlaying, audioPlayerModel.phase != .idle {
-                    await audioPlayerModel.togglePlayPause()
-                }
-            default:
-                break
-            }
-        }
-    }
-
-    /// Reads accumulated offline reading minutes written by ``LogDailyReadingIntent``,
-    /// adds them to today's goal progress in the App Group snapshot, and publishes.
-    ///
-    /// Call when the app becomes active so the goal-ring widget reflects minutes
-    /// logged via Siri since the last foreground session.
-    public func consumePendingReadingMinutes() {
-        let defaults = UserDefaults(suiteName: AppGroup.identifier)
-        let pending = defaults?.integer(forKey: IntentKeys.pendingReadingMinutes) ?? 0
-        guard pending > 0 else { return }
-        defaults?.removeObject(forKey: IntentKeys.pendingReadingMinutes)
-        var updated = SharedStateReader().load()
-        updated.goalProgressMinutes += pending
-        updated.lastUpdated = Date()
-        Task { await SharedStateWriter.shared.publish(updated) }
-    }
 }

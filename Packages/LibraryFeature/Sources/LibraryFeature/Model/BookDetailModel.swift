@@ -99,6 +99,7 @@ public final class BookDetailModel {
 
     public let bookId: String
     private let repository: any BookDetailRepository
+    private let analytics: any AnalyticsClient
     private let evaluator = EntitlementEvaluator()
     @MainActor private var recommendationTask: Task<Void, Never>?
     private var downloadTask: Task<Void, Never>?
@@ -111,12 +112,14 @@ public final class BookDetailModel {
         bookId: String,
         repository: any BookDetailRepository,
         downloadManager: DownloadManager? = nil,
-        userId: String = ""
+        userId: String = "",
+        analytics: any AnalyticsClient = NoopAnalyticsClient()
     ) {
         self.bookId = bookId
         self.repository = repository
         self.downloadManager = downloadManager
         self.userId = userId
+        self.analytics = analytics
     }
 
     // MARK: - Derived: overview
@@ -282,6 +285,7 @@ public final class BookDetailModel {
                 let stateResponse = try await repository.startBook(id: bookId)
                 bookState = stateResponse.state
                 applicationStates = stateResponse.applicationStates ?? [:]
+                analytics.track(.bookStarted(bookId: bookId))
                 // Navigate to the first unlocked chapter (typically ch. 1).
                 onOpenReader?(bookId, currentChapterNumber, manifest?.variantFamily ?? .emh)
             } catch let appErr as AppError {

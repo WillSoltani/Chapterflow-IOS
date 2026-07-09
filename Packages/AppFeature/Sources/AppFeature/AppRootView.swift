@@ -41,11 +41,16 @@ public struct AppRootView: View {
 
     public var body: some View {
         gatedContent
+            #if DEBUG
+            .shakeToDebug(model: model)
+            #endif
             .environment(model.reachability)
             .task {
                 try? model.configure()
                 model.wirePushRouting()
                 IntentDonationManager.update()
+                model.analytics.track(.appOpen)
+                await model.analytics.flush()
             }
             .onOpenURL { url in model.handle(url: url) }
             .onChange(of: scenePhase) { _, phase in
@@ -53,14 +58,18 @@ public struct AppRootView: View {
                 case .active:
                     model.consumeAudioControlCommand()
                     model.consumePendingReadingMinutes()
+                    model.consumeControlIntentAction()
                     model.triggerForegroundSync()
-                    model.consumeQuickAction()
-                    model.consumeFocusFilter()
                 case .background:
                     model.scheduleBackgroundTasks()
+                    model.analytics.beacon("app_background")
+                    Task { await model.analytics.flush() }
                 default:
                     break
                 }
+            }
+            .onChange(of: model.audioPlayerModel.isPlaying) { _, isPlaying in
+                model.publishAudioPlayingState(isPlaying)
             }
             .onChange(of: intentStore.pendingDeepLink) { _, link in
                 guard let link else { return }
@@ -197,7 +206,8 @@ public struct AppRootView: View {
                 ) {
                     OnboardingFlowView(
                         preferences: model.preferences,
-                        repository: model.onboardingRepository
+                        repository: model.onboardingRepository,
+                        analytics: model.analytics
                     )
                 }
                 #endif
@@ -278,7 +288,7 @@ public struct AppRootView: View {
             Tab("Home", systemImage: "house", value: AppTab.home) {
                 tabContent(for: .home)
             }
-            .badge(model.isReadingFocusActive ? 0 : model.notificationInboxModel.unreadCount)
+            .badge(model.notificationInboxModel.unreadCount)
             Tab("Library", systemImage: "books.vertical", value: AppTab.library) {
                 tabContent(for: .library)
             }
@@ -307,6 +317,7 @@ public struct AppRootView: View {
                 quizRepository: model.quizRepository,
                 annotationRepository: model.annotationRepository,
                 preferences: model.preferences,
+                analytics: model.analytics,
                 onDismiss: { readingFlow = nil }
             )
         }
@@ -370,11 +381,6 @@ public struct AppRootView: View {
                 }
             )
         }
-        // iPad keyboard shortcuts — invisible buttons registered in the responder
-        // chain so ⌘1-5 navigate tabs on hardware keyboards (iPad + Mac Catalyst).
-        .background {
-            IPadKeyboardShortcutsView(selectedTab: $model.selectedTab)
-        }
     }
 
     // MARK: - Tab content
@@ -388,6 +394,7 @@ public struct AppRootView: View {
                 repository: model.libraryRepository,
                 bookDetailRepository: model.bookDetailRepository,
                 aiRepository: model.aiRepository,
+                analytics: model.analytics,
                 onOpenReader: { bookId, chapterNumber, variantFamily in
                     readingFlow = ReadingFlow(
                         bookId: bookId,
@@ -408,6 +415,7 @@ public struct AppRootView: View {
                 repository: model.libraryRepository,
                 bookDetailRepository: model.bookDetailRepository,
                 aiRepository: model.aiRepository,
+                analytics: model.analytics,
                 onOpenReader: { bookId, chapterNumber, variantFamily in
                     readingFlow = ReadingFlow(
                         bookId: bookId,
@@ -426,15 +434,8 @@ public struct AppRootView: View {
                 pendingPairAcceptCode: $model.pendingPairAcceptCode,
                 pendingReferralCode: $model.pendingReferralCode
             )
-            .overlay {
-                if model.isReadingFocusActive {
-                    ReadingFocusOverlayView {
-                        model.selectedTab = .library
-                    }
-                }
-            }
         case .reviews:
-            ReviewsView(model: ReviewsModel(repository: model.reviewsRepository))
+            ReviewsView(model: ReviewsModel(repository: model.reviewsRepository, analytics: model.analytics))
         case .settings:
             SettingsView(
                 isPro: model.entitlementService.isPro,
@@ -560,6 +561,33 @@ public struct AppRootView: View {
     }
 }
 
+// MARK: - Reconnecting banner
+
+/// A floating glass pill shown when the app is attempting to reconnect.
+private struct ReconnectingBanner: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    var body: some View {
+        HStack(spacing: .cfSpacing8) {
+            ProgressView().scaleEffect(0.8)
+            Text("Reconnecting…").font(.cfFootnote)
+        }
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, .cfSpacing16)
+        .padding(.vertical, .cfSpacing8)
+        .background(bannerBackground, in: Capsule())
+        .padding(.top, .cfSpacing8)
+        .transition(.move(edge: .top).combined(with: .opacity))
+        .accessibilityLabel("Reconnecting to the server")
+    }
+
+    private var bannerBackground: some ShapeStyle {
+        reduceTransparency
+            ? AnyShapeStyle(Color.cfSecondaryBackground)
+            : AnyShapeStyle(.regularMaterial)
+    }
+}
+
 // MARK: - Previews
 
 #Preview("Tab Shell — signed in") {
@@ -569,10 +597,3 @@ public struct AppRootView: View {
 #Preview("Reconnecting banner") {
     ReconnectingBanner()
 }
-
-#if DEBUG
-#Preview("Guest Home — browsing") {
-    let view = AppRootView()
-    return view
-}
-#endif

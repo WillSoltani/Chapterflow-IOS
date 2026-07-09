@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		04FEC734CE8CA7DA3F93E69F /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 01BF66985E4B1ED2CC4984CF /* Foundation.framework */; };
+		15564C052FFEE81E0038D358 /* ControlWidgetIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15564C042FFEE81E0038D358 /* ControlWidgetIntents.swift */; };
+		15564C072FFEE8410038D358 /* ControlWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15564C062FFEE8410038D358 /* ControlWidgets.swift */; };
 		2407C1347F9A7DADCB0E9201 /* ChapterflowWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 8EA7DDEFAE3D456CE7B77F71 /* ChapterflowWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		34386934FB1068D522F52A08 /* AppFeature in Frameworks */ = {isa = PBXBuildFile; productRef = A8255B985D25AB005A4FF769 /* AppFeature */; };
 		346509D5276568F14B96672B /* StreakAtRiskLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 165F7C41C20A17C133A0F496 /* StreakAtRiskLiveActivity.swift */; };
@@ -79,6 +81,8 @@
 		01BF66985E4B1ED2CC4984CF /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		050A996D551F59F957401E6D /* NotificationContent.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NotificationContent.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		0C9D4C311CC0366A2B5B4008 /* ContinueReadingWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContinueReadingWidget.swift; sourceTree = "<group>"; };
+		15564C042FFEE81E0038D358 /* ControlWidgetIntents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlWidgetIntents.swift; sourceTree = "<group>"; };
+		15564C062FFEE8410038D358 /* ControlWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlWidgets.swift; sourceTree = "<group>"; };
 		15E7517D2FF4A90000FA8025 /* ChapterFlow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ChapterFlow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		165F7C41C20A17C133A0F496 /* StreakAtRiskLiveActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StreakAtRiskLiveActivity.swift; sourceTree = "<group>"; };
 		18EA46ABF3A38A13F2985782 /* Secrets.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
@@ -90,7 +94,7 @@
 		3F0CE0636209E9DAAC909D4A /* ChapterflowWidgetsBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChapterflowWidgetsBundle.swift; sourceTree = "<group>"; };
 		4A18BD4A98A6DFECCF5AC3CC /* BadgeCelebrationView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BadgeCelebrationView.swift; sourceTree = "<group>"; };
 		4DCF192CB7B14D42D2B19DBE /* NotificationViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NotificationViewController.swift; sourceTree = "<group>"; };
-		62337D48E2C6D11D9DD20D70 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = SwiftUI.framework; sourceTree = SDKROOT; };
+		62337D48E2C6D11D9DD20D70 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = SwiftUI.framework; sourceTree = SDKROOT; };
 		7661D6455EE1B64C3349CC10 /* WidgetDataReader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetDataReader.swift; sourceTree = "<group>"; };
 		81FE884A215CF6E3ADA31C64 /* ProgressRingWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProgressRingWidget.swift; sourceTree = "<group>"; };
 		8EA7DDEFAE3D456CE7B77F71 /* ChapterflowWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ChapterflowWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -98,7 +102,7 @@
 		A4F52C53E7B459419F05C983 /* NotificationServiceExtension.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NotificationServiceExtension.swift; sourceTree = "<group>"; };
 		B61F7E717429A35DF5B29CCE /* NextReviewWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NextReviewWidget.swift; sourceTree = "<group>"; };
 		E04CAB02AF39E4B3C81F199F /* NotificationService.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NotificationService.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		E9800A4BEA2EA1A39922A3A3 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = WidgetKit.framework; sourceTree = SDKROOT; };
+		E9800A4BEA2EA1A39922A3A3 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = WidgetKit.framework; sourceTree = SDKROOT; };
 		EA027BFD0C054E6CFEC8BC3E /* AttachmentBuilder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AttachmentBuilder.swift; sourceTree = "<group>"; };
 		FE8F84E4FCD501EFB0CB0817 /* ChapterflowWidgets.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = ChapterflowWidgets.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -106,8 +110,6 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		15E7517F2FF4A90000FA8025 /* ChapterFlow */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = ChapterFlow;
 			sourceTree = "<group>";
 		};
@@ -205,7 +207,6 @@
 				EA027BFD0C054E6CFEC8BC3E /* AttachmentBuilder.swift */,
 				A4F52C53E7B459419F05C983 /* NotificationServiceExtension.swift */,
 			);
-			name = NotificationService;
 			path = NotificationService;
 			sourceTree = "<group>";
 		};
@@ -222,8 +223,9 @@
 				FE8F84E4FCD501EFB0CB0817 /* ChapterflowWidgets.entitlements */,
 				20B11F247829B40CD01C223C /* ReadingSessionLiveActivity.swift */,
 				165F7C41C20A17C133A0F496 /* StreakAtRiskLiveActivity.swift */,
+				15564C042FFEE81E0038D358 /* ControlWidgetIntents.swift */,
+				15564C062FFEE8410038D358 /* ControlWidgets.swift */,
 			);
-			name = ChapterflowWidgets;
 			path = ChapterflowWidgets;
 			sourceTree = "<group>";
 		};
@@ -233,7 +235,6 @@
 				4A18BD4A98A6DFECCF5AC3CC /* BadgeCelebrationView.swift */,
 				4DCF192CB7B14D42D2B19DBE /* NotificationViewController.swift */,
 			);
-			name = NotificationContent;
 			path = NotificationContent;
 			sourceTree = "<group>";
 		};
@@ -357,8 +358,8 @@
 			mainGroup = 15E751742FF4A90000FA8025;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				AEBC4AF79EA1DFC947B53B2B /* XCLocalSwiftPackageReference "AppFeature" */,
-				8FA03FD27C5E121FC2AB78B3 /* XCLocalSwiftPackageReference "NotificationsFeature" */,
+				AEBC4AF79EA1DFC947B53B2B /* XCLocalSwiftPackageReference "Packages/AppFeature" */,
+				8FA03FD27C5E121FC2AB78B3 /* XCLocalSwiftPackageReference "Packages/NotificationsFeature" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 15E7517E2FF4A90000FA8025 /* Products */;
@@ -423,8 +424,10 @@
 				EFD26A9B1B8FADA3538EC58A /* ProgressRingWidget.swift in Sources */,
 				3A1095CD2CCE676D593CE128 /* NextReviewWidget.swift in Sources */,
 				F4449A890EF3F06FE12F3915 /* ReadingSessionAttributes.swift in Sources */,
+				15564C052FFEE81E0038D358 /* ControlWidgetIntents.swift in Sources */,
 				C151E694C33493B64A6581CA /* StreakAtRiskAttributes.swift in Sources */,
 				F793389BD6334DD6806BF1CD /* AudioPlaybackIntents.swift in Sources */,
+				15564C072FFEE8410038D358 /* ControlWidgets.swift in Sources */,
 				6AC86007FC11CFC4EF060487 /* ReadingSessionLiveActivity.swift in Sources */,
 				346509D5276568F14B96672B /* StreakAtRiskLiveActivity.swift in Sources */,
 			);
@@ -600,6 +603,7 @@
 				CODE_SIGN_ENTITLEMENTS = Config/ChapterFlow.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GCC_TREAT_WARNINGS_AS_ERRORS = NO;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -638,6 +642,7 @@
 				CODE_SIGN_ENTITLEMENTS = Config/ChapterFlow.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GCC_TREAT_WARNINGS_AS_ERRORS = NO;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -843,11 +848,11 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		8FA03FD27C5E121FC2AB78B3 /* XCLocalSwiftPackageReference "NotificationsFeature" */ = {
+		8FA03FD27C5E121FC2AB78B3 /* XCLocalSwiftPackageReference "Packages/NotificationsFeature" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/NotificationsFeature;
 		};
-		AEBC4AF79EA1DFC947B53B2B /* XCLocalSwiftPackageReference "AppFeature" */ = {
+		AEBC4AF79EA1DFC947B53B2B /* XCLocalSwiftPackageReference "Packages/AppFeature" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = Packages/AppFeature;
 		};
@@ -856,17 +861,17 @@
 /* Begin XCSwiftPackageProductDependency section */
 		6EA764DF69611DF5DFD58ED8 /* RichNotificationCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 8FA03FD27C5E121FC2AB78B3 /* XCLocalSwiftPackageReference "NotificationsFeature" */;
+			package = 8FA03FD27C5E121FC2AB78B3 /* XCLocalSwiftPackageReference "Packages/NotificationsFeature" */;
 			productName = RichNotificationCore;
 		};
 		8EE91B935F78B8ABFC1C1B6A /* RichNotificationCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 8FA03FD27C5E121FC2AB78B3 /* XCLocalSwiftPackageReference "NotificationsFeature" */;
+			package = 8FA03FD27C5E121FC2AB78B3 /* XCLocalSwiftPackageReference "Packages/NotificationsFeature" */;
 			productName = RichNotificationCore;
 		};
 		A8255B985D25AB005A4FF769 /* AppFeature */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = AEBC4AF79EA1DFC947B53B2B /* XCLocalSwiftPackageReference "AppFeature" */;
+			package = AEBC4AF79EA1DFC947B53B2B /* XCLocalSwiftPackageReference "Packages/AppFeature" */;
 			productName = AppFeature;
 		};
 /* End XCSwiftPackageProductDependency section */

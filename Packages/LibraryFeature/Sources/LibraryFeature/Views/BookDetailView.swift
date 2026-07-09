@@ -37,11 +37,12 @@ public struct BookDetailView: View {
         store: KeyValueStore = KeyValueStore(),
         preferencesRepository: (any BookPreferencesRepository)? = nil,
         isGuest: Bool = false,
+        analytics: any AnalyticsClient = NoopAnalyticsClient(),
         onOpenReader: ((String, Int, VariantFamily) -> Void)? = nil,
         onShowPaywall: (() -> Void)? = nil,
         onSignInRequired: ((String, VariantFamily) -> Void)? = nil
     ) {
-        let m = BookDetailModel(bookId: bookId, repository: repository)
+        let m = BookDetailModel(bookId: bookId, repository: repository, analytics: analytics)
         m.isGuest = isGuest
         m.onOpenReader = onOpenReader
         m.onShowPaywall = onShowPaywall
