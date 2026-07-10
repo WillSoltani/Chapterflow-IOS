@@ -43,6 +43,8 @@ public struct AppRootView: View {
 
     public var body: some View {
         gatedContent
+            // Force-update / maintenance gate (B4) — one hook covering every screen.
+            .appConfigGate(model.appConfigService)
             #if DEBUG
             .shakeToDebug(model: model)
             #endif
@@ -50,6 +52,7 @@ public struct AppRootView: View {
             .task {
                 try? model.configure()
                 model.wirePushRouting()
+                Task { await model.appConfigService.refresh() } // fails open on error
                 model.analytics.track(.appOpen)
                 // Defer non-critical work so the first interactive frame lands quickly.
                 // analytics.flush() is a network call — fire and forget, don't await.
@@ -68,6 +71,7 @@ public struct AppRootView: View {
                     model.consumeControlIntentAction()
                     model.triggerForegroundSync()
                     model.drainExtensionOutbox()
+                    Task { await model.appConfigService.refresh() } // re-check gate on foreground
                 case .background:
                     model.scheduleBackgroundTasks()
                     model.analytics.beacon("app_background")
@@ -585,9 +589,7 @@ public struct AppRootView: View {
     }
 }
 
-// `ReconnectingBanner` is defined in AppRootView+Banners.swift (P8.6). A stray
-// duplicate that leaked into this file via the cross-session checkout collision was
-// removed to fix `invalid redeclaration of 'ReconnectingBanner'`.
+// `ReconnectingBanner` is defined in AppRootView+Banners.swift (P8.6).
 
 // MARK: - Previews
 
