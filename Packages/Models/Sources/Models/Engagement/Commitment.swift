@@ -140,6 +140,72 @@ public struct Commitment: Codable, Sendable, Identifiable, Hashable {
         self.reflection = reflection
         self.createdAt = createdAt
     }
+
+    // MARK: - Wire-shape tolerance (contract reconciliation)
+    // Deployed commitment items are shaped {commitmentId, bookId,
+    // chapterNumber, ifThenPlan, commitDate, followUpDate, status,
+    // followThroughReflection, outcome, createdAt, …}: the id/plan keys
+    // differ, the plan is ONE combined string, and the chapter reference is a
+    // number (the chapterId is derived as "<bookId>-chNN", matching the
+    // manifest's id scheme). `followUpDate` stays strict — a commitment whose
+    // reminder date can't parse is dropped by the lossy list, never
+    // mis-scheduled.
+
+    private enum WireKeys: String, CodingKey {
+        case id, commitmentId
+        case bookId, chapterId, chapterNumber
+        case ifStatement, thenStatement, ifThenPlan
+        case followUpDate, status, outcome
+        case reflection, followThroughReflection
+        case createdAt, commitDate
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: WireKeys.self)
+        id = try c.decodeRequiredFirst(String.self, keys: [.id, .commitmentId])
+        bookId = c.decodeFirst(String.self, keys: [.bookId]) ?? ""
+        if let explicit = c.decodeFirst(String.self, keys: [.chapterId]) {
+            chapterId = explicit
+        } else if let number = c.decodeFirst(Int.self, keys: [.chapterNumber]), !bookId.isEmpty {
+            chapterId = String(format: "%@-ch%02d", bookId, number)
+        } else {
+            chapterId = ""
+        }
+        if let ifPart = c.decodeFirst(String.self, keys: [.ifStatement]) {
+            ifStatement = ifPart
+            thenStatement = c.decodeFirst(String.self, keys: [.thenStatement]) ?? ""
+        } else {
+            // Deployed shape carries one combined "If …, then …" plan string.
+            ifStatement = c.decodeFirst(String.self, keys: [.ifThenPlan]) ?? ""
+            thenStatement = ""
+        }
+        // A user-authored commitment must never be silently dropped over an
+        // unparseable date (red-team finding): degrade to .distantFuture —
+        // listed but its reminder never fires — instead of losing the item.
+        followUpDate = c.decodeFirst(Date.self, keys: [.followUpDate]) ?? .distantFuture
+        status = c.decodeFirst(CommitmentStatus.self, keys: [.status]) ?? .unknown("")
+        outcome = c.decodeFirst(CommitmentOutcome.self, keys: [.outcome])
+        reflection = c.decodeFirst(String.self, keys: [.reflection, .followThroughReflection])
+        if let created = c.decodeFirst(Date.self, keys: [.createdAt, .commitDate]) {
+            createdAt = created
+        } else {
+            createdAt = .distantPast
+        }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: WireKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(bookId, forKey: .bookId)
+        try c.encode(chapterId, forKey: .chapterId)
+        try c.encode(ifStatement, forKey: .ifStatement)
+        try c.encode(thenStatement, forKey: .thenStatement)
+        try c.encode(followUpDate, forKey: .followUpDate)
+        try c.encode(status, forKey: .status)
+        try c.encodeIfPresent(outcome, forKey: .outcome)
+        try c.encodeIfPresent(reflection, forKey: .reflection)
+        try c.encode(createdAt, forKey: .createdAt)
+    }
 }
 
 // MARK: - Response wrappers

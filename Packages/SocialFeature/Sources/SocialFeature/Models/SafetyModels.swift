@@ -1,4 +1,5 @@
 import Foundation
+import Models
 
 // MARK: - ReportReason
 
@@ -80,6 +81,11 @@ public struct ReportResponse: Decodable, Sendable {
 ///
 /// ⚠️ Backend TODO: `GET /book/me/blocks` is not yet implemented.
 /// Shape: `{ "userId": "<string>", "blockedAt": "<iso8601|null>" }`
+///
+/// SAFETY-CRITICAL identity tolerance (red-team finding): the deployed API's
+/// house style keys identities `id` — if this endpoint ships that way, a
+/// strict `userId`-only decode would drop every entry and a blocked user
+/// would render as UNBLOCKED. Accept every plausible identity spelling.
 public struct BlockedUser: Codable, Sendable, Identifiable, Equatable {
     public var id: String { userId }
     public let userId: String
@@ -90,6 +96,24 @@ public struct BlockedUser: Codable, Sendable, Identifiable, Equatable {
         self.userId = userId
         self.blockedAt = blockedAt
     }
+
+    private enum WireKeys: String, CodingKey {
+        case userId, id, blockedUserId, partnerId
+        case blockedAt, createdAt
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: WireKeys.self)
+        userId = try c.decodeRequiredFirst(
+            String.self, keys: [.userId, .id, .blockedUserId, .partnerId])
+        blockedAt = c.decodeFirst(String.self, keys: [.blockedAt, .createdAt])
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: WireKeys.self)
+        try c.encode(userId, forKey: .userId)
+        try c.encodeIfPresent(blockedAt, forKey: .blockedAt)
+    }
 }
 
 /// Response body for `POST /book/me/blocks` and `DELETE /book/me/blocks/{userId}`.
@@ -98,6 +122,17 @@ public struct BlockActionResponse: Decodable, Sendable {
 }
 
 /// Response body for `GET /book/me/blocks`.
+///
+/// Decodes `blockedUsers` lossily — one malformed entry must never make the
+/// block list appear empty (safety-critical: an empty-looking list would let
+/// blocked users seem unblocked). Contract-reconciliation trap §5.4.
 public struct BlockedUsersResponse: Decodable, Sendable {
     public let blockedUsers: [BlockedUser]
+
+    private enum CodingKeys: String, CodingKey { case blockedUsers }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.blockedUsers = try container.decodeLossy(BlockedUser.self, forKey: .blockedUsers)
+    }
 }

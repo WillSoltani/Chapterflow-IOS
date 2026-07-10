@@ -41,9 +41,17 @@ public final class DiscoverModel {
     // MARK: - Curated shelves
 
     /// Books sorted by `updatedAt` descending — the "New & Updated" shelf.
+    /// `updatedAt` is optional on the wire (the deployed catalog omits it);
+    /// ties (including the all-nil case) break on `bookId` so the shelf order
+    /// is STABLE across fetches (Swift's sort is not stability-guaranteed).
     public var newBooks: [BookCatalogItem] {
         books
-            .sorted { $0.updatedAt > $1.updatedAt }
+            .sorted {
+                let lhs = $0.updatedAt ?? ""
+                let rhs = $1.updatedAt ?? ""
+                if lhs != rhs { return lhs > rhs }
+                return $0.bookId < $1.bookId
+            }
             .prefix(12)
             .map { $0 }
     }

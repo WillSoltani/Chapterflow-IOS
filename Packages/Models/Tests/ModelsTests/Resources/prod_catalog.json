@@ -1,0 +1,2838 @@
+{
+    "books": [
+        {
+            "id": "seven-powers",
+            "title": "7 Powers: The Foundations of Business Strategy",
+            "author": "Hamilton Helmer",
+            "icon": "\u265f\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/seven-powers.webp",
+            "category": "Business",
+            "categories": [
+                "Business",
+                "Strategy"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 108,
+            "chapterCount": 9,
+            "pages": 240,
+            "synopsis": "A modern reading of Hamilton Helmer's nine chapters on the seven powers, path dependence, and how timing shapes durable strategic advantage.",
+            "tags": [
+                "competition",
+                "moats",
+                "strategy"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 5
+        },
+        {
+            "id": "pmbok-guide",
+            "title": "A Guide to the Project Management Body of Knowledge (PMBOK Guide)",
+            "author": "Project Management Institute",
+            "icon": "\ud83d\udcd8",
+            "category": "Business",
+            "categories": [
+                "Business",
+                "Management",
+                "Leadership"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 24,
+            "chapterCount": 1,
+            "synopsis": "A Guide to the Project Management Body of Knowledge (PMBOK Guide) taught through chapter summaries, real-world scenarios, and quizzes you can apply right away.",
+            "tags": [
+                "project management",
+                "PMBOK",
+                "governance",
+                "stakeholders",
+                "risk",
+                "delivery",
+                "planning"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 1
+        },
+        {
+            "id": "antifragile",
+            "title": "Antifragile: Things That Gain from Disorder",
+            "author": "Nassim Nicholas Taleb",
+            "icon": "\ud83e\uddec",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/antifragile.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 300,
+            "chapterCount": 25,
+            "pages": 544,
+            "synopsis": "A modern reading of hidden fragility, optionality, nonlinear harm, time-tested systems, medical restraint, ethics, and designs that gain from bounded disorder.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 6
+        },
+        {
+            "id": "atomic-habits",
+            "title": "Atomic Habits",
+            "author": "James Clear",
+            "icon": "\u269b\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/atomic-habits.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 259,
+            "chapterCount": 20,
+            "pages": 320,
+            "synopsis": "A modern reading of James Clear's twenty chapters on tiny gains, identity change, environment design, repetition, and the conditions that make habits stick long enough to compound.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 7
+        },
+        {
+            "id": "attached",
+            "title": "Attached",
+            "author": "Amir Levine, Rachel Heller",
+            "icon": "\ud83d\udcd8",
+            "category": "Psychology",
+            "categories": [
+                "Psychology",
+                "Relationships",
+                "Personal Development"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 24,
+            "chapterCount": 1,
+            "synopsis": "Attached taught through chapter summaries, real-world scenarios, and quizzes you can apply right away.",
+            "tags": [
+                "attachment",
+                "relationships",
+                "dating",
+                "communication",
+                "security",
+                "conflict"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 1
+        },
+        {
+            "id": "blink",
+            "title": "Blink",
+            "author": "Malcolm Gladwell",
+            "icon": "\ud83e\udde9",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/blink.webp",
+            "category": "Psychology",
+            "categories": [
+                "Psychology",
+                "Decision Making",
+                "Behavioral Economics"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 72,
+            "chapterCount": 6,
+            "pages": 230,
+            "synopsis": "A modern reading of intuition, snap judgment, thin slicing, bias, and decision making with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "intuition",
+                "snap judgment",
+                "thin slicing",
+                "bias",
+                "decision making",
+                "perception"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "blue-ocean-strategy",
+            "title": "Blue Ocean Strategy",
+            "author": "W. Chan Kim; Ren\u00e9e Mauborgne",
+            "icon": "\ud83c\udf0a",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/blue-ocean-strategy.webp",
+            "category": "Business",
+            "categories": [
+                "Business",
+                "Strategy",
+                "Innovation",
+                "Management"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 154,
+            "chapterCount": 11,
+            "pages": 320,
+            "synopsis": "A modern reading of value innovation, strategy canvases, noncustomers, fair process, renewal, and the traps that pull market creation back into rivalry.",
+            "tags": [
+                "blue-ocean-strategy",
+                "value-innovation",
+                "market-creation",
+                "strategy-canvas",
+                "noncustomers",
+                "execution"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 5
+        },
+        {
+            "id": "built-to-last",
+            "title": "Built to Last: Successful Habits of Visionary Companies",
+            "author": "Jim Collins; Jerry I. Porras",
+            "icon": "\ud83c\udfdb\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/built-to-last.webp",
+            "category": "Business",
+            "categories": [
+                "Business",
+                "Management",
+                "Strategy"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 120,
+            "chapterCount": 10,
+            "pages": 368,
+            "synopsis": "A modern reading of Jim Collins and Jerry I. Porras's ten chapters on clock building, core ideology, experimentation, internal development, and the habits that help institutions outlast founders and cycles.",
+            "tags": [
+                "institution-building",
+                "leadership",
+                "organizational-design"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 5
+        },
+        {
+            "id": "you-cant-hurt-me",
+            "title": "Can't Hurt Me: Master Your Mind and Defy the Odds",
+            "author": "David Goggins",
+            "icon": "\ud83c\udfc3",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/you-can't-hurt-me.webp",
+            "category": "Memoir",
+            "categories": [
+                "Memoir",
+                "Self-Help",
+                "Mental Toughness",
+                "Sports"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 132,
+            "chapterCount": 11,
+            "synopsis": "A modern reading of David Goggins's eleven chapters on abuse, accountability, suffering, discipline, failure, recovery, and widening strength beyond old verdicts.",
+            "tags": [
+                "resilience",
+                "self-discipline",
+                "accountability",
+                "endurance",
+                "military training",
+                "trauma",
+                "identity"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "clear-thinking",
+            "title": "Clear Thinking",
+            "author": "Shane Parrish",
+            "icon": "\ud83e\udded",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/clear-thinking.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 312,
+            "chapterCount": 26,
+            "synopsis": "A modern reading of noticing default reactions, building safeguards, defining problems clearly, evaluating options, and learning from decisions.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 5
+        },
+        {
+            "id": "competing-against-luck",
+            "title": "Competing Against Luck",
+            "author": "Clayton M. Christensen",
+            "icon": "\ud83e\uddf2",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/competing-against-luck.webp",
+            "category": "General",
+            "categories": [],
+            "difficulty": "Hard",
+            "estimatedMinutes": 120,
+            "chapterCount": 10,
+            "synopsis": "A modern reading of Clayton Christensen and coauthors' ten chapters on jobs theory, customer progress, hidden competition, causal demand, and building innovation around what customers are really trying to get done.",
+            "tags": [],
+            "variantFamily": "EMH",
+            "publishedVersion": 5
+        },
+        {
+            "id": "contagious",
+            "title": "Contagious",
+            "author": "Jonah Berger",
+            "icon": "\ud83c\udfa4",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/contagious.webp",
+            "category": "Psychology",
+            "categories": [
+                "Psychology",
+                "Business",
+                "Communication",
+                "Behavioral Economics"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 67,
+            "chapterCount": 6,
+            "pages": 214,
+            "synopsis": "A modern reading of virality, social influence, marketing, word of mouth, and consumer behavior with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "virality",
+                "social influence",
+                "marketing",
+                "word of mouth",
+                "consumer behavior",
+                "storytelling"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "crucial-conversations",
+            "title": "Crucial Conversations: Tools for Talking When Stakes Are High",
+            "author": "Joseph Grenny, Kerry Patterson, Ron McMillan, Al Switzler, Emily Gregory",
+            "icon": "\ud83d\udcac",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/crucial-conversations.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 120,
+            "chapterCount": 10,
+            "pages": 336,
+            "synopsis": "A practical guide to high-stakes dialogue: spotting crucial conversations early, avoiding silence and force, restoring safety, and turning hard talks into real action.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 7
+        },
+        {
+            "id": "dare-to-lead",
+            "title": "Dare to Lead",
+            "author": "Bren\u00e9 Brown",
+            "icon": "\ud83d\udcd8",
+            "category": "Leadership",
+            "categories": [
+                "Leadership",
+                "Business",
+                "Communication",
+                "Management"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 24,
+            "chapterCount": 1,
+            "synopsis": "Dare to Lead taught through chapter summaries, real-world scenarios, and quizzes you can apply right away.",
+            "tags": [
+                "courageous leadership",
+                "vulnerability",
+                "trust",
+                "values",
+                "empathy",
+                "resilience"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "daring-greatly",
+            "title": "Daring Greatly",
+            "author": "Bren\u00e9 Brown",
+            "icon": "\ud83e\udde0",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/daring-greatly.webp",
+            "category": "Psychology",
+            "categories": [
+                "Psychology",
+                "Self-Help",
+                "Relationships"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 88,
+            "chapterCount": 7,
+            "pages": 282,
+            "synopsis": "A modern reading of vulnerability, shame resilience, courage, wholeheartedness, and connection with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "Vulnerability",
+                "Shame Resilience",
+                "Courage",
+                "Wholeheartedness",
+                "Connection",
+                "Parenting",
+                "Leadership"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "deep-work",
+            "title": "Deep Work",
+            "author": "Cal Newport",
+            "icon": "\ud83e\udde0",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/deep-work.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 91,
+            "chapterCount": 9,
+            "pages": 304,
+            "synopsis": "A modern reading of focus, distraction, scheduling, boredom training, tool selection, and shallow-work control for people trying to build a deeper working life.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 7
+        },
+        {
+            "id": "difficult-conversations",
+            "title": "Difficult Conversations: How to Discuss What Matters Most",
+            "author": "Douglas Stone, Bruce Patton, Sheila Heen",
+            "icon": "\ud83d\udde3\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/difficult-conversations.webp",
+            "category": "Communication",
+            "categories": [
+                "Communication",
+                "Self-Help",
+                "Psychology",
+                "Negotiation"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 144,
+            "chapterCount": 12,
+            "pages": 352,
+            "synopsis": "A practical guide to the hidden structure inside hard conversations: what happened, feelings, identity, listening, expression, and the move into joint problem-solving.",
+            "tags": [
+                "dialogue",
+                "conflict-resolution",
+                "feedback",
+                "feelings",
+                "identity",
+                "listening",
+                "negotiation",
+                "harvard-negotiation-project",
+                "relationships",
+                "workplace-communication"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 5
+        },
+        {
+            "id": "discipline-is-destiny",
+            "title": "Discipline Is Destiny",
+            "author": "Ryan Holiday",
+            "icon": "\ud83d\udcd8",
+            "category": "Resilience",
+            "categories": [
+                "Resilience",
+                "Philosophy",
+                "Self Development"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 24,
+            "chapterCount": 1,
+            "synopsis": "Discipline Is Destiny taught through chapter summaries, real-world scenarios, and quizzes you can apply right away.",
+            "tags": [
+                "discipline",
+                "self control",
+                "stoicism",
+                "habit",
+                "temperance",
+                "character"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 1
+        },
+        {
+            "id": "drive",
+            "title": "Drive",
+            "author": "Daniel H. Pink",
+            "icon": "\u2705",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/drive.webp",
+            "category": "Psychology",
+            "categories": [
+                "Psychology",
+                "Self-Help",
+                "Productivity",
+                "Behavioral Economics"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 88,
+            "chapterCount": 11,
+            "pages": 282,
+            "synopsis": "A modern reading of motivation, autonomy, mastery, purpose, and incentives with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "motivation",
+                "autonomy",
+                "mastery",
+                "purpose",
+                "incentives",
+                "behavior-change"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "ego-is-the-enemy",
+            "title": "Ego Is the Enemy",
+            "author": "Ryan Holiday",
+            "icon": "\ud83d\udcd8",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 24,
+            "chapterCount": 1,
+            "synopsis": "Ego Is the Enemy taught through chapter summaries, real-world scenarios, and quizzes you can apply right away.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "essentialism",
+            "title": "Essentialism",
+            "author": "Greg McKeown",
+            "icon": "\ud83c\udfaf",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/essentialism.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement",
+                "Focus"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 241,
+            "chapterCount": 20,
+            "pages": 288,
+            "synopsis": "A modern reading of Greg McKeown's framework for choosing the vital few, cutting the trivial many, and building a life around less but better.",
+            "tags": [
+                "essentialism",
+                "focus",
+                "prioritization",
+                "decision making",
+                "productivity"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 7
+        },
+        {
+            "id": "everything-is-fcked",
+            "title": "Everything Is F*cked",
+            "author": "Mark Manson",
+            "icon": "\ud83d\udcd8",
+            "category": "Psychology",
+            "categories": [
+                "Psychology",
+                "Self-Help",
+                "Philosophy"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 24,
+            "chapterCount": 1,
+            "synopsis": "Everything Is F*cked taught through chapter summaries, real-world scenarios, and quizzes you can apply right away.",
+            "tags": [
+                "hope",
+                "values",
+                "emotion",
+                "pain",
+                "freedom",
+                "human nature"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "execution",
+            "title": "Execution: The Discipline of Getting Things Done",
+            "author": "Larry Bossidy, Ram Charan, Charles Burck",
+            "icon": "\u2699\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/execution.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 120,
+            "chapterCount": 10,
+            "pages": 278,
+            "synopsis": "A modern reading of the discipline that links strategy to results through leadership, cultural realism, people processes, operating cadence, and follow-through.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 4
+        },
+        {
+            "id": "extreme-ownership",
+            "title": "Extreme Ownership",
+            "author": "Jocko Willink, Leif Babin",
+            "icon": "\ud83e\ude96",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/extreme-ownership.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 156,
+            "chapterCount": 13,
+            "pages": 298,
+            "synopsis": "A modern reading of Jocko Willink and Leif Babin's thirteen chapters on ownership, trust, planning, decentralized command, disciplined execution, and leadership under pressure.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 5
+        },
+        {
+            "id": "flow",
+            "title": "Flow: The Psychology of Optimal Experience",
+            "author": "Mihaly Csikszentmihalyi",
+            "icon": "\u23f1\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/flow.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 120,
+            "chapterCount": 10,
+            "pages": 384,
+            "synopsis": "A modern reading of attention, focus, habits, productivity, and self improvement with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "games-people-play",
+            "title": "Games People Play",
+            "author": "Eric Berne",
+            "icon": "\ud83c\udfad",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/games-people-play.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 120,
+            "chapterCount": 10,
+            "synopsis": "A modern reading of Eric Berne's ten chapters on transactional analysis, ego states, hidden social scripts, repeated payoffs, and contact beyond familiar games.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 6
+        },
+        {
+            "id": "getting-things-done",
+            "title": "Getting Things Done",
+            "author": "David Allen",
+            "icon": "\u2705",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/getting-things-done.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 302,
+            "chapterCount": 13,
+            "pages": 966,
+            "synopsis": "A modern reading of attention, focus, habits, productivity, and self improvement with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "good-strategy-bad-strategy",
+            "title": "Good Strategy / Bad Strategy",
+            "author": "Richard Rumelt",
+            "icon": "\ud83c\udfaf",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/good-strategy-bad-strategy.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 178,
+            "chapterCount": 17,
+            "pages": 570,
+            "synopsis": "A modern reading of attention, focus, habits, productivity, and self improvement with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "good-to-great",
+            "title": "Good to Great",
+            "author": "Jim Collins",
+            "icon": "\ud83d\udcc8",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/good-to-great.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 108,
+            "chapterCount": 9,
+            "pages": 320,
+            "synopsis": "A modern reading of Jim Collins's nine chapters on disciplined leadership, strategic clarity, cumulative momentum, and the difference between a breakthrough and an enduring institution.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 6
+        },
+        {
+            "id": "grit",
+            "title": "Grit: The Power of Passion and Perseverance",
+            "author": "Angela Duckworth",
+            "icon": "\u2705",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/grit.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 156,
+            "chapterCount": 13,
+            "pages": 499,
+            "synopsis": "A modern reading of attention, focus, habits, productivity, and self improvement with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "hooked",
+            "title": "Hooked",
+            "author": "Nir Eyal",
+            "icon": "\ud83d\udca1",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/hooked.webp",
+            "category": "Psychology",
+            "categories": [
+                "Psychology",
+                "Business",
+                "Entrepreneurship",
+                "Innovation"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 95,
+            "chapterCount": 8,
+            "pages": 304,
+            "synopsis": "A modern reading of habits, product design, behavior design, engagement, and triggers with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "habits",
+                "product design",
+                "behavior design",
+                "engagement",
+                "triggers",
+                "rewards",
+                "user retention"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "how-to-talk-to-anyone",
+            "title": "How to Talk to Anyone: 92 Little Tricks for Big Success in Relationships",
+            "author": "Leil Lowndes",
+            "icon": "\ud83d\udde3\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/how-to-talk-to-anyone.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 141,
+            "chapterCount": 9,
+            "pages": 368,
+            "synopsis": "A modern reading of Leil Lowndes's nine-part guide to first impressions, conversation flow, rapport, social tact, and practical relationship-building under real-world pressure.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 5
+        },
+        {
+            "id": "how-to-win-friends-and-influence-people",
+            "title": "How to Win Friends and Influence People",
+            "author": "Dale Carnegie",
+            "icon": "\ud83e\udd1d",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/how-to-win-friends-and-influence-people.webp",
+            "category": "Psychology",
+            "categories": [
+                "Psychology",
+                "Self-Help",
+                "Communication",
+                "Leadership"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 312,
+            "chapterCount": 25,
+            "pages": 304,
+            "synopsis": "A modern reading of Dale Carnegie's twenty-five chapters on handling people, making others feel valued, winning people to your way of thinking, and leading without arousing resentment.",
+            "tags": [
+                "persuasion",
+                "social-skills",
+                "listening",
+                "influence",
+                "conflict",
+                "criticism"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 4
+        },
+        {
+            "id": "indistractable",
+            "title": "Indistractable",
+            "author": "Nir Eyal",
+            "icon": "\ud83c\udfaf",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/indistractable.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 360,
+            "chapterCount": 30,
+            "pages": 290,
+            "synopsis": "A modern reading of Nir Eyal's thirty chapters on internal triggers, timeboxing, external triggers, pacts, workplace culture, parenting, and relational attention.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 8
+        },
+        {
+            "id": "influence",
+            "title": "Influence, New and Expanded: The Psychology of Persuasion",
+            "author": "Robert B. Cialdini, PhD",
+            "icon": "\ud83e\udde0",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/influence.webp",
+            "category": "Psychology",
+            "categories": [
+                "Psychology",
+                "Business",
+                "Self-Help"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 118,
+            "chapterCount": 9,
+            "synopsis": "A modern reading of Robert Cialdini's nine chapters on automatic judgment, reciprocity, liking, social proof, authority, scarcity, commitment, unity, and the cue stacks that shape consent.",
+            "tags": [
+                "persuasion",
+                "influence",
+                "social-psychology",
+                "decision-making"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 4
+        },
+        {
+            "id": "leaders-eat-last",
+            "title": "Leaders Eat Last",
+            "author": "Simon Sinek",
+            "icon": "\ud83d\udee1\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/leaders-eat-last.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 324,
+            "chapterCount": 27,
+            "synopsis": "A modern reading of Simon Sinek's twenty-seven chapters on trust, leadership, cortisol, culture, sacrifice, and building circles of safety inside groups.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 6
+        },
+        {
+            "id": "limitless",
+            "title": "Limitless",
+            "author": "Jim Kwik",
+            "icon": "\ud83e\udde0",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/limitless.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 180,
+            "chapterCount": 15,
+            "synopsis": "A modern reading of Jim Kwik's fifteen chapters on mindset, motivation, methods, focus, memory, speed reading, and learning as a trainable system.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "made-to-stick",
+            "title": "Made to Stick: Why Some Ideas Survive and Others Die",
+            "author": "Chip Heath, Dan Heath",
+            "icon": "\ud83d\udce3",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/made-to-stick.webp",
+            "category": "Communication",
+            "categories": [
+                "Communication",
+                "Psychology",
+                "Business",
+                "Messaging"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 72,
+            "chapterCount": 6,
+            "pages": 336,
+            "synopsis": "A modern reading of SUCCESs: simplicity, surprise, concreteness, credibility, emotion, and stories as practical design choices that help ideas survive and spread.",
+            "tags": [
+                "communication",
+                "messaging",
+                "persuasion",
+                "storytelling",
+                "decision-making",
+                "ideas"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "make-it-stick",
+            "title": "Make It Stick",
+            "author": "Peter C. Brown; Henry L. Roediger III; Mark A. McDaniel",
+            "icon": "\ud83d\udcda",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/make-it-stick.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 96,
+            "chapterCount": 8,
+            "pages": 336,
+            "synopsis": "A modern reading of retrieval, spacing, interleaving, desirable difficulty, calibration, and the conditions that make learning durable instead of merely fluent.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 5
+        },
+        {
+            "id": "make-time",
+            "title": "Make Time",
+            "author": "Jake Knapp and John Zeratsky",
+            "icon": "\u23f3",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/make-time.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 40,
+            "chapterCount": 5,
+            "pages": 304,
+            "synopsis": "A practical guide to reclaiming attention day by day through a clear Highlight, better focus defenses, stronger energy, and a lightweight reflection loop.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 4
+        },
+        {
+            "id": "mans-search-for-meaning",
+            "title": "Man's Search for Meaning",
+            "author": "Viktor E. Frankl",
+            "icon": "\ud83c\udfaf",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/mans-search-for-meaning.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 60,
+            "chapterCount": 5,
+            "pages": 192,
+            "synopsis": "A modern reading of attention, focus, habits, productivity, and self improvement with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "mastery",
+            "title": "Mastery",
+            "author": "Robert Greene",
+            "icon": "\ud83d\udcd8",
+            "category": "Learning",
+            "categories": [
+                "Learning",
+                "Psychology",
+                "Career"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 24,
+            "chapterCount": 1,
+            "synopsis": "Mastery taught through chapter summaries, real-world scenarios, and quizzes you can apply right away.",
+            "tags": [
+                "mastery",
+                "apprenticeship",
+                "practice",
+                "mentorship",
+                "creativity",
+                "skill"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 1
+        },
+        {
+            "id": "measure-what-matters",
+            "title": "Measure What Matters",
+            "author": "John Doerr",
+            "icon": "\ud83c\udfaf",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/measure-what-matters.webp",
+            "category": "Business",
+            "categories": [
+                "Business",
+                "Management",
+                "Productivity",
+                "Leadership"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 252,
+            "chapterCount": 21,
+            "pages": 320,
+            "synopsis": "A modern reading of John Doerr's OKR system: choosing focused objectives, defining key results, aligning teams, tracking progress, stretching honestly, and using frequent conversations to improve.",
+            "tags": [
+                "okrs",
+                "goal-setting",
+                "execution",
+                "accountability",
+                "alignment",
+                "performance-management",
+                "measurement"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "meditations",
+            "title": "Meditations",
+            "author": "Marcus Aurelius",
+            "icon": "\ud83d\udccc",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/meditations.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 144,
+            "chapterCount": 12,
+            "pages": 461,
+            "synopsis": "A modern reading of attention, focus, habits, productivity, and self improvement with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "mindset",
+            "title": "Mindset",
+            "author": "Carol S. Dweck",
+            "icon": "\ud83e\uddea",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/mindset.webp",
+            "category": "Psychology",
+            "categories": [
+                "Psychology",
+                "Self-Help",
+                "Learning",
+                "Relationships"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 99,
+            "chapterCount": 8,
+            "pages": 317,
+            "synopsis": "A modern reading of growth mindset, fixed mindset, learning, effort, and resilience with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "growth mindset",
+                "fixed mindset",
+                "learning",
+                "effort",
+                "resilience",
+                "feedback",
+                "achievement",
+                "parenting"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "mistakes-were-made-but-not-by-me",
+            "title": "Mistakes Were Made (but Not by Me)",
+            "author": "Carol Tavris; Elliot Aronson",
+            "icon": "\ud83e\ude9e",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/mistakes-were-made-but-not-by-me.webp",
+            "category": "Psychology",
+            "categories": [
+                "Psychology",
+                "Self-Help",
+                "Relationships",
+                "Communication"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 108,
+            "chapterCount": 9,
+            "pages": 304,
+            "synopsis": "A modern reading of self-justification, cognitive dissonance, bias, memory, blame, conflict, and the hard practice of owning mistakes before they harden into identity.",
+            "tags": [
+                "self-justification",
+                "cognitive-dissonance",
+                "accountability",
+                "bias",
+                "memory",
+                "conflict",
+                "apology"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "never-eat-alone",
+            "title": "Never Eat Alone",
+            "author": "Keith Ferrazzi",
+            "icon": "\ud83c\udfaf",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/never-eat-alone.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 396,
+            "chapterCount": 33,
+            "pages": 1267,
+            "synopsis": "A modern reading of attention, focus, habits, productivity, and self improvement with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "never-split-the-difference",
+            "title": "Never Split the Difference: Negotiating as if Your Life Depended on It",
+            "author": "Chris Voss, Tahl Raz",
+            "icon": "\ud83e\udd1d",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/never-split-the-difference.webp",
+            "category": "Negotiation",
+            "categories": [
+                "Negotiation",
+                "Communication",
+                "Business",
+                "Psychology"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 120,
+            "chapterCount": 10,
+            "pages": 288,
+            "synopsis": "A modern reading of Chris Voss's ten chapters on tactical empathy, calibrated questions, mirroring, labeling, bargaining, and reading the hidden leverage inside high-stakes negotiation.",
+            "tags": [
+                "negotiation",
+                "tactical-empathy",
+                "communication",
+                "bargaining",
+                "conflict",
+                "listening"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 7
+        },
+        {
+            "id": "noise",
+            "title": "Noise: A Flaw in Human Judgment",
+            "author": "Daniel Kahneman, Olivier Sibony, Cass R. Sunstein",
+            "icon": "\ud83d\udcc9",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/noise.webp",
+            "category": "Psychology",
+            "categories": [
+                "Psychology",
+                "Decision Making"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 468,
+            "chapterCount": 39,
+            "pages": 1498,
+            "synopsis": "A modern reading of bias, judgment, decision-making, noise, and cognitive-science with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "bias",
+                "judgment",
+                "decision-making",
+                "noise",
+                "cognitive-science",
+                "behavioral-economics"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "on-becoming-a-person",
+            "title": "On Becoming a Person",
+            "author": "Carl Rogers",
+            "icon": "\ud83d\uddc2\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/on-becoming-a-person.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 252,
+            "chapterCount": 21,
+            "pages": 806,
+            "synopsis": "A modern reading of attention, focus, habits, productivity, and self improvement with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "outliers",
+            "title": "Outliers",
+            "author": "Malcolm Gladwell",
+            "icon": "\ud83d\udcd8",
+            "category": "Psychology",
+            "categories": [
+                "Psychology",
+                "Learning",
+                "Business"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 24,
+            "chapterCount": 1,
+            "synopsis": "Outliers taught through chapter summaries, real-world scenarios, and quizzes you can apply right away.",
+            "tags": [
+                "success",
+                "opportunity",
+                "culture",
+                "practice",
+                "achievement",
+                "social science"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "peak",
+            "title": "Peak",
+            "author": "Anders Ericsson, Robert Pool",
+            "icon": "\ud83c\udfd4\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/peak.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 108,
+            "chapterCount": 9,
+            "pages": 336,
+            "synopsis": "A modern reading of Anders Ericsson and Robert Pool's nine chapters on deliberate practice, adaptation, mental representations, coaching, and the conditions that build expertise.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 5
+        },
+        {
+            "id": "pitch-anything",
+            "title": "Pitch-Anything",
+            "author": "Oren Klaff",
+            "icon": "\ud83c\udfa4",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/pitch-anything.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 132,
+            "chapterCount": 11,
+            "pages": 240,
+            "synopsis": "A modern reading of Oren Klaff's eleven chapters on frame control, attention, story, intrigue, prizing, hookpoints, and turning high-stakes pitches into repeatable room command.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 7
+        },
+        {
+            "id": "playing-to-win",
+            "title": "Playing to Win",
+            "author": "A.G. Lafley and Roger L. Martin",
+            "icon": "\u265f\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/playing-to-win.webp",
+            "category": "Business",
+            "categories": [
+                "Business",
+                "Strategy",
+                "Management",
+                "Decision Making"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 96,
+            "chapterCount": 8,
+            "pages": 230,
+            "synopsis": "A practical guide to strategy as integrated choice: defining a winning aspiration, choosing where to play, deciding how to win, building capabilities, and aligning management systems around the game you mean to win.",
+            "tags": [
+                "strategy",
+                "competitive-advantage",
+                "management-systems",
+                "choice-cascade",
+                "where-to-play",
+                "how-to-win"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "pre-suasion",
+            "title": "Pre-Suasion",
+            "author": "Robert Cialdini",
+            "icon": "\ud83c\udfaf",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/pre-suasion.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 168,
+            "chapterCount": 14,
+            "pages": 432,
+            "synopsis": "A modern reading of Robert Cialdini's fourteen chapters on frontloaded attention, association, unity, ethical screening, and the aftereffects that determine whether influence actually lasts.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 4
+        },
+        {
+            "id": "predictably-irrational",
+            "title": "Predictably Irrational",
+            "author": "Dan Ariely",
+            "icon": "\ud83e\uddea",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/predictably-irrational.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 156,
+            "chapterCount": 13,
+            "synopsis": "A modern reading of Dan Ariely's thirteen chapters on relativity, anchoring, zero price, norms, expectations, dishonesty, and practical design fixes for predictable decision errors.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 5
+        },
+        {
+            "id": "rich-dad-poor-dad",
+            "title": "Rich Dad Poor Dad",
+            "author": "Robert T. Kiyosaki",
+            "icon": "\ud83d\udcb0",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/rich-dad-poor-dad.webp",
+            "category": "Personal Finance",
+            "categories": [
+                "Personal Finance",
+                "Entrepreneurship",
+                "Business"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 98,
+            "chapterCount": 9,
+            "pages": 314,
+            "synopsis": "A modern reading of money-as-emotional-leverage, asset-liability-literacy, asset-column-ownership, legal-structure-leverage, and financial-creativity with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "financial literacy",
+                "assets",
+                "cash flow",
+                "wealth mindset",
+                "ownership",
+                "money"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 1
+        },
+        {
+            "id": "seeking-wisdom",
+            "title": "Seeking Wisdom: From Darwin to Munger",
+            "author": "Peter Bevelin",
+            "icon": "\ud83e\udde0",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/seeking-wisdom.webp",
+            "category": "Decision Making",
+            "categories": [
+                "Decision Making",
+                "Psychology",
+                "Philosophy",
+                "Self-Help"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 72,
+            "chapterCount": 6,
+            "synopsis": "A modern reading of Peter Bevelin's practical mental models for judgment: misjudgment patterns, incentives, probability, consequences, checklists, and temperament.",
+            "tags": [
+                "judgment",
+                "mental-models",
+                "bias",
+                "probability",
+                "incentives",
+                "temperament"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "skin-in-the-game",
+            "title": "Skin in the Game: Hidden Asymmetries in Daily Life",
+            "author": "Nassim Nicholas Taleb",
+            "icon": "\ud83c\udfaf",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/skin-in-the-game.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 228,
+            "chapterCount": 19,
+            "pages": 730,
+            "synopsis": "A modern reading of attention, focus, habits, productivity, and self improvement with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "smarter-faster-better",
+            "title": "Smarter Faster Better",
+            "author": "Charles Duhigg",
+            "icon": "\ud83d\udcca",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/smarter-faster-better.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 96,
+            "chapterCount": 8,
+            "pages": 320,
+            "synopsis": "A modern reading of Charles Duhigg's eight chapters on motivation, team dynamics, focus, goals, decision making, innovation, and turning raw information into usable judgment.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 8
+        },
+        {
+            "id": "so-good-they-cant-ignore-you",
+            "title": "So Good They Can't Ignore You: Why Skills Trump Passion in the Quest for Work You Love",
+            "author": "Cal Newport",
+            "icon": "\ud83d\udee0\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/so-good-they-cant-ignore-you.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 192,
+            "chapterCount": 16,
+            "pages": 288,
+            "synopsis": "A practical reading of the passion hypothesis, craftsman mindset, career capital, control, and mission as a sequenced path to work that becomes compelling over time.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "start-with-why",
+            "title": "Start With Why",
+            "author": "Simon Sinek",
+            "icon": "\ud83d\udce3",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/start-with-why.webp",
+            "category": "Leadership",
+            "categories": [
+                "Leadership",
+                "Business",
+                "Communication",
+                "Entrepreneurship"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 168,
+            "chapterCount": 14,
+            "pages": 538,
+            "synopsis": "A modern reading of purpose, why, golden circle, leadership, and brand trust with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "purpose",
+                "why",
+                "Golden Circle",
+                "leadership",
+                "brand trust",
+                "inspiration"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "super-thinking",
+            "title": "Super Thinking",
+            "author": "Gabriel Weinberg; Lauren McCann",
+            "icon": "\ud83e\udde0",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/super-thinking.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 55,
+            "chapterCount": 7,
+            "synopsis": "A modern reading of mental models for clearer judgment: reducing avoidable error, tracing unintended consequences, protecting future time, reading systems, and updating decisions with sharper feedback.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 5
+        },
+        {
+            "id": "superforecasting",
+            "title": "Superforecasting",
+            "author": "Philip E. Tetlock",
+            "icon": "\ud83d\udd2e",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/superforecasting.webp",
+            "category": "Decision-Making",
+            "categories": [
+                "Decision-Making",
+                "Strategy"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 144,
+            "chapterCount": 12,
+            "pages": 352,
+            "synopsis": "A modern reading of Philip E. Tetlock and Dan Gardner's twelve chapters on probabilistic judgment, scorekeeping, revision, team forecasting, and building better institutions for thinking about the future.",
+            "tags": [
+                "forecasting",
+                "probability",
+                "thinking"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 4
+        },
+        {
+            "id": "talk-like-ted",
+            "title": "Talk Like TED: The 9 Public-Speaking Secrets of the World's Top Minds",
+            "author": "Carmine Gallo",
+            "icon": "\ud83c\udfa4",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/talk-like-ted.webp",
+            "category": "Business Communication",
+            "categories": [
+                "Business Communication",
+                "Public Speaking"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 108,
+            "chapterCount": 9,
+            "pages": 288,
+            "synopsis": "A modern reading of Carmine Gallo's nine public-speaking chapters on passion, story, delivery, novelty, memorable moments, warmth, compression, vividness, and rehearsal under real audience pressure.",
+            "tags": [
+                "public-speaking",
+                "presentations",
+                "communication"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "the-12-week-year",
+            "title": "The 12 Week Year",
+            "author": "Brian Moran and Michael Lennington",
+            "icon": "\u23f1\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-12-week-year.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 252,
+            "chapterCount": 21,
+            "pages": 806,
+            "synopsis": "A modern reading of attention, focus, habits, productivity, and self improvement with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "the-33-strategies-of-war",
+            "title": "The 33 Strategies of War",
+            "author": "Robert Greene",
+            "icon": "\u2694\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-33-strategies-of-war.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 396,
+            "chapterCount": 33,
+            "pages": 496,
+            "synopsis": "A modern reading of Robert Greene's thirty-three strategy chapters on polarity, maneuver, escalation, moral positioning, psychological pressure, and the discipline of knowing when not to treat life like a battlefield.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "the-4-hour-workweek",
+            "title": "The 4-Hour Workweek",
+            "author": "Tim Ferriss",
+            "icon": "\ud83d\udea8",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-4-hour-workweek.webp",
+            "category": "Decision Making",
+            "categories": [
+                "Decision Making",
+                "Business",
+                "Productivity"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 177,
+            "chapterCount": 17,
+            "pages": 566,
+            "synopsis": "A modern reading of relative-wealth, productive-nonconformity, fear-setting, dreamlining, and effectiveness-over-efficiency with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "relative-wealth",
+                "productive-nonconformity",
+                "fear-setting",
+                "dreamlining",
+                "effectiveness-over-efficiency",
+                "selective-ignorance",
+                "interruption-control",
+                "delegation-literacy"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 1
+        },
+        {
+            "id": "the-48-laws-of-power",
+            "title": "The 48 Laws of Power",
+            "author": "Robert Greene",
+            "icon": "\u2705",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-48-laws-of-power.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 576,
+            "chapterCount": 48,
+            "pages": 1843,
+            "synopsis": "A modern reading of attention, focus, habits, productivity, and self improvement with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 3
+        },
+        {
+            "id": "the-5-am-club",
+            "title": "The 5 AM Club",
+            "author": "Robin Sharma",
+            "icon": "\ud83c\udfd4\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-5-am-club.webp",
+            "category": "Self-Help",
+            "categories": [
+                "Self-Help",
+                "Productivity",
+                "Leadership"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 182,
+            "chapterCount": 18,
+            "pages": 582,
+            "synopsis": "A modern reading of morning routine, habit formation, peak performance, personal mastery, and discipline with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "morning routine",
+                "habit formation",
+                "peak performance",
+                "personal mastery",
+                "discipline",
+                "focus"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-7-habits-of-highly-effective-people",
+            "title": "The 7 Habits of Highly Effective People",
+            "author": "Stephen R. Covey",
+            "icon": "\u2705",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-7-habits-of-highly-effective-people.webp",
+            "category": "Self-Help",
+            "categories": [
+                "Self-Help",
+                "Leadership",
+                "Productivity",
+                "Relationships"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 133,
+            "chapterCount": 11,
+            "pages": 426,
+            "synopsis": "A modern reading of habits, principles, character, effectiveness, and interdependence with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "habits",
+                "principles",
+                "character",
+                "effectiveness",
+                "interdependence",
+                "trust",
+                "personal leadership",
+                "renewal"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-almanack-of-naval-ravikant",
+            "title": "The Almanack of Naval Ravikant",
+            "author": "Eric Jorgenson",
+            "icon": "\ud83e\udded",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-almanack-of-naval-ravikant.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 72,
+            "chapterCount": 6,
+            "synopsis": "A modern reading of Naval Ravikant's six-part guide to wealth, judgment, happiness, self-governance, philosophy, and the reading life behind those ideas.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 4
+        },
+        {
+            "id": "the-art-of-thinking-clearly",
+            "title": "The Art of Thinking Clearly",
+            "author": "Rolf Dobelli",
+            "icon": "\ud83d\udcd8",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 24,
+            "chapterCount": 1,
+            "synopsis": "The Art of Thinking Clearly taught through chapter summaries, real-world scenarios, and quizzes you can apply right away.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-art-of-war",
+            "title": "The Art of War",
+            "author": "Sunzi",
+            "icon": "\u2694\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-art-of-war.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 156,
+            "chapterCount": 13,
+            "pages": 68,
+            "synopsis": "A modern reading of Sun Tzu's thirteen chapters on strategy, deception, terrain, intelligence, and the conditions that produce victory before battle begins.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 4
+        },
+        {
+            "id": "the-black-swan",
+            "title": "The Black Swan",
+            "author": "Nassim N. Taleb",
+            "icon": "\ud83e\udda2",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-black-swan.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 228,
+            "chapterCount": 19,
+            "pages": 400,
+            "synopsis": "A modern reading of Taleb's nineteen chapters on rare events, narrative error, silent evidence, extremistan, and the practical stance of limiting downside while staying open to upside.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-charisma-myth",
+            "title": "The Charisma Myth",
+            "author": "Olivia Fox Cabane",
+            "icon": "\u2728",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-charisma-myth.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 156,
+            "chapterCount": 13,
+            "pages": 272,
+            "synopsis": "A modern reading of Olivia Fox Cabane's thirteen chapters on presence, power, warmth, first impressions, conversation, body language, digital charisma, and carrying signal under pressure.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-checklist-manifesto",
+            "title": "The Checklist Manifesto: How to Get Things Right",
+            "author": "Atul Gawande",
+            "icon": "\u2705",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-checklist-manifesto.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Execution",
+                "Self Management"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 108,
+            "chapterCount": 9,
+            "pages": 224,
+            "synopsis": "A modern reading of Atul Gawande's nine chapters on complexity, omission, team pause points, disciplined checklists, resistance, and carrying structured safeguards into other high-stakes fields.",
+            "tags": [
+                "focus",
+                "planning",
+                "systems",
+                "workflow",
+                "accountability"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-courage-to-be-disliked",
+            "title": "The Courage to Be Disliked",
+            "author": "Ichiro Kishimi, Fumitake Koga",
+            "icon": "\ud83d\udd6f\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-courage-to-be-disliked.webp",
+            "category": "Self-Help",
+            "categories": [
+                "Self-Help",
+                "Psychology",
+                "Philosophy"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 60,
+            "chapterCount": 5,
+            "pages": 192,
+            "synopsis": "A modern reading of adlerian psychology, inferiority and comparison, interpersonal conflict, separation of tasks, and boundaries with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "Adlerian psychology",
+                "inferiority and comparison",
+                "interpersonal conflict",
+                "separation of tasks",
+                "boundaries",
+                "approval-seeking",
+                "contribution",
+                "self-acceptance",
+                "freedom",
+                "trust",
+                "self-consciousness",
+                "present-tense living",
+                "courage"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-denial-of-death",
+            "title": "The Denial of Death",
+            "author": "Ernest Becker",
+            "icon": "\ud83d\udd6f\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-denial-of-death.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 132,
+            "chapterCount": 11,
+            "pages": 422,
+            "synopsis": "A modern reading of attention, focus, habits, productivity, and self improvement with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-elephant-in-the-brain",
+            "title": "The Elephant in the Brain",
+            "author": "Kevin Simler; Robin Hanson",
+            "icon": "\ud83c\udfaf",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-elephant-in-the-brain.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 192,
+            "chapterCount": 16,
+            "pages": 614,
+            "synopsis": "A modern reading of attention, focus, habits, productivity, and self improvement with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-first-20-hours",
+            "title": "The First 20 Hours: How to Learn Anything... Fast!",
+            "author": "Josh Kaufman",
+            "icon": "\u26a1",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-first-20-hours.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 108,
+            "chapterCount": 9,
+            "pages": 288,
+            "synopsis": "A practical guide to rapid skill acquisition: lowering the barrier to starting, deconstructing a skill, designing early practice, and getting to usable performance in the first twenty hours.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-gift-of-fear",
+            "title": "The Gift of Fear",
+            "author": "Gavin de Becker",
+            "icon": "\ud83d\udea8",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-gift-of-fear.webp",
+            "category": "Personal Safety",
+            "categories": [
+                "Personal Safety",
+                "Psychology",
+                "Violence Prevention",
+                "Threat Assessment",
+                "Boundaries"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 180,
+            "chapterCount": 15,
+            "pages": 576,
+            "synopsis": "A modern reading of intuition, safety, boundaries, violence prevention, and judgment with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "intuition",
+                "safety",
+                "boundaries",
+                "violence prevention",
+                "judgment"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-great-mental-models-vol-1",
+            "title": "The Great Mental Models, Volume 1: General Thinking Concepts",
+            "author": "Shane Parrish",
+            "icon": "\ud83e\udde9",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-great-mental-models-v-1.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 144,
+            "chapterCount": 12,
+            "pages": 304,
+            "synopsis": "A modern reading of core mental models: abstraction and reality, circles of competence, first principles, second-order effects, probabilistic thinking, inversion, and the disciplined limits of judgment.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-great-mental-models-vol-2",
+            "title": "The Great Mental Models, Volume 2: Physics, Chemistry, and Biology",
+            "author": "Shane Parrish",
+            "icon": "\ud83e\udde9",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-great-mental-models-vol-2.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 240,
+            "chapterCount": 20,
+            "pages": 768,
+            "synopsis": "A modern reading of attention, focus, habits, productivity, and self improvement with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-hard-thing-about-hard-things",
+            "title": "The Hard Thing About Hard Things",
+            "author": "Ben Horowitz",
+            "icon": "\ud83c\udfe2",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-hard-thing-about-hard-things.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 120,
+            "chapterCount": 10,
+            "synopsis": "A modern reading of Ben Horowitz's ten chapters on CEO struggle, layoffs, executive hiring, wartime leadership, culture, and building through crisis.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 4
+        },
+        {
+            "id": "the-innovators-dilemma",
+            "title": "The Innovator's Dilemma: When New Technologies Cause Great Firms to Fail",
+            "author": "Clayton M. Christensen",
+            "icon": "\u2699\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-innovators-dilemma.webp",
+            "category": "Business",
+            "categories": [
+                "Business",
+                "Strategy",
+                "Innovation",
+                "Management"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 132,
+            "chapterCount": 11,
+            "synopsis": "A modern reading of Clayton Christensen's eleven chapters on disruptive innovation, value networks, organizational fit, market discovery, capability limits, and the dilemmas that make strong incumbents fail rationally.",
+            "tags": [
+                "disruption",
+                "disruptive-innovation",
+                "value-networks",
+                "incumbents",
+                "market-entry",
+                "organizational-fit"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-laws-of-human-nature",
+            "title": "The Laws of Human Nature",
+            "author": "Robert Greene",
+            "icon": "\ud83e\udde0",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/laws-of-human-nature.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 228,
+            "chapterCount": 19,
+            "pages": 624,
+            "synopsis": "A modern reading of Robert Greene's nineteen chapters on irrationality, narcissism, role-playing, envy, conformity, aggression, historical mood, and mortality across everyday human behavior.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 4
+        },
+        {
+            "id": "the-lean-startup",
+            "title": "The Lean Startup",
+            "author": "Eric Ries",
+            "icon": "\ud83d\ude80",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-lean-startup.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 168,
+            "chapterCount": 14,
+            "pages": 336,
+            "synopsis": "A modern reading of validated learning, MVPs, innovation accounting, pivots, growth engines, adaptive organizations, and anti-waste management under uncertainty.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-let-them-theory",
+            "title": "The Let Them Theory",
+            "author": "Mel Robbins",
+            "icon": "\ud83d\udce3",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-let-them-theory.webp",
+            "category": "Self-Help",
+            "categories": [
+                "Self-Help",
+                "Psychology",
+                "Relationships",
+                "Communication"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 200,
+            "chapterCount": 20,
+            "pages": 640,
+            "synopsis": "A modern reading of boundaries, letting go, emotional regulation, control, and stress management with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "boundaries",
+                "letting go",
+                "emotional regulation",
+                "control",
+                "stress management",
+                "relationships",
+                "self-empowerment"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 1
+        },
+        {
+            "id": "the-like-switch",
+            "title": "The Like Switch",
+            "author": "Jack Schafer, Marvin Karlins",
+            "icon": "\ud83d\udd75\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-like-switch.webp",
+            "category": "Psychology",
+            "categories": [
+                "Psychology",
+                "Interpersonal Relations",
+                "Body Language",
+                "Self-Help"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 96,
+            "chapterCount": 8,
+            "pages": 270,
+            "synopsis": "A modern reading of Jack Schafer and Marvin Karlins's eight chapters on first impressions, rapport, attraction, conversation, closeness, maintenance, and the promise and peril of trust.",
+            "tags": [
+                "likability",
+                "rapport",
+                "friendship",
+                "body language",
+                "trust",
+                "relationships"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-millionaire-fastlane",
+            "title": "The Millionaire Fastlane",
+            "author": "MJ DeMarco",
+            "icon": "\ud83d\udcd8",
+            "category": "Entrepreneurship",
+            "categories": [
+                "Entrepreneurship",
+                "Personal Finance",
+                "Business"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 24,
+            "chapterCount": 1,
+            "synopsis": "The Millionaire Fastlane taught through chapter summaries, real-world scenarios, and quizzes you can apply right away.",
+            "tags": [
+                "wealth",
+                "entrepreneurship",
+                "leverage",
+                "money",
+                "business models",
+                "financial freedom"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 1
+        },
+        {
+            "id": "the-mole-people",
+            "title": "The Mole People",
+            "author": "Jennifer Toth",
+            "icon": "\ud83d\udcd8",
+            "category": "Society",
+            "categories": [
+                "Society",
+                "Human Behavior",
+                "Reporting"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 24,
+            "chapterCount": 1,
+            "synopsis": "The Mole People taught through chapter summaries, real-world scenarios, and quizzes you can apply right away.",
+            "tags": [
+                "institutions",
+                "society",
+                "incentives",
+                "observation",
+                "systems"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 1
+        },
+        {
+            "id": "the-obstacle-is-the-way",
+            "title": "The Obstacle Is the Way",
+            "author": "Ryan Holiday",
+            "icon": "\ud83d\uddc2\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-obstacle-is-the-way.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 336,
+            "chapterCount": 28,
+            "pages": 1075,
+            "synopsis": "A modern reading of attention, focus, habits, productivity, and self improvement with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-one-thing",
+            "title": "The One Thing",
+            "author": "Gary Keller, Jay Papasan",
+            "icon": "\ud83c\udfaf",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-one-thing.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 216,
+            "chapterCount": 18,
+            "pages": 240,
+            "synopsis": "A modern reading of Gary Keller and Jay Papasan's eighteen chapters on leverage, priority, sequencing, and giving your most important work first claim on time and attention.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-outsiders",
+            "title": "The Outsiders: Eight Unconventional CEOs and Their Radically Rational Blueprint for Success",
+            "author": "William N. Thorndike Jr.",
+            "icon": "\ud83d\udcc8",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-outsiders.webp",
+            "category": "Business",
+            "categories": [
+                "Business",
+                "Leadership",
+                "Investing",
+                "Management"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 108,
+            "chapterCount": 9,
+            "pages": 304,
+            "synopsis": "A modern reading of Thorndike's nine outsider CEO chapters on capital allocation, decentralization, disciplined restraint, and the scorecards that drove exceptional long-term returns.",
+            "tags": [
+                "capital allocation",
+                "ceos",
+                "shareholder returns",
+                "decentralization",
+                "conglomerates",
+                "value creation"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-power-of-habit",
+            "title": "The Power of Habit",
+            "author": "Charles Duhigg",
+            "icon": "\ud83e\udded",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-power-of-habit.webp",
+            "category": "Psychology",
+            "categories": [
+                "Psychology",
+                "Self Improvement",
+                "Business"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 108,
+            "chapterCount": 9,
+            "pages": 371,
+            "synopsis": "A modern reading of cues, cravings, willpower, organizational routines, social movements, and the question of responsibility inside automatic behavior.",
+            "tags": [
+                "habits",
+                "behavior change",
+                "habit formation",
+                "willpower",
+                "organizational habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 4
+        },
+        {
+            "id": "the-prince",
+            "title": "The Prince",
+            "author": "Niccolo Machiavelli",
+            "icon": "\ud83d\udc51",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-prince.webp",
+            "category": "Classics",
+            "categories": [
+                "Classics",
+                "Political Philosophy",
+                "Leadership"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 312,
+            "chapterCount": 26,
+            "pages": 176,
+            "synopsis": "A modern reading of political founding, power, arms, fortune, reputation, and statecraft across Machiavelli's twenty-six chapters.",
+            "tags": [
+                "statecraft",
+                "power",
+                "political realism",
+                "leadership",
+                "fortune"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-psychology-of-money",
+            "title": "The Psychology of Money",
+            "author": "Morgan Housel",
+            "icon": "\ud83d\udcb8",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-psychology-of-money.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 264,
+            "chapterCount": 22,
+            "pages": 256,
+            "synopsis": "A modern reading of Morgan Housel's twenty-two chapters on luck, risk, enoughness, compounding, saving, freedom, pessimism, and the historical forces shaping consumer expectations.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 4
+        },
+        {
+            "id": "the-pyramid-principle",
+            "title": "The Pyramid Principle",
+            "author": "Barbara Minto",
+            "icon": "\u2705",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-pyramid-principle.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 120,
+            "chapterCount": 10,
+            "pages": 384,
+            "synopsis": "A modern reading of attention, focus, habits, productivity, and self improvement with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-righteous-mind",
+            "title": "The Righteous Mind",
+            "author": "Jonathan Haidt",
+            "icon": "\ud83d\udc41\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-righteous-mind.webp",
+            "category": "Psychology",
+            "categories": [
+                "Psychology",
+                "Moral Psychology",
+                "Politics",
+                "Religion"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 144,
+            "chapterCount": 12,
+            "pages": 461,
+            "synopsis": "A modern reading of morality, moral psychology, politics, religion, and tribalism with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "morality",
+                "moral psychology",
+                "politics",
+                "religion",
+                "tribalism",
+                "intuition",
+                "group behavior"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "the-subtle-art-of-not-giving-a-fck",
+            "title": "The Subtle Art of Not Giving a F*ck",
+            "author": "Mark Manson",
+            "icon": "\ud83d\udcd8",
+            "category": "Self-Help",
+            "categories": [
+                "Self-Help",
+                "Psychology",
+                "Philosophy"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 24,
+            "chapterCount": 1,
+            "synopsis": "The Subtle Art of Not Giving a F*ck taught through chapter summaries, real-world scenarios, and quizzes you can apply right away.",
+            "tags": [
+                "values",
+                "responsibility",
+                "adversity",
+                "acceptance",
+                "happiness",
+                "priorities"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 1
+        },
+        {
+            "id": "the-tipping-point",
+            "title": "The Tipping Point",
+            "author": "Malcolm Gladwell",
+            "icon": "\ud83d\udcac",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-tipping-point.webp",
+            "category": "Psychology",
+            "categories": [
+                "Psychology",
+                "Business",
+                "Communication",
+                "Behavioral Economics"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 97,
+            "chapterCount": 8,
+            "pages": 310,
+            "synopsis": "A modern reading of social epidemics, influence, networks, stickiness, and context with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "social epidemics",
+                "influence",
+                "networks",
+                "stickiness",
+                "context",
+                "change"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 1
+        },
+        {
+            "id": "the-war-of-art",
+            "title": "The War of Art",
+            "author": "Steven Pressfield",
+            "icon": "\ud83c\udfa8",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/the-war-of-art.webp",
+            "category": "Self-Help",
+            "categories": [
+                "Self-Help",
+                "Creativity",
+                "Writing"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 36,
+            "chapterCount": 3,
+            "pages": 192,
+            "synopsis": "A modern reading of Steven Pressfield's three-part argument about Resistance, turning pro, and serving the work as something larger than ego.",
+            "tags": [],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "thinking-in-bets",
+            "title": "Thinking in Bets",
+            "author": "Annie Duke",
+            "icon": "\ud83c\udfb2",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/thinking-in-bets.webp",
+            "category": "Decision Making",
+            "categories": [
+                "Decision Making",
+                "Psychology",
+                "Risk"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 84,
+            "chapterCount": 7,
+            "pages": 288,
+            "synopsis": "A modern reading of Annie Duke's seven chapters on resulting, probabilistic thinking, calibration, truth-seeking disagreement, and making better decisions when certainty is unavailable.",
+            "tags": [
+                "probabilistic-thinking",
+                "uncertainty",
+                "decision-quality",
+                "resulting",
+                "calibration",
+                "truth-seeking",
+                "dissent",
+                "mental-time-travel"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "thinking-fast-and-slow",
+            "title": "Thinking, Fast and Slow",
+            "author": "Daniel Kahneman",
+            "icon": "\ud83e\udde0",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/thinking-fast-and-slow.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 458,
+            "chapterCount": 38,
+            "pages": 499,
+            "synopsis": "A modern reading of Kahneman's thirty-eight chapters on System 1 and System 2, heuristics, bias, prospect theory, overconfidence, and the limits of judgment under uncertainty.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 4
+        },
+        {
+            "id": "tiny-habits",
+            "title": "Tiny Habits",
+            "author": "BJ Fogg",
+            "icon": "\ud83c\udf31",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/tiny-habits.webp",
+            "category": "Psychology",
+            "categories": [
+                "Psychology",
+                "Self-Help",
+                "Productivity"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 113,
+            "chapterCount": 8,
+            "synopsis": "A modern reading of BJ Fogg's behavior design method: matching motivation, making habits tiny, anchoring prompts, using celebration, untangling bad loops, and growing change through shared support.",
+            "tags": [
+                "habits",
+                "behavior-change",
+                "motivation",
+                "celebration",
+                "anchoring",
+                "prompts"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 5
+        },
+        {
+            "id": "ultralearning",
+            "title": "Ultralearning: Master Hard Skills, Outsmart the Competition, and Accelerate Your Career",
+            "author": "Scott H. Young",
+            "icon": "\ud83d\udcda",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/ultralearning.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 168,
+            "chapterCount": 14,
+            "synopsis": "A modern reading of Scott H. Young's fourteen chapters on self-directed skill acquisition, directness, feedback, retention, experimentation, and designing learning projects that survive real proof.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        },
+        {
+            "id": "unreasonable-hospitality",
+            "title": "Unreasonable Hospitality",
+            "author": "Will Guidara",
+            "icon": "\ud83c\udfaf",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/unreasonable-hospitality.webp",
+            "category": "Leadership",
+            "categories": [
+                "Leadership",
+                "Management",
+                "Business",
+                "Strategy"
+            ],
+            "difficulty": "Hard",
+            "estimatedMinutes": 200,
+            "chapterCount": 20,
+            "pages": 640,
+            "synopsis": "A modern reading of hospitality, customer experience, team culture, service excellence, and restaurants with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "hospitality",
+                "customer experience",
+                "team culture",
+                "service excellence",
+                "restaurants",
+                "generosity",
+                "employee-first"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 1
+        },
+        {
+            "id": "what-every-body-is-saying",
+            "title": "What Every BODY is Saying",
+            "author": "Joe Navarro",
+            "icon": "\ud83d\udc41\ufe0f",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/what-every-body-is-saying.webp",
+            "category": "Communication",
+            "categories": [
+                "Communication",
+                "Psychology",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 120,
+            "chapterCount": 10,
+            "synopsis": "A practical guide to reading nonverbal behavior with more discipline: noticing comfort, discomfort, confidence, stress, and withdrawal without turning one cue into false certainty.",
+            "tags": [
+                "body language",
+                "nonverbal communication",
+                "observation",
+                "comfort",
+                "discomfort",
+                "context",
+                "baseline",
+                "deception restraint"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 4
+        },
+        {
+            "id": "zero-to-one",
+            "title": "Zero to One",
+            "author": "Peter Thiel",
+            "icon": "\u2705",
+            "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/zero-to-one.webp",
+            "category": "Productivity",
+            "categories": [
+                "Productivity",
+                "Self Improvement"
+            ],
+            "difficulty": "Medium",
+            "estimatedMinutes": 168,
+            "chapterCount": 14,
+            "pages": 538,
+            "synopsis": "A modern reading of attention, focus, habits, productivity, and self improvement with concise summaries, scenarios, quizzes, and gated chapter progression.",
+            "tags": [
+                "attention",
+                "focus",
+                "habits"
+            ],
+            "variantFamily": "EMH",
+            "publishedVersion": 2
+        }
+    ]
+}

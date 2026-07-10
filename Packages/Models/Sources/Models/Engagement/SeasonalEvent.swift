@@ -54,6 +54,56 @@ public struct SeasonalEvent: Codable, Sendable, Identifiable {
         self.isActive = isActive
         self.hasJoined = hasJoined
     }
+
+    // MARK: - Wire-shape tolerance (contract reconciliation)
+    // Only `eventId` is required; the deployed event definitions may omit any
+    // display/target field, and `hasJoined` is inferred from an attached
+    // `participation` object when the boolean is absent.
+
+    private enum WireKeys: String, CodingKey {
+        case eventId, title, description, startsAt, endsAt
+        case targetChapters, dailyTarget, badge, bonusIp
+        case isActive, hasJoined, participation
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: WireKeys.self)
+        eventId = try c.decodeRequiredFirst(String.self, keys: [.eventId])
+        title = c.decodeFirst(String.self, keys: [.title]) ?? ""
+        description = c.decodeFirst(String.self, keys: [.description])
+        startsAt = c.decodeFirst(String.self, keys: [.startsAt]) ?? ""
+        endsAt = c.decodeFirst(String.self, keys: [.endsAt]) ?? ""
+        targetChapters = c.decodeFirst(Int.self, keys: [.targetChapters]) ?? 0
+        dailyTarget = c.decodeFirst(Int.self, keys: [.dailyTarget]) ?? 0
+        badge = c.decodeFirst(BadgeItem.self, keys: [.badge])
+        bonusIp = c.decodeFirst(Int.self, keys: [.bonusIp]) ?? 0
+        // `true` is correct for the only feed that serves these
+        // (/book/events/active returns active events by construction);
+        // joining is server-validated, so this cannot grant anything.
+        isActive = c.decodeFirst(Bool.self, keys: [.isActive]) ?? true
+        if let joined = c.decodeFirst(Bool.self, keys: [.hasJoined]) {
+            hasJoined = joined
+        } else {
+            // Deployed /book/events/active attaches the user's participation
+            // record to each event when they have joined.
+            hasJoined = (try? c.nestedContainer(keyedBy: WireKeys.self, forKey: .participation)) != nil
+        }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: WireKeys.self)
+        try c.encode(eventId, forKey: .eventId)
+        try c.encode(title, forKey: .title)
+        try c.encodeIfPresent(description, forKey: .description)
+        try c.encode(startsAt, forKey: .startsAt)
+        try c.encode(endsAt, forKey: .endsAt)
+        try c.encode(targetChapters, forKey: .targetChapters)
+        try c.encode(dailyTarget, forKey: .dailyTarget)
+        try c.encodeIfPresent(badge, forKey: .badge)
+        try c.encode(bonusIp, forKey: .bonusIp)
+        try c.encode(isActive, forKey: .isActive)
+        try c.encode(hasJoined, forKey: .hasJoined)
+    }
 }
 
 // MARK: - EventProgress
@@ -95,11 +145,35 @@ public struct EventProgress: Codable, Sendable {
 
 /// Wraps `GET /book/events/active`.
 /// The `event` key is `nil` when no event is currently running.
+///
+/// ## Wire-shape tolerance (contract reconciliation)
+/// The deployed route returns `{events: […]}` (a list); the canonical shape
+/// is `{event: {…}|null}`. Both decode — the list form surfaces its first
+/// event. Encoding stays canonical.
 public struct ActiveEventResponse: Codable, Sendable {
     public let event: SeasonalEvent?
 
     public init(event: SeasonalEvent?) {
         self.event = event
+    }
+
+    private enum CodingKeys: String, CodingKey { case event, events }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let single = container.decodeFirst(SeasonalEvent.self, keys: [.event]) {
+            self.event = single
+        } else if container.contains(.events) {
+            let list = (try? container.decodeLossy(SeasonalEvent.self, forKey: .events)) ?? []
+            self.event = list.first
+        } else {
+            self.event = nil
+        }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(event, forKey: .event)
     }
 }
 

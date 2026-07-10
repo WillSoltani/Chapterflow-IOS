@@ -1,4 +1,5 @@
 import Foundation
+import Models
 
 // MARK: - PairStatus
 
@@ -19,7 +20,9 @@ extension PairStatus: Codable {
         switch raw.lowercased() {
         case "active":   self = .active
         case "pending":  self = .pending
-        case "expired":  self = .expired
+        // The deployed pair records use "ended" for a finished partnership —
+        // semantically our `.expired` (contract reconciliation).
+        case "expired", "ended": self = .expired
         default:         self = .unknown(raw)
         }
     }
@@ -93,6 +96,30 @@ public struct ReadingPair: Codable, Sendable, Identifiable {
         let parts = name.split(separator: " ").prefix(2)
         return parts.compactMap { $0.first.map(String.init) }.joined().uppercased()
     }
+
+    // MARK: - Wire-shape tolerance (contract reconciliation)
+    // Only `partnerId` is required; the deployed pair record carries no
+    // partner stats (they arrive in a separate `partner` summary — merged by
+    // `PairsListResponse`), so counters default to 0.
+
+    private enum WireKeys: String, CodingKey {
+        case partnerId, partnerDisplayName, partnerAvatarUrl, partnerAvatarEmoji
+        case partnerTier, partnerCurrentStreak, partnerBooksFinished
+        case status, pairedAt
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: WireKeys.self)
+        partnerId = try c.decodeRequiredFirst(String.self, keys: [.partnerId])
+        partnerDisplayName = c.decodeFirst(String.self, keys: [.partnerDisplayName])
+        partnerAvatarUrl = c.decodeFirst(String.self, keys: [.partnerAvatarUrl])
+        partnerAvatarEmoji = c.decodeFirst(String.self, keys: [.partnerAvatarEmoji])
+        partnerTier = c.decodeFirst(ProfileTier.self, keys: [.partnerTier]) ?? .reader
+        partnerCurrentStreak = c.decodeFirst(Int.self, keys: [.partnerCurrentStreak]) ?? 0
+        partnerBooksFinished = c.decodeFirst(Int.self, keys: [.partnerBooksFinished]) ?? 0
+        status = c.decodeFirst(PairStatus.self, keys: [.status]) ?? .unknown("")
+        pairedAt = c.decodeFirst(String.self, keys: [.pairedAt])
+    }
 }
 
 // MARK: - PairInvite
@@ -115,8 +142,68 @@ public struct PairInvite: Codable, Sendable {
 
 // MARK: - Response envelopes
 
+/// Decodes `pairs` lossily — one malformed pair must never blank the whole
+/// partners screen (contract-reconciliation trap §5.4).
+///
+/// ## Wire-shape tolerance (contract reconciliation)
+/// The deployed `GET /book/me/pairs` returns a SINGLE active pairing as
+/// `{pair: {partnerId, pairedAt, status, …}|null, partner: <PII-safe
+/// summary>|null}` — not a list. Both shapes decode: the single form merges
+/// the partner summary's display name into the one `ReadingPair`.
 public struct PairsListResponse: Codable, Sendable {
     public let pairs: [ReadingPair]
+
+    public init(pairs: [ReadingPair]) {
+        self.pairs = pairs
+    }
+
+    private enum CodingKeys: String, CodingKey { case pairs, pair, partner }
+    private enum PartnerK: String, CodingKey {
+        case displayName, partnerDisplayName, avatarEmoji, avatarUrl
+        case tier, currentStreak, booksFinished
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if container.contains(.pairs) {
+            self.pairs = try container.decodeLossy(ReadingPair.self, forKey: .pairs)
+            return
+        }
+        // Deployed single-pair shape.
+        guard let base = ((try? container.decodeIfPresent(ReadingPair.self, forKey: .pair)) ?? nil)
+        else {
+            self.pairs = []
+            return
+        }
+        if let partner = try? container.nestedContainer(keyedBy: PartnerK.self, forKey: .partner) {
+            self.pairs = [
+                ReadingPair(
+                    partnerId: base.partnerId,
+                    partnerDisplayName: partner.decodeFirst(
+                        String.self, keys: [.displayName, .partnerDisplayName])
+                        ?? base.partnerDisplayName,
+                    partnerAvatarUrl: partner.decodeFirst(String.self, keys: [.avatarUrl])
+                        ?? base.partnerAvatarUrl,
+                    partnerAvatarEmoji: partner.decodeFirst(String.self, keys: [.avatarEmoji])
+                        ?? base.partnerAvatarEmoji,
+                    partnerTier: partner.decodeFirst(ProfileTier.self, keys: [.tier])
+                        ?? base.partnerTier,
+                    partnerCurrentStreak: partner.decodeFirst(Int.self, keys: [.currentStreak])
+                        ?? base.partnerCurrentStreak,
+                    partnerBooksFinished: partner.decodeFirst(Int.self, keys: [.booksFinished])
+                        ?? base.partnerBooksFinished,
+                    status: base.status,
+                    pairedAt: base.pairedAt)
+            ]
+        } else {
+            self.pairs = [base]
+        }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(pairs, forKey: .pairs)
+    }
 }
 
 public struct PairResponse: Codable, Sendable {

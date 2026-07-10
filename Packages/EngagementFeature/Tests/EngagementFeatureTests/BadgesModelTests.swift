@@ -513,14 +513,29 @@ struct BadgesResponseEvolutionTests {
         #expect(resp.badges.count == 2)
     }
 
-    @Test("element missing required field is dropped; rest survive")
-    func missingFieldDropped() throws {
+    @Test("element missing the identity field is dropped; rest survive")
+    func missingIdentityDropped() throws {
+        // Post-reconciliation, `badgeId` is the ONLY required field — the
+        // deployed /me/badges returns bare award records ({badgeId, earnedAt})
+        // whose display fields default rather than dropping the badge.
         let good = #"{"badgeId":"b1","name":"N","description":"d","category":"mastery","isEarned":false,"earnedAt":null,"icon":null}"#
-        let bad = #"{"badgeId":"b-bad"}"#
+        let bad = #"{"name":"No identity"}"#
         let json = "{\"badges\":[\(good),\(bad),\(good)]}".data(using: .utf8)!
         let resp = try JSONCoding.decoder.decode(BadgesResponse.self, from: json)
         #expect(resp.badges.count == 2)
         #expect(resp.badges.allSatisfy { $0.badgeId == "b1" })
+    }
+
+    @Test("deployed award record decodes with inferred isEarned + defaulted display fields")
+    func deployedAwardRecordDecodes() throws {
+        let award = #"{"badgeId":"first-book","earnedAt":"2026-07-01T00:00:00Z","tier":"bronze"}"#
+        let json = "{\"awards\":[\(award)]}".data(using: .utf8)!
+        let resp = try JSONCoding.decoder.decode(BadgesResponse.self, from: json)
+        #expect(resp.badges.count == 1)
+        let badge = try #require(resp.badges.first)
+        #expect(badge.badgeId == "first-book")
+        #expect(badge.isEarned) // inferred from earnedAt
+        #expect(badge.name == "first-book") // falls back to the id
     }
 
     @Test("extra future fields are silently ignored")

@@ -26,6 +26,45 @@ public struct FlowLedgerEntry: Codable, Sendable, Identifiable {
         self.description = description
         self.createdAt = createdAt
     }
+
+    // MARK: - Wire-shape tolerance (contract reconciliation)
+    // Deployed `recentTransactions` entries are shaped
+    // {transactionId, direction: "earn"|"spend", amount, sourceType, title,
+    //  subtitle, createdAt} — the id/type/description keys differ and the
+    // amount's sign comes from `direction`.
+
+    private enum WireKeys: String, CodingKey {
+        case id, transactionId
+        case type, sourceType
+        case amount, direction
+        case description, title, subtitle
+        case createdAt
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: WireKeys.self)
+        id = try c.decodeRequiredFirst(String.self, keys: [.id, .transactionId])
+        type = c.decodeFirst(FlowLedgerEntryType.self, keys: [.type, .sourceType])
+            ?? .unknown("")
+        let rawAmount = c.decodeFirst(Int.self, keys: [.amount]) ?? 0
+        if let direction = c.decodeFirst(String.self, keys: [.direction]),
+           direction.lowercased() == "spend" {
+            amount = -abs(rawAmount)
+        } else {
+            amount = rawAmount
+        }
+        description = c.decodeFirst(String.self, keys: [.description, .title, .subtitle]) ?? ""
+        createdAt = c.decodeFirst(String.self, keys: [.createdAt]) ?? ""
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: WireKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(type, forKey: .type)
+        try c.encode(amount, forKey: .amount)
+        try c.encode(description, forKey: .description)
+        try c.encode(createdAt, forKey: .createdAt)
+    }
 }
 
 // MARK: - FlowLedgerEntryType

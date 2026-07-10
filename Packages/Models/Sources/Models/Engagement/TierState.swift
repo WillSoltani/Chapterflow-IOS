@@ -82,10 +82,31 @@ public struct TierProgressDetail: Codable, Sendable {
 // MARK: - TierResponse
 
 /// Response wrapper for `POST /book/me/tier`.
+///
+/// ## Wire-shape tolerance (contract reconciliation)
+/// The deployed tier route returns the tier progress FLAT (spread at the top
+/// level, plus a `tiers` catalog array); the canonical shape is `{tier: {…}}`.
+/// Both decode; encoding stays canonical.
 public struct TierResponse: Codable, Sendable {
     public let tier: TierState
 
     public init(tier: TierState) {
         self.tier = tier
+    }
+
+    private enum CodingKeys: String, CodingKey { case tier }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let wrapped = container.decodeFirst(TierState.self, keys: [.tier]) {
+            self.tier = wrapped
+        } else {
+            self.tier = try TierState(from: decoder)
+        }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(tier, forKey: .tier)
     }
 }

@@ -66,11 +66,100 @@ public struct OwnProfile: Codable, Sendable, Equatable {
         let parts = name.split(separator: " ").prefix(2)
         return parts.compactMap { $0.first.map(String.init) }.joined().uppercased()
     }
+
+    // MARK: - Wire-shape tolerance (contract reconciliation)
+    // Only `userId` is required; stats default to 0 (the profile screen
+    // overlays live stats from the dashboard/streak/points endpoints).
+
+    private enum WireKeys: String, CodingKey {
+        case userId, displayName, avatarUrl, avatarEmoji
+        case tier, tierProgress, currentStreak, longestStreak
+        case booksFinished, flowPoints, equippedFrame, equippedTheme
+        case badgeCount, joinedAt, privacySettings
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: WireKeys.self)
+        userId = try c.decodeRequiredFirst(String.self, keys: [.userId])
+        displayName = c.decodeFirst(String.self, keys: [.displayName])
+        avatarUrl = c.decodeFirst(String.self, keys: [.avatarUrl])
+        avatarEmoji = c.decodeFirst(String.self, keys: [.avatarEmoji])
+        tier = c.decodeFirst(ProfileTier.self, keys: [.tier]) ?? .reader
+        tierProgress = c.decodeFirst(Double.self, keys: [.tierProgress])
+        currentStreak = c.decodeFirst(Int.self, keys: [.currentStreak]) ?? 0
+        longestStreak = c.decodeFirst(Int.self, keys: [.longestStreak]) ?? 0
+        booksFinished = c.decodeFirst(Int.self, keys: [.booksFinished]) ?? 0
+        flowPoints = c.decodeFirst(Int.self, keys: [.flowPoints]) ?? 0
+        equippedFrame = c.decodeFirst(CosmeticItem.self, keys: [.equippedFrame])
+        equippedTheme = c.decodeFirst(CosmeticItem.self, keys: [.equippedTheme])
+        badgeCount = c.decodeFirst(Int.self, keys: [.badgeCount]) ?? 0
+        joinedAt = c.decodeFirst(String.self, keys: [.joinedAt])
+        privacySettings = c.decodeFirst(PrivacySettings.self, keys: [.privacySettings])
+    }
 }
 
 /// Response envelope for `GET /book/me/profile`.
+///
+/// ## Wire-shape tolerance (contract reconciliation)
+/// The deployed route returns `{profile: <settings>|null, identity: {sub,
+/// displayName, …}, inferredLocation, updatedAt}` — the `profile` object is
+/// the user's PROFILE SETTINGS (may be null for a fresh account), and the
+/// canonical identity lives under `identity`. When the canonical
+/// `{profile: OwnProfile}` shape doesn't decode, this adapter synthesizes the
+/// profile from `identity.sub` + whatever settings exist; stats default to 0
+/// and are overlaid from the engagement endpoints by the profile screen.
 public struct OwnProfileResponse: Codable, Sendable {
     public let profile: OwnProfile
+
+    public init(profile: OwnProfile) {
+        self.profile = profile
+    }
+
+    private enum WireKeys: String, CodingKey { case profile, identity }
+    private enum IdentityK: String, CodingKey { case sub, displayName }
+    private enum SettingsK: String, CodingKey { case displayName, avatarEmoji, avatarUrl }
+
+    public init(from decoder: any Decoder) throws {
+        let root = try decoder.container(keyedBy: WireKeys.self)
+        // Canonical: {profile: {userId, …}}.
+        if let canonical = ((try? root.decodeIfPresent(OwnProfile.self, forKey: .profile)) ?? nil) {
+            self.profile = canonical
+            return
+        }
+        // Deployed: synthesize from identity + optional settings.
+        let identity = try root.nestedContainer(keyedBy: IdentityK.self, forKey: .identity)
+        let sub = try identity.decode(String.self, forKey: .sub)
+        let identityName = ((try? identity.decodeIfPresent(String.self, forKey: .displayName)) ?? nil)
+        let settings = try? root.nestedContainer(keyedBy: SettingsK.self, forKey: .profile)
+        let settingsName = settings.flatMap {
+            ((try? $0.decodeIfPresent(String.self, forKey: .displayName)) ?? nil)
+        }
+        self.profile = OwnProfile(
+            userId: sub,
+            displayName: settingsName ?? identityName,
+            avatarUrl: settings.flatMap {
+                ((try? $0.decodeIfPresent(String.self, forKey: .avatarUrl)) ?? nil)
+            },
+            avatarEmoji: settings.flatMap {
+                ((try? $0.decodeIfPresent(String.self, forKey: .avatarEmoji)) ?? nil)
+            },
+            tier: .reader,
+            tierProgress: nil,
+            currentStreak: 0,
+            longestStreak: 0,
+            booksFinished: 0,
+            flowPoints: 0,
+            equippedFrame: nil,
+            equippedTheme: nil,
+            badgeCount: 0,
+            joinedAt: nil,
+            privacySettings: nil)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var root = encoder.container(keyedBy: WireKeys.self)
+        try root.encode(profile, forKey: .profile)
+    }
 }
 
 /// Fields the user may update via `PATCH /book/me/settings`.

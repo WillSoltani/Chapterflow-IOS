@@ -63,9 +63,11 @@ struct NotificationInboxDecodingTests {
         }
     }
 
-    @Test("RF2: malformed notification element is dropped; rest survive (decodeLossy)")
+    @Test("RF2: element missing the identity field is dropped; rest survive (decodeLossy)")
     func malformedElementDropped() throws {
-        // Missing required `title` field makes the second element fail to decode.
+        // Post-reconciliation only `notificationId` is required (a missing
+        // title defaults to "" — the deployed inbox items can omit display
+        // fields). An element with NO identity is still dropped.
         let json = """
         {
             "notifications": [
@@ -78,9 +80,8 @@ struct NotificationInboxDecodingTests {
                     "createdAt": "2024-01-16T10:00:00Z"
                 },
                 {
-                    "notificationId": "n2",
                     "type": "badge_earned",
-                    "body": "Missing title field — should be dropped.",
+                    "body": "Missing notificationId — should be dropped.",
                     "isRead": false,
                     "createdAt": "2024-01-16T11:00:00Z"
                 }
@@ -90,9 +91,42 @@ struct NotificationInboxDecodingTests {
         """
         let data = Data(json.utf8)
         let response = try JSONDecoder().decode(NotificationsResponse.self, from: data)
-        // Only the valid element survives.
+        // Only the element with an identity survives.
         #expect(response.notifications.count == 1)
         #expect(response.notifications[0].notificationId == "n1")
+    }
+
+    @Test("deployed readAt string/null maps to isRead")
+    func readAtMapsToIsRead() throws {
+        let json = """
+        {
+            "notifications": [
+                {
+                    "notificationId": "n1",
+                    "type": "badge_earned",
+                    "title": "T",
+                    "body": "B",
+                    "channel": "inapp",
+                    "readAt": null,
+                    "createdAt": "2026-07-09T10:00:00Z"
+                },
+                {
+                    "notificationId": "n2",
+                    "type": "badge_earned",
+                    "title": "T2",
+                    "body": "B2",
+                    "channel": "inapp",
+                    "readAt": "2026-07-09T11:00:00Z",
+                    "createdAt": "2026-07-09T10:30:00Z"
+                }
+            ],
+            "unreadCount": 1
+        }
+        """
+        let response = try JSONDecoder().decode(NotificationsResponse.self, from: Data(json.utf8))
+        #expect(response.notifications.count == 2)
+        #expect(response.notifications.first { $0.notificationId == "n1" }?.isRead == false)
+        #expect(response.notifications.first { $0.notificationId == "n2" }?.isRead == true)
     }
 
     @Test("Decodes ISO-8601 date with and without fractional seconds")
