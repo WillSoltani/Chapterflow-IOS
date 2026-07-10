@@ -54,15 +54,26 @@ jobs:
           fi
           xcodebuild -version
 
-      # Cache bare git repos used by both xcodebuild and swift test.
-      # Key: hash of every Package.resolved in the tree.
-      - name: Cache SPM repositories
+      # Cache SPM state across runs:
+      #  - the bare git repos (dependency source) used by both xcodebuild and swift test
+      #  - the SHARED .build directory (see the test step) holding compiled dependency
+      #    products — Amplify + the AWS SDK are large and otherwise recompile from source
+      #    on every run.
+      # Key: hash of every Package.resolved; restore-keys let an out-of-date cache seed an
+      # incremental rebuild (SwiftPM re-verifies and rebuilds only what changed, so a stale
+      # hit is never incorrect — at worst it rebuilds).
+      - name: Cache SPM repositories & build
         uses: actions/cache@v4
         with:
-          path: ~/Library/Caches/org.swift.swiftpm/repositories
-          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          path: |
+            ~/Library/Caches/org.swift.swiftpm/repositories
+            .spm-build
+          # v2 bumps the key so the first run under this workflow SAVES a new cache that
+          # includes .spm-build (a same-key hit would restore the old repos-only entry and
+          # never re-save). Bump this suffix to invalidate the build cache.
+          key: ${{ runner.os }}-spm-v2-${{ hashFiles('**/Package.resolved') }}
           restore-keys: |
-            ${{ runner.os }}-spm-
+            ${{ runner.os }}-spm-v2-
 
       # Secrets.xcconfig is gitignored; CI uses placeholder values so the
       # project file resolves correctly. No real keys are needed for a build check.
@@ -120,9 +131,17 @@ jobs:
             SocialFeature
           )
 
+          # Share ONE build directory across every package's test run. The packages
+          # form a diamond over CoreKit/Networking/Persistence/Models and the large
+          # Amplify + AWS SDK graph; with a per-package .build each dependent recompiles
+          # that whole graph independently (Amplify built ~17×). A shared --scratch-path
+          # lets SwiftPM compile each dependency ONCE and reuse it. The loop is sequential,
+          # so there are no concurrent writers to the shared directory.
+          scratch="$GITHUB_WORKSPACE/.spm-build"
+
           for pkg in "${packages[@]}"; do
             echo "──────────────── Testing $pkg ────────────────"
-            if swift test --package-path "Packages/$pkg" --parallel; then
+            if swift test --package-path "Packages/$pkg" --scratch-path "$scratch" --parallel; then
               echo "✓ $pkg passed"
             else
               echo "✗ $pkg FAILED"
