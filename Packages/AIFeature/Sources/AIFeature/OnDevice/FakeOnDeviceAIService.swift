@@ -61,7 +61,7 @@ public actor FakeOnDeviceAIService: OnDeviceAIProviding {
         return [
             "Habits are the compound interest of self-improvement.",
             "You do not rise to the level of your goals; you fall to the level of your systems.",
-            "Every action is a vote for the type of person you wish to become.",
+            "Every action is a vote for the type of person you wish to become."
         ].prefix(count).map { String($0) }
     }
 

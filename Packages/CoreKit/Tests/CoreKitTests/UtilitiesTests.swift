@@ -138,15 +138,34 @@ struct AppLogTests {
 @Suite("Debouncer")
 struct DebouncerTests {
     @Test("only the last call in a burst runs")
-    func coalesces() async throws {
+    func coalesces() async {
         let debouncer = Debouncer(interval: .milliseconds(40))
         var runs = 0
         var lastValue = 0
 
+        // Event-driven: resume as soon as the debounced closure fires rather than
+        // sleeping a fixed 150ms (which races against scheduler load on CI).
+        // AsyncStream.Continuation is Sendable so yield() is safe from @MainActor.
+        // The 2s timeout task prevents an indefinite hang if Debouncer is broken.
+        let (firedStream, firedContinuation) = AsyncStream<Void>.makeStream()
         for value in 1...5 {
-            debouncer.call { runs += 1; lastValue = value }
+            debouncer.call {
+                runs += 1
+                lastValue = value
+                firedContinuation.yield()
+            }
         }
-        try await Task.sleep(for: .milliseconds(150))
+
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask {
+                for await _ in firedStream { break }
+            }
+            group.addTask {
+                try? await Task.sleep(for: .seconds(2))
+            }
+            await group.next()
+            group.cancelAll()
+        }
 
         #expect(runs == 1)
         #expect(lastValue == 5)

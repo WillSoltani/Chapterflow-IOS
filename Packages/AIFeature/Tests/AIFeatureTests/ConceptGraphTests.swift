@@ -15,11 +15,11 @@ struct GraphAnalyzerChainTests {
             concepts: [
                 ConceptNode(id: "a", label: "A", introducedIn: "1"),
                 ConceptNode(id: "b", label: "B", introducedIn: "2"),
-                ConceptNode(id: "c", label: "C", introducedIn: "3"),
+                ConceptNode(id: "c", label: "C", introducedIn: "3")
             ],
             edges: [
                 ConceptEdge(from: "a", to: "b", edgeType: .prerequisite),
-                ConceptEdge(from: "b", to: "c", edgeType: .prerequisite),
+                ConceptEdge(from: "b", to: "c", edgeType: .prerequisite)
             ]
         )
     }
@@ -60,10 +60,10 @@ struct GraphAnalyzerChainTests {
         let graph = ConceptGraph(
             concepts: [
                 ConceptNode(id: "a", label: "A"),
-                ConceptNode(id: "b", label: "B"),
+                ConceptNode(id: "b", label: "B")
             ],
             edges: [
-                ConceptEdge(from: "a", to: "b", edgeType: .unknown("associates_with")),
+                ConceptEdge(from: "a", to: "b", edgeType: .unknown("associates_with"))
             ]
         )
         let chain = GraphAnalyzer.prerequisiteChain(for: "a", in: graph)
@@ -79,13 +79,13 @@ struct GraphAnalyzerChainTests {
                 ConceptNode(id: "a", label: "A"),
                 ConceptNode(id: "b", label: "B"),
                 ConceptNode(id: "c", label: "C"),
-                ConceptNode(id: "d", label: "D"),
+                ConceptNode(id: "d", label: "D")
             ],
             edges: [
                 ConceptEdge(from: "a", to: "b", edgeType: .prerequisite),
                 ConceptEdge(from: "a", to: "c", edgeType: .prerequisite),
                 ConceptEdge(from: "b", to: "d", edgeType: .prerequisite),
-                ConceptEdge(from: "c", to: "d", edgeType: .prerequisite),
+                ConceptEdge(from: "c", to: "d", edgeType: .prerequisite)
             ]
         )
         let chainForB = GraphAnalyzer.prerequisiteChain(for: "b", in: graph)
@@ -114,7 +114,7 @@ struct GraphAnalyzerChapterTests {
         ConceptGraph(
             concepts: [
                 ConceptNode(id: "c1", label: "Concept 1", introducedIn: "ch-1"),
-                ConceptNode(id: "c2", label: "Concept 2", introducedIn: "ch-2"),
+                ConceptNode(id: "c2", label: "Concept 2", introducedIn: "ch-2")
             ],
             edges: [],
             chapterIntroduces: ["ch-1": ["c1"], "ch-2": ["c2"]],
@@ -156,11 +156,11 @@ struct GraphAnalyzerChapterTests {
             concepts: [
                 ConceptNode(id: "a", label: "A"),
                 ConceptNode(id: "b", label: "B"),
-                ConceptNode(id: "c", label: "C"),
+                ConceptNode(id: "c", label: "C")
             ],
             edges: [
                 ConceptEdge(from: "a", to: "b", edgeType: .prerequisite),
-                ConceptEdge(from: "b", to: "c", edgeType: .prerequisite),
+                ConceptEdge(from: "b", to: "c", edgeType: .prerequisite)
             ]
         )
         #expect(GraphAnalyzer.isAcyclic(graph))
@@ -171,11 +171,11 @@ struct GraphAnalyzerChapterTests {
         let graph = ConceptGraph(
             concepts: [
                 ConceptNode(id: "a", label: "A"),
-                ConceptNode(id: "b", label: "B"),
+                ConceptNode(id: "b", label: "B")
             ],
             edges: [
                 ConceptEdge(from: "a", to: "b", edgeType: .prerequisite),
-                ConceptEdge(from: "b", to: "a", edgeType: .prerequisite),
+                ConceptEdge(from: "b", to: "a", edgeType: .prerequisite)
             ]
         )
         #expect(!GraphAnalyzer.isAcyclic(graph))
@@ -197,7 +197,7 @@ struct GraphLayoutTests {
         let nodes = [
             ConceptNode(id: "a", label: "A", introducedIn: "1"),
             ConceptNode(id: "b", label: "B", introducedIn: "1"),
-            ConceptNode(id: "c", label: "C", introducedIn: "1"),
+            ConceptNode(id: "c", label: "C", introducedIn: "1")
         ]
         let size = CGSize(width: 600, height: 400)
         let positions = GraphLayout.compute(nodes: nodes, chapterOrder: ["1"], canvasSize: size)
@@ -212,7 +212,7 @@ struct GraphLayoutTests {
         let nodes = [
             ConceptNode(id: "a", label: "A", introducedIn: "1"),
             ConceptNode(id: "b", label: "B", introducedIn: "2"),
-            ConceptNode(id: "c", label: "C", introducedIn: "3"),
+            ConceptNode(id: "c", label: "C", introducedIn: "3")
         ]
         let size = CGSize(width: 600, height: 400)
         let positions = GraphLayout.compute(nodes: nodes, chapterOrder: ["1", "2", "3"], canvasSize: size)
@@ -230,7 +230,7 @@ struct GraphLayoutTests {
     func overflowLayer() throws {
         let nodes = [
             ConceptNode(id: "a", label: "A", introducedIn: "1"),
-            ConceptNode(id: "unassigned", label: "U"),
+            ConceptNode(id: "unassigned", label: "U")
         ]
         let size = CGSize(width: 600, height: 400)
         let positions = GraphLayout.compute(nodes: nodes, chapterOrder: ["1"], canvasSize: size)
@@ -260,7 +260,7 @@ struct GraphLayoutTests {
         let graph = ConceptGraph(
             concepts: [
                 ConceptNode(id: "a", label: "A", introducedIn: "10"),
-                ConceptNode(id: "b", label: "B", introducedIn: "2"),
+                ConceptNode(id: "b", label: "B", introducedIn: "2")
             ],
             edges: [],
             chapterIntroduces: ["10": ["a"], "2": ["b"]]
