@@ -96,7 +96,7 @@ public struct ReviewSessionView: View {
                             width: total > 0 ? proxy.size.width * CGFloat(done) / CGFloat(total) : 0,
                             height: 4
                         )
-                        .animation(.easeInOut(duration: 0.3), value: done)
+                        .animation(reduceMotion ? .none : .easeInOut(duration: 0.3), value: done)
                 }
             }
             .frame(height: 4)
@@ -111,6 +111,8 @@ public struct ReviewSessionView: View {
                     .foregroundStyle(Color.cfTertiaryLabel)
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Review progress: \(done) of \(total) cards reviewed")
     }
 
     // MARK: - Card face
@@ -150,6 +152,8 @@ public struct ReviewSessionView: View {
             }
         }
         .frame(maxWidth: .infinity, minHeight: 180)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(isFront ? "Question: \(text)" : "Answer: \(text)")
     }
 
     // MARK: - Reveal button

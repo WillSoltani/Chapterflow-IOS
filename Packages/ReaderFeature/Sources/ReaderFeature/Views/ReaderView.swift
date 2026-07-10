@@ -17,6 +17,7 @@ public struct ReaderView: View {
     @State private var readerModel: ReaderModel
     @State private var didFireEndHaptic = false
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(readerModel: ReaderModel) {
         _readerModel = State(initialValue: readerModel)
@@ -101,9 +102,9 @@ public struct ReaderView: View {
             }
             readerContentStack(controlsModel: controlsModel, chapterTitle: chapterTitle, navModel: navModel)
         }
-        .animation(.spring(duration: 0.35), value: readerModel.showQuizCTA)
-        .animation(.spring(duration: 0.35), value: readerModel.isLoopComplete)
-        .animation(.spring(duration: 0.3), value: showPersistentSidebar)
+        .animation(reduceMotion ? .none : .spring(duration: 0.35), value: readerModel.showQuizCTA)
+        .animation(reduceMotion ? .none : .spring(duration: 0.35), value: readerModel.isLoopComplete)
+        .animation(reduceMotion ? .none : .spring(duration: 0.3), value: showPersistentSidebar)
         .overlay {
             if readerModel.isLoopComplete {
                 LoopCompletionOverlay(
@@ -111,7 +112,7 @@ public struct ReaderView: View {
                     onContinue: readerModel.onContinueToNextChapter,
                     onDismiss: { readerModel.dismissLoopComplete() }
                 )
-                .transition(.opacity)
+                .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.95)))
             }
         }
         .onChange(of: controlsModel.currentTopBlockIndex) { _, newIndex in

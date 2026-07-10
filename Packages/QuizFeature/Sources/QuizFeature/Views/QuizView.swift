@@ -24,6 +24,8 @@ public struct QuizView: View {
     @State private var model: QuizModel
     public let onContinue: () -> Void
 
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     public init(
         bookId: String,
         chapterNumber: Int,
@@ -164,7 +166,7 @@ public struct QuizView: View {
             .padding(.horizontal, .cfSpacing20)
             .padding(.vertical, .cfSpacing16)
         }
-        .background(.regularMaterial)
+        .background(reduceTransparency ? AnyShapeStyle(Color.cfBackground) : AnyShapeStyle(.regularMaterial))
     }
 
     private var offlineBanner: some View {

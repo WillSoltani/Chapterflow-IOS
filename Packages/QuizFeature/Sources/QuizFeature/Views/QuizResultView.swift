@@ -18,6 +18,8 @@ public struct QuizResultView: View {
     public let onContinue: () -> Void
     public let onRetry: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     public init(model: QuizModel, onContinue: @escaping () -> Void, onRetry: @escaping () -> Void) {
         self.model = model
         self.onContinue = onContinue
@@ -45,8 +47,8 @@ public struct QuizResultView: View {
             .padding(.bottom, .cfSpacing48)
         }
         .overlay(alignment: .top) {
-            // Confetti runs on top of everything, non-interactive
-            if let result, result.passed {
+            // Confetti runs on top of everything, non-interactive; suppressed when Reduce Motion is on.
+            if let result, result.passed, !reduceMotion {
                 CFConfetti(isActive: true)
                     .frame(height: 400)
                     .allowsHitTesting(false)
@@ -66,7 +68,7 @@ public struct QuizResultView: View {
             Image(systemName: result.passed ? "checkmark.seal.fill" : "xmark.seal.fill")
                 .font(.system(size: 56))
                 .foregroundStyle(result.passed ? Color.green : Color.red)
-                .symbolEffect(.bounce, value: result.passed)
+                .symbolEffect(.bounce, value: reduceMotion ? false : result.passed)
                 .accessibilityHidden(true)
 
             Text(result.passed ? "Quiz Passed!" : "Not Quite")
@@ -93,6 +95,21 @@ public struct QuizResultView: View {
             }
         }
         .multilineTextAlignment(.center)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(scoreSummaryA11yLabel(result))
+    }
+
+    private func scoreSummaryA11yLabel(_ result: QuizAttemptResult) -> String {
+        var parts = [result.passed ? "Quiz passed" : "Quiz not passed"]
+        parts.append("Score: \(result.scorePercent) percent")
+        parts.append("\(result.correctCount) of \(result.totalQuestions) correct")
+        if !result.passed {
+            parts.append("You need \(model.passingScorePercent)% to pass")
+        }
+        if result.passed && model.unlockedNextChapter {
+            parts.append("Next chapter unlocked")
+        }
+        return parts.joined(separator: ". ")
     }
 
     // MARK: - Pass actions

@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import Accessibility
 import Models
 import DesignSystem
 
@@ -59,7 +60,10 @@ struct CategoryCoverageChart: View {
             )
             .foregroundStyle(slice.color)
             .cornerRadius(4)
+            .accessibilityLabel(slice.label)
+            .accessibilityValue("\(slice.count) book\(slice.count == 1 ? "" : "s")")
         }
+        .accessibilityChartDescriptor(self)
         .frame(width: 120, height: 120)
         .overlay {
             VStack(spacing: 2) {
@@ -111,7 +115,42 @@ struct CategoryCoverageChart: View {
     }
 
     private var accessibilityDescription: String {
-        slices.map { "\($0.count) \($0.label)" }.joined(separator: ", ")
+        guard !slices.isEmpty else { return "No books started yet." }
+        return slices.map { "\($0.count) \($0.label)" }.joined(separator: ", ") + ". \(total) total."
+    }
+}
+
+// MARK: - Audio Graph (AXChartDescriptorRepresentable)
+
+extension CategoryCoverageChart: @preconcurrency AXChartDescriptorRepresentable {
+    func makeChartDescriptor() -> AXChartDescriptor {
+        let xAxis = AXCategoricalDataAxisDescriptor(
+            title: "Category",
+            categoryOrder: slices.map { $0.label }
+        )
+        let yAxis = AXNumericDataAxisDescriptor(
+            title: "Books",
+            range: 0...Double(max(total, 1)),
+            gridlinePositions: []
+        ) { v in
+            guard v.isFinite else { return "" }
+            return "\(Int(v)) book\(Int(v) == 1 ? "" : "s")"
+        }
+        let series = AXDataSeriesDescriptor(
+            name: "Books by status",
+            isContinuous: false,
+            dataPoints: slices.map { slice in
+                AXDataPoint(x: slice.label, y: Double(slice.count))
+            }
+        )
+        return AXChartDescriptor(
+            title: "Books Overview",
+            summary: accessibilityDescription,
+            xAxis: xAxis,
+            yAxis: yAxis,
+            additionalAxes: [],
+            series: [series]
+        )
     }
 }
 

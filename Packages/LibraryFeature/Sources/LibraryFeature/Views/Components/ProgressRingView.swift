@@ -8,6 +8,8 @@ public struct ProgressRingView: View {
     let size: CGFloat
     let lineWidth: CGFloat
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     public init(progress: Double, size: CGFloat = 28, lineWidth: CGFloat = 3) {
         self.progress = max(0, min(1, progress))
         self.size = size
@@ -23,7 +25,7 @@ public struct ProgressRingView: View {
                 .stroke(Color.cfAccent,
                         style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .animation(.easeInOut(duration: 0.4), value: progress)
+                .animation(reduceMotion ? .none : .easeInOut(duration: 0.4), value: progress)
         }
         .frame(width: size, height: size)
         .accessibilityLabel(progressLabel)

@@ -1,5 +1,6 @@
 import SwiftUI
 import Charts
+import Accessibility
 import DesignSystem
 
 /// A compact gauge showing weekly reading minutes vs the user's goal.
@@ -37,6 +38,7 @@ struct WeeklyGoalChart: View {
             )
             .foregroundStyle(Color.cfFill)
             .cornerRadius(4)
+            .accessibilityHidden(true)
 
             // Progress arc
             if fraction > 0 {
@@ -49,8 +51,11 @@ struct WeeklyGoalChart: View {
                     isGoalMet ? Color.green.gradient : Color.cfAccent.gradient
                 )
                 .cornerRadius(4)
+                .accessibilityLabel("Weekly goal progress")
+                .accessibilityValue("\(Int(fraction * 100)) percent of \(weeklyGoalMinutes) minutes")
             }
         }
+        .accessibilityChartDescriptor(self)
         .frame(width: 100, height: 100)
         .overlay {
             VStack(spacing: 2) {
@@ -91,6 +96,42 @@ struct WeeklyGoalChart: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: - Audio Graph (AXChartDescriptorRepresentable)
+
+extension WeeklyGoalChart: @preconcurrency AXChartDescriptorRepresentable {
+    func makeChartDescriptor() -> AXChartDescriptor {
+        let xAxis = AXCategoricalDataAxisDescriptor(
+            title: "Status",
+            categoryOrder: ["Read", "Remaining"]
+        )
+        let yAxis = AXNumericDataAxisDescriptor(
+            title: "Minutes",
+            range: 0...Double(max(weeklyGoalMinutes, 1)),
+            gridlinePositions: []
+        ) { v in v.isFinite ? "\(Int(v)) min" : "" }
+        let remaining = max(0, weeklyGoalMinutes - weeklyReadMinutes)
+        let series = AXDataSeriesDescriptor(
+            name: "Weekly reading goal",
+            isContinuous: false,
+            dataPoints: [
+                AXDataPoint(x: "Read", y: Double(weeklyReadMinutes)),
+                AXDataPoint(x: "Remaining", y: Double(remaining))
+            ]
+        )
+        let summary = isGoalMet
+            ? "Goal met. \(weeklyReadMinutes) of \(weeklyGoalMinutes) minutes read this week."
+            : "\(weeklyReadMinutes) of \(weeklyGoalMinutes) minutes read. \(remaining) minutes remaining."
+        return AXChartDescriptor(
+            title: "Weekly Reading Goal",
+            summary: summary,
+            xAxis: xAxis,
+            yAxis: yAxis,
+            additionalAxes: [],
+            series: [series]
+        )
     }
 }
 

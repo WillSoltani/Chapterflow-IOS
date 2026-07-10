@@ -16,6 +16,9 @@ public struct ReaderToolbar: View {
     private let currentTopIndex: Int
     private let navModel: ChapterNavModel?
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     public init(
         model: ReaderControlsModel,
         currentTopIndex: Int,
@@ -31,7 +34,12 @@ public struct ReaderToolbar: View {
             recommendedHint
             mainControls
         }
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: .cfRadius16))
+        .background(
+            RoundedRectangle(cornerRadius: .cfRadius16)
+                .fill(reduceTransparency
+                    ? AnyShapeStyle(Color.cfSecondaryBackground)
+                    : AnyShapeStyle(.regularMaterial))
+        )
         .shadow(color: .black.opacity(0.08), radius: 12, x: 0, y: -2)
         .padding(.horizontal, .cfSpacing16)
         .padding(.bottom, .cfSpacing8)
@@ -234,7 +242,7 @@ public struct ReaderToolbar: View {
             .background(
                 RoundedRectangle(cornerRadius: .cfRadius8)
                     .fill(bgColor)
-                    .animation(.spring(duration: 0.2), value: isSelected)
+                    .animation(reduceMotion ? .none : .spring(duration: 0.2), value: isSelected)
             )
         }
         .buttonStyle(.plain)
@@ -272,7 +280,7 @@ public struct ReaderToolbar: View {
                 .background(
                     RoundedRectangle(cornerRadius: .cfRadius8)
                         .fill(isSelected ? Color.cfAccent : Color.cfSecondaryFill)
-                        .animation(.spring(duration: 0.2), value: isSelected)
+                        .animation(reduceMotion ? .none : .spring(duration: 0.2), value: isSelected)
                 )
         }
         .buttonStyle(.plain)
@@ -298,7 +306,7 @@ public struct ReaderToolbar: View {
 
     private var readingModeButton: some View {
         Button {
-            withAnimation(.spring(duration: 0.25)) {
+            withAnimation(reduceMotion ? .none : .spring(duration: 0.25)) {
                 switch model.readingMode {
                 case .scroll:   model.readingMode = .paginate
                 case .paginate: model.readingMode = .scroll
@@ -317,6 +325,8 @@ public struct ReaderToolbar: View {
             .padding(.horizontal, .cfSpacing12)
             .padding(.vertical, .cfSpacing8)
             .background(Color.cfSecondaryFill, in: RoundedRectangle(cornerRadius: .cfRadius8))
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(
@@ -333,7 +343,7 @@ public struct ReaderToolbar: View {
             Image(systemName: "textformat.size")
                 .font(.cfCallout)
                 .foregroundStyle(Color.cfLabel)
-                .frame(width: 36, height: 36)
+                .frame(width: 44, height: 44)
                 .background(Color.cfSecondaryFill, in: Circle())
         }
         .buttonStyle(.plain)
@@ -347,7 +357,7 @@ public struct ReaderToolbar: View {
             Image(systemName: "slider.horizontal.3")
                 .font(.cfCallout)
                 .foregroundStyle(Color.cfLabel)
-                .frame(width: 36, height: 36)
+                .frame(width: 44, height: 44)
                 .background(Color.cfSecondaryFill, in: Circle())
         }
         .buttonStyle(.plain)
@@ -356,14 +366,14 @@ public struct ReaderToolbar: View {
 
     private var focusModeButton: some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.3)) {
+            withAnimation(reduceMotion ? .easeInOut(duration: 0.15) : .easeInOut(duration: 0.3)) {
                 model.toggleFocusMode()
             }
         } label: {
             Image(systemName: model.isFocusModeActive ? "eye.slash" : "eye")
                 .font(.cfCallout)
                 .foregroundStyle(model.isFocusModeActive ? Color.cfAccent : Color.cfLabel)
-                .frame(width: 36, height: 36)
+                .frame(width: 44, height: 44)
                 .background(
                     Circle()
                         .fill(
