@@ -188,8 +188,7 @@ struct SeasonalEventModelTests {
             celebrationPresenter: CelebrationPresenter()
         )
         model.load()
-        // Allow async work to settle.
-        try await Task.sleep(for: .milliseconds(100))
+        await waitUntil { if case .loading = model.loadState { return false } else { return true } }
         guard case .loaded(let e, _) = model.loadState else {
             Issue.record("Expected .loaded, got \(model.loadState)")
             return
@@ -206,7 +205,7 @@ struct SeasonalEventModelTests {
             celebrationPresenter: CelebrationPresenter()
         )
         model.load()
-        try await Task.sleep(for: .milliseconds(100))
+        await waitUntil { if case .loading = model.loadState { return false } else { return true } }
         guard case .error = model.loadState else {
             Issue.record("Expected .error, got \(model.loadState)")
             return

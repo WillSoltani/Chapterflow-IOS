@@ -231,7 +231,7 @@ public struct BookDetailView: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 50)
+            .frame(minHeight: 50)
             .background(primaryActionBackground, in: RoundedRectangle(cornerRadius: .cfRadius12, style: .continuous))
             .foregroundStyle(primaryActionForeground)
         }

@@ -262,7 +262,7 @@ struct DailyGoalModelTests {
         let model = DailyGoalModel(repository: repo, store: store)
 
         model.load()
-        try await Task.sleep(nanoseconds: 500_000_000)
+        await waitUntil { if case .loading = model.loadState { return false } else { return true } }
 
         guard case .loaded(let state) = model.loadState else {
             Issue.record("Expected .loaded but got \(model.loadState)")
@@ -279,7 +279,7 @@ struct DailyGoalModelTests {
         let model = DailyGoalModel(repository: repo, store: store)
 
         model.load()
-        try await Task.sleep(nanoseconds: 500_000_000)
+        await waitUntil { if case .loading = model.loadState { return false } else { return true } }
 
         guard case .loaded(let state) = model.loadState else { return }
         #expect(abs(state.goalFraction - 0.5) < 0.001)
@@ -292,7 +292,7 @@ struct DailyGoalModelTests {
         let model = DailyGoalModel(repository: repo, store: store)
 
         model.load()
-        try await Task.sleep(nanoseconds: 500_000_000)
+        await waitUntil { if case .loading = model.loadState { return false } else { return true } }
 
         model.setGoal(30)
 
@@ -312,7 +312,7 @@ struct DailyGoalModelTests {
         let model = DailyGoalModel(repository: repo, store: store)
 
         model.load()
-        try await Task.sleep(nanoseconds: 500_000_000)
+        await waitUntil { if case .loading = model.loadState { return false } else { return true } }
 
         guard case .loaded(let state) = model.loadState else { return }
         #expect(state.weekActivity.count == 7)
@@ -333,7 +333,7 @@ struct DailyGoalModelTests {
         let model = DailyGoalModel(repository: repo, store: store)
 
         model.load()
-        try await Task.sleep(nanoseconds: 500_000_000)
+        await waitUntil { if case .loading = model.loadState { return false } else { return true } }
 
         guard case .loaded(let state) = model.loadState else { return }
         // Today (2026-07-04) is in fixture with 18 minutes
@@ -355,7 +355,7 @@ struct DailyGoalModelTests {
         let model = DailyGoalModel(repository: repo, store: store)
 
         model.load()
-        try await Task.sleep(nanoseconds: 500_000_000)
+        await waitUntil { if case .loading = model.loadState { return false } else { return true } }
 
         #expect(model.currentState != nil)
         #expect(model.currentState?.goalMinutes == 30)

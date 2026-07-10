@@ -120,7 +120,7 @@ struct StreakModelAtRiskTests {
         _ = try? await repo.fetchStreak()
         // Load state manually
         sut.load()
-        try? await Task.sleep(for: .milliseconds(100))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         #expect(!sut.isAtRisk)
     }
 
@@ -130,7 +130,7 @@ struct StreakModelAtRiskTests {
         let repo = makeStreakRepository(streak: streak)
         let sut = StreakModel(repository: repo, celebrationPresenter: CelebrationPresenter())
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         // Activity today → never at risk regardless of hour
         #expect(!sut.isAtRisk)
     }
@@ -152,7 +152,7 @@ struct StreakModelMilestoneTests {
         let repo = makeStreakRepository(streak: streak)
         let sut = StreakModel(repository: repo, celebrationPresenter: CelebrationPresenter())
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         #expect(sut.reachedMilestones == [7, 14])
     }
 
@@ -166,7 +166,7 @@ struct StreakModelMilestoneTests {
         let repo = makeStreakRepository(streak: streak)
         let sut = StreakModel(repository: repo, celebrationPresenter: CelebrationPresenter())
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         #expect(sut.reachedMilestones == [7, 14, 30])
     }
 
@@ -180,7 +180,7 @@ struct StreakModelMilestoneTests {
         let repo = makeStreakRepository(streak: streak)
         let sut = StreakModel(repository: repo, celebrationPresenter: CelebrationPresenter())
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         #expect(sut.nextMilestone == 30)
     }
 
@@ -194,7 +194,7 @@ struct StreakModelMilestoneTests {
         let repo = makeStreakRepository(streak: streak)
         let sut = StreakModel(repository: repo, celebrationPresenter: CelebrationPresenter())
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         #expect(sut.nextMilestone == nil)
     }
 
@@ -208,7 +208,7 @@ struct StreakModelMilestoneTests {
         let repo = makeStreakRepository(streak: streak)
         let sut = StreakModel(repository: repo, celebrationPresenter: CelebrationPresenter())
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         // Next milestone is 14; current is 7; previous is 7 → progress = (7-7)/(14-7) = 0
         #expect(abs(sut.nextMilestoneProgress - 0.0) < 0.001)
     }
@@ -234,7 +234,7 @@ struct StreakModelHeatmapTests {
         let repo = makeStreakRepository(streak: streak)
         let sut = StreakModel(repository: repo, celebrationPresenter: CelebrationPresenter())
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         #expect(sut.heatmapDays.count == 30)
     }
 
@@ -253,7 +253,7 @@ struct StreakModelHeatmapTests {
         let repo = makeStreakRepository(streak: streak)
         let sut = StreakModel(repository: repo, celebrationPresenter: CelebrationPresenter())
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         // The last day (index 29 = today) should reflect consistencyLast30, not streakHistory
         #expect(sut.heatmapDays.last?.minutesRead == 42)
     }
@@ -273,7 +273,7 @@ struct StreakModelHeatmapTests {
         let repo = makeStreakRepository(streak: streak)
         let sut = StreakModel(repository: repo, celebrationPresenter: CelebrationPresenter())
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         // All days except today should have 0 minutes
         let zeros = sut.heatmapDays.dropLast().filter { !$0.hasActivity }
         #expect(zeros.count == 29)
@@ -302,7 +302,7 @@ struct StreakModelCelebrationGuardTests {
         let repo = makeStreakRepository(streak: streak)
         let sut = StreakModel(repository: repo, celebrationPresenter: presenter, userDefaults: defaults)
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         #expect(presenter.isPresenting, "Celebration should fire on first load with today's activity")
     }
 
@@ -316,7 +316,7 @@ struct StreakModelCelebrationGuardTests {
 
         // First load
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         presenter.dismissAll()
 
         // Second load (refresh)
@@ -335,7 +335,7 @@ struct StreakModelCelebrationGuardTests {
         let repo = makeStreakRepository(streak: streak)
         let sut = StreakModel(repository: repo, celebrationPresenter: presenter, userDefaults: defaults)
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         #expect(!presenter.isPresenting)
     }
 
@@ -347,7 +347,7 @@ struct StreakModelCelebrationGuardTests {
         let repo = makeStreakRepository(streak: streak)
         let sut = StreakModel(repository: repo, celebrationPresenter: presenter, userDefaults: defaults)
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         #expect(!presenter.isPresenting)
     }
 
@@ -359,7 +359,7 @@ struct StreakModelCelebrationGuardTests {
         let repo = makeStreakRepository(streak: streak)
         let sut = StreakModel(repository: repo, celebrationPresenter: presenter, userDefaults: defaults)
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         #expect(presenter.currentEvent == .streakMilestone(streak: 7))
     }
 
@@ -371,7 +371,7 @@ struct StreakModelCelebrationGuardTests {
         let repo = makeStreakRepository(streak: streak)
         let sut = StreakModel(repository: repo, celebrationPresenter: presenter, userDefaults: defaults)
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         #expect(presenter.currentEvent == .streakIncrement(newStreak: 5))
     }
 }

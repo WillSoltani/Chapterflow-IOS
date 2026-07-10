@@ -491,8 +491,9 @@ struct BookDetailModelTests {
         let expected = DepthRecommendation(recommendedDepth: .medium, confidence: 0.85)
         model.fetchDepthRecommendation = { _ in expected }
         await model.fetch()
-        // Give the background task time to complete.
-        try await Task.sleep(for: .milliseconds(50))
+        // Wait for the background recommendation task to publish — event-driven,
+        // so it can't be starved by a co-scheduled heavy test under parallel runs.
+        await waitUntil { model.depthRecommendation != nil }
         #expect(model.depthRecommendation?.recommendedDepth == .medium)
         #expect(model.depthRecommendation?.isConfident == true)
     }
