@@ -31,7 +31,8 @@ public actor FakeAIRepository: AIRepository {
         bookId: String,
         question: String,
         selectionContext: String?,
-        tone: String?
+        tone: String?,
+        conversationHistory: [AIConversationTurn]? = nil
     ) async throws -> BookAskResponse {
         if delay > 0 {
             try await Task.sleep(for: .seconds(delay))

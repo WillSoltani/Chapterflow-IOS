@@ -5,16 +5,17 @@ import Persistence
 /// A chat-style sheet for asking questions about a specific book.
 ///
 /// Present this sheet from ``BookDetailView`` or the reader screen.
-/// Pass `onJumpToChapter` to enable tappable citation chips that navigate
-/// to the cited chapter; pass `selectionContext` when the user has a
-/// passage highlighted so the answer is grounded in that excerpt.
+/// The conversation thread is loaded from the SwiftData store on init so
+/// past Q&As are immediately visible offline. Each new answer is persisted
+/// automatically after the server responds.
 ///
-/// The conversation thread lives in `model` for the duration of the session.
-/// To preserve the thread across dismissals, keep the `model` instance alive
-/// in the presenting view's state.
+/// Long-press an answer card to save it to the Notebook, copy it, or
+/// share it with attribution (P6.7). Follow-up questions include recent
+/// conversation history so the server can generate coherent answers.
 public struct AskTheBookSheet: View {
 
     @State private var model: AskTheBookModel
+    @Environment(\.dismiss) private var dismiss
 
     public init(model: AskTheBookModel) {
         _model = State(initialValue: model)
@@ -49,16 +50,19 @@ public struct AskTheBookSheet: View {
                     }
 
                     ForEach(model.messages) { message in
-                        AskMessageView(message: message) { chapterNumber in
-                            model.jumpToChapter(chapterNumber)
-                        }
+                        AskMessageView(
+                            message: message,
+                            isPinned: model.pinnedMessageIds.contains(message.id.uuidString),
+                            onJumpToChapter: { model.jumpToChapter($0) },
+                            onSaveToNotebook: { model.saveToNotebook($0) },
+                            shareText: model.shareText(for: message)
+                        )
                         .id(message.id)
                     }
 
                     phaseView
                         .id("phaseAnchor")
 
-                    // Spacer so messages aren't hidden behind the input bar.
                     Color.clear.frame(height: 80)
                 }
             }
@@ -162,6 +166,13 @@ public struct AskTheBookSheet: View {
             .font(.cfCallout)
             .foregroundStyle(Color.cfSecondaryLabel)
             .multilineTextAlignment(.center)
+
+            if !model.messages.isEmpty {
+                Text("Your past answers are still readable above.")
+                    .font(.cfCaption)
+                    .foregroundStyle(Color.cfTertiaryLabel)
+                    .multilineTextAlignment(.center)
+            }
         }
         .padding(.cfSpacing24)
         .frame(maxWidth: .infinity)
@@ -206,6 +217,13 @@ public struct AskTheBookSheet: View {
                 .font(.cfCallout)
                 .foregroundStyle(Color.cfSecondaryLabel)
                 .multilineTextAlignment(.center)
+
+            if !model.messages.isEmpty {
+                Text("Your past answers are still readable above.")
+                    .font(.cfCaption)
+                    .foregroundStyle(Color.cfTertiaryLabel)
+                    .multilineTextAlignment(.center)
+            }
 
             Button("Retry") { model.retry() }
                 .buttonStyle(.borderedProminent)
@@ -288,7 +306,7 @@ public struct AskTheBookSheet: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .confirmationAction) {
-            Button("Done") {}
+            Button("Done") { dismiss() }
                 .fontWeight(.semibold)
         }
     }
@@ -300,37 +318,46 @@ public struct AskTheBookSheet: View {
 #Preview("Ask — idle (light)") {
     let model = AskTheBookModel(
         bookId: "b-atomic-habits",
+        userId: "preview-user",
+        bookTitle: "Atomic Habits",
         repository: FakeAIRepository(delay: 0)
     )
     return AskTheBookSheet(model: model)
 }
 
-#Preview("Ask — with context (dark)") {
+#Preview("Ask — history loaded (dark)") {
     let model = AskTheBookModel(
         bookId: "b-atomic-habits",
-        repository: FakeAIRepository(delay: 0),
-        selectionContext: "Habits are the compound interest of self-improvement. The same way that money multiplies through compound interest, the effects of your habits multiply as you repeat them."
+        userId: "preview-user",
+        bookTitle: "Atomic Habits",
+        repository: FakeAIRepository(delay: 0)
     )
+    Task { @MainActor in
+        model.inputText = "What is the core concept of atomic habits?"
+        await model.sendQuestion()
+        model.inputText = "How does the habit loop work?"
+        await model.sendQuestion()
+    }
     return AskTheBookSheet(model: model)
         .preferredColorScheme(.dark)
 }
 
-#Preview("Ask — thread loaded") {
+#Preview("Ask — with context (light)") {
     let model = AskTheBookModel(
         bookId: "b-atomic-habits",
-        repository: FakeAIRepository(delay: 0)
+        userId: "preview-user",
+        bookTitle: "Atomic Habits",
+        repository: FakeAIRepository(delay: 0),
+        selectionContext: "Habits are the compound interest of self-improvement."
     )
-    // Seed the thread directly
-    Task { @MainActor in
-        model.inputText = "What is the core concept?"
-        await model.sendQuestion()
-    }
     return AskTheBookSheet(model: model)
 }
 
-#Preview("Ask — rate limited") {
+#Preview("Ask — rate limited with history") {
     let model = AskTheBookModel(
         bookId: "b-atomic-habits",
+        userId: "preview-user",
+        bookTitle: "Atomic Habits",
         repository: FakeAIRepository(error: FakeAIRepository.rateLimitedError, delay: 0)
     )
     Task { @MainActor in
@@ -343,6 +370,7 @@ public struct AskTheBookSheet: View {
 #Preview("Ask — offline (no on-device)") {
     let model = AskTheBookModel(
         bookId: "b-atomic-habits",
+        userId: "preview-user",
         repository: FakeAIRepository(error: FakeAIRepository.offlineError, delay: 0)
     )
     Task { @MainActor in
@@ -360,6 +388,8 @@ public struct AskTheBookSheet: View {
     """
     let model = AskTheBookModel(
         bookId: "b-atomic-habits",
+        userId: "preview-user",
+        bookTitle: "Atomic Habits",
         repository: FakeAIRepository(error: FakeAIRepository.offlineError, delay: 0),
         chapterText: chapterText,
         onDeviceService: FakeOnDeviceAIService(availability: .available, delay: 0)
@@ -375,6 +405,8 @@ public struct AskTheBookSheet: View {
     let chapterText = "Habits are the compound interest of self-improvement."
     let model = AskTheBookModel(
         bookId: "b-atomic-habits",
+        userId: "preview-user",
+        bookTitle: "Atomic Habits",
         repository: FakeAIRepository(error: FakeAIRepository.offlineError, delay: 0),
         chapterText: chapterText,
         onDeviceService: FakeOnDeviceAIService(availability: .available, delay: 0)
@@ -390,6 +422,7 @@ public struct AskTheBookSheet: View {
 #Preview("Ask — on-device wired, idle with privacy note") {
     let model = AskTheBookModel(
         bookId: "b-atomic-habits",
+        userId: "preview-user",
         repository: FakeAIRepository(delay: 0),
         chapterText: "Habits are the compound interest of self-improvement.",
         onDeviceService: FakeOnDeviceAIService(availability: .available)
@@ -400,6 +433,7 @@ public struct AskTheBookSheet: View {
 #Preview("Ask — XXL text") {
     let model = AskTheBookModel(
         bookId: "b-atomic-habits",
+        userId: "preview-user",
         repository: FakeAIRepository(delay: 0)
     )
     return AskTheBookSheet(model: model)
