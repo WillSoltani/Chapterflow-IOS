@@ -403,6 +403,8 @@ public struct AppRootView: View {
                 }
             )
         }
+        // What's New (P10.9) — auto-presents once after an app update (self-contained).
+        .whatsNewLaunchGate(onboardingCompleted: model.preferences.onboardingCompleted)
     }
 
     // MARK: - Tab content

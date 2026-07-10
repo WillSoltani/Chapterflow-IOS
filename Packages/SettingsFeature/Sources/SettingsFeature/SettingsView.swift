@@ -69,6 +69,12 @@ public struct SettingsView: View {
     /// Called to sign the user out (routes through `AppModel.signOut`).
     let onSignOut: (() async -> Void)?
 
+    // MARK: What's New (P10.9)
+
+    /// Drives the always-available "What's New" entry in the About section.
+    @State private var whatsNewModel = WhatsNewModel()
+    @State private var showWhatsNew = false
+
     // MARK: App version
 
     private var appVersion: String {
@@ -139,6 +145,11 @@ public struct SettingsView: View {
             #endif
         }
         .task { await settingsModel?.load() }
+        .sheet(isPresented: $showWhatsNew) {
+            if let release = whatsNewModel.displayRelease {
+                WhatsNewView(release: release)
+            }
+        }
         #if os(iOS)
         .sheet(isPresented: Binding(
             get: { settingsModel?.showShareSheet ?? false },
@@ -492,6 +503,24 @@ public struct SettingsView: View {
             LabeledContent("Version", value: appVersion)
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("App version: \(appVersion)")
+
+            if whatsNewModel.displayRelease != nil {
+                Button {
+                    showWhatsNew = true
+                } label: {
+                    HStack {
+                        Label("What's New", systemImage: "sparkles")
+                            .foregroundStyle(Color.cfLabel)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.cfCaption)
+                            .foregroundStyle(Color.cfTertiaryLabel)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("What's New")
+                .accessibilityHint("Shows the latest features in this release")
+            }
         }
     }
 
