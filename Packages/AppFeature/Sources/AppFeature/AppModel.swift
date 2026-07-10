@@ -137,6 +137,12 @@ public final class AppModel {
     /// Shared repository for the FSRS spaced-repetition Reviews tab.
     public let reviewsRepository: ReviewsRepository
 
+    // MARK: - App Store review
+
+    /// Applies the review-prompt policy and, at a genuine positive moment, asks StoreKit
+    /// for an App Store review (see ``AppRootView`` for the trigger call site).
+    public let reviewPromptController: ReviewPromptController
+
     // MARK: - Audio
 
     /// Shared user preferences (persisted to App Group UserDefaults).
@@ -337,6 +343,11 @@ public final class AppModel {
         self.reviewsRepository = ReviewsRepository(apiClient: client, modelContainer: container)
         self.onboardingRepository = LiveOnboardingRepository(apiClient: client)
         self.settingsRepository = LiveSettingsRepository(client: client)
+
+        self.reviewPromptController = ReviewPromptController(
+            store: KeyValueReviewPromptVersionStore(),
+            currentVersion: Bundle.main.appShortVersion
+        )
 
         let prefs = AppPreferences()
         self.preferences = prefs

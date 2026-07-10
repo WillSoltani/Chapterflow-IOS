@@ -17,13 +17,21 @@ public struct QuizResultView: View {
     @Bindable var model: QuizModel
     public let onContinue: () -> Void
     public let onRetry: () -> Void
+    /// Fired once when a *passing* result appears. Never fires on a failing result.
+    public let onQuizPassed: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    public init(model: QuizModel, onContinue: @escaping () -> Void, onRetry: @escaping () -> Void) {
+    public init(
+        model: QuizModel,
+        onContinue: @escaping () -> Void,
+        onRetry: @escaping () -> Void,
+        onQuizPassed: @escaping () -> Void = {}
+    ) {
         self.model = model
         self.onContinue = onContinue
         self.onRetry = onRetry
+        self.onQuizPassed = onQuizPassed
     }
 
     private var result: QuizAttemptResult? { model.result }
@@ -57,6 +65,9 @@ public struct QuizResultView: View {
         .onAppear {
             if let result, result.passed {
                 triggerSuccessHaptic()
+                // A genuine, server-graded positive moment — let the host decide whether
+                // this is a good time to ask for an App Store review.
+                onQuizPassed()
             }
         }
     }
