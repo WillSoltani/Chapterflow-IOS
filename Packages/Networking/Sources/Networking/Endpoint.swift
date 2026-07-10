@@ -409,21 +409,24 @@ public enum Endpoints {
     ///   - selectionContext: Optional passage the user highlighted in the reader;
     ///     grounds the answer in that excerpt.
     ///   - tone: Optional reading-tone preference string (`gentle`/`direct`/`competitive`).
+    ///   - conversationHistory: Prior Q&A turns for thread context; nil → fresh question.
     public static func askBook(
         bookId: String,
         question: String,
         selectionContext: String? = nil,
-        tone: String? = nil
+        tone: String? = nil,
+        conversationHistory: [AskConversationTurn]? = nil
     ) throws -> Endpoint {
         struct Body: Encodable {
             let question: String
             let context: String?
             let tone: String?
+            let history: [AskConversationTurn]?
         }
         return try Endpoint(
             method: .post,
             path: "/book/books/\(bookId)/ask",
-            body: Body(question: question, context: selectionContext, tone: tone)
+            body: Body(question: question, context: selectionContext, tone: tone, history: conversationHistory)
         )
     }
 
