@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 import CoreKit
 import CoreSpotlight
 import DesignSystem
@@ -31,6 +32,7 @@ public struct AppRootView: View {
     @State private var readingFlow: ReadingFlow?
     @State private var showQueuedToast = false
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.requestReview) private var requestReview
 
     // Observed so SwiftUI tracks changes written by App Intents perform().
     private let intentStore = IntentActionStore.shared
@@ -324,7 +326,8 @@ public struct AppRootView: View {
                 annotationRepository: model.annotationRepository,
                 preferences: model.preferences,
                 analytics: model.analytics,
-                onDismiss: { readingFlow = nil }
+                onDismiss: { readingFlow = nil },
+                onQuizPassed: { requestReviewAfterQuizPass(model, requestReview) }
             )
         }
         #endif

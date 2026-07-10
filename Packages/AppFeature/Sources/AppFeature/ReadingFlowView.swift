@@ -44,6 +44,7 @@ struct ReadingFlowView: View {
 
     private let quizRepository: any QuizRepository
     private let onDismiss: () -> Void
+    private let onQuizPassed: () -> Void
 
     @MainActor
     init(
@@ -53,7 +54,8 @@ struct ReadingFlowView: View {
         annotationRepository: (any AnnotationRepository)?,
         preferences: AppPreferences,
         analytics: any AnalyticsClient = NoopAnalyticsClient(),
-        onDismiss: @escaping () -> Void
+        onDismiss: @escaping () -> Void,
+        onQuizPassed: @escaping () -> Void = {}
     ) {
         _readerModel = State(initialValue: ReaderModel(
             bookId: flow.bookId,
@@ -66,6 +68,7 @@ struct ReadingFlowView: View {
         ))
         self.quizRepository = quizRepository
         self.onDismiss = onDismiss
+        self.onQuizPassed = onQuizPassed
     }
 
     var body: some View {
@@ -99,7 +102,8 @@ struct ReadingFlowView: View {
                 onContinue: {
                     quizContext = nil
                     onDismiss()
-                }
+                },
+                onQuizPassed: onQuizPassed
             )
         }
         .task {

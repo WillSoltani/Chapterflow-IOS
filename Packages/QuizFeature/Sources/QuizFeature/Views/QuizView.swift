@@ -23,6 +23,10 @@ public struct QuizView: View {
 
     @State private var model: QuizModel
     public let onContinue: () -> Void
+    /// Fired once when the server-graded *pass* result first appears. Used by the host to
+    /// mark a genuine positive moment (e.g. to consider an App Store review request). Never
+    /// fires on a failure, pending-grading, or error result.
+    public let onQuizPassed: () -> Void
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
@@ -32,7 +36,8 @@ public struct QuizView: View {
         tone: ToneKey? = nil,
         repository: any QuizRepository,
         analytics: any AnalyticsClient = NoopAnalyticsClient(),
-        onContinue: @escaping () -> Void
+        onContinue: @escaping () -> Void,
+        onQuizPassed: @escaping () -> Void = {}
     ) {
         _model = State(initialValue: QuizModel(
             bookId: bookId,
@@ -42,6 +47,7 @@ public struct QuizView: View {
             analytics: analytics
         ))
         self.onContinue = onContinue
+        self.onQuizPassed = onQuizPassed
     }
 
     public var body: some View {
@@ -76,7 +82,8 @@ public struct QuizView: View {
             QuizResultView(
                 model: model,
                 onContinue: onContinue,
-                onRetry: { Task { await model.retry() } }
+                onRetry: { Task { await model.retry() } },
+                onQuizPassed: onQuizPassed
             )
         case .pendingGrading:
             pendingGradingView
