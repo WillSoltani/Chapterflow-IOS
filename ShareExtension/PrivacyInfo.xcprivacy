@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  ShareExtension privacy manifest (P10.13).
+	  Writes the shared item to the group.com.chapterflow App Group outbox
+	  (UserDefaults) for the main app to upload; performs no tracking and does
+	  not itself send data off device, so the collected-data list is empty.
+	-->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array>
+		<dict>
+			<!-- Writes the shared App Group outbox (ExtensionOutboxWriter). -->
+			<key>NSPrivacyAccessedAPIType</key>
+			<string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+			<key>NSPrivacyAccessedAPITypeReasons</key>
+			<array>
+				<string>1C8F.1</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

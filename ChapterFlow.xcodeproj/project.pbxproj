@@ -9,7 +9,9 @@
 /* Begin PBXBuildFile section */
 		04FEC734CE8CA7DA3F93E69F /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 01BF66985E4B1ED2CC4984CF /* Foundation.framework */; };
 		0A1CB7F017CCEB42C5E3B9E3 /* ExtensionTokenCheck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86526C10B376721C9BB3C055 /* ExtensionTokenCheck.swift */; };
+		14C3A45F44DE05D294C05C8D /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6B3BA729B61E00BBCA98E5D2 /* PrivacyInfo.xcprivacy */; };
 		154FAC4F259F770A660CDCFF /* AppRobot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13EF5D4DCFFA62699AA5D2DB /* AppRobot.swift */; };
+		19AB713E33095AB194B6483F /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 17BE303DCA845DE04BECEA02 /* PrivacyInfo.xcprivacy */; };
 		236EFD36ECB2C27CFDF7A0E4 /* SmokeLaneTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D23EAB3CE617CB627A5CD649 /* SmokeLaneTests.swift */; };
 		2407C1347F9A7DADCB0E9201 /* ChapterflowWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8EA7DDEFAE3D456CE7B77F71 /* ChapterflowWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		2BD5E37F2BBBA9704C85C1F5 /* ControlWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8A897D0478E40E975C85C69 /* ControlWidgets.swift */; };
@@ -29,6 +31,7 @@
 		6AC86007FC11CFC4EF060487 /* ReadingSessionLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20B11F247829B40CD01C223C /* ReadingSessionLiveActivity.swift */; };
 		722B1BC219CE90F9818CF60D /* NotificationContent.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 050A996D551F59F957401E6D /* NotificationContent.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		72F48B3486D36A62CBAA775C /* AttachmentBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA027BFD0C054E6CFEC8BC3E /* AttachmentBuilder.swift */; };
+		77F92C65EC6E21D53C989A4A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D508754251CADA755D8511E4 /* PrivacyInfo.xcprivacy */; };
 		8AB972D70AF3F6E524667A5B /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E9800A4BEA2EA1A39922A3A3 /* WidgetKit.framework */; };
 		8B9C50D81A4553FA9A52CB5B /* ExtensionOutboxWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 016E977DC8E592B02DF6568A /* ExtensionOutboxWriter.swift */; };
 		8F0023C8CA200898EC24D2B8 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 01BF66985E4B1ED2CC4984CF /* Foundation.framework */; };
@@ -39,6 +42,7 @@
 		AD3A8B5E08AA699B95905A77 /* NotificationService.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E04CAB02AF39E4B3C81F199F /* NotificationService.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AF02200867742D0E0B96D614 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF8CF3538352B95B12E9D393 /* UIKit.framework */; };
 		AFA0E2C970BC6887892A157A /* RichNotificationCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8EE91B935F78B8ABFC1C1B6A /* RichNotificationCore */; };
+		B0FCB71165CAF34395B941BF /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = ABE2E83E08961F8564C1D840 /* PrivacyInfo.xcprivacy */; };
 		BB3658E7AA5FE592823E62D4 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 01BF66985E4B1ED2CC4984CF /* Foundation.framework */; };
 		BE9698F7FE270865500EFA3B /* ControlWidgetIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = D21DA3CA4633BCC2AC43D204 /* ControlWidgetIntents.swift */; };
 		BF1EF742C2C8F3C2A94184A5 /* ShareExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 265E98A1D657A0C95A2D2865 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -53,6 +57,7 @@
 		EB7753C3D0F406A32F61E926 /* ExtensionTokenCheck.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86526C10B376721C9BB3C055 /* ExtensionTokenCheck.swift */; };
 		EEE2153726320A85F4743171 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 62337D48E2C6D11D9DD20D70 /* SwiftUI.framework */; };
 		EFD26A9B1B8FADA3538EC58A /* ProgressRingWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81FE884A215CF6E3ADA31C64 /* ProgressRingWidget.swift */; };
+		F0921562AA29773D7A52FBFE /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F5C152E0F1FBDEC4AC1F5F1D /* PrivacyInfo.xcprivacy */; };
 		F0B5D79777C758BE4B90E507 /* StreakWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3439D5BFE5F7A771123B64FD /* StreakWidget.swift */; };
 		F4449A890EF3F06FE12F3915 /* ReadingSessionAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A49FBB86C14330D329AC2CA /* ReadingSessionAttributes.swift */; };
 		F793389BD6334DD6806BF1CD /* AudioPlaybackIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33426492B51196D1655C7F9B /* AudioPlaybackIntents.swift */; };
@@ -142,6 +147,7 @@
 		13EF5D4DCFFA62699AA5D2DB /* AppRobot.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppRobot.swift; sourceTree = "<group>"; };
 		15E7517D2FF4A90000FA8025 /* ChapterFlow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ChapterFlow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		165F7C41C20A17C133A0F496 /* StreakAtRiskLiveActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StreakAtRiskLiveActivity.swift; sourceTree = "<group>"; };
+		17BE303DCA845DE04BECEA02 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		18EA46ABF3A38A13F2985782 /* Secrets.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		1A49FBB86C14330D329AC2CA /* ReadingSessionAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReadingSessionAttributes.swift; sourceTree = "<group>"; };
 		1E8ABE24781E94C6EBB7C0AC /* StreakAtRiskAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StreakAtRiskAttributes.swift; sourceTree = "<group>"; };
@@ -159,6 +165,7 @@
 		52EFD099E026B2AE09252632 /* ChapterFlowUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChapterFlowUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		62337D48E2C6D11D9DD20D70 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = SwiftUI.framework; sourceTree = SDKROOT; };
 		6B34E064E0875E6F8255A32B /* ShareView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShareView.swift; sourceTree = "<group>"; };
+		6B3BA729B61E00BBCA98E5D2 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		7661D6455EE1B64C3349CC10 /* WidgetDataReader.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetDataReader.swift; sourceTree = "<group>"; };
 		81FE884A215CF6E3ADA31C64 /* ProgressRingWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProgressRingWidget.swift; sourceTree = "<group>"; };
 		82C8556826731B4C5B553BC9 /* PurchaseFlowTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PurchaseFlowTests.swift; sourceTree = "<group>"; };
@@ -168,16 +175,19 @@
 		8EA7DDEFAE3D456CE7B77F71 /* ChapterflowWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ChapterflowWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		90ACB13AF7E994C17C5ECEFB /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A4F52C53E7B459419F05C983 /* NotificationServiceExtension.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NotificationServiceExtension.swift; sourceTree = "<group>"; };
+		ABE2E83E08961F8564C1D840 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AF8CF3538352B95B12E9D393 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = UIKit.framework; sourceTree = SDKROOT; };
 		B0E1ADB4EC707D0AB7D0AEBA /* ShareExtension.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = ShareExtension.entitlements; sourceTree = "<group>"; };
 		B61F7E717429A35DF5B29CCE /* NextReviewWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NextReviewWidget.swift; sourceTree = "<group>"; };
 		C13F2B651927183CE1FEF2D5 /* ActionExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ActionExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		D21DA3CA4633BCC2AC43D204 /* ControlWidgetIntents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ControlWidgetIntents.swift; sourceTree = "<group>"; };
 		D23EAB3CE617CB627A5CD649 /* SmokeLaneTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SmokeLaneTests.swift; sourceTree = "<group>"; };
+		D508754251CADA755D8511E4 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		E04CAB02AF39E4B3C81F199F /* NotificationService.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = NotificationService.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		E9800A4BEA2EA1A39922A3A3 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = WidgetKit.framework; sourceTree = SDKROOT; };
 		EA027BFD0C054E6CFEC8BC3E /* AttachmentBuilder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AttachmentBuilder.swift; sourceTree = "<group>"; };
 		EADD29ED1B48239602880F9B /* ActionView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ActionView.swift; sourceTree = "<group>"; };
+		F5C152E0F1FBDEC4AC1F5F1D /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F8594C9C8358DF610EE54A6E /* ShareViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		F8A897D0478E40E975C85C69 /* ControlWidgets.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ControlWidgets.swift; sourceTree = "<group>"; };
 		FE8F84E4FCD501EFB0CB0817 /* ChapterflowWidgets.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = ChapterflowWidgets.entitlements; sourceTree = "<group>"; };
@@ -361,6 +371,7 @@
 				EADD29ED1B48239602880F9B /* ActionView.swift */,
 				1176D7406002E219FBC7981F /* Info.plist */,
 				839682D8B19640C9DB1C505E /* ActionExtension.entitlements */,
+				6B3BA729B61E00BBCA98E5D2 /* PrivacyInfo.xcprivacy */,
 			);
 			name = ActionExtension;
 			path = ActionExtension;
@@ -371,6 +382,7 @@
 			children = (
 				EA027BFD0C054E6CFEC8BC3E /* AttachmentBuilder.swift */,
 				A4F52C53E7B459419F05C983 /* NotificationServiceExtension.swift */,
+				F5C152E0F1FBDEC4AC1F5F1D /* PrivacyInfo.xcprivacy */,
 			);
 			path = NotificationService;
 			sourceTree = "<group>";
@@ -382,6 +394,7 @@
 				6B34E064E0875E6F8255A32B /* ShareView.swift */,
 				347FE5F629C8705D0F7EB894 /* Info.plist */,
 				B0E1ADB4EC707D0AB7D0AEBA /* ShareExtension.entitlements */,
+				ABE2E83E08961F8564C1D840 /* PrivacyInfo.xcprivacy */,
 			);
 			name = ShareExtension;
 			path = ShareExtension;
@@ -402,6 +415,7 @@
 				165F7C41C20A17C133A0F496 /* StreakAtRiskLiveActivity.swift */,
 				D21DA3CA4633BCC2AC43D204 /* ControlWidgetIntents.swift */,
 				F8A897D0478E40E975C85C69 /* ControlWidgets.swift */,
+				D508754251CADA755D8511E4 /* PrivacyInfo.xcprivacy */,
 			);
 			path = ChapterflowWidgets;
 			sourceTree = "<group>";
@@ -411,6 +425,7 @@
 			children = (
 				4A18BD4A98A6DFECCF5AC3CC /* BadgeCelebrationView.swift */,
 				4DCF192CB7B14D42D2B19DBE /* NotificationViewController.swift */,
+				17BE303DCA845DE04BECEA02 /* PrivacyInfo.xcprivacy */,
 			);
 			path = NotificationContent;
 			sourceTree = "<group>";
@@ -631,6 +646,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				14C3A45F44DE05D294C05C8D /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -638,6 +654,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				19AB713E33095AB194B6483F /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -645,6 +662,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F0921562AA29773D7A52FBFE /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -652,6 +670,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B0FCB71165CAF34395B941BF /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -659,6 +678,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				77F92C65EC6E21D53C989A4A /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
