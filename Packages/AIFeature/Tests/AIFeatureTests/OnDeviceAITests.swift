@@ -60,7 +60,7 @@ struct OnDeviceAIAvailabilityTests {
         let cases: [OnDeviceAIAvailability] = [
             .available, .unavailableOSVersion, .unavailableDeviceNotEligible,
             .unavailableNotEnabled, .unavailableModelNotReady,
-            .unavailableFeatureDisabled, .unavailableUnknown,
+            .unavailableFeatureDisabled, .unavailableUnknown
         ]
         for availability in cases {
             #expect(!availability.debugDescription.isEmpty)

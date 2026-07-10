@@ -48,9 +48,14 @@ public struct AppRootView: View {
             .task {
                 try? model.configure()
                 model.wirePushRouting()
-                IntentDonationManager.update()
                 model.analytics.track(.appOpen)
-                await model.analytics.flush()
+                // Defer non-critical work so the first interactive frame lands quickly.
+                // analytics.flush() is a network call — fire and forget, don't await.
+                // IntentDonationManager reads the App Intents catalog — background-safe.
+                Task(priority: .utility) {
+                    IntentDonationManager.update()
+                }
+                Task { await model.analytics.flush() }
             }
             .onOpenURL { url in model.handle(url: url) }
             .onChange(of: scenePhase) { _, phase in
@@ -60,6 +65,7 @@ public struct AppRootView: View {
                     model.consumePendingReadingMinutes()
                     model.consumeControlIntentAction()
                     model.triggerForegroundSync()
+                    model.drainExtensionOutbox()
                 case .background:
                     model.scheduleBackgroundTasks()
                     model.analytics.beacon("app_background")
@@ -367,6 +373,19 @@ public struct AppRootView: View {
         }
         // Queued-action confirmation toast shown when an offline write is enqueued.
         .offlineQueuedToast(isPresented: $showQueuedToast)
+        // Extension inbox banner: shown when the Share/Action extension saved items.
+        .overlay(alignment: .top) {
+            if model.showExtensionInboxBanner {
+                ExtensionInboxBanner(count: model.extensionInboxCount)
+                    .padding(.top, .cfSpacing8)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .task {
+                        try? await Task.sleep(for: .seconds(3))
+                        withAnimation(.spring) { model.showExtensionInboxBanner = false }
+                    }
+            }
+        }
+        .animation(.spring, value: model.showExtensionInboxBanner)
         // Notification inbox — presented by the bell button in the Home toolbar
         // or by a chapterflow://notifications deep link.
         .sheet(isPresented: Binding(

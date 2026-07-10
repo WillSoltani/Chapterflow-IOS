@@ -200,21 +200,27 @@ struct ReaderModelTests {
     // MARK: - Position save / restore
 
     @Test("scroll position is saved to repository")
-    func scrollPositionSaved() {
+    func scrollPositionSaved() async {
         let fake = FakeReaderRepository()
         let model = makeModel(repo: fake)
+        model.scrollSaveDelay = .zero   // disable debounce in test
         model.didScrollToBlock(5, blockCount: 20, chapterId: "ch-1")
+        // waitUntil polls every 5 ms; zero-sleep debounce completes on next runloop turn.
+        await waitUntil { fake.loadScrollPosition(bookId: "test-book", chapterNumber: 1) != nil }
 
         let saved = fake.loadScrollPosition(bookId: "test-book", chapterNumber: 1)
         #expect(saved == 5)
     }
 
     @Test("scroll position is updated on subsequent scroll events")
-    func scrollPositionUpdated() {
+    func scrollPositionUpdated() async {
         let fake = FakeReaderRepository()
         let model = makeModel(repo: fake)
+        model.scrollSaveDelay = .zero   // disable debounce in test
         model.didScrollToBlock(3, blockCount: 20, chapterId: "ch-1")
         model.didScrollToBlock(7, blockCount: 20, chapterId: "ch-1")
+        // Second call cancels the first debounce; only index 7 should be saved.
+        await waitUntil { fake.loadScrollPosition(bookId: "test-book", chapterNumber: 1) != nil }
 
         let saved = fake.loadScrollPosition(bookId: "test-book", chapterNumber: 1)
         #expect(saved == 7)

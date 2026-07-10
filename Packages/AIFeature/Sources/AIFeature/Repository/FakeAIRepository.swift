@@ -31,8 +31,7 @@ public actor FakeAIRepository: AIRepository {
         bookId: String,
         question: String,
         selectionContext: String?,
-        tone: String?,
-        conversationHistory: [AIConversationTurn]? = nil
+        tone: String?
     ) async throws -> BookAskResponse {
         if delay > 0 {
             try await Task.sleep(for: .seconds(delay))
@@ -96,7 +95,7 @@ public actor FakeAIRepository: AIRepository {
             ConceptNode(id: "two-minute-rule", label: "Two-Minute Rule", introducedIn: "4", summary: "Scale down any habit to a two-minute version to make starting easy."),
             ConceptNode(id: "reward", label: "Reward", introducedIn: "1", summary: "The end goal of every habit. Rewards close the feedback loop and teach the brain which actions are worth repeating."),
             ConceptNode(id: "compound-growth", label: "Compound Growth", introducedIn: "1", summary: "1% better every day yields 37× improvement after a year. Small consistent gains compound into extraordinary results."),
-            ConceptNode(id: "habit-stacking", label: "Habit Stacking", introducedIn: "3", summary: "Pairing a new habit with an existing one using 'After I [current habit], I will [new habit]'."),
+            ConceptNode(id: "habit-stacking", label: "Habit Stacking", introducedIn: "3", summary: "Pairing a new habit with an existing one using 'After I [current habit], I will [new habit]'.")
         ],
         edges: [
             ConceptEdge(from: "cue", to: "habit-loop", edgeType: .prerequisite),
@@ -106,18 +105,18 @@ public actor FakeAIRepository: AIRepository {
             ConceptEdge(from: "habit-loop", to: "environment-design", edgeType: .prerequisite),
             ConceptEdge(from: "environment-design", to: "habit-stacking", edgeType: .prerequisite),
             ConceptEdge(from: "habit-loop", to: "two-minute-rule", edgeType: .prerequisite),
-            ConceptEdge(from: "compound-growth", to: "identity-change", edgeType: .prerequisite),
+            ConceptEdge(from: "compound-growth", to: "identity-change", edgeType: .prerequisite)
         ],
         chapterIntroduces: [
             "1": ["habit-loop", "cue", "craving", "reward", "compound-growth"],
             "2": ["identity-change"],
             "3": ["environment-design", "habit-stacking"],
-            "4": ["two-minute-rule"],
+            "4": ["two-minute-rule"]
         ],
         chapterRequires: [
             "2": ["habit-loop"],
             "3": ["habit-loop"],
-            "4": ["habit-loop", "environment-design"],
+            "4": ["habit-loop", "environment-design"]
         ]
     )
 

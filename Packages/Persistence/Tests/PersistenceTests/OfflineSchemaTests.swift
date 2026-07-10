@@ -671,15 +671,15 @@ struct OfflineSchemaTests {
 
     @Suite("MigrationPlan")
     struct MigrationPlanTests {
-        @Test("plan contains 8 schemas and 7 migration stages")
+        @Test("plan contains 7 schemas and 6 migration stages")
         func schemaAndStageCounts() {
-            #expect(PersistenceMigrationPlan.schemas.count == 8)
-            #expect(PersistenceMigrationPlan.stages.count == 7)
+            #expect(PersistenceMigrationPlan.schemas.count == 7)
+            #expect(PersistenceMigrationPlan.stages.count == 6)
         }
 
-        @Test("final schema version identifier is 8.0.0")
+        @Test("final schema version identifier is 7.0.0")
         func finalVersionId() {
-            #expect(PersistenceSchemaV8.versionIdentifier == Schema.Version(8, 0, 0))
+            #expect(PersistenceSchemaV7.versionIdentifier == Schema.Version(7, 0, 0))
         }
     }
 }
