@@ -252,7 +252,7 @@ public struct PaywallView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .frame(height: 52)
+                .frame(minHeight: 52)
             }
             .buttonStyle(.borderedProminent)
             .tint(Color.cfAccent)
@@ -416,7 +416,7 @@ public struct PaywallView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .frame(height: 52)
+                .frame(minHeight: 52)
             }
             .buttonStyle(.borderedProminent)
             .tint(Color.cfAccent)
