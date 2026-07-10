@@ -56,6 +56,33 @@ public struct PrivacySettings: Codable, Sendable, Equatable {
 
     /// Privacy-respecting defaults: all sharing off, not ranked, not discoverable.
     public static let `default` = PrivacySettings()
+
+    // MARK: - Tolerant decoding (contract-reconciliation trap §5.4)
+
+    /// A partial settings object (e.g. a user who never touched privacy, or a
+    /// server that adds/removes a toggle) must decode — every missing key falls
+    /// back to its privacy-respecting default rather than throwing.
+    private enum CodingKeys: String, CodingKey {
+        case showStreak, showBooksFinished, showProgress
+        case useDisplayName, leaderboardOptIn, discoverabilityOptIn
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let defaults = PrivacySettings.default
+        showStreak = (try? c.decodeIfPresent(Bool.self, forKey: .showStreak))
+            .flatMap { $0 } ?? defaults.showStreak
+        showBooksFinished = (try? c.decodeIfPresent(Bool.self, forKey: .showBooksFinished))
+            .flatMap { $0 } ?? defaults.showBooksFinished
+        showProgress = (try? c.decodeIfPresent(Bool.self, forKey: .showProgress))
+            .flatMap { $0 } ?? defaults.showProgress
+        useDisplayName = (try? c.decodeIfPresent(Bool.self, forKey: .useDisplayName))
+            .flatMap { $0 } ?? defaults.useDisplayName
+        leaderboardOptIn = (try? c.decodeIfPresent(Bool.self, forKey: .leaderboardOptIn))
+            .flatMap { $0 } ?? defaults.leaderboardOptIn
+        discoverabilityOptIn = (try? c.decodeIfPresent(Bool.self, forKey: .discoverabilityOptIn))
+            .flatMap { $0 } ?? defaults.discoverabilityOptIn
+    }
 }
 
 // MARK: - PublicProfile visibility helpers

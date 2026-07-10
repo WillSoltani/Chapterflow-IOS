@@ -1,139 +1,144 @@
 #!/usr/bin/env bash
 # scripts/refresh-fixtures.sh
 #
-# Fetches fresh JSON responses from the live ChapterFlow API and writes them
-# into the fixture resource directories consumed by the RF2 evolution tests.
+# Captures VERBATIM JSON from the live ChapterFlow API into the real-contract
+# fixture directory consumed by RealContractTests (Packages/Models). These
+# captures are the ground truth for the client ↔ server contract:
+# docs/API-CONTRACT-MISMATCH-AND-RECONCILIATION-PLAN.md.
 #
-# Required environment variables:
-#   CF_CI_TOKEN   — valid Cognito id_token for the CI test account
-#   API_BASE_URL  — ChapterFlow API base URL (e.g. https://api.chapterflow.com)
-#                   Falls back to the value embedded in Secrets.xcconfig.
+# Two tiers:
+#   PUBLIC  — needs NO token; always captured. Covers the browse surface
+#             (catalog, search index, book detail).
+#   AUTHED  — captured only when CF_CI_TOKEN is set (a valid Cognito id_token
+#             for the CI test account). Covers /book/me/* and chapter/quiz.
+#
+# Environment:
+#   API_BASE_URL  — API base (default: production https://app.chapterflow.ca/app/api,
+#                   falling back to Secrets.xcconfig when present).
+#   CF_CI_TOKEN   — optional; enables the authed tier.
+#   CF_TEST_BOOK_ID / CF_TEST_CHAPTER_N — authed-tier book/chapter (defaults below).
 #
 # Run locally:
-#   CF_CI_TOKEN=<token> API_BASE_URL=<url> bash scripts/refresh-fixtures.sh
+#   bash scripts/refresh-fixtures.sh                       # public tier only
+#   CF_CI_TOKEN=<token> bash scripts/refresh-fixtures.sh   # both tiers
 #
-# Edit the FIXTURES array when new fixture files are added.
+# NOTE: this script deliberately does NOT touch the curated preview fixtures in
+# Packages/Fixtures/Sources/Fixtures/Resources — those are small, hand-picked
+# sample sets for #Previews. Contract truth lives in the prod_* captures.
 
 set -euo pipefail
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-# Resolve API base URL: env var → xcconfig → hard-coded fallback.
-if [ -z "${API_BASE_URL:-}" ]; then
-  if [ -f Secrets.xcconfig ]; then
-    raw=$(grep '^API_BASE_URL' Secrets.xcconfig | cut -d'=' -f2 | tr -d ' ')
-    # xcconfig escapes // as $()/; undo that.
-    API_BASE_URL="${raw/\$()\/\//\/\/}"
-  fi
+if [ -z "${API_BASE_URL:-}" ] && [ -f Secrets.xcconfig ]; then
+  raw=$(grep '^API_BASE_URL' Secrets.xcconfig | cut -d'=' -f2 | tr -d ' ' || true)
+  # xcconfig escapes // as $()/; undo that.
+  API_BASE_URL="${raw/\$()\/\//\/\/}"
 fi
-API_BASE_URL="${API_BASE_URL%/}"   # strip trailing slash
+API_BASE_URL="${API_BASE_URL:-https://app.chapterflow.ca/app/api}"
+API_BASE_URL="${API_BASE_URL%/}"
 
-if [ -z "${API_BASE_URL:-}" ] || [ -z "${CF_CI_TOKEN:-}" ]; then
-  echo "❌  CF_CI_TOKEN and API_BASE_URL must both be set." >&2
-  exit 1
-fi
+CONTRACT_DIR="Packages/Models/Tests/ModelsTests/Resources"
 
-AUTH_HEADER="Authorization: Bearer $CF_CI_TOKEN"
-
-# Fixture resource directories.
-FIXTURES_DIR="Packages/Fixtures/Sources/Fixtures/Resources"
-MODELS_TEST_DIR="Packages/Models/Tests/ModelsTests/Resources"
+# A published book that exists in the production catalog.
+PUBLIC_BOOK_ID="${CF_PUBLIC_BOOK_ID:-seven-powers}"
+# Authed-tier fixtures come from the CI test account's started book.
+TEST_BOOK_ID="${CF_TEST_BOOK_ID:-atomic-habits}"
+TEST_CHAPTER_N="${CF_TEST_CHAPTER_N:-1}"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-fetch() {
-  local url="$1" dest="$2"
-  echo "  → GET $url"
-  http_code=$(curl -sf -w "%{http_code}" -H "$AUTH_HEADER" \
-    -H "Accept: application/json" \
-    -o "$dest.tmp" "$url" || true)
+FAILED=0
 
-  if [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
-    # Pretty-print JSON for diff-friendliness.
+fetch() { # fetch <url> <dest> [--auth]
+  local url="$1" dest="$2" auth="${3:-}"
+  local -a headers=(-H "Accept: application/json")
+  if [ "$auth" = "--auth" ]; then
+    headers+=(-H "Authorization: Bearer $CF_CI_TOKEN")
+  fi
+  echo "  → GET $url"
+  http_code=$(curl -sS -m 30 -w "%{http_code}" "${headers[@]}" \
+    -o "$dest.tmp" "$url" || echo "000")
+
+  if [ "$http_code" -ge 200 ] 2>/dev/null && [ "$http_code" -lt 300 ] 2>/dev/null; then
+    # Pretty-print JSON for diff-friendliness; keep raw bytes if not JSON.
     python3 -m json.tool "$dest.tmp" > "$dest" 2>/dev/null || mv "$dest.tmp" "$dest"
     rm -f "$dest.tmp"
-    echo "     ✓ saved to $dest (HTTP $http_code)"
+    echo "     ✓ saved $dest (HTTP $http_code)"
   else
-    echo "     ⚠ skipped — HTTP $http_code (endpoint may not be seeded for test account)"
+    echo "     ⚠ skipped — HTTP $http_code"
     rm -f "$dest.tmp"
+    FAILED=$((FAILED + 1))
   fi
 }
 
-# ── Fixture fetch list ────────────────────────────────────────────────────────
-# Each entry is: DEST_PATH  ENDPOINT_PATH
-#
-# TODO: Replace TEST_BOOK_ID and TEST_CHAPTER_ID with real IDs from the CI
-#       test account once enrolled. These can be stored as GitHub secrets
-#       (CF_TEST_BOOK_ID, CF_TEST_CHAPTER_ID) and read here.
+# ── Tier 1: PUBLIC (no token required) ───────────────────────────────────────
 
-TEST_BOOK_ID="${CF_TEST_BOOK_ID:-b-atomic-habits}"
-TEST_CHAPTER_N="${CF_TEST_CHAPTER_N:-1}"
-TEST_BOOK_ID_2="${CF_TEST_BOOK_ID_2:-b-deep-work}"
-TEST_CHAPTER_N_2="${CF_TEST_CHAPTER_N_2:-1}"
+echo "Refreshing PUBLIC contract fixtures from $API_BASE_URL ..."
 
-echo "Refreshing fixtures from $API_BASE_URL ..."
-
-# catalog.json — book catalogue
 fetch "$API_BASE_URL/book/books" \
-  "$FIXTURES_DIR/catalog.json"
+  "$CONTRACT_DIR/prod_catalog.json"
 
-# book_manifest.json — single book manifest
-fetch "$API_BASE_URL/book/books/$TEST_BOOK_ID" \
-  "$FIXTURES_DIR/book_manifest.json"
+fetch "$API_BASE_URL/book/search-index" \
+  "$CONTRACT_DIR/prod_search_index.json"
 
-# book_state.json — reading state for the test book
-fetch "$API_BASE_URL/book/books/$TEST_BOOK_ID/state" \
-  "$FIXTURES_DIR/book_state.json"
+fetch "$API_BASE_URL/book/books/$PUBLIC_BOOK_ID" \
+  "$CONTRACT_DIR/prod_book_detail.json"
 
-# chapter_emh.json — a chapter in EMH variant
-fetch "$API_BASE_URL/book/books/$TEST_BOOK_ID/chapters/$TEST_CHAPTER_N" \
-  "$FIXTURES_DIR/chapter_emh.json"
+if [ "$FAILED" -gt 0 ]; then
+  echo "❌ $FAILED public capture(s) failed — aborting (the API should always serve these)." >&2
+  exit 1
+fi
 
-# chapter_pbc.json — a chapter in PBC variant (different book)
-fetch "$API_BASE_URL/book/books/$TEST_BOOK_ID_2/chapters/$TEST_CHAPTER_N_2" \
-  "$FIXTURES_DIR/chapter_pbc.json"
+# ── Tier 2: AUTHED (requires CF_CI_TOKEN) ────────────────────────────────────
 
-# entitlement responses
-fetch "$API_BASE_URL/entitlements" \
-  "$FIXTURES_DIR/entitlement_pro.json"
-
-# quiz.json
-fetch "$API_BASE_URL/book/books/$TEST_BOOK_ID/chapters/$TEST_CHAPTER_N/quiz" \
-  "$FIXTURES_DIR/quiz.json"
-
-# notifications.json
-fetch "$API_BASE_URL/notifications" \
-  "$FIXTURES_DIR/notifications.json"
-
-# reviews.json — spaced-repetition review queue
-fetch "$API_BASE_URL/reviews" \
-  "$FIXTURES_DIR/reviews.json"
-
-# dashboard.json
-fetch "$API_BASE_URL/dashboard" \
-  "$FIXTURES_DIR/dashboard.json"
-
-# streak.json
-fetch "$API_BASE_URL/streak" \
-  "$FIXTURES_DIR/streak.json"
-
-# notebook.json
-fetch "$API_BASE_URL/book/books/$TEST_BOOK_ID/notebook" \
-  "$FIXTURES_DIR/notebook.json"
-
-# badges.json
-fetch "$API_BASE_URL/badges" \
-  "$FIXTURES_DIR/badges.json"
-
-# Mirror relevant fixtures into Models test resources.
-for f in catalog.json book_state.json chapter_emh.json chapter_pbc.json \
-          entitlement_pro.json quiz.json; do
-  if [ -f "$FIXTURES_DIR/$f" ]; then
-    cp "$FIXTURES_DIR/$f" "$MODELS_TEST_DIR/$f"
-    echo "  ↳ mirrored $f → $MODELS_TEST_DIR"
-  fi
-done
+if [ -z "${CF_CI_TOKEN:-}" ]; then
+  echo ""
+  echo "ℹ️  CF_CI_TOKEN not set — skipping the AUTHED tier (public tier captured fine)."
+  echo "   Set CF_CI_TOKEN to also capture /book/me/* + chapter/quiz shapes."
+  exit 0
+fi
 
 echo ""
-echo "✅ Fixture refresh complete."
-echo "   Run 'swift test --package-path Packages/Fixtures' to validate locally."
+echo "Refreshing AUTHED contract fixtures ..."
+
+fetch "$API_BASE_URL/book/books/$TEST_BOOK_ID/chapters/$TEST_CHAPTER_N" \
+  "$CONTRACT_DIR/prod_chapter.json" --auth
+
+fetch "$API_BASE_URL/book/books/$TEST_BOOK_ID/chapters/$TEST_CHAPTER_N/quiz" \
+  "$CONTRACT_DIR/prod_quiz.json" --auth
+
+fetch "$API_BASE_URL/book/me/entitlements" \
+  "$CONTRACT_DIR/prod_entitlements.json" --auth
+
+fetch "$API_BASE_URL/book/me/progress" \
+  "$CONTRACT_DIR/prod_progress.json" --auth
+
+fetch "$API_BASE_URL/book/me/books/$TEST_BOOK_ID/state" \
+  "$CONTRACT_DIR/prod_book_state.json" --auth
+
+fetch "$API_BASE_URL/book/me/dashboard" \
+  "$CONTRACT_DIR/prod_dashboard.json" --auth
+
+fetch "$API_BASE_URL/book/me/streak" \
+  "$CONTRACT_DIR/prod_streak.json" --auth
+
+fetch "$API_BASE_URL/book/me/badges" \
+  "$CONTRACT_DIR/prod_badges.json" --auth
+
+fetch "$API_BASE_URL/book/me/reviews" \
+  "$CONTRACT_DIR/prod_reviews.json" --auth
+
+fetch "$API_BASE_URL/book/me/notebook" \
+  "$CONTRACT_DIR/prod_notebook.json" --auth
+
+fetch "$API_BASE_URL/book/me/notifications" \
+  "$CONTRACT_DIR/prod_notifications.json" --auth
+
+echo ""
+if [ "$FAILED" -gt 0 ]; then
+  echo "⚠️  Done with $FAILED authed capture(s) skipped (endpoint may not be seeded for the test account)."
+else
+  echo "✅ Fixture refresh complete."
+fi
+echo "   Validate: swift test --package-path Packages/Models --filter 'Real production contract'"

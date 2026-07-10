@@ -113,6 +113,49 @@ public struct NotebookEntry: Codable, Sendable, Identifiable {
         self.chapterNumber = chapterNumber
         self.tags = tags
     }
+
+    // MARK: - Wire-shape tolerance (contract reconciliation)
+    // Deployed notebook entries are keyed `id` (e.g. "note:<book>:<n>") with
+    // no `updatedAt`; `updatedAt` falls back to `createdAt`.
+
+    private enum WireKeys: String, CodingKey {
+        case entryId, id
+        case bookId, chapterId, type, content, quote
+        case createdAt, updatedAt
+        case bookTitle, chapterTitle, chapterNumber, tags
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: WireKeys.self)
+        entryId = try c.decodeRequiredFirst(String.self, keys: [.entryId, .id])
+        bookId = c.decodeFirst(String.self, keys: [.bookId]) ?? ""
+        chapterId = c.decodeFirst(String.self, keys: [.chapterId])
+        type = c.decodeFirst(NotebookEntryType.self, keys: [.type]) ?? .unknown("")
+        content = c.decodeFirst(String.self, keys: [.content])
+        quote = c.decodeFirst(String.self, keys: [.quote])
+        createdAt = c.decodeFirst(String.self, keys: [.createdAt]) ?? ""
+        updatedAt = c.decodeFirst(String.self, keys: [.updatedAt, .createdAt]) ?? ""
+        bookTitle = c.decodeFirst(String.self, keys: [.bookTitle])
+        chapterTitle = c.decodeFirst(String.self, keys: [.chapterTitle])
+        chapterNumber = c.decodeFirst(Int.self, keys: [.chapterNumber])
+        tags = c.decodeFirst([String].self, keys: [.tags])
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: WireKeys.self)
+        try c.encode(entryId, forKey: .entryId)
+        try c.encode(bookId, forKey: .bookId)
+        try c.encodeIfPresent(chapterId, forKey: .chapterId)
+        try c.encode(type, forKey: .type)
+        try c.encodeIfPresent(content, forKey: .content)
+        try c.encodeIfPresent(quote, forKey: .quote)
+        try c.encode(createdAt, forKey: .createdAt)
+        try c.encode(updatedAt, forKey: .updatedAt)
+        try c.encodeIfPresent(bookTitle, forKey: .bookTitle)
+        try c.encodeIfPresent(chapterTitle, forKey: .chapterTitle)
+        try c.encodeIfPresent(chapterNumber, forKey: .chapterNumber)
+        try c.encodeIfPresent(tags, forKey: .tags)
+    }
 }
 
 // MARK: - NotebookResponse

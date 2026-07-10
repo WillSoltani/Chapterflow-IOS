@@ -1,0 +1,2106 @@
+[
+    {
+        "id": "book:antifragile",
+        "type": "book",
+        "bookId": "antifragile",
+        "bookTitle": "Antifragile: Things That Gain from Disorder",
+        "author": "Nassim Nicholas Taleb",
+        "text": "Antifragile: Things That Gain from Disorder by Nassim Nicholas Taleb",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:atomic-habits",
+        "type": "book",
+        "bookId": "atomic-habits",
+        "bookTitle": "Atomic Habits",
+        "author": "James Clear",
+        "text": "Atomic Habits by James Clear",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:attached",
+        "type": "book",
+        "bookId": "attached",
+        "bookTitle": "Attached",
+        "author": "Amir Levine, Rachel Heller",
+        "text": "Attached by Amir Levine, Rachel Heller",
+        "tags": [
+            "attachment",
+            "relationships",
+            "dating",
+            "communication",
+            "security",
+            "conflict"
+        ],
+        "categories": [
+            "Psychology",
+            "Relationships",
+            "Personal Development"
+        ]
+    },
+    {
+        "id": "book:blink",
+        "type": "book",
+        "bookId": "blink",
+        "bookTitle": "Blink",
+        "author": "Malcolm Gladwell",
+        "text": "Blink by Malcolm Gladwell",
+        "tags": [
+            "intuition",
+            "snap judgment",
+            "thin slicing",
+            "bias",
+            "decision making",
+            "perception"
+        ],
+        "categories": [
+            "Psychology",
+            "Decision Making",
+            "Behavioral Economics"
+        ]
+    },
+    {
+        "id": "book:blue-ocean-strategy",
+        "type": "book",
+        "bookId": "blue-ocean-strategy",
+        "bookTitle": "Blue Ocean Strategy",
+        "author": "W. Chan Kim; Ren\u00e9e Mauborgne",
+        "text": "Blue Ocean Strategy by W. Chan Kim; Ren\u00e9e Mauborgne",
+        "tags": [
+            "blue-ocean-strategy",
+            "value-innovation",
+            "market-creation",
+            "strategy-canvas",
+            "noncustomers",
+            "execution"
+        ],
+        "categories": [
+            "Business",
+            "Strategy",
+            "Innovation",
+            "Management"
+        ]
+    },
+    {
+        "id": "book:built-to-last",
+        "type": "book",
+        "bookId": "built-to-last",
+        "bookTitle": "Built to Last: Successful Habits of Visionary Companies",
+        "author": "Jim Collins; Jerry I. Porras",
+        "text": "Built to Last: Successful Habits of Visionary Companies by Jim Collins; Jerry I. Porras",
+        "tags": [
+            "institution-building",
+            "leadership",
+            "organizational-design"
+        ],
+        "categories": [
+            "Business",
+            "Management",
+            "Strategy"
+        ]
+    },
+    {
+        "id": "book:clear-thinking",
+        "type": "book",
+        "bookId": "clear-thinking",
+        "bookTitle": "Clear Thinking",
+        "author": "Shane Parrish",
+        "text": "Clear Thinking by Shane Parrish",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:competing-against-luck",
+        "type": "book",
+        "bookId": "competing-against-luck",
+        "bookTitle": "Competing Against Luck",
+        "author": "Clayton M. Christensen",
+        "text": "Competing Against Luck by Clayton M. Christensen",
+        "tags": [],
+        "categories": []
+    },
+    {
+        "id": "book:contagious",
+        "type": "book",
+        "bookId": "contagious",
+        "bookTitle": "Contagious",
+        "author": "Jonah Berger",
+        "text": "Contagious by Jonah Berger",
+        "tags": [
+            "virality",
+            "social influence",
+            "marketing",
+            "word of mouth",
+            "consumer behavior",
+            "storytelling"
+        ],
+        "categories": [
+            "Psychology",
+            "Business",
+            "Communication",
+            "Behavioral Economics"
+        ]
+    },
+    {
+        "id": "book:crucial-conversations",
+        "type": "book",
+        "bookId": "crucial-conversations",
+        "bookTitle": "Crucial Conversations: Tools for Talking When Stakes Are High",
+        "author": "Joseph Grenny, Kerry Patterson, Ron McMillan, Al Switzler, Emily Gregory",
+        "text": "Crucial Conversations: Tools for Talking When Stakes Are High by Joseph Grenny, Kerry Patterson, Ron McMillan, Al Switzler, Emily Gregory",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:dare-to-lead",
+        "type": "book",
+        "bookId": "dare-to-lead",
+        "bookTitle": "Dare to Lead",
+        "author": "Bren\u00e9 Brown",
+        "text": "Dare to Lead by Bren\u00e9 Brown",
+        "tags": [
+            "courageous leadership",
+            "vulnerability",
+            "trust",
+            "values",
+            "empathy",
+            "resilience"
+        ],
+        "categories": [
+            "Leadership",
+            "Business",
+            "Communication",
+            "Management"
+        ]
+    },
+    {
+        "id": "book:daring-greatly",
+        "type": "book",
+        "bookId": "daring-greatly",
+        "bookTitle": "Daring Greatly",
+        "author": "Bren\u00e9 Brown",
+        "text": "Daring Greatly by Bren\u00e9 Brown",
+        "tags": [
+            "Vulnerability",
+            "Shame Resilience",
+            "Courage",
+            "Wholeheartedness",
+            "Connection",
+            "Parenting",
+            "Leadership"
+        ],
+        "categories": [
+            "Psychology",
+            "Self-Help",
+            "Relationships"
+        ]
+    },
+    {
+        "id": "book:deep-work",
+        "type": "book",
+        "bookId": "deep-work",
+        "bookTitle": "Deep Work",
+        "author": "Cal Newport",
+        "text": "Deep Work by Cal Newport",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:difficult-conversations",
+        "type": "book",
+        "bookId": "difficult-conversations",
+        "bookTitle": "Difficult Conversations: How to Discuss What Matters Most",
+        "author": "Douglas Stone, Bruce Patton, Sheila Heen",
+        "text": "Difficult Conversations: How to Discuss What Matters Most by Douglas Stone, Bruce Patton, Sheila Heen",
+        "tags": [
+            "dialogue",
+            "conflict-resolution",
+            "feedback",
+            "feelings",
+            "identity",
+            "listening",
+            "negotiation",
+            "harvard-negotiation-project",
+            "relationships",
+            "workplace-communication"
+        ],
+        "categories": [
+            "Communication",
+            "Self-Help",
+            "Psychology",
+            "Negotiation"
+        ]
+    },
+    {
+        "id": "book:discipline-is-destiny",
+        "type": "book",
+        "bookId": "discipline-is-destiny",
+        "bookTitle": "Discipline Is Destiny",
+        "author": "Ryan Holiday",
+        "text": "Discipline Is Destiny by Ryan Holiday",
+        "tags": [
+            "discipline",
+            "self control",
+            "stoicism",
+            "habit",
+            "temperance",
+            "character"
+        ],
+        "categories": [
+            "Resilience",
+            "Philosophy",
+            "Self Development"
+        ]
+    },
+    {
+        "id": "book:drive",
+        "type": "book",
+        "bookId": "drive",
+        "bookTitle": "Drive",
+        "author": "Daniel H. Pink",
+        "text": "Drive by Daniel H. Pink",
+        "tags": [
+            "motivation",
+            "autonomy",
+            "mastery",
+            "purpose",
+            "incentives",
+            "behavior-change"
+        ],
+        "categories": [
+            "Psychology",
+            "Self-Help",
+            "Productivity",
+            "Behavioral Economics"
+        ]
+    },
+    {
+        "id": "book:ego-is-the-enemy",
+        "type": "book",
+        "bookId": "ego-is-the-enemy",
+        "bookTitle": "Ego Is the Enemy",
+        "author": "Ryan Holiday",
+        "text": "Ego Is the Enemy by Ryan Holiday",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:essentialism",
+        "type": "book",
+        "bookId": "essentialism",
+        "bookTitle": "Essentialism",
+        "author": "Greg McKeown",
+        "text": "Essentialism by Greg McKeown",
+        "tags": [
+            "essentialism",
+            "focus",
+            "prioritization",
+            "decision making",
+            "productivity"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement",
+            "Focus"
+        ]
+    },
+    {
+        "id": "book:everything-is-fcked",
+        "type": "book",
+        "bookId": "everything-is-fcked",
+        "bookTitle": "Everything Is F*cked",
+        "author": "Mark Manson",
+        "text": "Everything Is F*cked by Mark Manson",
+        "tags": [
+            "hope",
+            "values",
+            "emotion",
+            "pain",
+            "freedom",
+            "human nature"
+        ],
+        "categories": [
+            "Psychology",
+            "Self-Help",
+            "Philosophy"
+        ]
+    },
+    {
+        "id": "book:execution",
+        "type": "book",
+        "bookId": "execution",
+        "bookTitle": "Execution: The Discipline of Getting Things Done",
+        "author": "Larry Bossidy, Ram Charan, Charles Burck",
+        "text": "Execution: The Discipline of Getting Things Done by Larry Bossidy, Ram Charan, Charles Burck",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:extreme-ownership",
+        "type": "book",
+        "bookId": "extreme-ownership",
+        "bookTitle": "Extreme Ownership",
+        "author": "Jocko Willink, Leif Babin",
+        "text": "Extreme Ownership by Jocko Willink, Leif Babin",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:flow",
+        "type": "book",
+        "bookId": "flow",
+        "bookTitle": "Flow: The Psychology of Optimal Experience",
+        "author": "Mihaly Csikszentmihalyi",
+        "text": "Flow: The Psychology of Optimal Experience by Mihaly Csikszentmihalyi",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:games-people-play",
+        "type": "book",
+        "bookId": "games-people-play",
+        "bookTitle": "Games People Play",
+        "author": "Eric Berne",
+        "text": "Games People Play by Eric Berne",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:getting-things-done",
+        "type": "book",
+        "bookId": "getting-things-done",
+        "bookTitle": "Getting Things Done",
+        "author": "David Allen",
+        "text": "Getting Things Done by David Allen",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:good-strategy-bad-strategy",
+        "type": "book",
+        "bookId": "good-strategy-bad-strategy",
+        "bookTitle": "Good Strategy / Bad Strategy",
+        "author": "Richard Rumelt",
+        "text": "Good Strategy / Bad Strategy by Richard Rumelt",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:good-to-great",
+        "type": "book",
+        "bookId": "good-to-great",
+        "bookTitle": "Good to Great",
+        "author": "Jim Collins",
+        "text": "Good to Great by Jim Collins",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:grit",
+        "type": "book",
+        "bookId": "grit",
+        "bookTitle": "Grit: The Power of Passion and Perseverance",
+        "author": "Angela Duckworth",
+        "text": "Grit: The Power of Passion and Perseverance by Angela Duckworth",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:hooked",
+        "type": "book",
+        "bookId": "hooked",
+        "bookTitle": "Hooked",
+        "author": "Nir Eyal",
+        "text": "Hooked by Nir Eyal",
+        "tags": [
+            "habits",
+            "product design",
+            "behavior design",
+            "engagement",
+            "triggers",
+            "rewards",
+            "user retention"
+        ],
+        "categories": [
+            "Psychology",
+            "Business",
+            "Entrepreneurship",
+            "Innovation"
+        ]
+    },
+    {
+        "id": "book:how-to-talk-to-anyone",
+        "type": "book",
+        "bookId": "how-to-talk-to-anyone",
+        "bookTitle": "How to Talk to Anyone: 92 Little Tricks for Big Success in Relationships",
+        "author": "Leil Lowndes",
+        "text": "How to Talk to Anyone: 92 Little Tricks for Big Success in Relationships by Leil Lowndes",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:how-to-win-friends-and-influence-people",
+        "type": "book",
+        "bookId": "how-to-win-friends-and-influence-people",
+        "bookTitle": "How to Win Friends and Influence People",
+        "author": "Dale Carnegie",
+        "text": "How to Win Friends and Influence People by Dale Carnegie",
+        "tags": [
+            "persuasion",
+            "social-skills",
+            "listening",
+            "influence",
+            "conflict",
+            "criticism"
+        ],
+        "categories": [
+            "Psychology",
+            "Self-Help",
+            "Communication",
+            "Leadership"
+        ]
+    },
+    {
+        "id": "book:indistractable",
+        "type": "book",
+        "bookId": "indistractable",
+        "bookTitle": "Indistractable",
+        "author": "Nir Eyal",
+        "text": "Indistractable by Nir Eyal",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:influence",
+        "type": "book",
+        "bookId": "influence",
+        "bookTitle": "Influence, New and Expanded: The Psychology of Persuasion",
+        "author": "Robert B. Cialdini, PhD",
+        "text": "Influence, New and Expanded: The Psychology of Persuasion by Robert B. Cialdini, PhD",
+        "tags": [
+            "persuasion",
+            "influence",
+            "social-psychology",
+            "decision-making"
+        ],
+        "categories": [
+            "Psychology",
+            "Business",
+            "Self-Help"
+        ]
+    },
+    {
+        "id": "book:leaders-eat-last",
+        "type": "book",
+        "bookId": "leaders-eat-last",
+        "bookTitle": "Leaders Eat Last",
+        "author": "Simon Sinek",
+        "text": "Leaders Eat Last by Simon Sinek",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:limitless",
+        "type": "book",
+        "bookId": "limitless",
+        "bookTitle": "Limitless",
+        "author": "Jim Kwik",
+        "text": "Limitless by Jim Kwik",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:made-to-stick",
+        "type": "book",
+        "bookId": "made-to-stick",
+        "bookTitle": "Made to Stick: Why Some Ideas Survive and Others Die",
+        "author": "Chip Heath, Dan Heath",
+        "text": "Made to Stick: Why Some Ideas Survive and Others Die by Chip Heath, Dan Heath",
+        "tags": [
+            "communication",
+            "messaging",
+            "persuasion",
+            "storytelling",
+            "decision-making",
+            "ideas"
+        ],
+        "categories": [
+            "Communication",
+            "Psychology",
+            "Business",
+            "Messaging"
+        ]
+    },
+    {
+        "id": "book:make-it-stick",
+        "type": "book",
+        "bookId": "make-it-stick",
+        "bookTitle": "Make It Stick",
+        "author": "Peter C. Brown; Henry L. Roediger III; Mark A. McDaniel",
+        "text": "Make It Stick by Peter C. Brown; Henry L. Roediger III; Mark A. McDaniel",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:make-time",
+        "type": "book",
+        "bookId": "make-time",
+        "bookTitle": "Make Time",
+        "author": "Jake Knapp and John Zeratsky",
+        "text": "Make Time by Jake Knapp and John Zeratsky",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:mans-search-for-meaning",
+        "type": "book",
+        "bookId": "mans-search-for-meaning",
+        "bookTitle": "Man's Search for Meaning",
+        "author": "Viktor E. Frankl",
+        "text": "Man's Search for Meaning by Viktor E. Frankl",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:mastery",
+        "type": "book",
+        "bookId": "mastery",
+        "bookTitle": "Mastery",
+        "author": "Robert Greene",
+        "text": "Mastery by Robert Greene",
+        "tags": [
+            "mastery",
+            "apprenticeship",
+            "practice",
+            "mentorship",
+            "creativity",
+            "skill"
+        ],
+        "categories": [
+            "Learning",
+            "Psychology",
+            "Career"
+        ]
+    },
+    {
+        "id": "book:measure-what-matters",
+        "type": "book",
+        "bookId": "measure-what-matters",
+        "bookTitle": "Measure What Matters",
+        "author": "John Doerr",
+        "text": "Measure What Matters by John Doerr",
+        "tags": [
+            "okrs",
+            "goal-setting",
+            "execution",
+            "accountability",
+            "alignment",
+            "performance-management",
+            "measurement"
+        ],
+        "categories": [
+            "Business",
+            "Management",
+            "Productivity",
+            "Leadership"
+        ]
+    },
+    {
+        "id": "book:meditations",
+        "type": "book",
+        "bookId": "meditations",
+        "bookTitle": "Meditations",
+        "author": "Marcus Aurelius",
+        "text": "Meditations by Marcus Aurelius",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:mindset",
+        "type": "book",
+        "bookId": "mindset",
+        "bookTitle": "Mindset",
+        "author": "Carol S. Dweck",
+        "text": "Mindset by Carol S. Dweck",
+        "tags": [
+            "growth mindset",
+            "fixed mindset",
+            "learning",
+            "effort",
+            "resilience",
+            "feedback",
+            "achievement",
+            "parenting"
+        ],
+        "categories": [
+            "Psychology",
+            "Self-Help",
+            "Learning",
+            "Relationships"
+        ]
+    },
+    {
+        "id": "book:mistakes-were-made-but-not-by-me",
+        "type": "book",
+        "bookId": "mistakes-were-made-but-not-by-me",
+        "bookTitle": "Mistakes Were Made (but Not by Me)",
+        "author": "Carol Tavris; Elliot Aronson",
+        "text": "Mistakes Were Made (but Not by Me) by Carol Tavris; Elliot Aronson",
+        "tags": [
+            "self-justification",
+            "cognitive-dissonance",
+            "accountability",
+            "bias",
+            "memory",
+            "conflict",
+            "apology"
+        ],
+        "categories": [
+            "Psychology",
+            "Self-Help",
+            "Relationships",
+            "Communication"
+        ]
+    },
+    {
+        "id": "book:never-eat-alone",
+        "type": "book",
+        "bookId": "never-eat-alone",
+        "bookTitle": "Never Eat Alone",
+        "author": "Keith Ferrazzi",
+        "text": "Never Eat Alone by Keith Ferrazzi",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:never-split-the-difference",
+        "type": "book",
+        "bookId": "never-split-the-difference",
+        "bookTitle": "Never Split the Difference: Negotiating as if Your Life Depended on It",
+        "author": "Chris Voss, Tahl Raz",
+        "text": "Never Split the Difference: Negotiating as if Your Life Depended on It by Chris Voss, Tahl Raz",
+        "tags": [
+            "negotiation",
+            "tactical-empathy",
+            "communication",
+            "bargaining",
+            "conflict",
+            "listening"
+        ],
+        "categories": [
+            "Negotiation",
+            "Communication",
+            "Business",
+            "Psychology"
+        ]
+    },
+    {
+        "id": "book:noise",
+        "type": "book",
+        "bookId": "noise",
+        "bookTitle": "Noise: A Flaw in Human Judgment",
+        "author": "Daniel Kahneman, Olivier Sibony, Cass R. Sunstein",
+        "text": "Noise: A Flaw in Human Judgment by Daniel Kahneman, Olivier Sibony, Cass R. Sunstein",
+        "tags": [
+            "bias",
+            "judgment",
+            "decision-making",
+            "noise",
+            "cognitive-science",
+            "behavioral-economics"
+        ],
+        "categories": [
+            "Psychology",
+            "Decision Making"
+        ]
+    },
+    {
+        "id": "book:on-becoming-a-person",
+        "type": "book",
+        "bookId": "on-becoming-a-person",
+        "bookTitle": "On Becoming a Person",
+        "author": "Carl Rogers",
+        "text": "On Becoming a Person by Carl Rogers",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:outliers",
+        "type": "book",
+        "bookId": "outliers",
+        "bookTitle": "Outliers",
+        "author": "Malcolm Gladwell",
+        "text": "Outliers by Malcolm Gladwell",
+        "tags": [
+            "success",
+            "opportunity",
+            "culture",
+            "practice",
+            "achievement",
+            "social science"
+        ],
+        "categories": [
+            "Psychology",
+            "Learning",
+            "Business"
+        ]
+    },
+    {
+        "id": "book:peak",
+        "type": "book",
+        "bookId": "peak",
+        "bookTitle": "Peak",
+        "author": "Anders Ericsson, Robert Pool",
+        "text": "Peak by Anders Ericsson, Robert Pool",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:pitch-anything",
+        "type": "book",
+        "bookId": "pitch-anything",
+        "bookTitle": "Pitch-Anything",
+        "author": "Oren Klaff",
+        "text": "Pitch-Anything by Oren Klaff",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:playing-to-win",
+        "type": "book",
+        "bookId": "playing-to-win",
+        "bookTitle": "Playing to Win",
+        "author": "A.G. Lafley and Roger L. Martin",
+        "text": "Playing to Win by A.G. Lafley and Roger L. Martin",
+        "tags": [
+            "strategy",
+            "competitive-advantage",
+            "management-systems",
+            "choice-cascade",
+            "where-to-play",
+            "how-to-win"
+        ],
+        "categories": [
+            "Business",
+            "Strategy",
+            "Management",
+            "Decision Making"
+        ]
+    },
+    {
+        "id": "book:pmbok-guide",
+        "type": "book",
+        "bookId": "pmbok-guide",
+        "bookTitle": "A Guide to the Project Management Body of Knowledge (PMBOK Guide)",
+        "author": "Project Management Institute",
+        "text": "A Guide to the Project Management Body of Knowledge (PMBOK Guide) by Project Management Institute",
+        "tags": [
+            "project management",
+            "PMBOK",
+            "governance",
+            "stakeholders",
+            "risk",
+            "delivery",
+            "planning"
+        ],
+        "categories": [
+            "Business",
+            "Management",
+            "Leadership"
+        ]
+    },
+    {
+        "id": "book:pre-suasion",
+        "type": "book",
+        "bookId": "pre-suasion",
+        "bookTitle": "Pre-Suasion",
+        "author": "Robert Cialdini",
+        "text": "Pre-Suasion by Robert Cialdini",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:predictably-irrational",
+        "type": "book",
+        "bookId": "predictably-irrational",
+        "bookTitle": "Predictably Irrational",
+        "author": "Dan Ariely",
+        "text": "Predictably Irrational by Dan Ariely",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:rich-dad-poor-dad",
+        "type": "book",
+        "bookId": "rich-dad-poor-dad",
+        "bookTitle": "Rich Dad Poor Dad",
+        "author": "Robert T. Kiyosaki",
+        "text": "Rich Dad Poor Dad by Robert T. Kiyosaki",
+        "tags": [
+            "financial literacy",
+            "assets",
+            "cash flow",
+            "wealth mindset",
+            "ownership",
+            "money"
+        ],
+        "categories": [
+            "Personal Finance",
+            "Entrepreneurship",
+            "Business"
+        ]
+    },
+    {
+        "id": "book:seeking-wisdom",
+        "type": "book",
+        "bookId": "seeking-wisdom",
+        "bookTitle": "Seeking Wisdom: From Darwin to Munger",
+        "author": "Peter Bevelin",
+        "text": "Seeking Wisdom: From Darwin to Munger by Peter Bevelin",
+        "tags": [
+            "judgment",
+            "mental-models",
+            "bias",
+            "probability",
+            "incentives",
+            "temperament"
+        ],
+        "categories": [
+            "Decision Making",
+            "Psychology",
+            "Philosophy",
+            "Self-Help"
+        ]
+    },
+    {
+        "id": "book:seven-powers",
+        "type": "book",
+        "bookId": "seven-powers",
+        "bookTitle": "7 Powers: The Foundations of Business Strategy",
+        "author": "Hamilton Helmer",
+        "text": "7 Powers: The Foundations of Business Strategy by Hamilton Helmer",
+        "tags": [
+            "competition",
+            "moats",
+            "strategy"
+        ],
+        "categories": [
+            "Business",
+            "Strategy"
+        ]
+    },
+    {
+        "id": "book:skin-in-the-game",
+        "type": "book",
+        "bookId": "skin-in-the-game",
+        "bookTitle": "Skin in the Game: Hidden Asymmetries in Daily Life",
+        "author": "Nassim Nicholas Taleb",
+        "text": "Skin in the Game: Hidden Asymmetries in Daily Life by Nassim Nicholas Taleb",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:smarter-faster-better",
+        "type": "book",
+        "bookId": "smarter-faster-better",
+        "bookTitle": "Smarter Faster Better",
+        "author": "Charles Duhigg",
+        "text": "Smarter Faster Better by Charles Duhigg",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:so-good-they-cant-ignore-you",
+        "type": "book",
+        "bookId": "so-good-they-cant-ignore-you",
+        "bookTitle": "So Good They Can't Ignore You: Why Skills Trump Passion in the Quest for Work You Love",
+        "author": "Cal Newport",
+        "text": "So Good They Can't Ignore You: Why Skills Trump Passion in the Quest for Work You Love by Cal Newport",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:start-with-why",
+        "type": "book",
+        "bookId": "start-with-why",
+        "bookTitle": "Start With Why",
+        "author": "Simon Sinek",
+        "text": "Start With Why by Simon Sinek",
+        "tags": [
+            "purpose",
+            "why",
+            "Golden Circle",
+            "leadership",
+            "brand trust",
+            "inspiration"
+        ],
+        "categories": [
+            "Leadership",
+            "Business",
+            "Communication",
+            "Entrepreneurship"
+        ]
+    },
+    {
+        "id": "book:super-thinking",
+        "type": "book",
+        "bookId": "super-thinking",
+        "bookTitle": "Super Thinking",
+        "author": "Gabriel Weinberg; Lauren McCann",
+        "text": "Super Thinking by Gabriel Weinberg; Lauren McCann",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:superforecasting",
+        "type": "book",
+        "bookId": "superforecasting",
+        "bookTitle": "Superforecasting",
+        "author": "Philip E. Tetlock",
+        "text": "Superforecasting by Philip E. Tetlock",
+        "tags": [
+            "forecasting",
+            "probability",
+            "thinking"
+        ],
+        "categories": [
+            "Decision-Making",
+            "Strategy"
+        ]
+    },
+    {
+        "id": "book:talk-like-ted",
+        "type": "book",
+        "bookId": "talk-like-ted",
+        "bookTitle": "Talk Like TED: The 9 Public-Speaking Secrets of the World's Top Minds",
+        "author": "Carmine Gallo",
+        "text": "Talk Like TED: The 9 Public-Speaking Secrets of the World's Top Minds by Carmine Gallo",
+        "tags": [
+            "public-speaking",
+            "presentations",
+            "communication"
+        ],
+        "categories": [
+            "Business Communication",
+            "Public Speaking"
+        ]
+    },
+    {
+        "id": "book:the-12-week-year",
+        "type": "book",
+        "bookId": "the-12-week-year",
+        "bookTitle": "The 12 Week Year",
+        "author": "Brian Moran and Michael Lennington",
+        "text": "The 12 Week Year by Brian Moran and Michael Lennington",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:the-33-strategies-of-war",
+        "type": "book",
+        "bookId": "the-33-strategies-of-war",
+        "bookTitle": "The 33 Strategies of War",
+        "author": "Robert Greene",
+        "text": "The 33 Strategies of War by Robert Greene",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:the-4-hour-workweek",
+        "type": "book",
+        "bookId": "the-4-hour-workweek",
+        "bookTitle": "The 4-Hour Workweek",
+        "author": "Tim Ferriss",
+        "text": "The 4-Hour Workweek by Tim Ferriss",
+        "tags": [
+            "relative-wealth",
+            "productive-nonconformity",
+            "fear-setting",
+            "dreamlining",
+            "effectiveness-over-efficiency",
+            "selective-ignorance",
+            "interruption-control",
+            "delegation-literacy"
+        ],
+        "categories": [
+            "Decision Making",
+            "Business",
+            "Productivity"
+        ]
+    },
+    {
+        "id": "book:the-48-laws-of-power",
+        "type": "book",
+        "bookId": "the-48-laws-of-power",
+        "bookTitle": "The 48 Laws of Power",
+        "author": "Robert Greene",
+        "text": "The 48 Laws of Power by Robert Greene",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:the-5-am-club",
+        "type": "book",
+        "bookId": "the-5-am-club",
+        "bookTitle": "The 5 AM Club",
+        "author": "Robin Sharma",
+        "text": "The 5 AM Club by Robin Sharma",
+        "tags": [
+            "morning routine",
+            "habit formation",
+            "peak performance",
+            "personal mastery",
+            "discipline",
+            "focus"
+        ],
+        "categories": [
+            "Self-Help",
+            "Productivity",
+            "Leadership"
+        ]
+    },
+    {
+        "id": "book:the-7-habits-of-highly-effective-people",
+        "type": "book",
+        "bookId": "the-7-habits-of-highly-effective-people",
+        "bookTitle": "The 7 Habits of Highly Effective People",
+        "author": "Stephen R. Covey",
+        "text": "The 7 Habits of Highly Effective People by Stephen R. Covey",
+        "tags": [
+            "habits",
+            "principles",
+            "character",
+            "effectiveness",
+            "interdependence",
+            "trust",
+            "personal leadership",
+            "renewal"
+        ],
+        "categories": [
+            "Self-Help",
+            "Leadership",
+            "Productivity",
+            "Relationships"
+        ]
+    },
+    {
+        "id": "book:the-almanack-of-naval-ravikant",
+        "type": "book",
+        "bookId": "the-almanack-of-naval-ravikant",
+        "bookTitle": "The Almanack of Naval Ravikant",
+        "author": "Eric Jorgenson",
+        "text": "The Almanack of Naval Ravikant by Eric Jorgenson",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:the-art-of-thinking-clearly",
+        "type": "book",
+        "bookId": "the-art-of-thinking-clearly",
+        "bookTitle": "The Art of Thinking Clearly",
+        "author": "Rolf Dobelli",
+        "text": "The Art of Thinking Clearly by Rolf Dobelli",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:the-art-of-war",
+        "type": "book",
+        "bookId": "the-art-of-war",
+        "bookTitle": "The Art of War",
+        "author": "Sunzi",
+        "text": "The Art of War by Sunzi",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:the-black-swan",
+        "type": "book",
+        "bookId": "the-black-swan",
+        "bookTitle": "The Black Swan",
+        "author": "Nassim N. Taleb",
+        "text": "The Black Swan by Nassim N. Taleb",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:the-charisma-myth",
+        "type": "book",
+        "bookId": "the-charisma-myth",
+        "bookTitle": "The Charisma Myth",
+        "author": "Olivia Fox Cabane",
+        "text": "The Charisma Myth by Olivia Fox Cabane",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:the-checklist-manifesto",
+        "type": "book",
+        "bookId": "the-checklist-manifesto",
+        "bookTitle": "The Checklist Manifesto: How to Get Things Right",
+        "author": "Atul Gawande",
+        "text": "The Checklist Manifesto: How to Get Things Right by Atul Gawande",
+        "tags": [
+            "focus",
+            "planning",
+            "systems",
+            "workflow",
+            "accountability"
+        ],
+        "categories": [
+            "Productivity",
+            "Execution",
+            "Self Management"
+        ]
+    },
+    {
+        "id": "book:the-courage-to-be-disliked",
+        "type": "book",
+        "bookId": "the-courage-to-be-disliked",
+        "bookTitle": "The Courage to Be Disliked",
+        "author": "Ichiro Kishimi, Fumitake Koga",
+        "text": "The Courage to Be Disliked by Ichiro Kishimi, Fumitake Koga",
+        "tags": [
+            "Adlerian psychology",
+            "inferiority and comparison",
+            "interpersonal conflict",
+            "separation of tasks",
+            "boundaries",
+            "approval-seeking",
+            "contribution",
+            "self-acceptance",
+            "freedom",
+            "trust",
+            "self-consciousness",
+            "present-tense living",
+            "courage"
+        ],
+        "categories": [
+            "Self-Help",
+            "Psychology",
+            "Philosophy"
+        ]
+    },
+    {
+        "id": "book:the-denial-of-death",
+        "type": "book",
+        "bookId": "the-denial-of-death",
+        "bookTitle": "The Denial of Death",
+        "author": "Ernest Becker",
+        "text": "The Denial of Death by Ernest Becker",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:the-elephant-in-the-brain",
+        "type": "book",
+        "bookId": "the-elephant-in-the-brain",
+        "bookTitle": "The Elephant in the Brain",
+        "author": "Kevin Simler; Robin Hanson",
+        "text": "The Elephant in the Brain by Kevin Simler; Robin Hanson",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:the-first-20-hours",
+        "type": "book",
+        "bookId": "the-first-20-hours",
+        "bookTitle": "The First 20 Hours: How to Learn Anything... Fast!",
+        "author": "Josh Kaufman",
+        "text": "The First 20 Hours: How to Learn Anything... Fast! by Josh Kaufman",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:the-gift-of-fear",
+        "type": "book",
+        "bookId": "the-gift-of-fear",
+        "bookTitle": "The Gift of Fear",
+        "author": "Gavin de Becker",
+        "text": "The Gift of Fear by Gavin de Becker",
+        "tags": [
+            "intuition",
+            "safety",
+            "boundaries",
+            "violence prevention",
+            "judgment"
+        ],
+        "categories": [
+            "Personal Safety",
+            "Psychology",
+            "Violence Prevention",
+            "Threat Assessment",
+            "Boundaries"
+        ]
+    },
+    {
+        "id": "book:the-great-mental-models-vol-1",
+        "type": "book",
+        "bookId": "the-great-mental-models-vol-1",
+        "bookTitle": "The Great Mental Models, Volume 1: General Thinking Concepts",
+        "author": "Shane Parrish",
+        "text": "The Great Mental Models, Volume 1: General Thinking Concepts by Shane Parrish",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:the-great-mental-models-vol-2",
+        "type": "book",
+        "bookId": "the-great-mental-models-vol-2",
+        "bookTitle": "The Great Mental Models, Volume 2: Physics, Chemistry, and Biology",
+        "author": "Shane Parrish",
+        "text": "The Great Mental Models, Volume 2: Physics, Chemistry, and Biology by Shane Parrish",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:the-hard-thing-about-hard-things",
+        "type": "book",
+        "bookId": "the-hard-thing-about-hard-things",
+        "bookTitle": "The Hard Thing About Hard Things",
+        "author": "Ben Horowitz",
+        "text": "The Hard Thing About Hard Things by Ben Horowitz",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:the-innovators-dilemma",
+        "type": "book",
+        "bookId": "the-innovators-dilemma",
+        "bookTitle": "The Innovator's Dilemma: When New Technologies Cause Great Firms to Fail",
+        "author": "Clayton M. Christensen",
+        "text": "The Innovator's Dilemma: When New Technologies Cause Great Firms to Fail by Clayton M. Christensen",
+        "tags": [
+            "disruption",
+            "disruptive-innovation",
+            "value-networks",
+            "incumbents",
+            "market-entry",
+            "organizational-fit"
+        ],
+        "categories": [
+            "Business",
+            "Strategy",
+            "Innovation",
+            "Management"
+        ]
+    },
+    {
+        "id": "book:the-laws-of-human-nature",
+        "type": "book",
+        "bookId": "the-laws-of-human-nature",
+        "bookTitle": "The Laws of Human Nature",
+        "author": "Robert Greene",
+        "text": "The Laws of Human Nature by Robert Greene",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:the-lean-startup",
+        "type": "book",
+        "bookId": "the-lean-startup",
+        "bookTitle": "The Lean Startup",
+        "author": "Eric Ries",
+        "text": "The Lean Startup by Eric Ries",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:the-let-them-theory",
+        "type": "book",
+        "bookId": "the-let-them-theory",
+        "bookTitle": "The Let Them Theory",
+        "author": "Mel Robbins",
+        "text": "The Let Them Theory by Mel Robbins",
+        "tags": [
+            "boundaries",
+            "letting go",
+            "emotional regulation",
+            "control",
+            "stress management",
+            "relationships",
+            "self-empowerment"
+        ],
+        "categories": [
+            "Self-Help",
+            "Psychology",
+            "Relationships",
+            "Communication"
+        ]
+    },
+    {
+        "id": "book:the-like-switch",
+        "type": "book",
+        "bookId": "the-like-switch",
+        "bookTitle": "The Like Switch",
+        "author": "Jack Schafer, Marvin Karlins",
+        "text": "The Like Switch by Jack Schafer, Marvin Karlins",
+        "tags": [
+            "likability",
+            "rapport",
+            "friendship",
+            "body language",
+            "trust",
+            "relationships"
+        ],
+        "categories": [
+            "Psychology",
+            "Interpersonal Relations",
+            "Body Language",
+            "Self-Help"
+        ]
+    },
+    {
+        "id": "book:the-millionaire-fastlane",
+        "type": "book",
+        "bookId": "the-millionaire-fastlane",
+        "bookTitle": "The Millionaire Fastlane",
+        "author": "MJ DeMarco",
+        "text": "The Millionaire Fastlane by MJ DeMarco",
+        "tags": [
+            "wealth",
+            "entrepreneurship",
+            "leverage",
+            "money",
+            "business models",
+            "financial freedom"
+        ],
+        "categories": [
+            "Entrepreneurship",
+            "Personal Finance",
+            "Business"
+        ]
+    },
+    {
+        "id": "book:the-mole-people",
+        "type": "book",
+        "bookId": "the-mole-people",
+        "bookTitle": "The Mole People",
+        "author": "Jennifer Toth",
+        "text": "The Mole People by Jennifer Toth",
+        "tags": [
+            "institutions",
+            "society",
+            "incentives",
+            "observation",
+            "systems"
+        ],
+        "categories": [
+            "Society",
+            "Human Behavior",
+            "Reporting"
+        ]
+    },
+    {
+        "id": "book:the-obstacle-is-the-way",
+        "type": "book",
+        "bookId": "the-obstacle-is-the-way",
+        "bookTitle": "The Obstacle Is the Way",
+        "author": "Ryan Holiday",
+        "text": "The Obstacle Is the Way by Ryan Holiday",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:the-one-thing",
+        "type": "book",
+        "bookId": "the-one-thing",
+        "bookTitle": "The One Thing",
+        "author": "Gary Keller, Jay Papasan",
+        "text": "The One Thing by Gary Keller, Jay Papasan",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:the-outsiders",
+        "type": "book",
+        "bookId": "the-outsiders",
+        "bookTitle": "The Outsiders: Eight Unconventional CEOs and Their Radically Rational Blueprint for Success",
+        "author": "William N. Thorndike Jr.",
+        "text": "The Outsiders: Eight Unconventional CEOs and Their Radically Rational Blueprint for Success by William N. Thorndike Jr.",
+        "tags": [
+            "capital allocation",
+            "ceos",
+            "shareholder returns",
+            "decentralization",
+            "conglomerates",
+            "value creation"
+        ],
+        "categories": [
+            "Business",
+            "Leadership",
+            "Investing",
+            "Management"
+        ]
+    },
+    {
+        "id": "book:the-power-of-habit",
+        "type": "book",
+        "bookId": "the-power-of-habit",
+        "bookTitle": "The Power of Habit",
+        "author": "Charles Duhigg",
+        "text": "The Power of Habit by Charles Duhigg",
+        "tags": [
+            "habits",
+            "behavior change",
+            "habit formation",
+            "willpower",
+            "organizational habits"
+        ],
+        "categories": [
+            "Psychology",
+            "Self Improvement",
+            "Business"
+        ]
+    },
+    {
+        "id": "book:the-prince",
+        "type": "book",
+        "bookId": "the-prince",
+        "bookTitle": "The Prince",
+        "author": "Niccolo Machiavelli",
+        "text": "The Prince by Niccolo Machiavelli",
+        "tags": [
+            "statecraft",
+            "power",
+            "political realism",
+            "leadership",
+            "fortune"
+        ],
+        "categories": [
+            "Classics",
+            "Political Philosophy",
+            "Leadership"
+        ]
+    },
+    {
+        "id": "book:the-psychology-of-money",
+        "type": "book",
+        "bookId": "the-psychology-of-money",
+        "bookTitle": "The Psychology of Money",
+        "author": "Morgan Housel",
+        "text": "The Psychology of Money by Morgan Housel",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:the-pyramid-principle",
+        "type": "book",
+        "bookId": "the-pyramid-principle",
+        "bookTitle": "The Pyramid Principle",
+        "author": "Barbara Minto",
+        "text": "The Pyramid Principle by Barbara Minto",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:the-righteous-mind",
+        "type": "book",
+        "bookId": "the-righteous-mind",
+        "bookTitle": "The Righteous Mind",
+        "author": "Jonathan Haidt",
+        "text": "The Righteous Mind by Jonathan Haidt",
+        "tags": [
+            "morality",
+            "moral psychology",
+            "politics",
+            "religion",
+            "tribalism",
+            "intuition",
+            "group behavior"
+        ],
+        "categories": [
+            "Psychology",
+            "Moral Psychology",
+            "Politics",
+            "Religion"
+        ]
+    },
+    {
+        "id": "book:the-subtle-art-of-not-giving-a-fck",
+        "type": "book",
+        "bookId": "the-subtle-art-of-not-giving-a-fck",
+        "bookTitle": "The Subtle Art of Not Giving a F*ck",
+        "author": "Mark Manson",
+        "text": "The Subtle Art of Not Giving a F*ck by Mark Manson",
+        "tags": [
+            "values",
+            "responsibility",
+            "adversity",
+            "acceptance",
+            "happiness",
+            "priorities"
+        ],
+        "categories": [
+            "Self-Help",
+            "Psychology",
+            "Philosophy"
+        ]
+    },
+    {
+        "id": "book:the-tipping-point",
+        "type": "book",
+        "bookId": "the-tipping-point",
+        "bookTitle": "The Tipping Point",
+        "author": "Malcolm Gladwell",
+        "text": "The Tipping Point by Malcolm Gladwell",
+        "tags": [
+            "social epidemics",
+            "influence",
+            "networks",
+            "stickiness",
+            "context",
+            "change"
+        ],
+        "categories": [
+            "Psychology",
+            "Business",
+            "Communication",
+            "Behavioral Economics"
+        ]
+    },
+    {
+        "id": "book:the-war-of-art",
+        "type": "book",
+        "bookId": "the-war-of-art",
+        "bookTitle": "The War of Art",
+        "author": "Steven Pressfield",
+        "text": "The War of Art by Steven Pressfield",
+        "tags": [],
+        "categories": [
+            "Self-Help",
+            "Creativity",
+            "Writing"
+        ]
+    },
+    {
+        "id": "book:thinking-fast-and-slow",
+        "type": "book",
+        "bookId": "thinking-fast-and-slow",
+        "bookTitle": "Thinking, Fast and Slow",
+        "author": "Daniel Kahneman",
+        "text": "Thinking, Fast and Slow by Daniel Kahneman",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:thinking-in-bets",
+        "type": "book",
+        "bookId": "thinking-in-bets",
+        "bookTitle": "Thinking in Bets",
+        "author": "Annie Duke",
+        "text": "Thinking in Bets by Annie Duke",
+        "tags": [
+            "probabilistic-thinking",
+            "uncertainty",
+            "decision-quality",
+            "resulting",
+            "calibration",
+            "truth-seeking",
+            "dissent",
+            "mental-time-travel"
+        ],
+        "categories": [
+            "Decision Making",
+            "Psychology",
+            "Risk"
+        ]
+    },
+    {
+        "id": "book:tiny-habits",
+        "type": "book",
+        "bookId": "tiny-habits",
+        "bookTitle": "Tiny Habits",
+        "author": "BJ Fogg",
+        "text": "Tiny Habits by BJ Fogg",
+        "tags": [
+            "habits",
+            "behavior-change",
+            "motivation",
+            "celebration",
+            "anchoring",
+            "prompts"
+        ],
+        "categories": [
+            "Psychology",
+            "Self-Help",
+            "Productivity"
+        ]
+    },
+    {
+        "id": "book:ultralearning",
+        "type": "book",
+        "bookId": "ultralearning",
+        "bookTitle": "Ultralearning: Master Hard Skills, Outsmart the Competition, and Accelerate Your Career",
+        "author": "Scott H. Young",
+        "text": "Ultralearning: Master Hard Skills, Outsmart the Competition, and Accelerate Your Career by Scott H. Young",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:unreasonable-hospitality",
+        "type": "book",
+        "bookId": "unreasonable-hospitality",
+        "bookTitle": "Unreasonable Hospitality",
+        "author": "Will Guidara",
+        "text": "Unreasonable Hospitality by Will Guidara",
+        "tags": [
+            "hospitality",
+            "customer experience",
+            "team culture",
+            "service excellence",
+            "restaurants",
+            "generosity",
+            "employee-first"
+        ],
+        "categories": [
+            "Leadership",
+            "Management",
+            "Business",
+            "Strategy"
+        ]
+    },
+    {
+        "id": "book:what-every-body-is-saying",
+        "type": "book",
+        "bookId": "what-every-body-is-saying",
+        "bookTitle": "What Every BODY is Saying",
+        "author": "Joe Navarro",
+        "text": "What Every BODY is Saying by Joe Navarro",
+        "tags": [
+            "body language",
+            "nonverbal communication",
+            "observation",
+            "comfort",
+            "discomfort",
+            "context",
+            "baseline",
+            "deception restraint"
+        ],
+        "categories": [
+            "Communication",
+            "Psychology",
+            "Self Improvement"
+        ]
+    },
+    {
+        "id": "book:you-cant-hurt-me",
+        "type": "book",
+        "bookId": "you-cant-hurt-me",
+        "bookTitle": "Can't Hurt Me: Master Your Mind and Defy the Odds",
+        "author": "David Goggins",
+        "text": "Can't Hurt Me: Master Your Mind and Defy the Odds by David Goggins",
+        "tags": [
+            "resilience",
+            "self-discipline",
+            "accountability",
+            "endurance",
+            "military training",
+            "trauma",
+            "identity"
+        ],
+        "categories": [
+            "Memoir",
+            "Self-Help",
+            "Mental Toughness",
+            "Sports"
+        ]
+    },
+    {
+        "id": "book:zero-to-one",
+        "type": "book",
+        "bookId": "zero-to-one",
+        "bookTitle": "Zero to One",
+        "author": "Peter Thiel",
+        "text": "Zero to One by Peter Thiel",
+        "tags": [
+            "attention",
+            "focus",
+            "habits"
+        ],
+        "categories": [
+            "Productivity",
+            "Self Improvement"
+        ]
+    }
+]

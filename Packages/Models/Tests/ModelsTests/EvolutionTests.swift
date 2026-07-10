@@ -187,13 +187,28 @@ struct CatalogLossyTests {
         #expect(response.books.count == 2)
     }
 
-    @Test("element missing required field is dropped; rest survive")
-    func missingFieldDropped() throws {
-        let bad = #"{"bookId":"b-bad"}"# // missing required fields
+    @Test("element missing the identity field is dropped; rest survive")
+    func missingIdentityDropped() throws {
+        // Post-reconciliation, `bookId` (or its wire alias `id`) is the ONLY
+        // required field — an element without any identity is dropped.
+        let bad = #"{"title":"No identity"}"#
         let data = json(#"{"books":[\#(goodBook),\#(bad),\#(goodBook)]}"#)
         let response = try JSONDecoder.chapterFlow.decode(CatalogResponse.self, from: data)
         #expect(response.books.count == 2)
         #expect(response.books.allSatisfy { $0.bookId == "b1" })
+    }
+
+    @Test("element with ONLY an identity field survives with defaults (partial data ≠ dropped)")
+    func partialElementSurvives() throws {
+        let partial = #"{"bookId":"b-partial"}"#
+        let data = json(#"{"books":[\#(goodBook),\#(partial)]}"#)
+        let response = try JSONDecoder.chapterFlow.decode(CatalogResponse.self, from: data)
+        #expect(response.books.count == 2)
+        let partialBook = try #require(response.books.first { $0.bookId == "b-partial" })
+        #expect(partialBook.title.isEmpty)
+        #expect(partialBook.status == nil)
+        #expect(partialBook.latestVersion == nil)
+        #expect(partialBook.updatedAt == nil)
     }
 
     @Test("extra future fields are silently ignored")

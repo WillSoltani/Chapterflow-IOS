@@ -84,6 +84,42 @@ public struct AppNotification: Codable, Sendable, Identifiable {
         self.createdAt = createdAt
         self.deepLink = deepLink
     }
+
+    // MARK: - Wire-shape tolerance (contract reconciliation)
+    // The deployed inbox items carry `readAt: string|null` instead of a
+    // boolean `isRead` — without this mapping every entry fails decode and
+    // the inbox silently renders empty.
+
+    private enum WireKeys: String, CodingKey {
+        case notificationId, type, title, body
+        case isRead, readAt, createdAt, deepLink
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: WireKeys.self)
+        notificationId = try c.decodeRequiredFirst(String.self, keys: [.notificationId])
+        type = c.decodeFirst(NotificationKind.self, keys: [.type]) ?? .unknown("")
+        title = c.decodeFirst(String.self, keys: [.title]) ?? ""
+        body = c.decodeFirst(String.self, keys: [.body]) ?? ""
+        if let flag = c.decodeFirst(Bool.self, keys: [.isRead]) {
+            isRead = flag
+        } else {
+            isRead = c.decodeFirst(String.self, keys: [.readAt]) != nil
+        }
+        createdAt = c.decodeFirst(String.self, keys: [.createdAt]) ?? ""
+        deepLink = c.decodeFirst(String.self, keys: [.deepLink])
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: WireKeys.self)
+        try c.encode(notificationId, forKey: .notificationId)
+        try c.encode(type, forKey: .type)
+        try c.encode(title, forKey: .title)
+        try c.encode(body, forKey: .body)
+        try c.encode(isRead, forKey: .isRead)
+        try c.encode(createdAt, forKey: .createdAt)
+        try c.encodeIfPresent(deepLink, forKey: .deepLink)
+    }
 }
 
 // MARK: - NotificationsResponse

@@ -135,6 +135,46 @@ public struct UserScenario: Codable, Sendable, Identifiable, Hashable {
         self.pointsAwarded = pointsAwarded
         self.createdAt = createdAt
     }
+
+    // MARK: - Wire-shape tolerance (contract reconciliation)
+    // Deployed submissions are keyed `submissionId` and their list projection
+    // may omit bookId/chapterNumber (implied by the request path) and dates.
+
+    private enum WireKeys: String, CodingKey {
+        case id, submissionId
+        case bookId, chapterNumber, title, scenario, whatToDo, whyItMatters
+        case scope, status, pointsAwarded, createdAt
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: WireKeys.self)
+        id = try c.decodeRequiredFirst(String.self, keys: [.id, .submissionId])
+        bookId = c.decodeFirst(String.self, keys: [.bookId]) ?? ""
+        chapterNumber = c.decodeFirst(Int.self, keys: [.chapterNumber]) ?? 0
+        title = c.decodeFirst(String.self, keys: [.title]) ?? ""
+        scenario = c.decodeFirst(String.self, keys: [.scenario]) ?? ""
+        whatToDo = c.decodeFirst(String.self, keys: [.whatToDo]) ?? ""
+        whyItMatters = c.decodeFirst(String.self, keys: [.whyItMatters]) ?? ""
+        scope = c.decodeFirst(ScenarioScope.self, keys: [.scope]) ?? .unknown("")
+        status = c.decodeFirst(ScenarioStatus.self, keys: [.status]) ?? .unknown("")
+        pointsAwarded = c.decodeFirst(Int.self, keys: [.pointsAwarded])
+        createdAt = c.decodeFirst(Date.self, keys: [.createdAt]) ?? .distantPast
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: WireKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(bookId, forKey: .bookId)
+        try c.encode(chapterNumber, forKey: .chapterNumber)
+        try c.encode(title, forKey: .title)
+        try c.encode(scenario, forKey: .scenario)
+        try c.encode(whatToDo, forKey: .whatToDo)
+        try c.encode(whyItMatters, forKey: .whyItMatters)
+        try c.encode(scope, forKey: .scope)
+        try c.encode(status, forKey: .status)
+        try c.encodeIfPresent(pointsAwarded, forKey: .pointsAwarded)
+        try c.encode(createdAt, forKey: .createdAt)
+    }
 }
 
 // MARK: - CommunityScenario
@@ -172,11 +212,46 @@ public struct CommunityScenario: Codable, Sendable, Identifiable, Hashable {
         self.authorName = authorName
         self.createdAt = createdAt
     }
+
+    // MARK: - Wire-shape tolerance (contract reconciliation)
+    // Deployed `approvedScenarios` entries carry no author/date fields.
+
+    private enum WireKeys: String, CodingKey {
+        case id, title, scenario, whatToDo, whyItMatters, scope, authorName, createdAt
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: WireKeys.self)
+        id = try c.decodeRequiredFirst(String.self, keys: [.id])
+        title = c.decodeFirst(String.self, keys: [.title]) ?? ""
+        scenario = c.decodeFirst(String.self, keys: [.scenario]) ?? ""
+        whatToDo = c.decodeFirst(String.self, keys: [.whatToDo]) ?? ""
+        whyItMatters = c.decodeFirst(String.self, keys: [.whyItMatters]) ?? ""
+        scope = c.decodeFirst(ScenarioScope.self, keys: [.scope]) ?? .unknown("")
+        authorName = c.decodeFirst(String.self, keys: [.authorName])
+        createdAt = c.decodeFirst(Date.self, keys: [.createdAt]) ?? .distantPast
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: WireKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(title, forKey: .title)
+        try c.encode(scenario, forKey: .scenario)
+        try c.encode(whatToDo, forKey: .whatToDo)
+        try c.encode(whyItMatters, forKey: .whyItMatters)
+        try c.encode(scope, forKey: .scope)
+        try c.encodeIfPresent(authorName, forKey: .authorName)
+        try c.encode(createdAt, forKey: .createdAt)
+    }
 }
 
 // MARK: - Response wrappers
 
 /// Response for `GET /book/me/books/{bookId}/chapters/{n}/scenarios`.
+///
+/// ## Wire-shape tolerance (contract reconciliation)
+/// The deployed route keys the lists `mySubmissions` and `approvedScenarios`;
+/// the canonical shape is `scenarios`/`community`. Both decode.
 public struct ScenariosResponse: Codable, Sendable {
     public let scenarios: [UserScenario]
     /// Community scenarios may not be present on all server versions.
@@ -188,14 +263,27 @@ public struct ScenariosResponse: Codable, Sendable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case scenarios
-        case community
+        case scenarios, mySubmissions
+        case community, approvedScenarios
     }
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.scenarios = try container.decodeLossy(UserScenario.self, forKey: .scenarios)
-        self.community = (try? container.decodeLossy(CommunityScenario.self, forKey: .community)) ?? []
+        if container.contains(.scenarios) {
+            self.scenarios = try container.decodeLossy(UserScenario.self, forKey: .scenarios)
+        } else {
+            self.scenarios =
+                (try? container.decodeLossy(UserScenario.self, forKey: .mySubmissions)) ?? []
+        }
+        self.community = (try? container.decodeLossy(CommunityScenario.self, forKey: .community))
+            ?? (try? container.decodeLossy(CommunityScenario.self, forKey: .approvedScenarios))
+            ?? []
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(scenarios, forKey: .scenarios)
+        try container.encode(community, forKey: .community)
     }
 }
 

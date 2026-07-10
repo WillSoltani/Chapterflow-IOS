@@ -37,12 +37,14 @@ struct DiscoverModelTests {
 
     // MARK: - Shelves
 
-    @Test("newBooks sorts by updatedAt descending")
+    @Test("newBooks sorts by updatedAt descending (nil sorts last)")
     func newBooksSorting() async {
         let repo = FakeLibraryRepository(catalog: Fixtures.books)
         let model = DiscoverModel(repository: repo)
         await model.fetch()
-        let dates = model.newBooks.map { $0.updatedAt }
+        // `updatedAt` is optional on the wire (deployed catalog omits it);
+        // nil coalesces to "" which sorts after any ISO timestamp.
+        let dates = model.newBooks.map { $0.updatedAt ?? "" }
         let sorted = dates.sorted(by: >)
         #expect(dates == sorted)
     }

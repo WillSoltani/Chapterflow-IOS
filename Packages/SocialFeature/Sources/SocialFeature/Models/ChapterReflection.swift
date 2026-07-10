@@ -42,7 +42,18 @@ public struct ChapterReflection: Codable, Sendable, Identifiable, Equatable {
         bookId       = try c.decode(String.self, forKey: .bookId)
         chapterN     = try c.decode(Int.self,    forKey: .chapterN)
         text         = try c.decode(String.self, forKey: .text)
-        createdAt    = try c.decode(Date.self,   forKey: .createdAt)
+        // Tolerant date (contract-reconciliation trap §5.4): accept an ISO
+        // string (via the decoder's date strategy) OR an epoch number
+        // (seconds or milliseconds); a missing/undecodable date degrades to
+        // `.distantPast` (sorts last) instead of dropping the reflection.
+        if let date = try? c.decode(Date.self, forKey: .createdAt) {
+            createdAt = date
+        } else if let epoch = try? c.decode(Double.self, forKey: .createdAt) {
+            // Heuristic: > 10^12 means epoch milliseconds.
+            createdAt = Date(timeIntervalSince1970: epoch > 1e12 ? epoch / 1000 : epoch)
+        } else {
+            createdAt = .distantPast
+        }
         feedbackText = try c.decodeIfPresent(String.self, forKey: .feedbackText)
     }
 

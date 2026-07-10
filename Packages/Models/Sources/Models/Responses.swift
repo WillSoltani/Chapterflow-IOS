@@ -18,9 +18,17 @@ public struct CatalogResponse: Codable, Sendable {
 
 /// Per-book reading progress summary for the Home "Continue Reading" rail.
 /// Returned by `GET /book/me/progress`.
+///
+/// ## Wire-shape tolerance (contract reconciliation)
+/// The deployed route's entries carry `completedChapters` (an array of chapter
+/// numbers, from which the count is derived), no `totalChapters`, and
+/// `lastOpenedAt`/`lastActiveAt`/`updatedAt` instead of `lastReadAt`. All are
+/// accepted; encoding stays canonical.
 public struct ProgressOverviewItem: Codable, Sendable, Identifiable {
     public let bookId: String
     public let currentChapterNumber: Int
+    /// 0 when the server omits totals (deployed shape) — join with the
+    /// catalog's `chapterCount` for display fractions in that case.
     public let totalChapters: Int
     public let completedChapterCount: Int
     /// ISO-8601 timestamp of the user's last reading session for this book.
@@ -32,6 +40,14 @@ public struct ProgressOverviewItem: Codable, Sendable, Identifiable {
     public var completionFraction: Double {
         guard totalChapters > 0 else { return 0 }
         return Double(completedChapterCount) / Double(totalChapters)
+    }
+
+    /// Like `completionFraction`, but falls back to `totalChapterHint`
+    /// (e.g. the catalog's `chapterCount`) when the server omitted totals.
+    public func completionFraction(totalChapterHint: Int?) -> Double {
+        let total = totalChapters > 0 ? totalChapters : (totalChapterHint ?? 0)
+        guard total > 0 else { return 0 }
+        return min(1, Double(completedChapterCount) / Double(total))
     }
 
     public init(
@@ -47,11 +63,47 @@ public struct ProgressOverviewItem: Codable, Sendable, Identifiable {
         self.completedChapterCount = completedChapterCount
         self.lastReadAt = lastReadAt
     }
+
+    private enum WireKeys: String, CodingKey {
+        case bookId
+        case currentChapterNumber, totalChapters
+        case completedChapterCount, completedChapters
+        case lastReadAt, lastOpenedAt, lastActiveAt, updatedAt
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: WireKeys.self)
+        bookId = try c.decodeRequiredFirst(String.self, keys: [.bookId])
+        currentChapterNumber = c.decodeFirst(Int.self, keys: [.currentChapterNumber]) ?? 1
+        totalChapters = c.decodeFirst(Int.self, keys: [.totalChapters]) ?? 0
+        if let count = c.decodeFirst(Int.self, keys: [.completedChapterCount]) {
+            completedChapterCount = count
+        } else if let completed = c.decodeFirst([Int].self, keys: [.completedChapters]) {
+            completedChapterCount = completed.count
+        } else {
+            completedChapterCount = 0
+        }
+        lastReadAt = c.decodeFirst(
+            String.self, keys: [.lastReadAt, .lastOpenedAt, .lastActiveAt, .updatedAt])
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var c = encoder.container(keyedBy: WireKeys.self)
+        try c.encode(bookId, forKey: .bookId)
+        try c.encode(currentChapterNumber, forKey: .currentChapterNumber)
+        try c.encode(totalChapters, forKey: .totalChapters)
+        try c.encode(completedChapterCount, forKey: .completedChapterCount)
+        try c.encodeIfPresent(lastReadAt, forKey: .lastReadAt)
+    }
 }
 
 /// Response wrapper for `GET /book/me/progress`.
-/// Decodes the `progress` array lossily — one malformed item is dropped and
-/// logged while the rest of the collection survives.
+/// Decodes the array lossily — one malformed item is dropped and logged while
+/// the rest of the collection survives.
+///
+/// ## Wire-shape tolerance (contract reconciliation)
+/// The deployed route returns `{"summary": …, "books": […]}`; the canonical
+/// shape is `{"progress": […]}`. Both decode; encoding stays canonical.
 public struct ProgressOverviewResponse: Codable, Sendable {
     public let progress: [ProgressOverviewItem]
 
@@ -59,11 +111,22 @@ public struct ProgressOverviewResponse: Codable, Sendable {
         self.progress = progress
     }
 
-    private enum CodingKeys: String, CodingKey { case progress }
+    private enum CodingKeys: String, CodingKey { case progress, books }
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.progress = try container.decodeLossy(ProgressOverviewItem.self, forKey: .progress)
+        if container.contains(.progress) {
+            self.progress = try container.decodeLossy(ProgressOverviewItem.self, forKey: .progress)
+        } else if container.contains(.books) {
+            self.progress = try container.decodeLossy(ProgressOverviewItem.self, forKey: .books)
+        } else {
+            self.progress = []
+        }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(progress, forKey: .progress)
     }
 }
 

@@ -101,7 +101,33 @@ public actor LiveLibraryRepository: LibraryRepository {
         guard reachability.isConnectedSync else {
             return ProgressOverviewResponse(progress: [])
         }
-        return try await client.send(Endpoints.getProgressOverview())
+        let response: ProgressOverviewResponse = try await client.send(
+            Endpoints.getProgressOverview())
+        return enrichWithChapterTotals(response)
+    }
+
+    /// The deployed progress endpoint omits `totalChapters` (contract
+    /// reconciliation): fill it from the cached catalog's `chapterCount` so
+    /// progress rings and "x of y ch." labels stay meaningful.
+    private func enrichWithChapterTotals(
+        _ response: ProgressOverviewResponse
+    ) -> ProgressOverviewResponse {
+        guard response.progress.contains(where: { $0.totalChapters == 0 }),
+              let catalog = try? loadCachedCatalog(allowStale: true)
+        else { return response }
+        let counts: [String: Int] = Dictionary(
+            catalog.compactMap { book in book.chapterCount.map { (book.bookId, $0) } },
+            uniquingKeysWith: { first, _ in first })
+        let enriched = response.progress.map { item -> ProgressOverviewItem in
+            guard item.totalChapters == 0, let total = counts[item.bookId] else { return item }
+            return ProgressOverviewItem(
+                bookId: item.bookId,
+                currentChapterNumber: item.currentChapterNumber,
+                totalChapters: total,
+                completedChapterCount: item.completedChapterCount,
+                lastReadAt: item.lastReadAt)
+        }
+        return ProgressOverviewResponse(progress: enriched)
     }
 
     // MARK: - Saved books

@@ -1,0 +1,100 @@
+{
+    "book": {
+        "id": "seven-powers",
+        "title": "7 Powers: The Foundations of Business Strategy",
+        "author": "Hamilton Helmer",
+        "icon": "\u265f\ufe0f",
+        "coverImage": "https://chapterflowbackend-chapterflowcontentbucket2ed1848-qo8kewolurc0.s3.us-east-1.amazonaws.com/book-content/library/covers/seven-powers.webp",
+        "category": "Business",
+        "categories": [
+            "Business",
+            "Strategy"
+        ],
+        "difficulty": "Hard",
+        "estimatedMinutes": 108,
+        "chapterCount": 9,
+        "pages": 240,
+        "synopsis": "A modern reading of Hamilton Helmer's nine chapters on the seven powers, path dependence, and how timing shapes durable strategic advantage.",
+        "tags": [
+            "competition",
+            "moats",
+            "strategy"
+        ],
+        "variantFamily": "EMH",
+        "publishedVersion": 5,
+        "chapters": [
+            {
+                "id": "seven-powers-ch01",
+                "chapterId": "seven-powers-ch01",
+                "number": 1,
+                "code": "CH.01",
+                "title": "Scale Economies",
+                "minutes": 12
+            },
+            {
+                "id": "seven-powers-ch02",
+                "chapterId": "seven-powers-ch02",
+                "number": 2,
+                "code": "CH.02",
+                "title": "Network Economies",
+                "minutes": 12
+            },
+            {
+                "id": "seven-powers-ch03",
+                "chapterId": "seven-powers-ch03",
+                "number": 3,
+                "code": "CH.03",
+                "title": "Counter-Positioning",
+                "minutes": 12
+            },
+            {
+                "id": "seven-powers-ch04",
+                "chapterId": "seven-powers-ch04",
+                "number": 4,
+                "code": "CH.04",
+                "title": "Switching Costs",
+                "minutes": 12
+            },
+            {
+                "id": "seven-powers-ch05",
+                "chapterId": "seven-powers-ch05",
+                "number": 5,
+                "code": "CH.05",
+                "title": "Branding",
+                "minutes": 12
+            },
+            {
+                "id": "seven-powers-ch06",
+                "chapterId": "seven-powers-ch06",
+                "number": 6,
+                "code": "CH.06",
+                "title": "Cornered Resource",
+                "minutes": 12
+            },
+            {
+                "id": "seven-powers-ch07",
+                "chapterId": "seven-powers-ch07",
+                "number": 7,
+                "code": "CH.07",
+                "title": "Process Power",
+                "minutes": 12
+            },
+            {
+                "id": "seven-powers-ch08",
+                "chapterId": "seven-powers-ch08",
+                "number": 8,
+                "code": "CH.08",
+                "title": "The Path to Power",
+                "minutes": 12
+            },
+            {
+                "id": "seven-powers-ch09",
+                "chapterId": "seven-powers-ch09",
+                "number": 9,
+                "code": "CH.09",
+                "title": "The Power Progression",
+                "minutes": 12
+            }
+        ]
+    }
+}
