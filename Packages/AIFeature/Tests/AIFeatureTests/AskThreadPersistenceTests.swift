@@ -4,6 +4,36 @@ import SwiftData
 @testable import AIFeature
 @testable import Persistence
 
+// MARK: - Shared in-memory store
+
+/// One process-wide in-memory ``ModelContainer`` for the whole AIFeature test bundle.
+///
+/// Building a *second* `ModelContainer` for the same `@Model` classes inside one
+/// test process makes CoreData trap with `SIGTRAP` ("multiple NSEntityDescriptions
+/// claim the NSManagedObject subclass"). The old per-test `makeInMemoryContext()`
+/// created a fresh container on every call, so the crash surfaced as soon as a
+/// second test ran. Containers are expensive and must be shared; `ModelContext`s
+/// are cheap, so each test gets a fresh, cleared context off the one container.
+@MainActor
+enum SharedAITestStore {
+    static let container: ModelContainer = {
+        let schema = Schema(PersistenceSchemaV8.models)
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        return try! ModelContainer(for: schema, configurations: config)
+    }()
+
+    /// A fresh context on the shared container with all P6.7-touched tables cleared,
+    /// so serialized tests start isolated from one another.
+    static func freshContext() -> ModelContext {
+        let ctx = ModelContext(container)
+        try? ctx.delete(model: CachedAskThread.self)
+        try? ctx.delete(model: CachedNotebookEntry.self)
+        try? ctx.delete(model: PendingMutation.self)
+        try? ctx.save()
+        return ctx
+    }
+}
+
 // MARK: - StoredAskMessage round-trip tests
 
 @Suite("StoredAskMessage")
@@ -75,10 +105,7 @@ struct StoredAskMessageTests {
 struct AskThreadStoreTests {
 
     private func makeInMemoryContext() throws -> ModelContext {
-        let schema = Schema(PersistenceSchemaV8.models)
-        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: schema, configurations: config)
-        return container.mainContext
+        SharedAITestStore.freshContext()
     }
 
     @Test("loadMessages returns empty array for unknown book")
@@ -199,15 +226,12 @@ struct AskThreadStoreTests {
 
 // MARK: - AskTheBookModel persistence tests
 
-@Suite("AskTheBookModel persistence")
+@Suite("AskTheBookModel persistence", .serialized)
 @MainActor
 struct AskTheBookModelPersistenceTests {
 
     private func makeInMemoryContext() throws -> ModelContext {
-        let schema = Schema(PersistenceSchemaV8.models)
-        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: schema, configurations: config)
-        return container.mainContext
+        SharedAITestStore.freshContext()
     }
 
     @Test("sendQuestion persists the message to SwiftData")
