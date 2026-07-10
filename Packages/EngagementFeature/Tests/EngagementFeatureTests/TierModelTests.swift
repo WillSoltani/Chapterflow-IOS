@@ -77,7 +77,7 @@ struct TierModelLoadTests {
             celebrationPresenter: CelebrationPresenter()
         )
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         if case .loaded(let state) = sut.loadState {
             #expect(state.currentTier == .analyst)
         } else {
@@ -91,7 +91,7 @@ struct TierModelLoadTests {
         let repo = EngagementRepository(apiClient: client, modelContainer: nil)
         let sut = TierModel(repository: repo, celebrationPresenter: CelebrationPresenter())
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         if case .error = sut.loadState {
             // pass
         } else {
@@ -106,7 +106,7 @@ struct TierModelLoadTests {
             celebrationPresenter: CelebrationPresenter()
         )
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         await sut.refresh()
         if case .loaded(let state) = sut.loadState {
             #expect(state.currentTier == .analyst)
@@ -138,7 +138,7 @@ struct TierModelDerivedStateTests {
             celebrationPresenter: CelebrationPresenter()
         )
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         #expect(sut.currentTier == .analyst)
     }
 
@@ -159,7 +159,7 @@ struct TierModelDerivedStateTests {
             celebrationPresenter: CelebrationPresenter()
         )
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         #expect(abs(sut.loopsProgress - 0.6) < 0.001)
     }
 
@@ -171,7 +171,7 @@ struct TierModelDerivedStateTests {
             celebrationPresenter: CelebrationPresenter()
         )
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         #expect(abs(sut.quizScoreProgress - 0.925) < 0.001)
     }
 
@@ -183,7 +183,7 @@ struct TierModelDerivedStateTests {
             celebrationPresenter: CelebrationPresenter()
         )
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         #expect(abs(sut.categoriesProgress - (2.0 / 3.0)) < 0.001)
     }
 
@@ -202,7 +202,7 @@ struct TierModelDerivedStateTests {
             celebrationPresenter: CelebrationPresenter()
         )
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         #expect(sut.loopsProgress == 0)
         #expect(sut.quizScoreProgress == 0)
         #expect(sut.categoriesProgress == 0)
@@ -227,7 +227,7 @@ struct TierModelDerivedStateTests {
             celebrationPresenter: CelebrationPresenter()
         )
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         #expect(sut.loopsProgress == 1.0)
         #expect(sut.quizScoreProgress == 1.0)
         #expect(sut.categoriesProgress == 1.0)
@@ -251,7 +251,7 @@ struct TierModelCelebrationTests {
             userDefaults: defaults
         )
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         #expect(presenter.isPresenting, "Celebration should fire when recentlyPromoted is true")
         if case .tierUp(let newTier, let prevTier) = presenter.currentEvent {
             #expect(newTier == "analyst")
@@ -272,7 +272,7 @@ struct TierModelCelebrationTests {
             userDefaults: defaults
         )
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         #expect(!presenter.isPresenting)
     }
 
@@ -288,7 +288,7 @@ struct TierModelCelebrationTests {
         )
         // First load
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         presenter.dismissAll()
 
         // Second load (refresh) — same state, same tier
@@ -314,7 +314,7 @@ struct TierModelCelebrationTests {
             userDefaults: defaults
         )
         sut.load()
-        try await Task.sleep(for: .milliseconds(150))
+        await waitUntil { if case .loading = sut.loadState { return false } else { return true } }
         #expect(!presenter.isPresenting)
     }
 }

@@ -103,8 +103,7 @@ struct FlowPointsModelTests {
         let model = FlowPointsModel(repository: repo)
 
         model.load()
-        // Allow the async task to complete
-        try? await Task.sleep(for: .milliseconds(100))
+        await waitUntil { if case .loading = model.loadState { return false } else { return true } }
 
         if case .loaded(let balance, let ledger) = model.loadState {
             #expect(balance == 750)
@@ -131,7 +130,7 @@ struct FlowPointsModelTests {
         let model = FlowPointsModel(repository: repo)
 
         model.load()
-        try? await Task.sleep(for: .milliseconds(100))
+        await waitUntil { if case .loading = model.loadState { return false } else { return true } }
         #expect(model.balance == 1_500)
     }
 
@@ -144,7 +143,7 @@ struct FlowPointsModelTests {
         let model = FlowPointsModel(repository: repo)
 
         model.load()
-        try? await Task.sleep(for: .milliseconds(100))
+        await waitUntil { if case .loading = model.loadState { return false } else { return true } }
         #expect(model.canAfford(item) == true)
     }
 
@@ -157,7 +156,7 @@ struct FlowPointsModelTests {
         let model = FlowPointsModel(repository: repo)
 
         model.load()
-        try? await Task.sleep(for: .milliseconds(100))
+        await waitUntil { if case .loading = model.loadState { return false } else { return true } }
         #expect(model.canAfford(item) == false)
     }
 
@@ -170,7 +169,7 @@ struct FlowPointsModelTests {
         let model = FlowPointsModel(repository: repo)
 
         model.load()
-        try? await Task.sleep(for: .milliseconds(100))
+        await waitUntil { if case .loading = model.loadState { return false } else { return true } }
         #expect(model.action(for: item) == .buy)
     }
 
@@ -183,7 +182,7 @@ struct FlowPointsModelTests {
         let model = FlowPointsModel(repository: repo)
 
         model.load()
-        try? await Task.sleep(for: .milliseconds(100))
+        await waitUntil { if case .loading = model.loadState { return false } else { return true } }
         #expect(model.action(for: item) == .buyDisabled)
     }
 
@@ -196,7 +195,7 @@ struct FlowPointsModelTests {
         let model = FlowPointsModel(repository: repo)
 
         model.load()
-        try? await Task.sleep(for: .milliseconds(100))
+        await waitUntil { if case .loading = model.loadState { return false } else { return true } }
         #expect(model.action(for: item) == .owned)
     }
 
@@ -209,7 +208,7 @@ struct FlowPointsModelTests {
         let model = FlowPointsModel(repository: repo)
 
         model.load()
-        try? await Task.sleep(for: .milliseconds(100))
+        await waitUntil { if case .loading = model.loadState { return false } else { return true } }
         #expect(model.action(for: item) == .equip)
     }
 
@@ -222,7 +221,7 @@ struct FlowPointsModelTests {
         let model = FlowPointsModel(repository: repo)
 
         model.load()
-        try? await Task.sleep(for: .milliseconds(100))
+        await waitUntil { if case .loading = model.loadState { return false } else { return true } }
         #expect(model.action(for: item) == .equipped)
     }
 
@@ -235,7 +234,7 @@ struct FlowPointsModelTests {
         let model = FlowPointsModel(repository: repo)
 
         model.load()
-        try? await Task.sleep(for: .milliseconds(100))
+        await waitUntil { if case .loading = model.loadState { return false } else { return true } }
         #expect(model.action(for: item) == .hidden)
     }
 
@@ -263,12 +262,14 @@ struct FlowPointsModelTests {
         let model = FlowPointsModel(repository: repo)
 
         model.load()
-        try? await Task.sleep(for: .milliseconds(100))
+        await waitUntil { if case .loading = model.loadState { return false } else { return true } }
 
         model.showConfirmation(for: item)
         model.confirm()
-        // Wait for redeem + two force-refreshes to complete
-        try? await Task.sleep(for: .milliseconds(300))
+        // Wait for the redeem task to start, then run fully to completion
+        // (redeem + two force-refreshes) — event-driven, no fixed deadline.
+        await waitUntil(timeout: .seconds(2)) { model.isRedeeming }
+        await waitUntil { !model.isRedeeming }
 
         // The model should reflect the refreshed balance (1_000 from the force-refresh)
         // rather than the transient intermediate state
@@ -296,11 +297,11 @@ struct FlowPointsModelTests {
         let model = FlowPointsModel(repository: repo)
 
         model.load()
-        try? await Task.sleep(for: .milliseconds(100))
+        await waitUntil { if case .loading = model.loadState { return false } else { return true } }
 
         model.showConfirmation(for: item)
         model.confirm()
-        try? await Task.sleep(for: .milliseconds(200))
+        await waitUntil { model.redeemError != nil }
 
         #expect(model.redeemError != nil)
         #expect(!model.isRedeeming)
@@ -319,7 +320,7 @@ struct FlowPointsModelTests {
         let model = FlowPointsModel(repository: repo)
 
         model.loadShopIfNeeded()
-        try? await Task.sleep(for: .milliseconds(100))
+        await waitUntil { if case .loaded = model.shopLoadState { return true } else { return false } }
 
         #expect(model.shopRewards.map(\.id) == ["r1", "r2"])
         #expect(model.shopCosmetics.map(\.id) == ["c1"])

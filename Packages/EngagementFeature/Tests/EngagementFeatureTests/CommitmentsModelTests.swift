@@ -63,8 +63,7 @@ struct CommitmentsModelTests {
     func loadTransitions() async throws {
         let model = makeModel(commitments: [.testActive])
         model.load()
-        // Give the task a moment to resolve
-        try await Task.sleep(for: .milliseconds(100))
+        await waitUntil { if case .loaded = model.loadState { return true } else { return false } }
         guard case .loaded(let list) = model.loadState else {
             Issue.record("Expected .loaded state")
             return
@@ -77,7 +76,7 @@ struct CommitmentsModelTests {
         let model = makeModel(commitments: [.testActive])
         model.load()
         model.load() // Second call during loading should be ignored
-        try await Task.sleep(for: .milliseconds(100))
+        await waitUntil { if case .loaded = model.loadState { return true } else { return false } }
         guard case .loaded(let list) = model.loadState else {
             Issue.record("Expected .loaded state")
             return
