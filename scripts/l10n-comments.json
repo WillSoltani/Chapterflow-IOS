@@ -1,0 +1,16 @@
+{
+  "Aa": "Label on the reader's font-size / typography control. Short; the 'A' letters are a size metaphor — localize to the target language's equivalent if one exists, else keep 'Aa'.",
+  "min": "Abbreviation for 'minutes' (as in '5 min' reading time). Use the locale's short unit for minutes.",
+  "or": "Separator between two alternatives, e.g. 'Sign in or create an account'. Lowercase, standalone.",
+  "On": "Toggle state (enabled). Opposite of 'Off'.",
+  "Off": "Toggle state (disabled). Opposite of 'On'.",
+  "Note": "Noun — a saved notebook note, not the verb 'to note'.",
+  "Content": "Section title for the main body/content of a chapter.",
+  "Due": "Adjective for a review/quiz that is scheduled now, e.g. '3 due'. Not a date.",
+  "Free": "The free (non-paying) subscription tier. Opposite of the paid 'Pro' plan.",
+  "Pro": "The paid subscription tier name ('ChapterFlow Pro'). A product name — usually keep untranslated.",
+  "HOOK": "Reader block-type banner label for a narrative 'hook' section. Displayed in all caps.",
+  "COUNTERINTUITION": "Reader block-type banner label for a 'counter-intuition' section. Displayed in all caps.",
+  "·": "Middot separator between two inline pieces of metadata (e.g. author · chapter). Decorative.",
+  "•": "Bullet separator / list marker. Decorative."
+}

@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "AuthKit",
+    defaultLocalization: "en",
     platforms: [.iOS(.v18), .macOS(.v14)],
     products: [
         .library(name: "AuthKit", targets: ["AuthKit"]),

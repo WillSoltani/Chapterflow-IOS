@@ -1,0 +1,255 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%lld" : {
+
+    },
+    "%lld %@ due" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld %2$@ due"
+          }
+        }
+      }
+    },
+    "%lld %@ streak" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld %2$@ streak"
+          }
+        }
+      }
+    },
+    "%lld %@ streak%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld %2$@ streak%3$@"
+          }
+        }
+      }
+    },
+    "%lld / %lld min" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld / %2$lld min"
+          }
+        }
+      }
+    },
+    "%lld days and counting" : {
+
+    },
+    "%lld review%@ due" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld review%2$@ due"
+          }
+        }
+      }
+    },
+    "%lld%%" : {
+
+    },
+    "%lld%% complete" : {
+
+    },
+    "%lld%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld%2$@"
+          }
+        }
+      }
+    },
+    "%lld%@ Due" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld%2$@ Due"
+          }
+        }
+      }
+    },
+    "%lld/%lld min%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld/%2$lld min%3$@"
+          }
+        }
+      }
+    },
+    "All reviews done" : {
+
+    },
+    "Audio Narration" : {
+
+    },
+    "Ch. %lld · %lld%%" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Ch. %1$lld · %2$lld%%"
+          }
+        }
+      }
+    },
+    "Chapter %lld" : {
+
+    },
+    "Continue Reading" : {
+
+    },
+    "Continue reading %@" : {
+
+    },
+    "Daily Goal" : {
+
+    },
+    "Due Reviews" : {
+
+    },
+    "Is Playing" : {
+
+    },
+    "Keep your streak alive!" : {
+
+    },
+    "Keep your streak!" : {
+
+    },
+    "Left" : {
+
+    },
+    "Listening" : {
+
+    },
+    "No reviews due" : {
+
+    },
+    "Open ChapterFlow and read to keep your streak." : {
+
+    },
+    "Open ChapterFlow at your current chapter." : {
+
+    },
+    "Open ChapterFlow to start reading" : {
+
+    },
+    "Open a spaced-repetition review session." : {
+
+    },
+    "Opening your reading session." : {
+
+    },
+    "Opening your review session." : {
+
+    },
+    "Opens ChapterFlow at your current chapter." : {
+
+    },
+    "Opens a spaced-repetition review session in ChapterFlow." : {
+
+    },
+    "Pause audio" : {
+
+    },
+    "Paused" : {
+
+    },
+    "Pick up where you left off." : {
+
+    },
+    "Play or pause ChapterFlow's audio narration." : {
+
+    },
+    "Playing" : {
+
+    },
+    "Read today to keep your streak!" : {
+
+    },
+    "Read today!" : {
+
+    },
+    "Reading" : {
+
+    },
+    "Reading Streak" : {
+
+    },
+    "Resets at midnight" : {
+
+    },
+    "Resume audio" : {
+
+    },
+    "Review Now" : {
+
+    },
+    "Reviews" : {
+
+    },
+    "See how many flashcards are ready for review." : {
+
+    },
+    "Start Reading" : {
+
+    },
+    "Start review session — %lld cards due" : {
+
+    },
+    "Start your streak today" : {
+
+    },
+    "Streak saved!" : {
+
+    },
+    "Streak saved! Great job today." : {
+
+    },
+    "Streak saved! 🎉" : {
+
+    },
+    "Time left" : {
+
+    },
+    "Toggle Audio Narration" : {
+
+    },
+    "Track your daily reading progress." : {
+
+    },
+    "Your current reading streak and at-risk indicator." : {
+
+    },
+    "day streak" : {
+
+    },
+    "days streak" : {
+
+    },
+    "min" : {
+      "comment" : "Abbreviation for 'minutes' (as in '5 min' reading time). Use the locale's short unit for minutes."
+    },
+    "of %lld min goal" : {
+
+    }
+  },
+  "version" : "1.0"
+}

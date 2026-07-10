@@ -19,5 +19,12 @@ xcuserdata/
 .swiftpm/
 Packages/**/.build/
 
+# Localization: dedicated DerivedData / artifacts used only by scripts/l10n-*.sh
+# (a SWIFT_EMIT_LOC_STRINGS build kept separate from the normal build cache).
+.l10n-derived/
+.l10n-pseudo-derived/
+.l10n-build-check/
+.l10n-pseudo-*.png
+
 # Secrets — never commit real credentials. See Secrets.example.xcconfig.
 Secrets.xcconfig

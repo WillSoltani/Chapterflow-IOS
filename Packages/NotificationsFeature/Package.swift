@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "NotificationsFeature",
+    defaultLocalization: "en",
     // macOS added so tests run on the host toolchain; shipping target is iOS.
     platforms: [.iOS(.v18), .macOS(.v14)],
     products: [

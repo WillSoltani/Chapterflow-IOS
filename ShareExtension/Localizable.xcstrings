@@ -1,0 +1,36 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Add a note (optional)" : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Note" : {
+      "comment" : "Noun — a saved notebook note, not the verb 'to note'."
+    },
+    "Open ChapterFlow" : {
+
+    },
+    "Open ChapterFlow and sign in to save items to your Notebook." : {
+
+    },
+    "Save" : {
+
+    },
+    "Save to ChapterFlow" : {
+
+    },
+    "Saved to Notebook" : {
+
+    },
+    "Sign in Required" : {
+
+    },
+    "Your thoughts…" : {
+
+    }
+  },
+  "version" : "1.0"
+}

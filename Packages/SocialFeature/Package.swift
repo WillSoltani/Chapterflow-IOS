@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "SocialFeature",
+    defaultLocalization: "en",
     // macOS declared so AppFeature (which depends on us) can build and test on the host toolchain.
     platforms: [.iOS(.v18), .macOS(.v15)],
     products: [
