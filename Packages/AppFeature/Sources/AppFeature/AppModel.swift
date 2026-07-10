@@ -207,6 +207,12 @@ public final class AppModel {
     /// banner auto-dismisses.
     public var showExtensionInboxBanner: Bool = false
 
+    // MARK: - Mobile config (force-update / maintenance)
+
+    /// Drives the force-update / maintenance gate from `GET /book/config/ios` (B4).
+    /// Refreshed at launch and on every foreground; fails open on any error.
+    public let appConfigService: AppConfigService
+
     // MARK: - Reachability
 
     /// Shared reachability service — consumed by repositories and views.
@@ -270,6 +276,7 @@ public final class AppModel {
         let container = try? PersistenceController.makeDefault().container
         let client = APIClient(config: config, tokenProvider: sm)
         self.apiClient = client
+        self.appConfigService = AppConfigService(apiClient: client)
 
         let reporter = CrashReporterFactory.make(
             dsn: config.sentryDSN,
