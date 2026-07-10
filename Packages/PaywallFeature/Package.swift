@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "PaywallFeature",
+    defaultLocalization: "en",
     platforms: [.iOS(.v18), .macOS(.v15)],
     products: [
         .library(name: "PaywallFeature", targets: ["PaywallFeature"]),

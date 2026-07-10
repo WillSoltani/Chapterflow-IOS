@@ -1,0 +1,30 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Ask ChapterFlow" : {
+
+    },
+    "Cancel" : {
+
+    },
+    "ChapterFlow will save this question and you can ask it within the app when you're reading a related book." : {
+
+    },
+    "No text selected" : {
+
+    },
+    "Open ChapterFlow" : {
+
+    },
+    "Open ChapterFlow and sign in to use Ask ChapterFlow." : {
+
+    },
+    "Selected text" : {
+
+    },
+    "Sign in Required" : {
+
+    }
+  },
+  "version" : "1.0"
+}

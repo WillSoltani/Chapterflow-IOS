@@ -1,0 +1,3569 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "" : {
+
+    },
+    "%@" : {
+
+    },
+    "%@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@"
+          }
+        }
+      }
+    },
+    "%@ already purchased" : {
+
+    },
+    "%@ by %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ by %2$@"
+          }
+        }
+      }
+    },
+    "%@ by %@, saved" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ by %2$@, saved"
+          }
+        }
+      }
+    },
+    "%@ depth%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ depth%2$@"
+          }
+        }
+      }
+    },
+    "%@ is currently equipped" : {
+
+    },
+    "%@ line spacing" : {
+
+    },
+    "%@ reward" : {
+
+    },
+    "%@ speed" : {
+
+    },
+    "%@ theme" : {
+
+    },
+    "%@ tone" : {
+
+    },
+    "%@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%@ · Ch. %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · Ch. %2$lld"
+          }
+        }
+      }
+    },
+    "%@ – %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ – %2$@"
+          }
+        }
+      }
+    },
+    "%@ — %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ — %2$@"
+          }
+        }
+      }
+    },
+    "%@ — %@ — Status: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ — %2$@ — Status: %3$@"
+          }
+        }
+      }
+    },
+    "%@ — opens chapterflow.ca in your browser" : {
+
+    },
+    "%@, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@"
+          }
+        }
+      }
+    },
+    "%@, chapter %lld of %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, chapter %2$lld of %3$@"
+          }
+        }
+      }
+    },
+    "%@, recent search" : {
+
+    },
+    "%@, streak %lld, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, streak %2$lld, %3$@"
+          }
+        }
+      }
+    },
+    "%@, then %@/%@. Cancel any time." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, then %2$@/%3$@. Cancel any time."
+          }
+        }
+      }
+    },
+    "%@. %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@. %2$@"
+          }
+        }
+      }
+    },
+    "%@: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@"
+          }
+        }
+      }
+    },
+    "%@: %@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@ %3$@"
+          }
+        }
+      }
+    },
+    "%@: %@ days" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@ days"
+          }
+        }
+      }
+    },
+    "%@: %@. %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@. %3$@"
+          }
+        }
+      }
+    },
+    "%@: %@. %lld percent complete." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@. %3$lld percent complete."
+          }
+        }
+      }
+    },
+    "%@: %lld of %lld chapters" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$lld of %3$lld chapters"
+          }
+        }
+      }
+    },
+    "%lld" : {
+
+    },
+    "%lld %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld %2$@"
+          }
+        }
+      }
+    },
+    "%lld %@ due today" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld %2$@ due today"
+          }
+        }
+      }
+    },
+    "%lld %@ held" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld %2$@ held"
+          }
+        }
+      }
+    },
+    "%lld / %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld / %2$lld"
+          }
+        }
+      }
+    },
+    "%lld AI questions remaining today" : {
+
+    },
+    "%lld Badge%@ Earned" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld Badge%2$@ Earned"
+          }
+        }
+      }
+    },
+    "%lld FP" : {
+
+    },
+    "%lld Q&As" : {
+
+    },
+    "%lld badges earned" : {
+
+    },
+    "%lld book%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld book%2$@"
+          }
+        }
+      }
+    },
+    "%lld books" : {
+
+    },
+    "%lld chapters" : {
+
+    },
+    "%lld free book %@ remaining" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld free book %2$@ remaining"
+          }
+        }
+      }
+    },
+    "%lld free book starts remaining" : {
+
+    },
+    "%lld grade%@ pending upload" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld grade%2$@ pending upload"
+          }
+        }
+      }
+    },
+    "%lld highlight%@ in %@, %@. Tap to switch." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld highlight%2$@ in %3$@, %4$@. Tap to switch."
+          }
+        }
+      }
+    },
+    "%lld item%@ failed to sync" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld item%2$@ failed to sync"
+          }
+        }
+      }
+    },
+    "%lld items saved to Notebook" : {
+
+    },
+    "%lld min" : {
+
+    },
+    "%lld minutes" : {
+
+    },
+    "%lld minutes per day" : {
+
+    },
+    "%lld more badges" : {
+
+    },
+    "%lld of %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "%lld of %lld answered" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld answered"
+          }
+        }
+      }
+    },
+    "%lld of %lld ch." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld ch."
+          }
+        }
+      }
+    },
+    "%lld of %lld chapters completed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld chapters completed"
+          }
+        }
+      }
+    },
+    "%lld of %lld correct" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld correct"
+          }
+        }
+      }
+    },
+    "%lld of %lld questions answered" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld questions answered"
+          }
+        }
+      }
+    },
+    "%lld of 100" : {
+
+    },
+    "%lld offline %@ pending upload" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld offline %2$@ pending upload"
+          }
+        }
+      }
+    },
+    "%lld percent of %lld minutes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld percent of %2$lld minutes"
+          }
+        }
+      }
+    },
+    "%lld percent read" : {
+
+    },
+    "%lld questions remaining today" : {
+
+    },
+    "%lld remaining" : {
+
+    },
+    "%lld result%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld result%2$@"
+          }
+        }
+      }
+    },
+    "%lld submission%@ will sync when online" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld submission%2$@ will sync when online"
+          }
+        }
+      }
+    },
+    "%lld to go" : {
+
+    },
+    "%lld%%" : {
+
+    },
+    "%lld-day streak" : {
+
+    },
+    "%lld." : {
+
+    },
+    "%lldm" : {
+
+    },
+    "+%lld" : {
+
+    },
+    "+%lld FP" : {
+
+    },
+    "+%lld Flow Points" : {
+
+    },
+    "-%@" : {
+
+    },
+    "/ %@" : {
+
+    },
+    "1 GB" : {
+
+    },
+    "1 Week of Pro" : {
+
+    },
+    "1 free book start remaining" : {
+
+    },
+    "1 item saved to Notebook" : {
+
+    },
+    "1 question remaining today" : {
+
+    },
+    "10 GB" : {
+
+    },
+    "3 GB" : {
+
+    },
+    "3 days" : {
+
+    },
+    "30-day activity heatmap" : {
+
+    },
+    "5 GB" : {
+
+    },
+    "7 days" : {
+
+    },
+    "???" : {
+
+    },
+    "A daily nudge helps you build a reading habit\nthat actually sticks." : {
+
+    },
+    "A gift for you 🎁" : {
+
+    },
+    "AI Recommendation" : {
+
+    },
+    "AI Reflection" : {
+
+    },
+    "AI feedback is queued and will arrive when you reconnect" : {
+
+    },
+    "AI feedback: %@" : {
+
+    },
+    "APPLY IT ELSEWHERE" : {
+
+    },
+    "Aa" : {
+      "comment" : "Label on the reader's font-size / typography control. Short; the 'A' letters are a size metaphor — localize to the target language's equivalent if one exists, else keep 'Aa'."
+    },
+    "About" : {
+
+    },
+    "Accept Invite" : {
+
+    },
+    "Accept a Partner Invite" : {
+
+    },
+    "Accept reading partner invite" : {
+
+    },
+    "Accepting…" : {
+
+    },
+    "Account" : {
+
+    },
+    "Account email: %@" : {
+
+    },
+    "Achievement Unlocked" : {
+
+    },
+    "Achievement tracks" : {
+
+    },
+    "Achievements" : {
+
+    },
+    "Achievements & Social" : {
+
+    },
+    "Active" : {
+
+    },
+    "Add Note" : {
+
+    },
+    "Add a new commitment" : {
+
+    },
+    "Add commitment" : {
+
+    },
+    "Add tags, separated by commas" : {
+
+    },
+    "Additional details (optional)" : {
+
+    },
+    "Additional details about your report" : {
+
+    },
+    "Adjust Daily Goal" : {
+
+    },
+    "Adjust your daily reading goal, currently %lld minutes" : {
+
+    },
+    "After finishing a chapter, create an if-then plan to apply what you learned." : {
+
+    },
+    "Agree and start pairing" : {
+
+    },
+    "AirPlay" : {
+
+    },
+    "All caught up!" : {
+
+    },
+    "All caught up. %@" : {
+
+    },
+    "Answer" : {
+
+    },
+    "Answer Review" : {
+
+    },
+    "Answer: %@" : {
+
+    },
+    "App version" : {
+
+    },
+    "App version: %@" : {
+
+    },
+    "Apply Code" : {
+
+    },
+    "Apply It" : {
+
+    },
+    "Apply recommended depth: %@" : {
+
+    },
+    "Apply referral code" : {
+
+    },
+    "Ask" : {
+
+    },
+    "Ask History" : {
+
+    },
+    "Ask a question…" : {
+
+    },
+    "Ask about this" : {
+
+    },
+    "Ask anything about this book" : {
+
+    },
+    "Ask the Book" : {
+
+    },
+    "Ask the book a question" : {
+
+    },
+    "Ask your reading partner to send you their invite link or code." : {
+
+    },
+    "Asking the book requires a connection.\nCheck your network and try again." : {
+
+    },
+    "Atomic Habits" : {
+
+    },
+    "Audio Speed" : {
+
+    },
+    "Audio player — %@. Tap to open." : {
+
+    },
+    "Audio speed: %@ times" : {
+
+    },
+    "Authenticate with Face ID or Touch ID" : {
+
+    },
+    "Auto-Renew" : {
+
+    },
+    "Auto-renew: %@" : {
+
+    },
+    "Available offline" : {
+
+    },
+    "Avatar" : {
+
+    },
+    "Avatar for %@" : {
+
+    },
+    "Awaiting Grading" : {
+
+    },
+    "Badge and tier alerts %@" : {
+
+    },
+    "Badges" : {
+
+    },
+    "Badges & Tier Unlocks" : {
+
+    },
+    "Balance: %lld Flow Points" : {
+
+    },
+    "Best" : {
+
+    },
+    "Block" : {
+
+    },
+    "Block %@?" : {
+
+    },
+    "Block User" : {
+
+    },
+    "Book" : {
+
+    },
+    "Book ID" : {
+
+    },
+    "Book context" : {
+
+    },
+    "Book reading preferences" : {
+
+    },
+    "Book: %@" : {
+
+    },
+    "Bookmark" : {
+
+    },
+    "Books" : {
+
+    },
+    "Books in This Journey" : {
+
+    },
+    "Books you save will appear here for quick access." : {
+
+    },
+    "Books, chapters, authors…" : {
+
+    },
+    "Browse %@" : {
+
+    },
+    "Browse %@ books" : {
+
+    },
+    "Browse by Category" : {
+
+    },
+    "Buy" : {
+
+    },
+    "Buy %@" : {
+
+    },
+    "Buy %@ for %lld flow points" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Buy %1$@ for %2$lld flow points"
+          }
+        }
+      }
+    },
+    "Buy Now" : {
+
+    },
+    "CHAPTER %lld" : {
+
+    },
+    "COUNTERINTUITION" : {
+      "comment" : "Reader block-type banner label for a 'counter-intuition' section. Displayed in all caps."
+    },
+    "Cancel" : {
+
+    },
+    "Cancel and enter a different gift code" : {
+
+    },
+    "Cancel and sign out" : {
+
+    },
+    "Cancel creating commitment" : {
+
+    },
+    "Cancel download" : {
+
+    },
+    "Cancel scenario composition" : {
+
+    },
+    "Cancels" : {
+
+    },
+    "Ch. %@" : {
+
+    },
+    "Ch. %lld" : {
+
+    },
+    "Challenge complete!" : {
+
+    },
+    "Challenge complete. You earned the %@ badge." : {
+
+    },
+    "Change colour" : {
+
+    },
+    "Chapter %lld" : {
+
+    },
+    "Chapter %lld Quiz" : {
+
+    },
+    "Chapter %lld: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Chapter %1$lld: %2$@"
+          }
+        }
+      }
+    },
+    "Chapter Complete" : {
+
+    },
+    "Chapter ID" : {
+
+    },
+    "Chapter Summary" : {
+
+    },
+    "Chapter bookmarked" : {
+
+    },
+    "Chapter complete — nice work!" : {
+
+    },
+    "Chapter position" : {
+
+    },
+    "Chapter progress" : {
+
+    },
+    "ChapterFlow" : {
+
+    },
+    "ChapterFlow Shortcuts" : {
+
+    },
+    "ChapterFlow can't send notifications until you enable permission in iOS Settings." : {
+
+    },
+    "ChapterFlow is Locked" : {
+
+    },
+    "ChapterFlow turns non-fiction into a personal\nlearning experience — at your depth, your pace." : {
+
+    },
+    "Chapters" : {
+
+    },
+    "Chapters completed by book chart. %@" : {
+
+    },
+    "Check Your Email" : {
+
+    },
+    "Check back soon for the next seasonal challenge." : {
+
+    },
+    "Check in after" : {
+
+    },
+    "Check your email for the 6-digit code." : {
+
+    },
+    "Claim Gift" : {
+
+    },
+    "Claim this gift and activate Pro access" : {
+
+    },
+    "Clear" : {
+
+    },
+    "Close" : {
+
+    },
+    "Close gift redemption sheet" : {
+
+    },
+    "Close gift sheet" : {
+
+    },
+    "Close reader" : {
+
+    },
+    "Close review session" : {
+
+    },
+    "Close sleep timer" : {
+
+    },
+    "Code of Conduct" : {
+
+    },
+    "Coming Soon" : {
+
+    },
+    "Commitment check-in" : {
+
+    },
+    "Commitments" : {
+
+    },
+    "Complete %lld chapters before the event ends to earn your badge and bonus IP." : {
+
+    },
+    "Complete Chapter 3" : {
+
+    },
+    "Complete all fields to enable" : {
+
+    },
+    "Completed" : {
+
+    },
+    "Completion Rewards" : {
+
+    },
+    "Concept Graph" : {
+
+    },
+    "Concept graph with %lld concepts" : {
+
+    },
+    "Confirm" : {
+
+    },
+    "Confirm Purchase" : {
+
+    },
+    "Confirm block" : {
+
+    },
+    "Confirm identity with password" : {
+
+    },
+    "Confirmation phrase" : {
+
+    },
+    "Content" : {
+      "comment" : "Section title for the main body/content of a chapter."
+    },
+    "Contents" : {
+
+    },
+    "Context" : {
+
+    },
+    "Context from your selection: %@" : {
+
+    },
+    "Continue" : {
+
+    },
+    "Continue Reading" : {
+
+    },
+    "Continue browsing without creating an account" : {
+
+    },
+    "Continue reading %@" : {
+
+    },
+    "Continue reading %@, chapter %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Continue reading %1$@, chapter %2$lld"
+          }
+        }
+      }
+    },
+    "Continue to Next Chapter" : {
+
+    },
+    "Continue to the next chapter" : {
+
+    },
+    "Continue with Apple" : {
+
+    },
+    "Continue: %@" : {
+
+    },
+    "Control what partners can see on your profile" : {
+
+    },
+    "Control what reading partners can see on your profile" : {
+
+    },
+    "Copy" : {
+
+    },
+    "Copy Answer" : {
+
+    },
+    "Copy Code" : {
+
+    },
+    "Copy Title" : {
+
+    },
+    "Copy gift code to clipboard" : {
+
+    },
+    "Copy invite code" : {
+
+    },
+    "Correct answer: %@" : {
+
+    },
+    "Correct: %@" : {
+
+    },
+    "Could not load graph" : {
+
+    },
+    "Could not load scenarios" : {
+
+    },
+    "Couldn't Load" : {
+
+    },
+    "Couldn't Load Notebook" : {
+
+    },
+    "Couldn't Load Quiz" : {
+
+    },
+    "Couldn't load chapter" : {
+
+    },
+    "Couldn't load commitments" : {
+
+    },
+    "Couldn't load notifications" : {
+
+    },
+    "Couldn't load reflections" : {
+
+    },
+    "Couldn't load reviews" : {
+
+    },
+    "Couldn't load saved books" : {
+
+    },
+    "Couldn't load the shop." : {
+
+    },
+    "Couldn't save preferences. Changes will retry when you're back online." : {
+
+    },
+    "Counterintuition. %@" : {
+
+    },
+    "Cover art" : {
+
+    },
+    "Create Account" : {
+
+    },
+    "Create Another Gift" : {
+
+    },
+    "Create Free Account" : {
+
+    },
+    "Create Gift Code" : {
+
+    },
+    "Create a free ChapterFlow account" : {
+
+    },
+    "Create a gift code for 1 week of Pro access" : {
+
+    },
+    "Create another gift code" : {
+
+    },
+    "Create free account" : {
+
+    },
+    "Creating gift code, please wait" : {
+
+    },
+    "Creating gift code…" : {
+
+    },
+    "Current" : {
+
+    },
+    "Current streak: %lld days. Best: %lld days." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Current streak: %1$lld days. Best: %2$lld days."
+          }
+        }
+      }
+    },
+    "Daily Goal" : {
+
+    },
+    "Daily Reading Reminder" : {
+
+    },
+    "Daily goal complete!" : {
+
+    },
+    "Daily reading goal" : {
+
+    },
+    "Daily reading reminder %@" : {
+
+    },
+    "Daily reading time chart. %@" : {
+
+    },
+    "Daily reminder time" : {
+
+    },
+    "Danger Zone" : {
+
+    },
+    "Data" : {
+
+    },
+    "Data Rights" : {
+
+    },
+    "Day" : {
+
+    },
+    "Deactivate" : {
+
+    },
+    "Deactivate Account" : {
+
+    },
+    "Deactivate Account?" : {
+
+    },
+    "Deactivate account" : {
+
+    },
+    "Decline" : {
+
+    },
+    "Decrease font size" : {
+
+    },
+    "Default reading depth" : {
+
+    },
+    "Delete" : {
+
+    },
+    "Delete %@" : {
+
+    },
+    "Delete Account" : {
+
+    },
+    "Delete All Downloads" : {
+
+    },
+    "Delete Entry" : {
+
+    },
+    "Delete account permanently" : {
+
+    },
+    "Delete all downloaded books" : {
+
+    },
+    "Deleting…" : {
+
+    },
+    "Deletion is permanent and immediately signs you out." : {
+
+    },
+    "Delivery Channels" : {
+
+    },
+    "Depth" : {
+
+    },
+    "Depth options not available for this book" : {
+
+    },
+    "Describe a specific situation from your own life where you can apply what you just learned. Great applications are concrete, personal, and actionable." : {
+
+    },
+    "Describe what happened…" : {
+
+    },
+    "Details" : {
+
+    },
+    "Didn't receive a code?" : {
+
+    },
+    "Disabled until you type the confirmation phrase" : {
+
+    },
+    "Discover" : {
+
+    },
+    "Dismiss" : {
+
+    },
+    "Dismiss and reflect later" : {
+
+    },
+    "Dismiss and return to the app" : {
+
+    },
+    "Dismiss highlight suggestions" : {
+
+    },
+    "Dismiss notification prompt" : {
+
+    },
+    "Dismiss subscription management" : {
+
+    },
+    "Display Name" : {
+
+    },
+    "Display name" : {
+
+    },
+    "Don't have a code?" : {
+
+    },
+    "Done" : {
+
+    },
+    "Double tap to open book" : {
+
+    },
+    "Double tap to open chapter" : {
+
+    },
+    "Double tap to search" : {
+
+    },
+    "Double-tap to submit" : {
+
+    },
+    "Download Book" : {
+
+    },
+    "Download book for offline access" : {
+
+    },
+    "Download book for offline reading" : {
+
+    },
+    "Download failed — tap to retry" : {
+
+    },
+    "Download failed. Tap to retry." : {
+
+    },
+    "Download for offline use" : {
+
+    },
+    "Download over Wi-Fi only" : {
+
+    },
+    "Download this book to read, take quizzes, and review it offline." : {
+
+    },
+    "Downloaded Books" : {
+
+    },
+    "Downloading %lld%%" : {
+
+    },
+    "Downloads" : {
+
+    },
+    "Downloads a JSON file with all your account data" : {
+
+    },
+    "Downloads settings" : {
+
+    },
+    "Due" : {
+      "comment" : "Adjective for a review/quiz that is scheduled now, e.g. '3 due'. Not a date."
+    },
+    "Earn it to reveal what it is." : {
+
+    },
+    "Earned" : {
+
+    },
+    "Earned on" : {
+
+    },
+    "Edit" : {
+
+    },
+    "Edit Profile" : {
+
+    },
+    "Email" : {
+
+    },
+    "Email Digests" : {
+
+    },
+    "Email digests %@" : {
+
+    },
+    "Enable Notifications" : {
+
+    },
+    "Enable Reminders" : {
+
+    },
+    "Enable Reminders — allow ChapterFlow to send daily notifications" : {
+
+    },
+    "Enable in Settings" : {
+
+    },
+    "Enable in iOS Settings" : {
+
+    },
+    "Enable notifications in Settings to receive reading reminders and streak alerts." : {
+
+    },
+    "Enable push notifications" : {
+
+    },
+    "End" : {
+
+    },
+    "End Partnership" : {
+
+    },
+    "End Partnership?" : {
+
+    },
+    "End reading partnership" : {
+
+    },
+    "Enter Invite Code" : {
+
+    },
+    "Enter Referral Code" : {
+
+    },
+    "Enter Reset Code" : {
+
+    },
+    "Enter a different code" : {
+
+    },
+    "Enter a friend's referral code" : {
+
+    },
+    "Enter an invite code manually" : {
+
+    },
+    "Enter focus mode" : {
+
+    },
+    "Enter the gift code you received to preview and claim your Pro access." : {
+
+    },
+    "Enter the invite code your reading partner shared with you." : {
+
+    },
+    "Enter the referral code your friend shared. Your friend earns a reward when you sign up, and you get credit for joining through their invite." : {
+
+    },
+    "Enter your email and we'll send a reset code." : {
+
+    },
+    "Entitlement updates on next launch or account refresh." : {
+
+    },
+    "EntitlementService" : {
+
+    },
+    "Equip" : {
+
+    },
+    "Equip %@" : {
+
+    },
+    "Equip Item" : {
+
+    },
+    "Equipped" : {
+
+    },
+    "Error" : {
+
+    },
+    "Error: %@" : {
+
+    },
+    "Event Details" : {
+
+    },
+    "Event ended" : {
+
+    },
+    "Event has ended" : {
+
+    },
+    "Events" : {
+
+    },
+    "Excerpt" : {
+
+    },
+    "Exit focus mode" : {
+
+    },
+    "Exits focus mode" : {
+
+    },
+    "Expired" : {
+
+    },
+    "Expires %@" : {
+
+    },
+    "Explain Simply" : {
+
+    },
+    "Explaining…" : {
+
+    },
+    "Export My Data" : {
+
+    },
+    "Export my ChapterFlow data" : {
+
+    },
+    "Face ID / Touch ID Lock" : {
+
+    },
+    "Feedback queued — will arrive once you're back online" : {
+
+    },
+    "Filter books, authors, tags…" : {
+
+    },
+    "Filters ChapterFlow to show only reading content and suppresses social features while this Focus is active." : {
+
+    },
+    "Finish Chapter %lld quiz to unlock" : {
+
+    },
+    "Finish and close the review session" : {
+
+    },
+    "Finished chapter" : {
+
+    },
+    "Flow Points" : {
+
+    },
+    "Follow-up reminder" : {
+
+    },
+    "Follow-up reminder interval" : {
+
+    },
+    "Font Scale" : {
+
+    },
+    "Font scale: %lld percent" : {
+
+    },
+    "For your security, confirm your identity to continue." : {
+
+    },
+    "Forgot Password?" : {
+
+    },
+    "Free" : {
+      "comment" : "The free (non-paying) subscription tier. Opposite of the paid 'Pro' plan."
+    },
+    "From %@" : {
+
+    },
+    "From the Community" : {
+
+    },
+    "Full Pro access" : {
+
+    },
+    "Full access · 7 days" : {
+
+    },
+    "Generate New Code" : {
+
+    },
+    "Generate a gift code and share it with a friend. They'll get one week of Pro access — offline reading, AI features, and more." : {
+
+    },
+    "Generate a new invite code" : {
+
+    },
+    "Generated on your device — not sent to any server" : {
+
+    },
+    "Generating chapter summary" : {
+
+    },
+    "Generating explanation" : {
+
+    },
+    "Generating invite…" : {
+
+    },
+    "Get AI feedback" : {
+
+    },
+    "Get Started" : {
+
+    },
+    "Get Started — begin onboarding" : {
+
+    },
+    "Get answers grounded in the book's content,\nwith citations to the source chapters." : {
+
+    },
+    "Get reminders for your reading streak, upcoming reviews, and chapters you've committed to finishing." : {
+
+    },
+    "Gets personalized encouragement and insights from AI" : {
+
+    },
+    "Getting feedback…" : {
+
+    },
+    "Gift Code" : {
+
+    },
+    "Gift Code Created!" : {
+
+    },
+    "Gift Pro" : {
+
+    },
+    "Gift code input field" : {
+
+    },
+    "Gift code: %@" : {
+
+    },
+    "Global search: books and chapters" : {
+
+    },
+    "Go to Chapter %@" : {
+
+    },
+    "Go to Library" : {
+
+    },
+    "Goal" : {
+
+    },
+    "Goal met!" : {
+
+    },
+    "Got a friend's code?" : {
+
+    },
+    "Got it! I've noted %lld %@ of reading for today." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Got it! I've noted %1$lld %2$@ of reading for today."
+          }
+        }
+      }
+    },
+    "Grading…" : {
+
+    },
+    "HOOK" : {
+      "comment" : "Reader block-type banner label for a narrative 'hook' section. Displayed in all caps."
+    },
+    "Here's your ChapterFlow gift code: %@\n\nRedeem at app.chapterflow.ca or in the app." : {
+
+    },
+    "Hide password" : {
+
+    },
+    "Highlight" : {
+
+    },
+    "Highlight: %@" : {
+
+    },
+    "Highlights" : {
+
+    },
+    "Highlights, notes, and bookmarks you make while reading will appear here." : {
+
+    },
+    "Home" : {
+
+    },
+    "Hook. %@" : {
+
+    },
+    "How You Advance" : {
+
+    },
+    "How did it go?" : {
+
+    },
+    "How it works" : {
+
+    },
+    "How many minutes did you read?" : {
+
+    },
+    "How many minutes do you want to read each day?" : {
+
+    },
+    "How to earn" : {
+
+    },
+    "How well did you recall this?" : {
+
+    },
+    "I Agree — Pair Up" : {
+
+    },
+    "If" : {
+
+    },
+    "If %@" : {
+
+    },
+    "If %@, then %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "If %1$@, then %2$@"
+          }
+        }
+      }
+    },
+    "If this happens…" : {
+
+    },
+    "Implementation intention" : {
+
+    },
+    "Increase font size" : {
+
+    },
+    "Insufficient balance. You need %lld more Flow Points." : {
+
+    },
+    "Intended action — then I will" : {
+
+    },
+    "Introduced in Chapter %@" : {
+
+    },
+    "Invite Code" : {
+
+    },
+    "Invite Expired" : {
+
+    },
+    "Invite Friends" : {
+
+    },
+    "Invite a Partner" : {
+
+    },
+    "Invite a Reading Partner" : {
+
+    },
+    "Invite a friend to stay accountable and see each other's progress." : {
+
+    },
+    "Invite a reading partner" : {
+
+    },
+    "Invite code text field" : {
+
+    },
+    "Invite friends, earn rewards" : {
+
+    },
+    "Join ChapterFlow and start learning." : {
+
+    },
+    "Join Event" : {
+
+    },
+    "Join event" : {
+
+    },
+    "Join me on ChapterFlow" : {
+
+    },
+    "Join me → %@" : {
+
+    },
+    "Join the %@ challenge" : {
+
+    },
+    "Joining event" : {
+
+    },
+    "Joining…" : {
+
+    },
+    "Jot down your thoughts…" : {
+
+    },
+    "Journey Complete!" : {
+
+    },
+    "Journeys" : {
+
+    },
+    "Jump to chapter %lld" : {
+
+    },
+    "Just finished" : {
+
+    },
+    "Key sentences" : {
+
+    },
+    "Key takeaway. %@" : {
+
+    },
+    "Knowledge" : {
+
+    },
+    "Last 30 Days" : {
+
+    },
+    "Last prompted" : {
+
+    },
+    "Last synced %@ ago" : {
+
+    },
+    "Later" : {
+
+    },
+    "Learn More From\nEvery Book" : {
+
+    },
+    "Learn more from every book." : {
+
+    },
+    "Ledger" : {
+
+    },
+    "Less" : {
+
+    },
+    "Library" : {
+
+    },
+    "License Key" : {
+
+    },
+    "License Management" : {
+
+    },
+    "License key: %@" : {
+
+    },
+    "License management: visit chapterflow.ca/account to renew or transfer." : {
+
+    },
+    "Listen to Chapter" : {
+
+    },
+    "Loading" : {
+
+    },
+    "Loading AI feedback" : {
+
+    },
+    "Loading chapter" : {
+
+    },
+    "Loading chapter…" : {
+
+    },
+    "Loading concept graph…" : {
+
+    },
+    "Loading dashboard…" : {
+
+    },
+    "Loading notification settings" : {
+
+    },
+    "Loading notifications" : {
+
+    },
+    "Loading notifications…" : {
+
+    },
+    "Loading reflections…" : {
+
+    },
+    "Loading search index…" : {
+
+    },
+    "Locked. Tap for requirements." : {
+
+    },
+    "Log In" : {
+
+    },
+    "Log Reading" : {
+
+    },
+    "Log today's reading" : {
+
+    },
+    "Long-press any paragraph to highlight it." : {
+
+    },
+    "Looking up your answer" : {
+
+    },
+    "Make a selection to continue" : {
+
+    },
+    "Make it real" : {
+
+    },
+    "Manage Subscription" : {
+
+    },
+    "Manage Subscription — opens App Store" : {
+
+    },
+    "Manage reminders, digests, and alert types" : {
+
+    },
+    "Manage subscription in the App Store" : {
+
+    },
+    "Manage your subscription in the App Store" : {
+
+    },
+    "Mark All Read" : {
+
+    },
+    "Mark all notifications as read" : {
+
+    },
+    "Maybe Later" : {
+
+    },
+    "Maybe Later — skip notifications and finish setup" : {
+
+    },
+    "Milestones" : {
+
+    },
+    "Minutes" : {
+
+    },
+    "Minutes read" : {
+
+    },
+    "More" : {
+
+    },
+    "More actions" : {
+
+    },
+    "My Highlights" : {
+
+    },
+    "My Library" : {
+
+    },
+    "My Scenarios" : {
+
+    },
+    "Name Display" : {
+
+    },
+    "New commitment" : {
+
+    },
+    "Next" : {
+
+    },
+    "Next chapter" : {
+
+    },
+    "Next chapter is locked or unavailable" : {
+
+    },
+    "Next chapter is now unlocked" : {
+
+    },
+    "Next chapter unlocked!" : {
+
+    },
+    "Next review %@" : {
+
+    },
+    "No %@ badges yet" : {
+
+    },
+    "No Active Event" : {
+
+    },
+    "No Notes Yet" : {
+
+    },
+    "No Reading Partners" : {
+
+    },
+    "No Results" : {
+
+    },
+    "No Saved Books" : {
+
+    },
+    "No books started yet" : {
+
+    },
+    "No commitments yet" : {
+
+    },
+    "No downloaded books" : {
+
+    },
+    "No downloaded books stored on device" : {
+
+    },
+    "No highlights yet" : {
+
+    },
+    "No notifications will be scheduled to fire between %@ and %@. Reminders that fall in this window are moved to just after it ends." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No notifications will be scheduled to fire between %1$@ and %2$@. Reminders that fall in this window are moved to just after it ends."
+          }
+        }
+      }
+    },
+    "No notifications yet" : {
+
+    },
+    "No past questions" : {
+
+    },
+    "No previous chapter available" : {
+
+    },
+    "No reading" : {
+
+    },
+    "No reading activity yet" : {
+
+    },
+    "No reflections yet" : {
+
+    },
+    "No scenarios yet" : {
+
+    },
+    "No summary available." : {
+
+    },
+    "No tags" : {
+
+    },
+    "No upcoming reviews" : {
+
+    },
+    "Not Now" : {
+
+    },
+    "Not Quite" : {
+
+    },
+    "Not enough Flow Points" : {
+
+    },
+    "Not enough Flow Points to buy %@" : {
+
+    },
+    "Not yet earned" : {
+
+    },
+    "Not yet synced to the server" : {
+
+    },
+    "Note" : {
+      "comment" : "Noun — a saved notebook note, not the verb 'to note'."
+    },
+    "Note: %@" : {
+
+    },
+    "Notes" : {
+
+    },
+    "Notification Preferences" : {
+
+    },
+    "Notification Settings" : {
+
+    },
+    "Notifications" : {
+
+    },
+    "Notifications are delivered quietly until you allow them from a banner." : {
+
+    },
+    "Notifications are turned off" : {
+
+    },
+    "Nudge sent successfully" : {
+
+    },
+    "Nudge sent!" : {
+
+    },
+    "OK" : {
+
+    },
+    "Off" : {
+      "comment" : "Toggle state (disabled). Opposite of 'On'."
+    },
+    "Offline answer · Runs on your device" : {
+
+    },
+    "Offline — answers will be graded when you reconnect." : {
+
+    },
+    "On" : {
+      "comment" : "Toggle state (enabled). Opposite of 'Off'."
+    },
+    "Open Book" : {
+
+    },
+    "Open Data Rights page in browser" : {
+
+    },
+    "Open Privacy Policy in browser" : {
+
+    },
+    "Open Refund Policy in browser" : {
+
+    },
+    "Open Settings" : {
+
+    },
+    "Open Settings to enable push notifications" : {
+
+    },
+    "Open Source Chapter" : {
+
+    },
+    "Open Terms of Service in browser" : {
+
+    },
+    "Open iOS Settings to enable notifications" : {
+
+    },
+    "Open iOS Settings to enable push notifications" : {
+
+    },
+    "Open notification inbox" : {
+
+    },
+    "Open notification preferences" : {
+
+    },
+    "Open reading preferences" : {
+
+    },
+    "Opening %@." : {
+
+    },
+    "Opening your library. Select a book to listen to." : {
+
+    },
+    "Opening your review session." : {
+
+    },
+    "Opens App Store subscription management" : {
+
+    },
+    "Opens ChapterFlow at the chapter you left off." : {
+
+    },
+    "Opens a confirmation screen before deleting" : {
+
+    },
+    "Opens a spaced-repetition review session in ChapterFlow." : {
+
+    },
+    "Opens an Apple refund request" : {
+
+    },
+    "Opens the App Store offer code redemption sheet" : {
+
+    },
+    "Opens the Settings app" : {
+
+    },
+    "Opens the chapter where this entry was made" : {
+
+    },
+    "Opens the subscription screen" : {
+
+    },
+    "Opens the subscription upgrade screen" : {
+
+    },
+    "Opens this chapter in the reader" : {
+
+    },
+    "Opting out removes you from leaderboards and search results immediately. Your existing reading partners are not affected." : {
+
+    },
+    "Or share the code" : {
+
+    },
+    "Over limit" : {
+
+    },
+    "Overall progress to %@: %lld percent" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Overall progress to %1$@: %2$lld percent"
+          }
+        }
+      }
+    },
+    "Owned" : {
+
+    },
+    "Page %lld of %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Page %1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "Pages" : {
+
+    },
+    "Pair with %@?" : {
+
+    },
+    "Pairing lets you share your reading journey with another person." : {
+
+    },
+    "Partners since %@" : {
+
+    },
+    "Password" : {
+
+    },
+    "Password strength: %@" : {
+
+    },
+    "Paste from clipboard" : {
+
+    },
+    "Paste referral code from clipboard" : {
+
+    },
+    "Pause" : {
+
+    },
+    "Pause audio" : {
+
+    },
+    "Pending" : {
+
+    },
+    "Pending sync" : {
+
+    },
+    "Permanently Delete Account" : {
+
+    },
+    "Permanently delete account" : {
+
+    },
+    "Personal" : {
+
+    },
+    "Pinnacle Achieved" : {
+
+    },
+    "Plan" : {
+
+    },
+    "Play" : {
+
+    },
+    "Playback Speed" : {
+
+    },
+    "Playback speed: %@" : {
+
+    },
+    "Popular" : {
+
+    },
+    "Position: %lld%%" : {
+
+    },
+    "Preferences" : {
+
+    },
+    "Prerequisites" : {
+
+    },
+    "Preview" : {
+
+    },
+    "Preview Gift" : {
+
+    },
+    "Preview the gift with the entered code" : {
+
+    },
+    "Previous" : {
+
+    },
+    "Previous chapter" : {
+
+    },
+    "Privacy" : {
+
+    },
+    "Privacy & Legal" : {
+
+    },
+    "Privacy Policy" : {
+
+    },
+    "Privacy Settings" : {
+
+    },
+    "Pro" : {
+      "comment" : "The paid subscription tier name ('ChapterFlow Pro'). A product name — usually keep untranslated."
+    },
+    "Profile" : {
+
+    },
+    "Progress" : {
+
+    },
+    "Progress Metrics" : {
+
+    },
+    "Progress to %@" : {
+
+    },
+    "Purchase successful. You're now a Pro member." : {
+
+    },
+    "Push Notifications" : {
+
+    },
+    "Push notification status: %@" : {
+
+    },
+    "Push notifications %@" : {
+
+    },
+    "Push permission status: %@" : {
+
+    },
+    "Question" : {
+
+    },
+    "Question %lld of %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Question %1$lld of %2$lld"
+          }
+        }
+      }
+    },
+    "Question input field" : {
+
+    },
+    "Question: %@" : {
+
+    },
+    "Questions reset at midnight." : {
+
+    },
+    "Quiet Hours" : {
+
+    },
+    "Quiet hours %@" : {
+
+    },
+    "Quiet hours end time" : {
+
+    },
+    "Quiet hours start time" : {
+
+    },
+    "Quiz Passed!" : {
+
+    },
+    "Quiz streak threshold" : {
+
+    },
+    "Read something today to keep your %lld-day streak." : {
+
+    },
+    "Read with ChapterFlow" : {
+
+    },
+    "Reader Theme" : {
+
+    },
+    "Reader visual theme" : {
+
+    },
+    "Reading" : {
+
+    },
+    "Reading Events — join community challenges and group reads" : {
+
+    },
+    "Reading Focus" : {
+
+    },
+    "Reading Focus Active" : {
+
+    },
+    "Reading Focus is active. Social features are hidden." : {
+
+    },
+    "Reading Journeys — curated paths through interconnected books" : {
+
+    },
+    "Reading Partner Request" : {
+
+    },
+    "Reading Partners" : {
+
+    },
+    "Reading Preferences" : {
+
+    },
+    "Reading appearance" : {
+
+    },
+    "Reading streak" : {
+
+    },
+    "Ready for reflection" : {
+
+    },
+    "Ready to join?" : {
+
+    },
+    "Reason" : {
+
+    },
+    "Recommended for you" : {
+
+    },
+    "Recommended for you: %@" : {
+
+    },
+    "Reconnecting to the server" : {
+
+    },
+    "Reconnecting…" : {
+
+    },
+    "Records how many minutes you've read today." : {
+
+    },
+    "Redeem Gift" : {
+
+    },
+    "Redeem Offer Code" : {
+
+    },
+    "Redeem Promo Code" : {
+
+    },
+    "Redeem a promotional offer code" : {
+
+    },
+    "Redemption Failed" : {
+
+    },
+    "Referral Code" : {
+
+    },
+    "Referral code" : {
+
+    },
+    "Referral code: %@" : {
+
+    },
+    "Reflect" : {
+
+    },
+    "Reflect now" : {
+
+    },
+    "Reflection text" : {
+
+    },
+    "Refund Policy" : {
+
+    },
+    "Registration error: %@" : {
+
+    },
+    "Remaining" : {
+
+    },
+    "Remind me at" : {
+
+    },
+    "Reminder Time" : {
+
+    },
+    "Reminder on %@" : {
+
+    },
+    "Reminders" : {
+
+    },
+    "Remove %@ from recent searches" : {
+
+    },
+    "Remove download" : {
+
+    },
+    "Remove from Saved" : {
+
+    },
+    "Remove from saved" : {
+
+    },
+    "Remove highlight" : {
+
+    },
+    "Renews" : {
+
+    },
+    "Renews at %@/%@ after offer ends. Cancel any time." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Renews at %1$@/%2$@ after offer ends. Cancel any time."
+          }
+        }
+      }
+    },
+    "Report" : {
+
+    },
+    "Report User" : {
+
+    },
+    "Reports are reviewed" : {
+
+    },
+    "Request AI feedback on this reflection" : {
+
+    },
+    "Request a Refund" : {
+
+    },
+    "Request a refund for your subscription" : {
+
+    },
+    "Require Face ID or Touch ID when opening the app" : {
+
+    },
+    "Research shows specifying *when*, *where*, and *how* you'll act doubles follow-through." : {
+
+    },
+    "Reset Password" : {
+
+    },
+    "Reset book preferences to global defaults" : {
+
+    },
+    "Reset to Global Defaults" : {
+
+    },
+    "Reset view" : {
+
+    },
+    "Resets %@ from now" : {
+
+    },
+    "Restore Purchases" : {
+
+    },
+    "Restore previous purchases" : {
+
+    },
+    "Restoring…" : {
+
+    },
+    "Resubscribe to ChapterFlow Pro" : {
+
+    },
+    "Resubscribe to Pro" : {
+
+    },
+    "Resume audio" : {
+
+    },
+    "Retry" : {
+
+    },
+    "Retry available in %@" : {
+
+    },
+    "Retry in %@" : {
+
+    },
+    "Retry loading notifications" : {
+
+    },
+    "Retry loading the chapter" : {
+
+    },
+    "Review" : {
+
+    },
+    "Review Now" : {
+
+    },
+    "Review now" : {
+
+    },
+    "Review progress: %lld of %lld cards reviewed" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Review progress: %1$lld of %2$lld cards reviewed"
+          }
+        }
+      }
+    },
+    "Reviewed %lld %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Reviewed %1$lld %2$@"
+          }
+        }
+      }
+    },
+    "Reviews" : {
+
+    },
+    "Rewards" : {
+
+    },
+    "Runs on your device · Private" : {
+
+    },
+    "Save" : {
+
+    },
+    "Save %lld%%" : {
+
+    },
+    "Save book" : {
+
+    },
+    "Save commitment" : {
+
+    },
+    "Save error: %@" : {
+
+    },
+    "Save for Later" : {
+
+    },
+    "Save reflection" : {
+
+    },
+    "Save to Notebook" : {
+
+    },
+    "Saved" : {
+
+    },
+    "Saved to Notebook" : {
+
+    },
+    "Saves your reflection and attempts to sync it" : {
+
+    },
+    "School" : {
+
+    },
+    "Scope" : {
+
+    },
+    "Score: %lld percent" : {
+
+    },
+    "Scroll" : {
+
+    },
+    "Search" : {
+
+    },
+    "Search Unavailable" : {
+
+    },
+    "Search books" : {
+
+    },
+    "Search books and chapters" : {
+
+    },
+    "Search in %@…" : {
+
+    },
+    "Search notes, highlights, tags…" : {
+
+    },
+    "Section" : {
+
+    },
+    "Security" : {
+
+    },
+    "Security Check" : {
+
+    },
+    "See All" : {
+
+    },
+    "See all %@ books" : {
+
+    },
+    "Send a Nudge" : {
+
+    },
+    "Send a nudge notification to %@" : {
+
+    },
+    "Send question" : {
+
+    },
+    "Separate tags with commas" : {
+
+    },
+    "Sets the default entry point when you open a chapter." : {
+
+    },
+    "Settings" : {
+
+    },
+    "Share" : {
+
+    },
+    "Share Gift Link" : {
+
+    },
+    "Share Invite Link" : {
+
+    },
+    "Share gift link for %@" : {
+
+    },
+    "Share invite link for code %@" : {
+
+    },
+    "Share reading partner invite link" : {
+
+    },
+    "Share the Gift of Learning" : {
+
+    },
+    "Share the link below. Once they accept, you'll see each other's streaks and progress." : {
+
+    },
+    "Share this code with a friend. They can redeem it at app.chapterflow.ca or in the app." : {
+
+    },
+    "Share with Attribution" : {
+
+    },
+    "Share your code and your friends get the ChapterFlow experience. You both earn rewards when they sign up and upgrade." : {
+
+    },
+    "Shields protect your streak when life gets in the way. Missing a day consumes one shield automatically — your streak stays alive. Shields are earned by reaching reading milestones and maintaining long streaks." : {
+
+    },
+    "Shop" : {
+
+    },
+    "Show Answer" : {
+
+    },
+    "Show password" : {
+
+    },
+    "Show reader controls" : {
+
+    },
+    "Show the card's answer" : {
+
+    },
+    "Showing cached notifications — you're offline." : {
+
+    },
+    "Sign Out" : {
+
+    },
+    "Sign Up" : {
+
+    },
+    "Sign in to continue reading." : {
+
+    },
+    "Sign out of ChapterFlow" : {
+
+    },
+    "Skip back 15 seconds" : {
+
+    },
+    "Skip forward 15 seconds" : {
+
+    },
+    "Skip setup" : {
+
+    },
+    "Skip setup — jump straight to the app" : {
+
+    },
+    "Sleep Timer" : {
+
+    },
+    "Sleep timer off" : {
+
+    },
+    "Sleep timer: %@" : {
+
+    },
+    "Social Surfaces" : {
+
+    },
+    "Social features are hidden while your Focus is on." : {
+
+    },
+    "Source" : {
+
+    },
+    "Sources" : {
+
+    },
+    "Start" : {
+
+    },
+    "Start Journey" : {
+
+    },
+    "Start Reading" : {
+
+    },
+    "Start Review Session" : {
+
+    },
+    "Start a book to see progress" : {
+
+    },
+    "Start a review session with %lld due cards" : {
+
+    },
+    "Start my daily reading" : {
+
+    },
+    "Start the %@ journey" : {
+
+    },
+    "Start with Audio" : {
+
+    },
+    "Starting narration of %@." : {
+
+    },
+    "Starts audio narration of your current chapter." : {
+
+    },
+    "Status" : {
+
+    },
+    "Stay Here" : {
+
+    },
+    "Stay in current chapter" : {
+
+    },
+    "Stay on track" : {
+
+    },
+    "Stay on track with ChapterFlow" : {
+
+    },
+    "Step %@: %@. %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Step %1$@: %2$@. %3$@"
+          }
+        }
+      }
+    },
+    "Stop Editing" : {
+
+    },
+    "Storage" : {
+
+    },
+    "Storage limit" : {
+
+    },
+    "Streak" : {
+
+    },
+    "Streak At-Risk Reminder" : {
+
+    },
+    "Streak Shields" : {
+
+    },
+    "Streak at Risk" : {
+
+    },
+    "Streak at risk. Read something today to keep your %lld-day streak." : {
+
+    },
+    "Streak reminder %@" : {
+
+    },
+    "Submit" : {
+
+    },
+    "Submit Quiz" : {
+
+    },
+    "Submit Scenario" : {
+
+    },
+    "Submit reflection" : {
+
+    },
+    "Submit reflection and outcome" : {
+
+    },
+    "Submit reflection for this commitment" : {
+
+    },
+    "Submit scenario" : {
+
+    },
+    "Submitting your answers for grading" : {
+
+    },
+    "Submitting…" : {
+
+    },
+    "Subscription" : {
+
+    },
+    "Subscription cancels on %@" : {
+
+    },
+    "Subscription plan: %@" : {
+
+    },
+    "Subscription renews on %@" : {
+
+    },
+    "Subscription source: %@" : {
+
+    },
+    "Subscriptions renew automatically. Cancel any time in Settings → Apple ID → Subscriptions." : {
+
+    },
+    "Suggested highlight: %@" : {
+
+    },
+    "Summarising…" : {
+
+    },
+    "Suppress Social Features" : {
+
+    },
+    "Switch depth anytime while reading without losing your place." : {
+
+    },
+    "Switch to paginated reading" : {
+
+    },
+    "Switch to recommended depth: %@" : {
+
+    },
+    "Switch to scroll reading" : {
+
+    },
+    "Switch tone anytime in the reader." : {
+
+    },
+    "Sync" : {
+
+    },
+    "Syncing %lld item%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Syncing %1$lld item%2$@"
+          }
+        }
+      }
+    },
+    "TRY THIS NOW" : {
+
+    },
+    "Table of Contents" : {
+
+    },
+    "Tags" : {
+
+    },
+    "Take the quiz" : {
+
+    },
+    "Take the quiz for this chapter" : {
+
+    },
+    "Tap anywhere to continue" : {
+
+    },
+    "Tap the button to simulate\na multi-reward sequence." : {
+
+    },
+    "Tap the pattern that sounds most like you." : {
+
+    },
+    "Tap to open, hold for options" : {
+
+    },
+    "Tap to see details" : {
+
+    },
+    "Tap to show controls" : {
+
+    },
+    "Tap to sign up and unlock all features" : {
+
+    },
+    "Tap to use this highlight" : {
+
+    },
+    "Teaching tone" : {
+
+    },
+    "Temporarily pauses your account. You can reactivate by signing in." : {
+
+    },
+    "Terms of Service" : {
+
+    },
+    "Tests your understanding of %@" : {
+
+    },
+    "The Tiers" : {
+
+    },
+    "The reader for this book is on its way." : {
+
+    },
+    "The system still governs the final display, capping prompts to three per year." : {
+
+    },
+    "Then" : {
+
+    },
+    "Then I will…" : {
+
+    },
+    "These settings control what a reading partner sees on your public profile. All fields are hidden by default." : {
+
+    },
+    "They can't pair with you, send nudges, or view your profile. You can unblock them using the menu above." : {
+
+    },
+    "They won't be able to pair with you, send nudges, or view your profile. You can unblock them at any time from your blocked users list." : {
+
+    },
+    "Thinking…" : {
+
+    },
+    "This Week" : {
+
+    },
+    "This achievement is a secret." : {
+
+    },
+    "This answer was generated on your device while offline" : {
+
+    },
+    "This book has custom settings. Resetting will apply your global defaults from Settings." : {
+
+    },
+    "This entry will be removed from your notebook." : {
+
+    },
+    "This invite is no longer valid. Ask your partner to send a new one." : {
+
+    },
+    "This is how your name appears to reading partners." : {
+
+    },
+    "This week" : {
+
+    },
+    "Tier" : {
+
+    },
+    "Tier Ladder" : {
+
+    },
+    "Tier Levels" : {
+
+    },
+    "Tier levels explainer" : {
+
+    },
+    "Time remaining" : {
+
+    },
+    "Time remaining: %@" : {
+
+    },
+    "To manage or cancel, visit app.chapterflow.ca from any browser." : {
+
+    },
+    "To renew or transfer your license, visit chapterflow.ca/account." : {
+
+    },
+    "Today's Goal" : {
+
+    },
+    "Tone" : {
+
+    },
+    "Top tier achieved" : {
+
+    },
+    "Total: %@" : {
+
+    },
+    "Track" : {
+
+    },
+    "Trigger situation — if this happens" : {
+
+    },
+    "Try Again" : {
+
+    },
+    "Try again" : {
+
+    },
+    "Try creating a gift code again" : {
+
+    },
+    "Try entering the gift code again" : {
+
+    },
+    "Try this now. %@" : {
+
+    },
+    "Type \"%@\" to confirm" : {
+
+    },
+    "Type delete my account to confirm" : {
+
+    },
+    "Unblock" : {
+
+    },
+    "Unlimited" : {
+
+    },
+    "Unlock" : {
+
+    },
+    "Unlock app with Face ID or Touch ID" : {
+
+    },
+    "Unread" : {
+
+    },
+    "Update Payment Method" : {
+
+    },
+    "Update payment method in the App Store" : {
+
+    },
+    "Upgrade to ChapterFlow Pro" : {
+
+    },
+    "Upgrade to Pro" : {
+
+    },
+    "Upgrade to Pro to continue" : {
+
+    },
+    "Use Face ID / Touch ID" : {
+
+    },
+    "Use my invite code %@ to sign up: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Use my invite code %1$@ to sign up: %2$@"
+          }
+        }
+      }
+    },
+    "Use my invite link to become reading partners!" : {
+
+    },
+    "Used" : {
+
+    },
+    "Using global defaults from Settings." : {
+
+    },
+    "Verification code, %lld of 6 digits entered" : {
+
+    },
+    "Verify Email" : {
+
+    },
+    "Verify It's You" : {
+
+    },
+    "Version" : {
+
+    },
+    "View" : {
+
+    },
+    "WHEN YOU GET STUCK" : {
+
+    },
+    "WHICH PATTERN FITS YOU?" : {
+
+    },
+    "We sent a 6-digit code to\n**%@**" : {
+
+    },
+    "We'd love to have you back. Here's a special offer:" : {
+
+    },
+    "We'll send a gentle nudge to keep your streak." : {
+
+    },
+    "Weekly Reading Digest" : {
+
+    },
+    "Weekly Summary" : {
+
+    },
+    "Weekly digest %@" : {
+
+    },
+    "Weekly goal progress" : {
+
+    },
+    "Welcome Back" : {
+
+    },
+    "Welcome back, %@" : {
+
+    },
+    "Well done!" : {
+
+    },
+    "What Partners Can See" : {
+
+    },
+    "What are Streak Shields?" : {
+
+    },
+    "What did you notice? What would you adjust?" : {
+
+    },
+    "What happens when you delete" : {
+
+    },
+    "What stayed with you?" : {
+
+    },
+    "When enabled, the audio player opens automatically with each chapter." : {
+
+    },
+    "Work" : {
+
+    },
+    "Working toward %@" : {
+
+    },
+    "Would request a review?" : {
+
+    },
+    "Write a Scenario" : {
+
+    },
+    "Write a scenario" : {
+
+    },
+    "Write what resonated — no right answers, just your honest reaction. AI can offer a perspective when you're ready." : {
+
+    },
+    "Write your first real-world application for this chapter and earn Flow Points when it's approved." : {
+
+    },
+    "Write your first reflection above — it stays private and helps cement what you've learned." : {
+
+    },
+    "Write your first scenario" : {
+
+    },
+    "Write your reflection here" : {
+
+    },
+    "You Have a Gift!" : {
+
+    },
+    "You and %@ can now see each other's progress." : {
+
+    },
+    "You are a Pro member via %@." : {
+
+    },
+    "You are here" : {
+
+    },
+    "You are offline. Your answers will be saved and graded when you reconnect." : {
+
+    },
+    "You earned the \"%@\" badge." : {
+
+    },
+    "You need %lld%% to pass." : {
+
+    },
+    "You won't be able to see each other's progress any more. This can't be undone." : {
+
+    },
+    "You're Now Partners!" : {
+
+    },
+    "You're Pro!" : {
+
+    },
+    "You're already a Pro member" : {
+
+    },
+    "You're offline" : {
+
+    },
+    "You're offline. Showing cached notifications." : {
+
+    },
+    "You've Got a Gift!" : {
+
+    },
+    "You've blocked this user" : {
+
+    },
+    "You've finished all %lld books." : {
+
+    },
+    "You've reached the highest level of mastery. Keep learning to maintain your Luminary status." : {
+
+    },
+    "You've reached today's questions" : {
+
+    },
+    "Your %@ has been activated. Enjoy full Pro access!" : {
+
+    },
+    "Your Pro access comes from your %@ subscription." : {
+
+    },
+    "Your Q&A history will appear here\nafter you ask a question about a book." : {
+
+    },
+    "Your account will be paused. Sign in again to reactivate it." : {
+
+    },
+    "Your answers have been saved. We'll grade them automatically when you're back online." : {
+
+    },
+    "Your commitment" : {
+
+    },
+    "Your daily goal builds a consistent reading habit. Adjust it whenever your schedule changes." : {
+
+    },
+    "Your display name is what you set in Edit Profile. Turning this off would show your account name instead." : {
+
+    },
+    "Your invites" : {
+
+    },
+    "Your past answers are still readable above." : {
+
+    },
+    "Your payment method needs attention. Update it at chapterflow.ca to keep your Pro access." : {
+
+    },
+    "Your previous subscription has ended. Subscribe again to restore Pro access." : {
+
+    },
+    "Your question: %@" : {
+
+    },
+    "Your quiz answers are saved and waiting to be graded." : {
+
+    },
+    "Your reading achievements and reminders will appear here." : {
+
+    },
+    "Your reflections" : {
+
+    },
+    "Your subscription is active. Enjoy unlimited access." : {
+
+    },
+    "Your tier reflects depth and breadth of learning. Three metrics are tracked:" : {
+
+    },
+    "app.chapterflow.ca" : {
+
+    },
+    "books" : {
+
+    },
+    "by %@" : {
+
+    },
+    "canStartNewBook" : {
+
+    },
+    "card due today" : {
+
+    },
+    "cards due today" : {
+
+    },
+    "chapters" : {
+
+    },
+    "day" : {
+
+    },
+    "day streak" : {
+
+    },
+    "days" : {
+
+    },
+    "done" : {
+
+    },
+    "e.g. ABCD-1234" : {
+
+    },
+    "e.g. ALICE42" : {
+
+    },
+    "e.g. GIFT1234" : {
+
+    },
+    "e.g. I sit down to plan my week" : {
+
+    },
+    "e.g. identify the one most important task first" : {
+
+    },
+    "iOS Permission" : {
+
+    },
+    "isBookUnlocked" : {
+
+    },
+    "isPro" : {
+
+    },
+    "lockReason" : {
+
+    },
+    "lockReason (quiz)" : {
+
+    },
+    "min" : {
+      "comment" : "Abbreviation for 'minutes' (as in '5 min' reading time). Use the locale's short unit for minutes."
+    },
+    "of %lld min" : {
+
+    },
+    "or" : {
+      "comment" : "Separator between two alternatives, e.g. 'Sign in or create an account'. Lowercase, standalone."
+    },
+    "reading time" : {
+
+    },
+    "shield held" : {
+
+    },
+    "shields held" : {
+
+    },
+    "then %@" : {
+
+    },
+    "·" : {
+      "comment" : "Middot separator between two inline pieces of metadata (e.g. author · chapter). Decorative."
+    },
+    "— %@" : {
+
+    },
+    "“" : {
+
+    },
+    "“%@”" : {
+
+    },
+    "•" : {
+      "comment" : "Bullet separator / list marker. Decorative."
+    },
+    "🎁" : {
+
+    },
+    "🔥" : {
+
+    }
+  },
+  "version" : "1.0"
+}

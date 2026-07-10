@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "ReaderFeature",
+    defaultLocalization: "en",
     platforms: [.iOS(.v18), .macOS(.v15)],
     products: [
         .library(name: "ReaderFeature", targets: ["ReaderFeature"]),
