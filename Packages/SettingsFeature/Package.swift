@@ -29,7 +29,8 @@ let package = Package(
                 .product(name: "AuthKit", package: "AuthKit"),
                 .product(name: "NotificationsFeature", package: "NotificationsFeature"),
                 .product(name: "SyncEngine", package: "SyncEngine"),
-            ]
+            ],
+            resources: [.process("Resources")]
         ),
         .testTarget(
             name: "SettingsFeatureTests",

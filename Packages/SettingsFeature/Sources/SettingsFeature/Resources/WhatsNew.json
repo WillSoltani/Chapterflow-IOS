@@ -1,0 +1,34 @@
+{
+  "releases": [
+    {
+      "version": "1.0",
+      "title": "Welcome to ChapterFlow",
+      "highlights": [
+        {
+          "id": "offline-reading",
+          "symbolName": "arrow.down.circle",
+          "title": "Read Anywhere, Offline",
+          "detail": "Download books and chapters to read on the plane, the subway, or anywhere without a connection."
+        },
+        {
+          "id": "audio-narration",
+          "symbolName": "headphones",
+          "title": "Listen on the Go",
+          "detail": "Every chapter can be narrated aloud, with adjustable speed and a Live Activity that keeps your place."
+        },
+        {
+          "id": "premium-typography",
+          "symbolName": "textformat.size",
+          "title": "Beautiful, Adjustable Type",
+          "detail": "Premium typography with reader themes, font scaling, and full Dynamic Type support."
+        },
+        {
+          "id": "widgets",
+          "symbolName": "square.grid.2x2",
+          "title": "Home Screen Widgets",
+          "detail": "Track your streak, jump back into your current chapter, and see what's due for review — right from your Home Screen."
+        }
+      ]
+    }
+  ]
+}
