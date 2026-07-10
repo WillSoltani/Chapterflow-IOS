@@ -28,7 +28,9 @@ import SyncEngine
 /// - `.reconnecting`   → main `TabView` + non-destructive top banner
 /// - `.reauthRequired` → main `TabView` + `ReauthView` sheet (blocking)
 public struct AppRootView: View {
-    @State private var model: AppModel
+    // `private(set)`, not `private`, so same-module extensions split across files
+    // (e.g. AppRootView+TabContent, +Banners, +WhatsNew) can read it. Setter stays private.
+    @State private(set) var model: AppModel
     @State private var readingFlow: ReadingFlow?
     @State private var showQueuedToast = false
     @Environment(\.scenePhase) private var scenePhase
