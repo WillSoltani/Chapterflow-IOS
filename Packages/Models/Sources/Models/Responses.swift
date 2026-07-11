@@ -132,11 +132,41 @@ public struct ProgressOverviewResponse: Codable, Sendable {
 
 /// Saved (bookmarked) book IDs for the current user.
 /// Returned by `GET /book/me/saved` and `POST /book/me/saved`.
+///
+/// ## Wire-shape tolerance (contract reconciliation)
+/// The deployed route responds `{"saved": [{"bookId": …, …}], "savedBookIds": […]}`
+/// (`savedBookIds` was added 2026-07-11; before that the route sent only
+/// `saved`, and the strict decode of it errored Home/Library on device).
+/// Canonical `savedBookIds` wins when present; otherwise the ids derive from
+/// `saved[].bookId` (lossily — rows without a bookId are dropped); a body with
+/// neither key decodes as empty. Encoding stays canonical.
 public struct SavedBooksResponse: Codable, Sendable {
     public let savedBookIds: [String]
 
     public init(savedBookIds: [String]) {
         self.savedBookIds = savedBookIds
+    }
+
+    private enum CodingKeys: String, CodingKey { case savedBookIds, saved }
+
+    private struct SavedRow: Decodable {
+        let bookId: String?
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        if let ids = container.decodeFirst([String].self, keys: [.savedBookIds]) {
+            self.savedBookIds = ids
+        } else if let rows = container.decodeFirst(LossyArray<SavedRow>.self, keys: [.saved]) {
+            self.savedBookIds = rows.elements.compactMap { $0.bookId }
+        } else {
+            self.savedBookIds = []
+        }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(savedBookIds, forKey: .savedBookIds)
     }
 }
 
