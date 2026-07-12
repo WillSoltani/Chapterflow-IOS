@@ -28,8 +28,10 @@ enum TestEnv {
 /// - ``CF_UITEST_BYPASS_AUTH=1`` when ``needsAuth`` is true → the app
 ///   presents as signed-in without performing a real Cognito handshake.
 ///
-/// Override ``needsAuth`` to control auth seeding and
-/// ``extraLaunchEnvironment`` to pass additional env vars.
+/// Override ``needsAuth`` to control auth seeding,
+/// ``extraLaunchEnvironment`` to pass additional env vars, and
+/// ``prepareForAppLaunch()`` for test-runner setup that must occur after the
+/// application proxy exists but before its first launch.
 class CFUITestCase: XCTestCase {
 
     // XCTest always calls setUp/tearDown on the main thread so accessing
@@ -43,8 +45,13 @@ class CFUITestCase: XCTestCase {
     /// Additional launch-environment entries applied before ``app.launch()``.
     var extraLaunchEnvironment: [String: String] { [:] }
 
-    override func setUp() {
-        super.setUp()
+    /// Runs after ``app`` and its environment are configured, immediately
+    /// before the first launch. Subclasses may use this to bind runner-owned
+    /// services to the application under test.
+    func prepareForAppLaunch() throws {}
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
         continueAfterFailure = false
         app = XCUIApplication()
         app.launchEnvironment[TestEnv.stubServer] = "1"
@@ -54,6 +61,7 @@ class CFUITestCase: XCTestCase {
         for (key, value) in extraLaunchEnvironment {
             app.launchEnvironment[key] = value
         }
+        try prepareForAppLaunch()
         app.launch()
     }
 

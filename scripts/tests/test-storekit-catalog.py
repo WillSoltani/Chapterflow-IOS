@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Verify the approved fixture and its isolated StoreKit automation wiring.
 
-A retained ``SKTestSession`` in the UI-test runner activates the local catalog
-before the app's first launch. CI pins this lane to iOS 26.2 because later
-runtimes do not execute the local StoreKit purchase contract reliably.
+The dedicated test plan activates the catalog, then a retained
+``SKTestSession`` binds it after the app proxy exists and before first launch.
+CI pins this lane to iOS 26.2 because later runtimes do not execute the local
+StoreKit purchase contract reliably.
 """
 
 from __future__ import annotations
@@ -18,6 +19,8 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[2]
 APPROVED_PATH = ROOT / "Config" / "ApprovedReleaseIdentity.json"
 STOREKIT_PATH = ROOT / "Config" / "ChapterFlow.storekit"
+NORMAL_TEST_PLAN_PATH = ROOT / "ChapterFlow.xctestplan"
+STOREKIT_TEST_PLAN_PATH = ROOT / "ChapterFlow-StoreKitTest.xctestplan"
 OLD_APP_STOREKIT_PATH = ROOT / "ChapterFlow" / "Config" / "ChapterFlow.storekit"
 PROJECT_PATH = ROOT / "ChapterFlow.xcodeproj" / "project.pbxproj"
 PR_WORKFLOW_PATH = ROOT / ".github" / "workflows" / "pr.yml"
@@ -63,8 +66,36 @@ def parse_scheme(path: Path) -> ET.Element:
 def main() -> None:
     approved = load_json(APPROVED_PATH)
     fixture = load_json(STOREKIT_PATH)
+    normal_test_plan = load_json(NORMAL_TEST_PLAN_PATH)
+    storekit_test_plan = load_json(STOREKIT_TEST_PLAN_PATH)
     if OLD_APP_STOREKIT_PATH.exists():
         fail("E_STOREKIT_FIXTURE_INSIDE_APP_TARGET")
+
+    normal_options = normal_test_plan.get("defaultOptions")
+    if not isinstance(normal_options, dict) or any(
+        key.startswith("storeKitConfiguration") for key in normal_options
+    ):
+        fail("E_STOREKIT_NORMAL_TEST_PLAN_REFERENCE")
+
+    storekit_options = storekit_test_plan.get("defaultOptions")
+    if (
+        not isinstance(storekit_options, dict)
+        or storekit_options.get("storeKitConfiguration")
+        != "Config/ChapterFlow.storekit"
+        or "storeKitConfigurationFileReference" in storekit_options
+    ):
+        fail("E_STOREKIT_TEST_PLAN_REFERENCE")
+    storekit_targets = storekit_test_plan.get("testTargets")
+    expected_selected_tests = [
+        "PurchaseFlowTests/testStoreKitCatalogPurchaseRelaunchAndRestoreCompletes()"
+    ]
+    if (
+        not isinstance(storekit_targets, list)
+        or len(storekit_targets) != 1
+        or not isinstance(storekit_targets[0], dict)
+        or storekit_targets[0].get("selectedTests") != expected_selected_tests
+    ):
+        fail("E_STOREKIT_TEST_PLAN_SELECTION")
 
     fixture_settings = fixture.get("settings")
     if (
@@ -135,6 +166,11 @@ def main() -> None:
         fail("E_STOREKIT_NORMAL_SCHEME_REFERENCES_FIXTURE")
 
     test_scheme = parse_scheme(TEST_SCHEME_PATH)
+    test_plan_references = test_scheme.findall("./TestAction/TestPlans/TestPlanReference")
+    if [reference.get("reference") for reference in test_plan_references] != [
+        "container:ChapterFlow-StoreKitTest.xctestplan"
+    ]:
+        fail("E_STOREKIT_TEST_SCHEME_PLAN_REFERENCE")
     launch_references = test_scheme.findall(
         "./LaunchAction/StoreKitConfigurationFileReference"
     )
@@ -186,12 +222,22 @@ def main() -> None:
         "com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro",
         "StoreKit runtime unavailable",
         "Do not run this contract on iOS 26.4+ or weaken the exact test.",
+        "ci-storekit-only",
+        "03747305819eccc8bb3c738a21e79d78a82d587d",
+        "8b69f4f7eb860dc4da72a10510ca61f88d5fb6a1",
+        'git diff --name-status --no-renames "$verified_sha" "$PR_HEAD_SHA"',
+        "A:ChapterFlow-StoreKitTest.xctestplan",
+        "-testPlan ChapterFlow-StoreKitTest",
+        "-test-timeouts-enabled YES",
+        "-maximum-test-execution-time-allowance 300",
         '-destination "platform=iOS Simulator,id=$storekit_sim_id"',
         "-only-testing:ChapterFlowUITests/PurchaseFlowTests/"
         "testStoreKitCatalogPurchaseRelaunchAndRestoreCompletes",
     ]
     if any(fragment not in workflow for fragment in required_workflow_fragments):
         fail("E_STOREKIT_WORKFLOW_RUNTIME_PIN")
+    if workflow.count("if: ${{ always() }}") != 3:
+        fail("E_STOREKIT_WORKFLOW_REQUIRED_CHECK_SCOPE")
 
     app_test_support = (ROOT / "ChapterFlow" / "TestSupport" / "CFAppLaunchSupport.swift")
     try:
@@ -211,7 +257,7 @@ def main() -> None:
     required_session_fragments = [
         "import StoreKitTest",
         "private var storeKitSession: SKTestSession?",
-        "override func setUpWithError() throws",
+        "override func prepareForAppLaunch() throws",
         'ProcessInfo.processInfo.environment["XCODE_SCHEME_NAME"]',
         '== "ChapterFlow-StoreKitTest"',
         'SKTestSession(configurationFileNamed: "ChapterFlow")',
@@ -219,6 +265,7 @@ def main() -> None:
         "session.disableDialogs = true",
         "session.clearTransactions()",
         "storeKitSession = session",
+        "guard storeKitSession != nil else",
         "storeKitSession?.allTransactions().contains",
         '$0.productIdentifier == "com.chapterflow.pro.monthly"',
     ]
@@ -226,6 +273,20 @@ def main() -> None:
         fail("E_STOREKIT_SESSION_SETUP")
     if "buyProduct(" in purchase_flow_source:
         fail("E_STOREKIT_RUNNER_PURCHASE_SUBSTITUTION")
+    required_prelaunch_fragments = [
+        "func prepareForAppLaunch() throws {}",
+        "override func setUpWithError() throws",
+        "app = XCUIApplication()",
+        "try prepareForAppLaunch()",
+        "app.launch()",
+    ]
+    if any(fragment not in uitest_environment_source for fragment in required_prelaunch_fragments):
+        fail("E_STOREKIT_PRELAUNCH_HOOK")
+    app_index = uitest_environment_source.index("app = XCUIApplication()")
+    prepare_index = uitest_environment_source.index("try prepareForAppLaunch()")
+    launch_index = uitest_environment_source.index("app.launch()", prepare_index)
+    if not app_index < prepare_index < launch_index:
+        fail("E_STOREKIT_PRELAUNCH_ORDER")
 
     restore_environment_key = "CF_UITEST_DEFER_APPLE_VERIFY_UNTIL_RESTORE"
     restore_signal_file = ".chapterflow-uitest-restore-began"

@@ -18,18 +18,117 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # A narrowly scoped recovery mode may reuse the last green non-StoreKit
+  # evidence only when the PR carries the ci-storekit-only label and every
+  # subsequent change is part of the StoreKit test harness. Any broader diff
+  # fails here before a required check can report success.
+  scope:
+    name: CI Scope
+    runs-on: macos-15
+    outputs:
+      storekit_only: ${{ steps.scope.outputs.storekit_only }}
+
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Validate StoreKit-only recovery scope
+        id: scope
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REQUESTED_STOREKIT_ONLY: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'ci-storekit-only') }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$REQUESTED_STOREKIT_ONLY" != "true" ]]; then
+            echo "storekit_only=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "$EVENT_NAME" != "pull_request" || -z "$PR_HEAD_SHA" ]]; then
+            echo '::error title=Invalid recovery event::StoreKit-only recovery is available only to pull requests.'
+            exit 1
+          fi
+
+          verified_base_sha="03747305819eccc8bb3c738a21e79d78a82d587d"
+          if [[ "$PR_NUMBER" != "117" \
+            || "$PR_HEAD_REF" != "codex/wp-rel-01" \
+            || "$PR_BASE_SHA" != "$verified_base_sha" ]]; then
+            echo '::error title=Invalid recovery provenance::PR, branch, or base no longer matches the verified run.'
+            exit 1
+          fi
+
+          verified_sha="8b69f4f7eb860dc4da72a10510ca61f88d5fb6a1"
+          if ! git merge-base --is-ancestor "$verified_sha" "$PR_HEAD_SHA"; then
+            echo '::error title=Invalid recovery ancestry::The last green non-StoreKit evidence is not an ancestor of this head.'
+            exit 1
+          fi
+
+          changed_entries="$(git diff --name-status --no-renames "$verified_sha" "$PR_HEAD_SHA")"
+          if [[ -z "$changed_entries" ]]; then
+            echo '::error title=Empty recovery diff::StoreKit-only recovery requires a concrete follow-up patch.'
+            exit 1
+          fi
+
+          while IFS=$'\t' read -r status path; do
+            case "$status:$path" in
+              M:.github/workflows/pr.yml | \
+              A:ChapterFlow-StoreKitTest.xctestplan | \
+              M:ChapterFlow.xcodeproj/xcshareddata/xcschemes/ChapterFlow-StoreKitTest.xcscheme | \
+              M:ChapterFlowUITests/ChapterFlowUITests.swift | \
+              M:ChapterFlowUITests/Flows/PurchaseFlowTests.swift | \
+              M:docs/ios/SIGNING-AND-RELEASE.md | \
+              M:scripts/tests/test-storekit-catalog.py)
+                ;;
+              *)
+                echo "::error title=Recovery scope expanded::$status $path is outside the fail-closed StoreKit allowlist."
+                exit 1
+                ;;
+            esac
+          done <<< "$changed_entries"
+
+          echo "StoreKit-only recovery accepted for:"
+          echo "$changed_entries"
+          echo "storekit_only=true" >> "$GITHUB_OUTPUT"
+
   # ── 1. Lint ──────────────────────────────────────────────────────────────
   lint:
     name: Lint
     runs-on: macos-15
+    needs: scope
+    if: ${{ always() }}
 
     steps:
+      - name: Require valid CI scope
+        env:
+          SCOPE_RESULT: ${{ needs.scope.result }}
+        run: |
+          if [[ "$SCOPE_RESULT" != "success" ]]; then
+            echo '::error title=CI scope failed::Required checks cannot reuse prior evidence.'
+            exit 1
+          fi
+
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install SwiftLint
         run: brew install swiftlint
 
+      - name: SwiftLint StoreKit recovery sources (strict)
+        if: needs.scope.outputs.storekit_only == 'true'
+        run: |
+          swiftlint lint --strict --reporter github-actions-logging \
+            ChapterFlowUITests/ChapterFlowUITests.swift \
+            ChapterFlowUITests/Flows/PurchaseFlowTests.swift
+
       - name: SwiftLint (strict)
+        if: needs.scope.outputs.storekit_only != 'true'
         # github-actions-logging emits ::error:: annotations inline in the PR diff.
         run: swiftlint lint --strict --reporter github-actions-logging
 
@@ -41,14 +140,34 @@ jobs:
     # SDK on macos-15's default Xcode, so #available(iOS 26) guards cannot save a
     # build there — the symbols are simply absent. Both the xcodebuild build and
     # the `swift test` of DesignSystem need the 26 toolchain.
-    runs-on: macos-26
+    runs-on: ${{ needs.scope.outputs.storekit_only == 'true' && 'macos-15' || 'macos-26' }}
+    needs: scope
+    if: ${{ always() }}
 
     steps:
+      - name: Require valid CI scope
+        env:
+          SCOPE_RESULT: ${{ needs.scope.result }}
+        run: |
+          if [[ "$SCOPE_RESULT" != "success" ]]; then
+            echo '::error title=CI scope failed::Required checks cannot reuse prior evidence.'
+            exit 1
+          fi
+
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Validate StoreKit-only recovery wiring
+        if: needs.scope.outputs.storekit_only == 'true'
+        run: |
+          python3 scripts/tests/test-storekit-catalog.py
+          python3 -m json.tool ChapterFlow-StoreKitTest.xctestplan >/dev/null
+          xmllint --noout \
+            ChapterFlow.xcodeproj/xcshareddata/xcschemes/ChapterFlow-StoreKitTest.xcscheme
 
       # Select the newest installed Xcode 26 explicitly (no-op if already default)
       # and fail loudly, listing what IS available, if 26 is somehow missing.
       - name: Select Xcode 26
+        if: needs.scope.outputs.storekit_only != 'true'
         run: |
           echo "Installed Xcodes:"; ls -d /Applications/Xcode*.app 2>/dev/null || true
           latest26="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)"
@@ -58,6 +177,7 @@ jobs:
           xcodebuild -version
 
       - name: Test fail-closed release configuration
+        if: needs.scope.outputs.storekit_only != 'true'
         run: bash scripts/tests/test-release-config.sh
 
       # Cache SPM state across runs:
@@ -69,6 +189,7 @@ jobs:
       # incremental rebuild (SwiftPM re-verifies and rebuilds only what changed, so a stale
       # hit is never incorrect — at worst it rebuilds).
       - name: Cache SPM repositories & build
+        if: needs.scope.outputs.storekit_only != 'true'
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
@@ -87,6 +208,7 @@ jobs:
       # -skipMacroValidation bypasses Xcode's macro sandbox trust prompt.
       # CODE_SIGN_* settings disable signing (not required for simulator builds).
       - name: Build for iOS Simulator
+        if: needs.scope.outputs.storekit_only != 'true'
         run: |
           set -o pipefail
           xcodebuild build \
@@ -104,6 +226,7 @@ jobs:
       # production-config proof—the fail-closed signed release workflow owns
       # that—but catches Release-only compiler/configuration regressions on PRs.
       - name: Build unsigned Release gate
+        if: needs.scope.outputs.storekit_only != 'true'
         run: |
           set -o pipefail
           xcodebuild build \
@@ -122,6 +245,7 @@ jobs:
       # AppFeature (whose Tab API needs the newer host SDK) and SyncEngine; no
       # package may be represented as green through omission from this loop.
       - name: Run unit tests — all local packages
+        if: needs.scope.outputs.storekit_only != 'true'
         shell: bash
         run: |
           set -uo pipefail
@@ -186,12 +310,24 @@ jobs:
   uitest:
     name: XCUITest Flows
     runs-on: macos-26
-    needs: build-and-test
+    needs: [scope, build-and-test]
+    if: ${{ always() }}
 
     steps:
+      - name: Require valid prerequisites
+        env:
+          BUILD_RESULT: ${{ needs.build-and-test.result }}
+          SCOPE_RESULT: ${{ needs.scope.result }}
+        run: |
+          if [[ "$SCOPE_RESULT" != "success" || "$BUILD_RESULT" != "success" ]]; then
+            echo '::error title=UI-test prerequisites failed::The StoreKit lane cannot replace failed prerequisite evidence.'
+            exit 1
+          fi
+
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Select Xcode 26
+        if: needs.scope.outputs.storekit_only != 'true'
         run: |
           echo "Installed Xcodes:"; ls -d /Applications/Xcode*.app 2>/dev/null || true
           latest26="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)"
@@ -214,6 +350,7 @@ jobs:
       # When the hosted image drops this runtime, CI fails and forces an explicit
       # review/re-record on the replacement toolchain.
       - name: Boot the pinned snapshot simulator
+        if: needs.scope.outputs.storekit_only != 'true'
         run: |
           SIM_ID="$(xcrun simctl list devices available -j | python3 -c '
           import json, sys
@@ -241,6 +378,7 @@ jobs:
       # the deterministic UI flows, and fail if a renamed filter silently
       # selects fewer tests than expected.
       - name: Compare iOS release-surface snapshots
+        if: needs.scope.outputs.storekit_only != 'true'
         shell: bash
         env:
           SNAPSHOT_RECORD: "0"
@@ -321,7 +459,7 @@ jobs:
             Packages/PaywallFeature/Tests/PaywallFeatureTests/__Snapshots__
 
       - name: Upload snapshot diagnostics
-        if: failure()
+        if: ${{ failure() && needs.scope.outputs.storekit_only != 'true' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: release-snapshot-diagnostics
@@ -337,6 +475,7 @@ jobs:
       # via app.launchEnvironment — no extra xcodebuild env flags needed here.
       # SmokeLane tests call requireRealAPI() which issues XCTSkip unless CF_REAL_API=1.
       - name: Run XCUITest flows
+        if: needs.scope.outputs.storekit_only != 'true'
         run: |
           set -o pipefail
           xcodebuild test \
@@ -362,6 +501,7 @@ jobs:
       # the local catalog. Pin the exact matching Xcode/runtime pair.
       - name: Run StoreKit Test purchase and restore contract
         shell: bash
+        timeout-minutes: 45
         run: |
           set -euo pipefail
           result="$RUNNER_TEMP/StoreKitPurchase.xcresult"
@@ -373,6 +513,7 @@ jobs:
           fi
           export DEVELOPER_DIR="$storekit_xcode"
           xcodebuild -version
+          python3 scripts/tests/test-storekit-catalog.py
 
           runtime_id="com.apple.CoreSimulator.SimRuntime.iOS-26-2"
           storekit_runtime_available() {
@@ -407,10 +548,14 @@ jobs:
           NSUnbufferedIO=YES xcodebuild test \
             -project ChapterFlow.xcodeproj \
             -scheme ChapterFlow-StoreKitTest \
+            -testPlan ChapterFlow-StoreKitTest \
             -destination "platform=iOS Simulator,id=$storekit_sim_id" \
             -resultBundlePath "$result" \
             -only-testing:ChapterFlowUITests/PurchaseFlowTests/testStoreKitCatalogPurchaseRelaunchAndRestoreCompletes \
             -parallel-testing-enabled NO \
+            -test-timeouts-enabled YES \
+            -default-test-execution-time-allowance 180 \
+            -maximum-test-execution-time-allowance 300 \
             -testLanguage en \
             -testRegion US \
             CODE_SIGN_IDENTITY="" \

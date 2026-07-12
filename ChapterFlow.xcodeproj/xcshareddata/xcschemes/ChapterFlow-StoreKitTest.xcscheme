@@ -52,7 +52,7 @@
       </MacroExpansion>
       <TestPlans>
          <TestPlanReference
-            reference = "container:ChapterFlow.xctestplan"
+            reference = "container:ChapterFlow-StoreKitTest.xctestplan"
             default = "YES">
          </TestPlanReference>
       </TestPlans>

@@ -11,15 +11,14 @@ import XCTest
 /// No real money is charged: all purchases use the test configuration.
 final class PurchaseFlowTests: CFUITestCase {
     /// Retains the local StoreKit environment for the complete purchase,
-    /// relaunch, and restore contract. XCTest invokes `setUpWithError()` before
-    /// `CFUITestCase.setUp()`, so the first app launch cannot bind to sandbox.
+    /// relaunch, and restore contract. The base case creates the application
+    /// proxy before this session is configured, then launches only after the
+    /// local catalog has been bound.
     private var storeKitSession: SKTestSession?
 
     private var robot: AppRobot { AppRobot(app: app) }
 
-    override func setUpWithError() throws {
-        try super.setUpWithError()
-
+    override func prepareForAppLaunch() throws {
         guard ProcessInfo.processInfo.environment["XCODE_SCHEME_NAME"]
             == "ChapterFlow-StoreKitTest" else {
             return
@@ -131,6 +130,11 @@ final class PurchaseFlowTests: CFUITestCase {
     /// the app-wide entitlement to Pro.
     @MainActor
     func testStoreKitCatalogPurchaseRelaunchAndRestoreCompletes() {
+        guard storeKitSession != nil else {
+            XCTFail("The dedicated StoreKit scheme did not retain its prelaunch SKTestSession")
+            return
+        }
+
         robot.waitForTabBar()
         robot.goToSettings()
         assertPlan("Free")
@@ -145,7 +149,10 @@ final class PurchaseFlowTests: CFUITestCase {
                 "ChapterFlow Pro Monthly, $7.99 per month"
             )
         ).firstMatch
-        reveal(monthlyPlan, maxSwipes: 10)
+        guard requireStoreKitProduct(monthlyPlan) else {
+            return
+        }
+        revealExisting(monthlyPlan, maxSwipes: 10)
         XCTAssertTrue(
             monthlyPlan.label.contains("renews automatically until canceled"),
             "StoreKit product disclosure must describe automatic renewal"
@@ -229,12 +236,46 @@ final class PurchaseFlowTests: CFUITestCase {
     @MainActor
     private func reveal(_ element: XCUIElement, maxSwipes: Int = 6) {
         assertExists(element, timeout: 20)
+        revealExisting(element, maxSwipes: maxSwipes)
+    }
+
+    @MainActor
+    private func revealExisting(_ element: XCUIElement, maxSwipes: Int) {
         var remainingSwipes = maxSwipes
         while !element.isHittable && remainingSwipes > 0 {
             app.swipeUp()
             remainingSwipes -= 1
         }
         XCTAssertTrue(element.isHittable, "Expected element to become tappable: \(element)")
+    }
+
+    @MainActor
+    private func requireStoreKitProduct(
+        _ product: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Bool {
+        if product.waitForExistence(timeout: 20) {
+            return true
+        }
+
+        let unavailableTitle = app.staticTexts["Subscriptions Unavailable"]
+        let retryButton = app.buttons["Try Again"]
+        if unavailableTitle.exists || retryButton.exists {
+            XCTFail(
+                "The local StoreKit catalog did not bind to the app before launch; "
+                    + "Product.products(for:) returned no subscription options.",
+                file: file,
+                line: line
+            )
+        } else {
+            XCTFail(
+                "The approved monthly StoreKit product was not rendered by the paywall.",
+                file: file,
+                line: line
+            )
+        }
+        return false
     }
 
     @MainActor

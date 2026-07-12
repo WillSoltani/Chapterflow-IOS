@@ -105,9 +105,11 @@ bash scripts/tests/test-release-config.sh
 The same suite and an unsigned Release build run on every PR.
 
 The hosted `macos-26` PR job keeps its general build, snapshot, and UI gates on
-the newest installed Xcode 26. The dedicated local StoreKit contract creates
-and retains an `SKTestSession` before the app's first launch, then exercises the
-app's real `Product.purchase()` path. It selects
+the newest installed Xcode 26. The dedicated StoreKit test plan activates the
+local catalog only for the StoreKit scheme. Its UI-test base creates the
+`XCUIApplication` proxy first, then the purchase test creates and retains an
+`SKTestSession` immediately before the app's first launch. The contract still
+exercises the app's real `Product.purchase()` path. It selects
 `/Applications/Xcode_26.2.app/Contents/Developer` and pins the simulator to iOS
 26.2, the last verified pairing for this contract. If either is unavailable,
 the lane fails closed; it never falls back to the live App Store Connect catalog,
