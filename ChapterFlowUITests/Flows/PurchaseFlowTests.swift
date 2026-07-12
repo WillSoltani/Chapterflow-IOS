@@ -125,7 +125,15 @@ final class PurchaseFlowTests: CFUITestCase {
             "StoreKit product disclosure must describe automatic renewal"
         )
         monthlyPlan.tap()
-        XCTAssertEqual(monthlyPlan.value as? String, "Selected")
+        let selectedPlan = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", "Selected"),
+            object: monthlyPlan
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [selectedPlan], timeout: 5),
+            .completed,
+            "Monthly plan selection must settle before subscribing"
+        )
 
         let subscribeButton = app.buttons["Subscribe – $7.99 / month"]
         reveal(subscribeButton)
