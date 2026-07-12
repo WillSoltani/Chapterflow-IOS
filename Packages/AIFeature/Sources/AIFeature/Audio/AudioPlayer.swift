@@ -476,7 +476,7 @@ public actor AudioPlayer {
         notificationTask = Task { [weak self] in
             await withTaskGroup(of: Void.self) { group in
                 // Item finished playing
-                group.addTask {
+                group.addTask { [weak self] in
                     for await notification in NotificationCenter.default.notifications(
                         named: AVPlayerItem.didPlayToEndTimeNotification
                     ) {
@@ -485,7 +485,7 @@ public actor AudioPlayer {
                     }
                 }
                 // Item failed
-                group.addTask {
+                group.addTask { [weak self] in
                     for await notification in NotificationCenter.default.notifications(
                         named: AVPlayerItem.failedToPlayToEndTimeNotification
                     ) {
