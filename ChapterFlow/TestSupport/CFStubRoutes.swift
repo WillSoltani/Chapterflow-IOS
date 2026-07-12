@@ -1,10 +1,32 @@
 #if DEBUG
 import Foundation
+import Synchronization
 
 // swiftlint:disable line_length
 /// Route table for ``CFStubURLProtocol``.
 /// Maps URL path prefixes → (statusCode, JSON body) used by XCUITests.
 nonisolated enum CFStubRoutes {
+
+    private struct StubState: Sendable {
+        var applePurchaseVerified = false
+    }
+
+    private static let state = Mutex(StubState())
+
+    private enum RestoreSignal {
+        static let appGroupIdentifier = "group.com.chapterflow"
+        static let fileName = ".chapterflow-uitest-restore-began"
+        static let deferralEnvironmentKey = "CF_UITEST_DEFER_APPLE_VERIFY_UNTIL_RESTORE"
+    }
+
+    /// Resets mutable fixture state before each XCUITest app process starts.
+    nonisolated static func reset() {
+        state.withLock { $0 = StubState() }
+        guard let signalURL = explicitRestoreSignalURL() else {
+            return
+        }
+        try? FileManager.default.removeItem(at: signalURL)
+    }
 
     // MARK: - Lookup
 
@@ -29,7 +51,7 @@ nonisolated enum CFStubRoutes {
         let method: String?
     }
 
-    nonisolated(unsafe) private static let routes: [(Route, @Sendable () -> String)] = [
+    private static let routes: [(Route, @Sendable () -> String)] = [
 
         // ── Auth / identity ────────────────────────────────────────────────────
         (Route(path: "/auth/session", method: nil), { session }),
@@ -68,8 +90,8 @@ nonisolated enum CFStubRoutes {
         (Route(path: "/book/me/reading-sessions", method: "POST"), { emptyOK }),
 
         // ── Entitlement / billing ─────────────────────────────────────────────
-        (Route(path: "/book/me/entitlements", method: "GET"), { entitlementFree }),
-        (Route(path: "/book/me/billing/apple/verify", method: "POST"), { entitlementPro }),
+        (Route(path: "/book/me/entitlements", method: "GET"), { currentEntitlement() }),
+        (Route(path: "/book/me/billing/apple/verify", method: "POST"), { verifyApplePurchase() }),
 
         // ── Onboarding ───────────────────────────────────────────────────────
         (Route(path: "/book/me/onboarding", method: nil), { emptyOK }),
@@ -87,12 +109,42 @@ nonisolated enum CFStubRoutes {
 
     // MARK: - Response bodies
 
+    private static func currentEntitlement() -> String {
+        state.withLock { $0.applePurchaseVerified ? entitlementPro : entitlementFree }
+    }
+
+    private static func verifyApplePurchase() -> String {
+        let defersUntilExplicitRestore = ProcessInfo.processInfo.environment[
+            RestoreSignal.deferralEnvironmentKey
+        ] == "1"
+        let explicitRestoreStarted = explicitRestoreSignalURL().map {
+            FileManager.default.fileExists(atPath: $0.path)
+        } ?? false
+
+        return state.withLock { state in
+            // Relaunch authorization and reconciliation can each verify more
+            // than once. Keep every automatic attempt non-authoritative until
+            // the UI-test runner marks the user's explicit Restore action.
+            if defersUntilExplicitRestore && !explicitRestoreStarted {
+                return appleVerificationDeferred
+            }
+            state.applePurchaseVerified = true
+            return appleVerificationActive
+        }
+    }
+
+    private static func explicitRestoreSignalURL() -> URL? {
+        FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: RestoreSignal.appGroupIdentifier)?
+            .appendingPathComponent(RestoreSignal.fileName, isDirectory: false)
+    }
+
     private static let session = """
-    {"loggedIn":true,"user":{"sub":"uitest-user-123","email":"test@chapterflow.com"}}
+    {"loggedIn":true,"user":{"sub":"00000000-0000-4000-8000-000000000123","email":"test@chapterflow.com"}}
     """
 
     private static let me = """
-    {"sub":"uitest-user-123","email":"test@chapterflow.com","displayName":"Test User"}
+    {"sub":"00000000-0000-4000-8000-000000000123","email":"test@chapterflow.com","displayName":"Test User"}
     """
 
     private static let catalog = """
@@ -156,11 +208,19 @@ nonisolated enum CFStubRoutes {
     """
 
     private static let entitlementFree = """
-    {"entitlement":{"plan":"FREE","proStatus":null,"proSource":null,"freeBookSlots":2,"unlockedBookIds":["b-atomic-habits"],"unlockedBooksCount":1,"remainingFreeStarts":1,"currentPeriodEnd":null,"cancelAtPeriodEnd":null,"licenseKey":null,"licenseExpiresAt":null},"paywall":{"price":"$9.99/month","pricingTiers":[{"id":"pro_monthly","name":"Monthly","price":"$9.99","period":"month","isPopular":false},{"id":"pro_annual","name":"Annual","price":"$79.99","period":"year","isPopular":true}],"benefits":["Unlimited books","All depth variants","Priority support"]}}
+    {"entitlement":{"plan":"FREE","proStatus":null,"proSource":null,"freeBookSlots":2,"unlockedBookIds":["b-atomic-habits"],"unlockedBooksCount":1,"remainingFreeStarts":1,"currentPeriodEnd":null,"cancelAtPeriodEnd":null,"licenseKey":null,"licenseExpiresAt":null},"paywall":{"price":"$7.99/month","pricingTiers":[{"id":"pro_monthly","name":"Monthly","price":"$7.99","period":"month","isPopular":false},{"id":"pro_annual","name":"Annual","price":"$44.99","period":"year","isPopular":true}],"benefits":["Unlimited books","All depth variants","Priority support"]}}
     """
 
     private static let entitlementPro = """
     {"entitlement":{"plan":"PRO","proStatus":"active","proSource":"apple","freeBookSlots":999,"unlockedBookIds":[],"unlockedBooksCount":0,"remainingFreeStarts":999,"currentPeriodEnd":"2027-01-01T00:00:00Z","cancelAtPeriodEnd":false,"licenseKey":null,"licenseExpiresAt":null},"paywall":null}
+    """
+
+    private static let appleVerificationActive = """
+    {"ok":true,"processed":true,"transactionState":"active","entitlement":{"plan":"PRO","proStatus":"active","proSource":"apple","currentPeriodEnd":"2027-01-01T00:00:00Z","cancelAtPeriodEnd":false}}
+    """
+
+    private static let appleVerificationDeferred = """
+    {"ok":false,"processed":false,"transactionState":"active","entitlement":{"plan":"FREE","proStatus":null,"proSource":null,"currentPeriodEnd":null,"cancelAtPeriodEnd":null}}
     """
 
     private static let settings = """

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "appAppleID": "6787864558",
+  "bundleIdentifier": "com.chapterflow.ios",
+  "appleTeamID": "ZG3C9QBA8Z",
+  "subscriptionGroupID": "22211821",
+  "products": [
+    {
+      "role": "monthly",
+      "productID": "com.chapterflow.pro.monthly",
+      "subscriptionPeriod": "P1M",
+      "subscriptionLevel": 1,
+      "storeKitTestDisplayPrice": "7.99"
+    },
+    {
+      "role": "annual",
+      "productID": "com.chapterflow.pro.annual",
+      "subscriptionPeriod": "P1Y",
+      "subscriptionLevel": 1,
+      "storeKitTestDisplayPrice": "44.99"
+    }
+  ]
+}

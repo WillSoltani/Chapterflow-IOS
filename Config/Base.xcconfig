@@ -1,0 +1,29 @@
+// Shared app-target configuration. Environment layers include this file, then
+// optionally include the ignored root Secrets.xcconfig as the final override.
+// Extension targets intentionally do not reference any of these files.
+
+PRODUCT_BUNDLE_IDENTIFIER = com.chapterflow.ios
+
+API_BASE_URL =
+COGNITO_REGION =
+COGNITO_USER_POOL_ID =
+COGNITO_CLIENT_ID =
+COGNITO_DOMAIN =
+
+APP_STORE_ID =
+APP_STORE_URL =
+SUPPORT_URL =
+
+SENTRY_POLICY = disabled
+SENTRY_DSN =
+
+APPROVED_STOREKIT_PRODUCT_IDS =
+SK_MONTHLY_PRODUCT_ID =
+SK_ANNUAL_PRODUCT_ID =
+// Reserved; must remain empty until backend non-renewing verification is implemented.
+SK_ANNUAL_UPFRONT_PRODUCT_ID =
+
+BUILD_COMMIT_SHA =
+BACKEND_DEPLOYMENT_COMMIT_SHA =
+BACKEND_ATTESTATION_ID =
+RELEASE_MANIFEST_FINGERPRINT =

@@ -16,18 +16,11 @@ public actor LiveEntitlementRepository: EntitlementRepository {
         try await client.send(Endpoints.getEntitlements())
     }
 
-    public func verifyAppleTransaction(_ jws: String) async throws -> EntitlementResponse {
-        let endpoint = try Endpoint(
-            method: .post,
-            path: "/book/me/billing/apple/verify",
-            body: AppleVerifyBody(transactionJWS: jws)
+    public func verifyAppleTransaction(
+        _ jws: String
+    ) async throws -> ApplePurchaseVerificationResponse {
+        try await client.send(
+            Endpoints.verifyApplePurchase(jwsRepresentation: jws)
         )
-        return try await client.send(endpoint)
     }
-}
-
-// MARK: - Private
-
-private struct AppleVerifyBody: Encodable, Sendable {
-    let transactionJWS: String
 }

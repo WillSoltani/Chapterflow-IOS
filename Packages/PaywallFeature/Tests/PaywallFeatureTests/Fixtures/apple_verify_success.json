@@ -1,0 +1,18 @@
+{
+  "ok": true,
+  "processed": true,
+  "transactionState": "active",
+  "entitlement": {
+    "plan": "PRO",
+    "proStatus": "active",
+    "proSource": "apple",
+    "currentPeriodEnd": "2026-08-11T12:00:00.000Z",
+    "cancelAtPeriodEnd": false,
+    "futureEntitlementField": {
+      "ignored": true
+    }
+  },
+  "futureTopLevelField": [
+    "ignored"
+  ]
+}

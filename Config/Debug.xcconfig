@@ -1,0 +1,7 @@
+#include "Base.xcconfig"
+
+CHAPTERFLOW_ENVIRONMENT = debug
+BUILD_CONFIGURATION = Debug
+
+// Optional local override. A clean checkout builds without this file.
+#include? "../Secrets.xcconfig"

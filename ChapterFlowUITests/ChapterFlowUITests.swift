@@ -9,6 +9,10 @@ enum TestEnv {
     static let stubServer  = "CF_STUB_SERVER"
     /// Set to "1" to seed the Keychain with a test JWT (bypasses real Cognito auth).
     static let bypassAuth  = "CF_UITEST_BYPASS_AUTH"
+    /// Set to "1" to inject an invalid DEBUG configuration before app composition.
+    static let invalidConfiguration = "CF_UITEST_INVALID_CONFIG"
+    /// Defers automatic Apple verification until the explicit restore action is signalled.
+    static let deferAppleVerificationUntilRestore = "CF_UITEST_DEFER_APPLE_VERIFY_UNTIL_RESTORE"
     /// Set to "1" to enable the optional smoke lane (hits real prod API, non-blocking).
     static let realAPI     = "CF_REAL_API"
     /// A real id_token for the smoke lane (injected via CI secrets).
@@ -24,7 +28,7 @@ enum TestEnv {
 /// - ``CF_UITEST_BYPASS_AUTH=1`` when ``needsAuth`` is true → the app
 ///   presents as signed-in without performing a real Cognito handshake.
 ///
-/// Override ``needsAuth`` to control the auth seeding and
+/// Override ``needsAuth`` to control auth seeding and
 /// ``extraLaunchEnvironment`` to pass additional env vars.
 class CFUITestCase: XCTestCase {
 
@@ -76,6 +80,20 @@ class CFUITestCase: XCTestCase {
     ) {
         let msg = message.isEmpty ? "\(element.description) should exist" : message
         XCTAssert(element.waitForExistence(timeout: timeout), msg, file: file, line: line)
+    }
+
+    /// Waits through presentation transitions and asserts that an action can receive a tap.
+    func assertHittable(
+        _ element: XCUIElement,
+        message: String,
+        timeout: TimeInterval = 5,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let predicate = NSPredicate(format: "exists == true AND hittable == true")
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        let result = XCTWaiter.wait(for: [expectation], timeout: timeout)
+        XCTAssertEqual(result, .completed, message, file: file, line: line)
     }
 
     /// Asserts the main tab bar is visible (confirms the app reached the shell).

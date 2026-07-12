@@ -87,6 +87,20 @@ public enum SubscriptionDetailState: Sendable, Equatable {
             return .apple // no source; irrelevant for free
         }
     }
+
+    /// Offer-code redemption is limited to accounts that already have an
+    /// Apple-backed server entitlement history. A free/pending account has no
+    /// trustworthy transaction-to-account map for tokenless offer-code delivery.
+    var permitsOfferCodeRedemption: Bool {
+        switch self {
+        case .appleActive, .applyCancelling, .appleGracePeriod,
+             .appleBillingRetry, .appleExpired, .appleRevoked:
+            return true
+        case .applePending, .stripeActive, .stripePastDue, .licenseActive,
+             .giftActive, .adminOrOther, .free:
+            return false
+        }
+    }
 }
 
 // MARK: - Refund Request Outcome
@@ -143,7 +157,7 @@ public final class SubscriptionManagementModel {
     private let apiClient: any APIClientProtocol
     private let log = AppLog(category: .billing)
 
-    nonisolated(unsafe) private var messageListenerTask: Task<Void, Never>?
+    private let messageListenerTaskHandle = TaskCancellationHandle()
 
     // MARK: - Init
 
@@ -156,7 +170,7 @@ public final class SubscriptionManagementModel {
     }
 
     nonisolated deinit {
-        messageListenerTask?.cancel()
+        messageListenerTaskHandle.cancel()
     }
 
     // MARK: - Preview / test injection
@@ -191,10 +205,18 @@ public final class SubscriptionManagementModel {
             async let entitlementFetch: EntitlementResponse = apiClient.send(Endpoints.getEntitlements())
             async let skStatusFetch: SubscriptionStatus = storeKitService.currentSubscriptionStatus()
             let (response, skStatus) = try await (entitlementFetch, skStatusFetch)
-            detailState = Self.computeState(entitlement: response.entitlement, skStatus: skStatus)
-            activeTransactionID = await storeKitService.currentTransactionID()
+            try Task.checkCancellation()
+            let refreshedState = Self.computeState(
+                entitlement: response.entitlement,
+                skStatus: skStatus
+            )
+            let refreshedTransactionID = await storeKitService.currentTransactionID()
+            try Task.checkCancellation()
+            detailState = refreshedState
+            activeTransactionID = refreshedTransactionID
         } catch {
-            log.warning("SubscriptionManagementModel: refresh failed — \(error.localizedDescription)")
+            guard !Task.isCancelled, !Self.isCancellation(error) else { return }
+            log.warning("Subscription management refresh failed: \(Self.safeErrorCode(for: error))")
             errorMessage = "Could not load subscription details. Pull to refresh."
         }
     }
@@ -211,6 +233,10 @@ public final class SubscriptionManagementModel {
     /// The resulting transaction flows through `Transaction.updates` in
     /// `StoreKitService` and is posted to the backend automatically.
     public func redeemOfferCode() {
+        guard detailState.permitsOfferCodeRedemption else {
+            errorMessage = "Offer codes are available after an Apple subscription is linked to this account."
+            return
+        }
         showOfferCodeRedemption = true
     }
 
@@ -236,7 +262,10 @@ public final class SubscriptionManagementModel {
                 refundOutcome = .userCancelled
             }
         case .failure(let error):
-            refundOutcome = .failed(error.localizedDescription)
+            refundOutcome = Self.safeRefundFailureOutcome(for: error)
+            if refundOutcome != .userCancelled {
+                log.warning("Refund request failed: \(Self.safeErrorCode(for: error))")
+            }
         }
     }
 
@@ -245,25 +274,68 @@ public final class SubscriptionManagementModel {
     /// Listens for StoreKit price-increase-consent messages and presents the
     /// system UI. Runs for the lifetime of this model.
     private func startPriceConsentListener() {
-        guard messageListenerTask == nil else { return }
-        messageListenerTask = Task { [weak self] in
-            #if canImport(UIKit)
-            for await message in Message.messages {
-                guard message.reason == .priceIncreaseConsent else { continue }
-                guard let self else { return }
-                do {
-                    guard let scene = UIApplication.shared.connectedScenes
-                        .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene
-                    else { continue }
-                    try await message.display(in: scene)
-                } catch {
-                    self.log.warning(
-                        "SubscriptionManagementModel: price-consent display failed — \(error.localizedDescription)"
-                    )
+        messageListenerTaskHandle.installIfEmpty(
+            Task { [weak self] in
+                #if canImport(UIKit)
+                for await message in Message.messages {
+                    guard message.reason == .priceIncreaseConsent else { continue }
+                    guard let self else { return }
+                    do {
+                        guard let scene = UIApplication.shared.connectedScenes
+                            .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene
+                        else { continue }
+                        try await message.display(in: scene)
+                    } catch {
+                        guard !Task.isCancelled, !Self.isCancellation(error) else { return }
+                        self.log.warning(
+                            "Price-consent display failed: \(Self.safeErrorCode(for: error))"
+                        )
+                    }
                 }
+                #endif
             }
-            #endif
+        )
+    }
+
+    // MARK: - Safe error mapping
+
+    nonisolated static func safeRefundFailureOutcome(for error: any Error) -> RefundRequestOutcome {
+        guard !isCancellation(error) else { return .userCancelled }
+        return .failed("We couldn't submit the refund request. Please try again.")
+    }
+
+    nonisolated static func safeErrorCode(for error: any Error) -> String {
+        if isCancellation(error) { return "cancelled" }
+        guard let appError = error as? AppError else {
+            return "subscription_operation_failed"
         }
+        switch appError {
+        case .unauthenticated:
+            return "unauthenticated"
+        case .reauthRequired:
+            return "reauth_required"
+        case .verifierUnavailable:
+            return "verifier_unavailable"
+        case .rateLimited:
+            return "rate_limited"
+        case .forbidden:
+            return "forbidden"
+        case .offline:
+            return "offline"
+        case .invalidInput:
+            return "invalid_input"
+        case .notFound:
+            return "not_found"
+        case .server:
+            return "server"
+        case .decoding:
+            return "decoding"
+        }
+    }
+
+    nonisolated static func isCancellation(_ error: any Error) -> Bool {
+        if error is CancellationError { return true }
+        return (error as? URLError)?.code == .cancelled
     }
 
     // MARK: - State Computation
@@ -302,7 +374,7 @@ public final class SubscriptionManagementModel {
             return .licenseActive(key: entitlement.licenseKey, expiresAt: licenseExpiry)
         case .gift:
             return .giftActive(expiresAt: periodEnd)
-        case .admin, .flowPoints:
+        case .admin, .flowPoints, .unknown:
             return .adminOrOther(sourceName: source.displayName, expiresAt: periodEnd)
         case .other(let rawSource):
             return .adminOrOther(sourceName: rawSource, expiresAt: periodEnd)

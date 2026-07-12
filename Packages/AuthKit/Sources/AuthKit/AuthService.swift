@@ -264,7 +264,11 @@ public final class AuthService: TokenRefreshing {
         // In UITest mode, skip Amplify entirely and emit .signedIn immediately.
         // CF_STUB_SERVER intercepts all network calls; no real Cognito session needed.
         if ProcessInfo.processInfo.environment["CF_UITEST_BYPASS_AUTH"] == "1" {
-            let user = UserSummary(userId: "uitest-user-123", username: "uitest-user-123", email: nil)
+            let user = UserSummary(
+                userId: "00000000-0000-4000-8000-000000000123",
+                username: "uitest-user",
+                email: nil
+            )
             eventsContinuation.yield(.signedIn(user))
             return
         }

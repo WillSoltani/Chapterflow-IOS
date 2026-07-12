@@ -10,6 +10,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -21,7 +24,7 @@ jobs:
     runs-on: macos-15
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Install SwiftLint
         run: brew install swiftlint
@@ -41,7 +44,7 @@ jobs:
     runs-on: macos-26
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       # Select the newest installed Xcode 26 explicitly (no-op if already default)
       # and fail loudly, listing what IS available, if 26 is somehow missing.
@@ -54,6 +57,9 @@ jobs:
           fi
           xcodebuild -version
 
+      - name: Test fail-closed release configuration
+        run: bash scripts/tests/test-release-config.sh
+
       # Cache SPM state across runs:
       #  - the bare git repos (dependency source) used by both xcodebuild and swift test
       #  - the SHARED .build directory (see the test step) holding compiled dependency
@@ -63,7 +69,7 @@ jobs:
       # incremental rebuild (SwiftPM re-verifies and rebuilds only what changed, so a stale
       # hit is never incorrect — at worst it rebuilds).
       - name: Cache SPM repositories & build
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
             ~/Library/Caches/org.swift.swiftpm/repositories
@@ -74,11 +80,6 @@ jobs:
           key: ${{ runner.os }}-spm-v2-${{ hashFiles('**/Package.resolved') }}
           restore-keys: |
             ${{ runner.os }}-spm-v2-
-
-      # Secrets.xcconfig is gitignored; CI uses placeholder values so the
-      # project file resolves correctly. No real keys are needed for a build check.
-      - name: Create Secrets.xcconfig
-        run: cp Secrets.example.xcconfig Secrets.xcconfig
 
       # Build the full app target for an iOS Simulator.
       # -skipPackagePluginValidation bypasses Xcode's trust prompt for
@@ -99,12 +100,27 @@ jobs:
             -skipPackagePluginValidation \
             -skipMacroValidation
 
-      # All local packages declare .macOS(.v14+) for exactly this use-case:
-      # fast host-toolchain testing in CI without needing a booted simulator.
-      # AuthKit is included; its Amplify build-tool plugin runs automatically
-      # (build-tool plugins don't require interactive approval like command plugins).
-      # AppFeature is excluded: it requires macOS 15 Swift stdlib for the Tab {} API
-      # and all its constituent logic is covered by the per-module test runs below.
+      # Compile the exact Release configuration without signing. This is not a
+      # production-config proof—the fail-closed signed release workflow owns
+      # that—but catches Release-only compiler/configuration regressions on PRs.
+      - name: Build unsigned Release gate
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project ChapterFlow.xcodeproj \
+            -scheme ChapterFlow \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Release \
+            BUILD_COMMIT_SHA="$GITHUB_SHA" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            -skipPackagePluginValidation \
+            -skipMacroValidation
+
+      # Run every local package test target on the macOS 26 runner. This includes
+      # AppFeature (whose Tab API needs the newer host SDK) and SyncEngine; no
+      # package may be represented as green through omission from this loop.
       - name: Run unit tests — all local packages
         shell: bash
         run: |
@@ -118,6 +134,7 @@ jobs:
             Fixtures
             DesignSystem
             AIFeature
+            AppFeature
             AuthKit
             EngagementFeature
             LibraryFeature
@@ -129,6 +146,7 @@ jobs:
             ReaderFeature
             SettingsFeature
             SocialFeature
+            SyncEngine
           )
 
           # Share ONE build directory across every package's test run. The packages
@@ -155,7 +173,7 @@ jobs:
             exit 1
           fi
           echo ""
-          echo "✅ All packages passed"
+          echo "✅ Full local package suite passed (${#packages[@]} packages)"
 
   # ── 3. XCUITest flows (stub server, deterministic) ───────────────────────────
   # Runs the three critical UI flows (sign-in, read→quiz→unlock, purchase) against
@@ -168,7 +186,7 @@ jobs:
     needs: build-and-test
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Select Xcode 26
         run: |
@@ -180,36 +198,137 @@ jobs:
           xcodebuild -version
 
       - name: Cache SPM repositories
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/Library/Caches/org.swift.swiftpm/repositories
           key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
           restore-keys: |
             ${{ runner.os }}-spm-
 
-      - name: Create Secrets.xcconfig
-        run: cp Secrets.example.xcconfig Secrets.xcconfig
-
-      # Boot the simulator before xcodebuild to avoid cold-start races.
-      # Pick the first available iPhone by UDID (sorted newest runtime first)
-      # so this step is robust to device-name changes across runner images.
-      - name: Boot an available iPhone simulator
+      # Snapshot pixels include system font, SF Symbol, and safe-area behavior.
+      # Pin the exact recording device/runtime instead of silently accepting a
+      # different simulator whose device traits would invalidate the references.
+      # When the hosted image drops this runtime, CI fails and forces an explicit
+      # review/re-record on the replacement toolchain.
+      - name: Boot the pinned snapshot simulator
         run: |
-          SIM_ID="$(xcrun simctl list devices available -j | python3 -c "
-          import sys, json
+          SIM_ID="$(xcrun simctl list devices available -j | python3 -c '
+          import json, sys
           d = json.load(sys.stdin)
-          # newest runtime first, first iPhone device that's available
-          for rt, devs in sorted(d['devices'].items(), reverse=True):
-              for dev in devs:
-                  if dev.get('isAvailable') and dev['name'].startswith('iPhone'):
-                      print(dev['udid']); raise SystemExit(0)
-          raise SystemExit(1)
-          ")"
-          if [ -z "$SIM_ID" ]; then echo 'No available iPhone simulator'; xcrun simctl list devices available; exit 1; fi
+          for runtime, devices in d["devices"].items():
+              if not runtime.endswith("iOS-26-5"):
+                  continue
+              for device in devices:
+                  if device.get("isAvailable") and device["name"] == "iPhone 17e":
+                      print(device["udid"])
+                      raise SystemExit(0)
+          ')"
+          if [ -z "$SIM_ID" ]; then
+            echo 'Required snapshot simulator unavailable: iPhone 17e / iOS 26.5'
+            xcrun simctl list devices available
+            exit 1
+          fi
           echo "SIM_ID=$SIM_ID" >> "$GITHUB_ENV"
           echo "Booting $SIM_ID"
           xcrun simctl boot "$SIM_ID" 2>/dev/null || true
           xcrun simctl bootstatus "$SIM_ID" -b
+
+      # The package-wide `swift test` job exercises only the AppKit renderer.
+      # Compare the committed iOS references on the same booted simulator used
+      # by the deterministic UI flows, and fail if a renamed filter silently
+      # selects fewer tests than expected.
+      - name: Compare iOS release-surface snapshots
+        shell: bash
+        env:
+          SNAPSHOT_RECORD: "0"
+        run: |
+          set -euo pipefail
+
+          app_result="$RUNNER_TEMP/AppFeatureSnapshots.xcresult"
+          paywall_result="$RUNNER_TEMP/PaywallFeatureSnapshots.xcresult"
+
+          (
+            cd Packages/AppFeature
+            NSUnbufferedIO=YES xcodebuild test \
+              -scheme AppFeature \
+              -destination "platform=iOS Simulator,id=$SIM_ID" \
+              -derivedDataPath "$RUNNER_TEMP/AppFeatureSnapshotsDerived" \
+              -resultBundlePath "$app_result" \
+              -only-testing:AppFeatureTests/ReleaseVisualSnapshotTests \
+              -parallel-testing-enabled NO \
+              -testLanguage en \
+              -testRegion US \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO \
+              -skipPackagePluginValidation \
+              -skipMacroValidation
+          )
+
+          xcrun xcresulttool get test-results summary \
+            --path "$app_result" \
+            --format json |
+            python3 -c '
+          import json, sys
+          result = json.load(sys.stdin)
+          counts = (
+              result.get("passedTests"),
+              result.get("failedTests"),
+              result.get("skippedTests"),
+          )
+          if counts != (4, 0, 0):
+              raise SystemExit(f"AppFeature snapshot count mismatch: {counts}")
+          '
+
+          (
+            cd Packages/PaywallFeature
+            NSUnbufferedIO=YES xcodebuild test \
+              -scheme PaywallFeature \
+              -destination "platform=iOS Simulator,id=$SIM_ID" \
+              -derivedDataPath "$RUNNER_TEMP/PaywallFeatureSnapshotsDerived" \
+              -resultBundlePath "$paywall_result" \
+              -only-testing:PaywallFeatureTests/ReleaseVisualSnapshotTests \
+              -parallel-testing-enabled NO \
+              -testLanguage en \
+              -testRegion US \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED=NO \
+              CODE_SIGNING_ALLOWED=NO \
+              -skipPackagePluginValidation \
+              -skipMacroValidation
+          )
+
+          xcrun xcresulttool get test-results summary \
+            --path "$paywall_result" \
+            --format json |
+            python3 -c '
+          import json, sys
+          result = json.load(sys.stdin)
+          counts = (
+              result.get("passedTests"),
+              result.get("failedTests"),
+              result.get("skippedTests"),
+          )
+          if counts != (4, 0, 0):
+              raise SystemExit(f"PaywallFeature snapshot count mismatch: {counts}")
+          '
+
+          git diff --exit-code -- \
+            Packages/AppFeature/Tests/AppFeatureTests/__Snapshots__ \
+            Packages/PaywallFeature/Tests/PaywallFeatureTests/__Snapshots__
+
+      - name: Upload snapshot diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-snapshot-diagnostics
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            ${{ runner.temp }}/AppFeatureSnapshots.xcresult
+            ${{ runner.temp }}/PaywallFeatureSnapshots.xcresult
+            Packages/AppFeature/Tests/AppFeatureTests/__Snapshots__/*-FAIL.png
+            Packages/PaywallFeature/Tests/PaywallFeatureTests/__Snapshots__/*-FAIL.png
 
       # CF_STUB_SERVER and CF_UITEST_BYPASS_AUTH are set per-test in CFUITestCase.setUp()
       # via app.launchEnvironment — no extra xcodebuild env flags needed here.
@@ -222,9 +341,108 @@ jobs:
             -scheme ChapterFlow \
             -destination "platform=iOS Simulator,id=$SIM_ID" \
             -only-testing:ChapterFlowUITests \
+            -skip-testing:ChapterFlowUITests/PurchaseFlowTests/testStoreKitCatalogPurchaseRelaunchAndRestoreCompletes \
             -parallel-testing-enabled NO \
+            -testLanguage en \
+            -testRegion US \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             -skipPackagePluginValidation \
             -skipMacroValidation
+
+      # The production/archive scheme intentionally has no local StoreKit file.
+      # Exercise the real StoreKit 2 purchase UI only through the dedicated test scheme.
+      # StoreKitTest is broken on the iOS 26.5 simulator runtime (FB22774836),
+      # so this one lane uses Apple's documented runtime downloader and the
+      # last runtime known to execute local StoreKit configurations correctly.
+      - name: Run StoreKit Test purchase and restore contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          result="$RUNNER_TEMP/StoreKitPurchase.xcresult"
+
+          # The hosted macos-26 image currently includes the exact Xcode/runtime
+          # pair that executes local StoreKit configurations reliably. Keep the
+          # rest of this job on the newest Xcode, but pin this contract when the
+          # known-good toolchain is installed.
+          if [[ -d /Applications/Xcode_26.2.app/Contents/Developer ]]; then
+            export DEVELOPER_DIR=/Applications/Xcode_26.2.app/Contents/Developer
+          fi
+          xcodebuild -version
+
+          runtime_id="com.apple.CoreSimulator.SimRuntime.iOS-26-2"
+          storekit_runtime_available() {
+            xcrun simctl list runtimes available -j | \
+              STOREKIT_RUNTIME_ID="$runtime_id" python3 -c '
+          import json, os, sys
+          expected = os.environ["STOREKIT_RUNTIME_ID"]
+          raise SystemExit(0 if any(
+              runtime.get("identifier") == expected and runtime.get("isAvailable", True)
+              for runtime in json.load(sys.stdin).get("runtimes", [])
+          ) else 1)
+          '
+          }
+
+          if ! storekit_runtime_available; then
+            if ! xcodebuild -downloadPlatform iOS -buildVersion 26.2; then
+              echo '::error title=StoreKit runtime unavailable::iOS 26.2 is required because StoreKitTest is broken on iOS 26.5 (FB22774836), and Xcode could not download the pinned runtime. Do not run this contract against live App Store Connect or weaken the exact test.'
+              exit 1
+            fi
+          fi
+
+          if ! storekit_runtime_available; then
+            echo '::error title=StoreKit runtime unavailable::Xcode reported a successful download, but the required iOS 26.2 simulator runtime is still unavailable.'
+            exit 1
+          fi
+
+          storekit_sim_id="$(xcrun simctl create \
+            'ChapterFlow StoreKit iOS 26.2' \
+            com.apple.CoreSimulator.SimDeviceType.iPhone-16-Pro \
+            "$runtime_id")"
+          cleanup_storekit_simulator() {
+            xcrun simctl shutdown "$storekit_sim_id" 2>/dev/null || true
+            xcrun simctl delete "$storekit_sim_id" 2>/dev/null || true
+          }
+          trap cleanup_storekit_simulator EXIT
+          xcrun simctl boot "$storekit_sim_id"
+          xcrun simctl bootstatus "$storekit_sim_id" -b
+
+          NSUnbufferedIO=YES xcodebuild test \
+            -project ChapterFlow.xcodeproj \
+            -scheme ChapterFlow-StoreKitTest \
+            -destination "platform=iOS Simulator,id=$storekit_sim_id" \
+            -resultBundlePath "$result" \
+            -only-testing:ChapterFlowUITests/PurchaseFlowTests/testStoreKitCatalogPurchaseRelaunchAndRestoreCompletes \
+            -parallel-testing-enabled NO \
+            -testLanguage en \
+            -testRegion US \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            -skipPackagePluginValidation \
+            -skipMacroValidation
+
+          xcrun xcresulttool get test-results summary \
+            --path "$result" \
+            --format json |
+            python3 -c '
+          import json, sys
+          result = json.load(sys.stdin)
+          counts = (
+              result.get("passedTests"),
+              result.get("failedTests"),
+              result.get("skippedTests"),
+          )
+          if counts != (1, 0, 0):
+              raise SystemExit(f"StoreKit purchase test count mismatch: {counts}")
+          '
+
+      - name: Upload StoreKit purchase diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: storekit-purchase-diagnostics
+          if-no-files-found: ignore
+          retention-days: 7
+          path: ${{ runner.temp }}/StoreKitPurchase.xcresult

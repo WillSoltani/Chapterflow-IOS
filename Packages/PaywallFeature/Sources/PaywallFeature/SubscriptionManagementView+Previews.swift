@@ -7,7 +7,6 @@ import Persistence
 // MARK: - Preview helpers
 
 private actor PreviewSKService: StoreKitServicing {
-    nonisolated let entitlementChanges: AsyncStream<Void> = AsyncStream { _ in }
     private let status: SubscriptionStatus
     private let transactionID: UInt64?
 
@@ -16,6 +15,7 @@ private actor PreviewSKService: StoreKitServicing {
         self.transactionID = transactionID
     }
 
+    func entitlementChanges() async -> AsyncStream<Void> { AsyncStream { _ in } }
     func loadProducts() async throws -> [Product] { [] }
     func purchase(_ product: Product) async throws -> PurchaseResult { .userCancelled }
     func restorePurchases() async throws {}

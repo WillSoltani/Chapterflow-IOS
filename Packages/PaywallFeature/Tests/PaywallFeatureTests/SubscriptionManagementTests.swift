@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import Networking
 @testable import PaywallFeature
 import Models
 
@@ -329,6 +330,68 @@ struct SubscriptionManagementStateTests {
         for (state, expected) in cases {
             #expect(state.proSourceKind == expected, "State \(state) should have source \(expected)")
         }
+        #expect(ProSourceKind(rawSource: nil) == .unknown)
+        #expect(!ProSourceKind(rawSource: nil).isApple)
+    }
+
+    @Test("offer-code redemption requires an existing Apple-backed mapping")
+    func offerCodeRequiresMappedAppleState() {
+        let permitted: [SubscriptionDetailState] = [
+            .appleActive(productID: "monthly", renewsAt: nil),
+            .applyCancelling(productID: "annual", expiresAt: nil),
+            .appleGracePeriod(productID: "monthly", expiresAt: nil),
+            .appleBillingRetry(productID: "monthly"),
+            .appleExpired(productID: "annual"),
+            .appleRevoked,
+        ]
+        let rejected: [SubscriptionDetailState] = [
+            .applePending,
+            .stripeActive(renewsAt: nil, cancelsAtPeriodEnd: false),
+            .stripePastDue(renewsAt: nil),
+            .licenseActive(key: nil, expiresAt: nil),
+            .giftActive(expiresAt: nil),
+            .adminOrOther(sourceName: "admin", expiresAt: nil),
+            .free,
+        ]
+
+        for state in permitted {
+            #expect(state.permitsOfferCodeRedemption)
+        }
+        for state in rejected {
+            #expect(!state.permitsOfferCodeRedemption)
+        }
+    }
+
+    @Test("free account cannot present tokenless offer-code redemption")
+    @MainActor
+    func freeAccountCannotRedeemOfferCode() {
+        let model = SubscriptionManagementModel(
+            storeKitService: StubStoreKitService(),
+            apiClient: MockAPIClient()
+        )
+        model.inject(detailState: .free)
+
+        model.redeemOfferCode()
+
+        #expect(!model.showOfferCodeRedemption)
+        #expect(model.errorMessage != nil)
+    }
+
+    @Test("mapped Apple account may present offer-code redemption")
+    @MainActor
+    func mappedAppleAccountCanRedeemOfferCode() {
+        let model = SubscriptionManagementModel(
+            storeKitService: StubStoreKitService(),
+            apiClient: MockAPIClient()
+        )
+        model.inject(
+            detailState: .appleActive(productID: "monthly", renewsAt: nil)
+        )
+
+        model.redeemOfferCode()
+
+        #expect(model.showOfferCodeRedemption)
+        #expect(model.errorMessage == nil)
     }
 
     // MARK: Date parsing

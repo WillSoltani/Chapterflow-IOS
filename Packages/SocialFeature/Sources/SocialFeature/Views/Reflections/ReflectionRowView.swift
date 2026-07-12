@@ -135,11 +135,11 @@ struct ReflectionRowView: View {
 
 // MARK: - Preview helpers
 
-#if DEBUG
 private extension CGFloat {
     static let cfSpacing6: CGFloat = 6
 }
 
+#if DEBUG
 #Preview("Synced – no feedback", traits: .sizeThatFitsLayout) {
     let item = ReflectionDisplayItem.synced(ChapterReflection(
         reflectionId: "r1",

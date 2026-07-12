@@ -4,8 +4,8 @@
 <plist version="1.0">
 <dict>
     <!-- Distribution method for App Store / TestFlight -->
-    <key>method</key>
-    <string>app-store</string>
+	<key>method</key>
+	<string>app-store-connect</string>
 
     <!-- Replaced by the release workflow with the APPLE_TEAM_ID secret -->
     <key>teamID</key>
@@ -17,8 +17,8 @@
     <string>automatic</string>
 
     <!-- Upload symbols for crash reporting (recommended) -->
-    <key>uploadSymbols</key>
-    <true/>
+	<key>uploadSymbols</key>
+	<false/>
 
     <!-- Bitcode is deprecated for iOS 16+; disable to keep archive slim -->
     <key>uploadBitcode</key>
@@ -26,8 +26,8 @@
     <key>compileBitcode</key>
     <false/>
 
-    <!-- Destination: export IPA locally; the workflow uploads via xcrun altool.
-         Change to "upload" to have xcodebuild upload directly during export. -->
+	<!-- Destination: export an inspected IPA artifact only.
+	     TestFlight upload is intentionally hard-disabled in release.yml. -->
     <key>destination</key>
     <string>export</string>
 </dict>

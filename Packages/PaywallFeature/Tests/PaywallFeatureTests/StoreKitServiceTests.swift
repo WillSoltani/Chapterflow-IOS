@@ -9,60 +9,6 @@ import Models
 // StoreKit 18.4 added `SubscriptionStatus` as a typealias — disambiguate explicitly.
 private typealias SubscriptionStatus = PaywallFeature.SubscriptionStatus
 
-// MARK: - StoreKitConfig tests
-
-@Suite("StoreKitConfig")
-struct StoreKitConfigTests {
-
-    @Test("allProductIDs excludes empty strings")
-    func allProductIDsExcludesEmpty() {
-        let config = StoreKitConfig(
-            monthlyProductID: "com.cf.monthly",
-            annualProductID: "com.cf.annual",
-            annualUpfrontProductID: ""
-        )
-        #expect(config.allProductIDs == ["com.cf.monthly", "com.cf.annual"])
-    }
-
-    @Test("allProductIDs includes all three when non-empty")
-    func allProductIDsIncludesAll() {
-        let config = StoreKitConfig(
-            monthlyProductID: "com.cf.monthly",
-            annualProductID: "com.cf.annual",
-            annualUpfrontProductID: "com.cf.annual.upfront"
-        )
-        #expect(config.allProductIDs.count == 3)
-        #expect(config.allProductIDs.contains("com.cf.annual.upfront"))
-    }
-
-    @Test("allProductIDs is empty when all IDs are empty")
-    func allProductIDsEmpty() {
-        let config = StoreKitConfig(
-            monthlyProductID: "",
-            annualProductID: "",
-            annualUpfrontProductID: ""
-        )
-        #expect(config.allProductIDs.isEmpty)
-    }
-
-    @Test("from AppConfig reads storeKit product IDs")
-    func fromAppConfig() {
-        let appConfig = AppConfig(
-            apiBaseURL: "https://api.example.com",
-            cognitoRegion: "us-east-1",
-            cognitoUserPoolID: "pool",
-            cognitoClientID: "client",
-            storeKitMonthlyProductID: "com.example.monthly",
-            storeKitAnnualProductID: "com.example.annual",
-            storeKitAnnualUpfrontProductID: "com.example.upfront"
-        )
-        let config = StoreKitConfig.from(appConfig)
-        #expect(config.monthlyProductID == "com.example.monthly")
-        #expect(config.annualProductID == "com.example.annual")
-        #expect(config.annualUpfrontProductID == "com.example.upfront")
-    }
-}
-
 // MARK: - SubscriptionStatus tests
 
 @Suite("SubscriptionStatus")
@@ -250,9 +196,14 @@ struct PurchaseStateTests {
         #expect(!PurchaseState.idle.isInProgress)
     }
 
-    @Test("isInProgress is false for .pendingApproval")
+    @Test("isInProgress is true for .pendingApproval")
     func isInProgressPending() {
-        #expect(!PurchaseState.pendingApproval.isInProgress)
+        #expect(PurchaseState.pendingApproval.isInProgress)
+    }
+
+    @Test("isInProgress is true while backend access is being confirmed")
+    func isInProgressConfirmingAccess() {
+        #expect(PurchaseState.confirmingAccess.isInProgress)
     }
 
     @Test("isInProgress is false for .failed")
@@ -304,25 +255,6 @@ struct BillingEndpointsTests {
     }
 }
 
-// MARK: - StoreKitServiceError tests
-
-@Suite("StoreKitServiceError")
-struct StoreKitServiceErrorTests {
-
-    @Test("noProductsFound has a localizedDescription")
-    func noProductsFoundDescription() {
-        let error = StoreKitServiceError.noProductsFound
-        #expect(!(error.errorDescription ?? "").isEmpty)
-    }
-
-    @Test("unverified has a localizedDescription")
-    func unverifiedDescription() {
-        struct SomeError: Error {}
-        let error = StoreKitServiceError.unverified(SomeError())
-        #expect(!(error.errorDescription ?? "").isEmpty)
-    }
-}
-
 // MARK: - PaywallModel tests
 
 @Suite("PaywallModel")
@@ -339,6 +271,7 @@ struct PaywallModelTests {
         #expect(model.subscriptionStatus == .unknown)
         #expect(model.purchaseState == .idle)
         #expect(!model.isLoadingProducts)
+        #expect(model.productAvailability == .idle)
         #expect(model.errorMessage == nil)
     }
 
@@ -352,7 +285,11 @@ struct PaywallModelTests {
             StoreProductInfo(id: "x", displayName: "X", displayPrice: "$1",
                              periodLabel: "month", isPopular: false)
         ]
-        model.inject(productInfos: products, status: .subscribed(productID: "x", expirationDate: nil))
+        model.inject(
+            productInfos: products,
+            status: .subscribed(productID: "x", expirationDate: nil),
+            entitlementResolution: .resolvedPro
+        )
         #expect(model.productInfos.count == 1)
         #expect(model.subscriptionStatus == .subscribed(productID: "x", expirationDate: nil))
     }
@@ -371,9 +308,10 @@ struct PaywallModelTests {
         )
         #expect(model.productInfos.count == 1)
         #expect(model.subscriptionStatus == .notSubscribed)
+        #expect(model.entitlementResolution == .unresolved)
     }
 
-    @Test("loadProducts sets errorMessage when service throws")
+    @Test("loadProducts exposes a StoreKit failure without leaking an error")
     func loadProductsError() async {
         let service = StubStoreKitService(throwOnLoad: true)
         let model = PaywallModel(
@@ -381,7 +319,8 @@ struct PaywallModelTests {
             apiClient: MockAPIClient()
         )
         await model.loadProducts()
-        #expect(model.errorMessage != nil)
+        #expect(model.productAvailability == .storeUnavailable)
+        #expect(model.errorMessage == nil)
         #expect(model.productInfos.isEmpty)
     }
 
@@ -394,7 +333,74 @@ struct PaywallModelTests {
         )
         await model.loadProducts()
         #expect(model.productInfos.isEmpty)
+        #expect(model.productAvailability == .storeUnavailable)
         #expect(model.errorMessage == nil)
+    }
+
+    @Test("loadProducts distinguishes invalid build configuration")
+    func loadProductsInvalidConfiguration() async {
+        let service = StubStoreKitService(loadFailure: .invalidConfiguration)
+        let model = PaywallModel(storeKitService: service, apiClient: MockAPIClient())
+        await model.loadProducts()
+        #expect(model.productAvailability == .configurationInvalid)
+        #expect(!model.productAvailability.canRetry)
+        #expect(model.errorMessage == nil)
+    }
+
+    @Test("loadProducts distinguishes an offline device")
+    func loadProductsOffline() async {
+        let service = StubStoreKitService(loadFailure: .offline)
+        let model = PaywallModel(storeKitService: service, apiClient: MockAPIClient())
+        await model.loadProducts()
+        #expect(model.productAvailability == .networkUnavailable)
+        #expect(model.productAvailability.canRetry)
+        #expect(model.errorMessage == nil)
+    }
+
+    @Test("loadProducts cancellation is not presented as a failure")
+    func loadProductsCancellation() async {
+        let service = StubStoreKitService(loadFailure: .cancelled)
+        let model = PaywallModel(storeKitService: service, apiClient: MockAPIClient())
+
+        await model.loadProducts()
+
+        #expect(model.productAvailability == .idle)
+        #expect(model.errorMessage == nil)
+    }
+
+    @Test("repeated product loads are single-flight")
+    func loadProductsSingleFlight() async {
+        let service = SlowEmptyStoreKitService()
+        let model = PaywallModel(storeKitService: service, apiClient: MockAPIClient())
+        let started = Task {
+            for await _ in service.loadStarted { return }
+        }
+        let firstLoad = Task { await model.loadProducts() }
+        await started.value
+
+        await model.loadProducts()
+        await service.finishLoad()
+        await firstLoad.value
+
+        #expect(await service.loadCallCount() == 1)
+        #expect(model.productAvailability == .storeUnavailable)
+    }
+
+    @Test("injected products make the paywall actionable")
+    func injectedProductsAreAvailable() {
+        let product = StoreProductInfo(
+            id: "com.cf.monthly",
+            displayName: "Monthly",
+            displayPrice: "$5.99",
+            periodLabel: "month",
+            isPopular: false
+        )
+        let model = PaywallModel(
+            storeKitService: StubStoreKitService(),
+            apiClient: MockAPIClient(),
+            initialProductInfos: [product]
+        )
+        #expect(model.productAvailability == .available)
     }
 
     @Test("purchase with unknown productID sets errorMessage")
@@ -417,6 +423,7 @@ struct PaywallModelTests {
         await model.restorePurchases()
         #expect(model.purchaseState != .restoring)
         #expect(model.errorMessage != nil)
+        #expect(model.errorMessage != "Restore failed")
     }
 
     @Test("context defaults to settings")
@@ -560,6 +567,7 @@ struct PaywallModelTests {
         model.inject(
             productInfos: [],
             status: .notSubscribed,
+            entitlementResolution: .resolvedFree,
             serverBenefits: ["Benefit A", "Benefit B"]
         )
         #expect(model.serverBenefits == ["Benefit A", "Benefit B"])

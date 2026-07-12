@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "environment": "production",
+  "apiBaseURL": "__REQUIRED__",
+  "cognito": {
+    "region": "__REQUIRED__",
+    "userPoolID": "__REQUIRED__",
+    "clientID": "__REQUIRED__",
+    "domain": "__REQUIRED__"
+  },
+  "bundleIdentifier": "com.chapterflow.ios",
+  "appStore": {
+    "id": "__REQUIRED__",
+    "url": "__REQUIRED__"
+  },
+  "supportURL": "__REQUIRED__",
+  "storeKit": {
+    "approvedProductIDs": [],
+    "monthlyProductID": "__REQUIRED__",
+    "annualProductID": "__REQUIRED__",
+    "annualUpfrontProductID": ""
+  },
+  "sentry": {
+    "policy": "__REQUIRED__",
+    "dsnConfigured": false
+  },
+  "build": {
+    "configuration": "Release",
+    "marketingVersion": "__REQUIRED__",
+    "number": "__REQUIRED__",
+    "commitSHA": "__REQUIRED__"
+  },
+  "signing": {
+    "teamID": "__REQUIRED__",
+    "inputsValidated": false
+  },
+  "backendAttestation": {
+    "deploymentCommitSHA": "__REQUIRED__",
+    "attestationID": "__REQUIRED__",
+    "approved": false,
+    "appleBundleIdentifier": "__REQUIRED__",
+    "appleAppID": "__REQUIRED__",
+    "verificationProductAllowlist": [],
+    "mobileConfigAppStoreURL": "__REQUIRED__",
+    "appleEnvironment": "__REQUIRED__",
+    "subscriptionGroupID": "__REQUIRED__",
+    "controls": {
+      "productAllowlistEnforced": false,
+      "appleEnvironmentEnforced": false,
+      "subscriptionGroupEnforced": false,
+      "accountBindingEnforced": false
+    }
+  },
+  "provenanceFingerprint": "__GENERATED__"
+}
