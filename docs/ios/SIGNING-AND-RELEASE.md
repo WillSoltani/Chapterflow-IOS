@@ -105,12 +105,14 @@ bash scripts/tests/test-release-config.sh
 The same suite and an unsigned Release build run on every PR.
 
 The hosted `macos-26` PR job keeps its general build, snapshot, and UI gates on
-the newest installed Xcode 26. The dedicated local StoreKit contract selects
-`/Applications/Xcode_26.2.app/Contents/Developer` when that hosted toolchain is
-present and pins its simulator to iOS 26.2, the last verified pairing for local
-StoreKit configurations. If the hosted image drifts, the lane attempts Apple's
-runtime downloader once and then fails closed; it never falls back to the live
-App Store Connect catalog or silently skips the exact purchase/restore test.
+the newest installed Xcode 26. The dedicated local StoreKit contract creates
+and retains an `SKTestSession` before the app's first launch, then exercises the
+app's real `Product.purchase()` path. It selects
+`/Applications/Xcode_26.2.app/Contents/Developer` and pins the simulator to iOS
+26.2, the last verified pairing for this contract. If either is unavailable,
+the lane fails closed; it never falls back to the live App Store Connect catalog,
+substitutes a runner-side purchase, or silently skips the exact purchase/restore
+test.
 
 Runtime validation emits `app_configuration_validated` at most once per app
 process with allowlisted readiness booleans. After validation, internal and

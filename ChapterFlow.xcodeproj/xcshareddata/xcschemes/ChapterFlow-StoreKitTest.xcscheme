@@ -56,9 +56,6 @@
             default = "YES">
          </TestPlanReference>
       </TestPlans>
-      <StoreKitConfigurationFileReference
-         identifier = "../../Config/ChapterFlow.storekit">
-      </StoreKitConfigurationFileReference>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"

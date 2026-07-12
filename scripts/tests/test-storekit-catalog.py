@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Verify the approved fixture and its isolated StoreKit automation wiring.
 
-The dedicated scheme and test plan are the automation authority. CI pins this
-lane to iOS 26.2 because that runtime still syncs StoreKit Test configurations
-under xcodebuild, while hosted runners no longer provide iOS 26.1.
+A retained ``SKTestSession`` in the UI-test runner activates the local catalog
+before the app's first launch. CI pins this lane to iOS 26.2 because later
+runtimes do not execute the local StoreKit purchase contract reliably.
 """
 
 from __future__ import annotations
@@ -18,7 +18,6 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[2]
 APPROVED_PATH = ROOT / "Config" / "ApprovedReleaseIdentity.json"
 STOREKIT_PATH = ROOT / "Config" / "ChapterFlow.storekit"
-TEST_PLAN_PATH = ROOT / "ChapterFlow.xctestplan"
 OLD_APP_STOREKIT_PATH = ROOT / "ChapterFlow" / "Config" / "ChapterFlow.storekit"
 PROJECT_PATH = ROOT / "ChapterFlow.xcodeproj" / "project.pbxproj"
 PR_WORKFLOW_PATH = ROOT / ".github" / "workflows" / "pr.yml"
@@ -64,18 +63,8 @@ def parse_scheme(path: Path) -> ET.Element:
 def main() -> None:
     approved = load_json(APPROVED_PATH)
     fixture = load_json(STOREKIT_PATH)
-    test_plan = load_json(TEST_PLAN_PATH)
-
     if OLD_APP_STOREKIT_PATH.exists():
         fail("E_STOREKIT_FIXTURE_INSIDE_APP_TARGET")
-
-    default_test_options = test_plan.get("defaultOptions")
-    if (
-        not isinstance(default_test_options, dict)
-        or default_test_options.get("storeKitConfigurationFileReference")
-        != "Config/ChapterFlow.storekit"
-    ):
-        fail("E_STOREKIT_TEST_PLAN_REFERENCE")
 
     fixture_settings = fixture.get("settings")
     if (
@@ -156,9 +145,8 @@ def main() -> None:
     test_references = test_scheme.findall(
         "./TestAction/StoreKitConfigurationFileReference"
     )
-    test_identifiers = [reference.get("identifier") for reference in test_references]
-    if test_identifiers != [EXPECTED_SCHEME_REFERENCE]:
-        fail("E_STOREKIT_TEST_SCHEME_TEST_REFERENCE")
+    if test_references:
+        fail("E_STOREKIT_TEST_SCHEME_PSEUDO_REFERENCE")
 
     try:
         project = PROJECT_PATH.read_text(encoding="utf-8")
@@ -220,8 +208,24 @@ def main() -> None:
     except OSError:
         fail("E_STOREKIT_RESTORE_SEAM_UNREADABLE")
 
-    if "StoreKitTest" in purchase_flow_source or "SKTestSession" in purchase_flow_source:
-        fail("E_STOREKIT_CROSS_PROCESS_SESSION")
+    required_session_fragments = [
+        "import StoreKitTest",
+        "private var storeKitSession: SKTestSession?",
+        "override func setUpWithError() throws",
+        'ProcessInfo.processInfo.environment["XCODE_SCHEME_NAME"]',
+        '== "ChapterFlow-StoreKitTest"',
+        'SKTestSession(configurationFileNamed: "ChapterFlow")',
+        "session.resetToDefaultState()",
+        "session.disableDialogs = true",
+        "session.clearTransactions()",
+        "storeKitSession = session",
+        "storeKitSession?.allTransactions().contains",
+        '$0.productIdentifier == "com.chapterflow.pro.monthly"',
+    ]
+    if any(fragment not in purchase_flow_source for fragment in required_session_fragments):
+        fail("E_STOREKIT_SESSION_SETUP")
+    if "buyProduct(" in purchase_flow_source:
+        fail("E_STOREKIT_RUNNER_PURCHASE_SUBSTITUTION")
 
     restore_environment_key = "CF_UITEST_DEFER_APPLE_VERIFY_UNTIL_RESTORE"
     restore_signal_file = ".chapterflow-uitest-restore-began"

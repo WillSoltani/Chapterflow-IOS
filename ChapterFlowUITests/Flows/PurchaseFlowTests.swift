@@ -1,3 +1,4 @@
+import StoreKitTest
 import XCTest
 
 /// XCUITests for the purchase / subscription flow.
@@ -9,7 +10,32 @@ import XCTest
 ///
 /// No real money is charged: all purchases use the test configuration.
 final class PurchaseFlowTests: CFUITestCase {
+    /// Retains the local StoreKit environment for the complete purchase,
+    /// relaunch, and restore contract. XCTest invokes `setUpWithError()` before
+    /// `CFUITestCase.setUp()`, so the first app launch cannot bind to sandbox.
+    private var storeKitSession: SKTestSession?
+
     private var robot: AppRobot { AppRobot(app: app) }
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+
+        guard ProcessInfo.processInfo.environment["XCODE_SCHEME_NAME"]
+            == "ChapterFlow-StoreKitTest" else {
+            return
+        }
+
+        let session = try SKTestSession(configurationFileNamed: "ChapterFlow")
+        session.resetToDefaultState()
+        session.disableDialogs = true
+        session.clearTransactions()
+        storeKitSession = session
+    }
+
+    override func tearDownWithError() throws {
+        storeKitSession = nil
+        try super.tearDownWithError()
+    }
 
     // MARK: - Free-tier baseline
 
@@ -141,6 +167,12 @@ final class PurchaseFlowTests: CFUITestCase {
 
         assertPurchaseSuccessAndContinue()
         assertPlan("Pro")
+        XCTAssertTrue(
+            storeKitSession?.allTransactions().contains {
+                $0.productIdentifier == "com.chapterflow.pro.monthly"
+            } == true,
+            "The app purchase must create the approved monthly StoreKit transaction"
+        )
 
         // Relaunch with the stub reset to FREE while the StoreKit transaction
         // remains installed. All automatic authorization/reconciliation
