@@ -11,9 +11,8 @@ import XCTest
 /// No real money is charged: all purchases use the test configuration.
 final class PurchaseFlowTests: CFUITestCase {
     /// Retains the local StoreKit environment for the complete purchase,
-    /// relaunch, and restore contract. The base case creates the application
-    /// proxy before this session is configured, then launches only after the
-    /// local catalog has been bound.
+    /// relaunch, and restore contract. The base case first installs the app,
+    /// then this test case binds the local catalog before the tested launch.
     private var storeKitSession: SKTestSession?
 
     private var robot: AppRobot { AppRobot(app: app) }
@@ -30,12 +29,32 @@ final class PurchaseFlowTests: CFUITestCase {
         // existing DEBUG-only launch route instead of depending on that
         // unrelated simulator hit-testing path.
         app.launchArguments.append("--demo-tab=settings")
+    }
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+
+        guard ProcessInfo.processInfo.environment["XCODE_SCHEME_NAME"]
+            == "ChapterFlow-StoreKitTest" else {
+            return
+        }
+
+        // SKTestSession cannot push its catalog until the application is
+        // installed. The base launch performs that install; stop the warm app,
+        // bind the catalog, then relaunch the app under test.
+        app.terminate()
+        _ = try XCTUnwrap(
+            app.wait(for: .notRunning, timeout: 10) ? true : nil,
+            "The StoreKit warm-install launch must terminate before catalog setup"
+        )
 
         let session = try SKTestSession(configurationFileNamed: "ChapterFlow")
         session.resetToDefaultState()
         session.disableDialogs = true
         session.clearTransactions()
         storeKitSession = session
+
+        app.launch()
     }
 
     override func tearDownWithError() throws {

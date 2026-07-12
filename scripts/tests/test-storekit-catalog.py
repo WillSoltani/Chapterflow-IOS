@@ -264,8 +264,12 @@ def main() -> None:
         "import StoreKitTest",
         "private var storeKitSession: SKTestSession?",
         "override func prepareForAppLaunch() throws",
+        "override func setUpWithError() throws",
+        "try super.setUpWithError()",
         'ProcessInfo.processInfo.environment["XCODE_SCHEME_NAME"]',
         '== "ChapterFlow-StoreKitTest"',
+        "app.terminate()",
+        "app.wait(for: .notRunning, timeout: 10)",
         'SKTestSession(configurationFileNamed: "ChapterFlow")',
         "session.resetToDefaultState()",
         "session.disableDialogs = true",
@@ -279,6 +283,31 @@ def main() -> None:
         fail("E_STOREKIT_SESSION_SETUP")
     if "buyProduct(" in purchase_flow_source:
         fail("E_STOREKIT_RUNNER_PURCHASE_SUBSTITUTION")
+    storekit_setup_index = purchase_flow_source.index("override func setUpWithError() throws")
+    super_setup_index = purchase_flow_source.index(
+        "try super.setUpWithError()", storekit_setup_index
+    )
+    terminate_index = purchase_flow_source.index("app.terminate()", super_setup_index)
+    stopped_index = purchase_flow_source.index(
+        "app.wait(for: .notRunning, timeout: 10)", terminate_index
+    )
+    session_index = purchase_flow_source.index(
+        'SKTestSession(configurationFileNamed: "ChapterFlow")', stopped_index
+    )
+    teardown_index = purchase_flow_source.index(
+        "override func tearDownWithError() throws", session_index
+    )
+    bound_launch_index = purchase_flow_source.index("app.launch()", session_index)
+    if not (
+        storekit_setup_index
+        < super_setup_index
+        < terminate_index
+        < stopped_index
+        < session_index
+        < bound_launch_index
+        < teardown_index
+    ):
+        fail("E_STOREKIT_INSTALL_ORDER")
     required_prelaunch_fragments = [
         "func prepareForAppLaunch() throws {}",
         "override func setUpWithError() throws",
