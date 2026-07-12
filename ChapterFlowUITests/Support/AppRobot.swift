@@ -14,25 +14,25 @@ struct AppRobot {
 
     @discardableResult
     func goToHome() -> Self {
-        tap(tab: "home")
+        tap(tab: "Home")
         return self
     }
 
     @discardableResult
     func goToLibrary() -> Self {
-        tap(tab: "librar")
+        tap(tab: "Library")
         return self
     }
 
     @discardableResult
     func goToSettings() -> Self {
-        tap(tab: "setting")
+        tap(tab: "Settings")
         return self
     }
 
     @discardableResult
     func goToReviews() -> Self {
-        tap(tab: "review")
+        tap(tab: "Reviews")
         return self
     }
 
@@ -76,10 +76,34 @@ struct AppRobot {
 
     // MARK: - Private
 
-    private func tap(tab keyword: String) {
-        let button = app.tabBars.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] %@", keyword)
-        ).firstMatch
-        if button.waitForExistence(timeout: 10) { button.tap() }
+    private func tap(tab title: String) {
+        let button = app.tabBars.buttons[title]
+        guard button.waitForExistence(timeout: 10) else {
+            XCTFail("Expected the \(title) tab to exist")
+            return
+        }
+
+        let hittable = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "hittable == true"),
+            object: button
+        )
+        guard XCTWaiter.wait(for: [hittable], timeout: 10) == .completed else {
+            XCTFail("Expected the \(title) tab to become tappable")
+            return
+        }
+
+        // Require the state transition and allow one bounded second tap only
+        // when the first synthesized event was not accepted.
+        for _ in 0..<2 {
+            button.tap()
+            let selected = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "selected == true"),
+                object: button
+            )
+            if XCTWaiter.wait(for: [selected], timeout: 3) == .completed {
+                return
+            }
+        }
+        XCTFail("Expected the \(title) tab to become selected: \(button.debugDescription)")
     }
 }

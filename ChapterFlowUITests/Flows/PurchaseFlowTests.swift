@@ -107,6 +107,7 @@ final class PurchaseFlowTests: CFUITestCase {
     func testStoreKitCatalogPurchaseRelaunchAndRestoreCompletes() {
         robot.waitForTabBar()
         robot.goToSettings()
+        assertPlan("Free")
 
         let upgradeButton = app.buttons["Upgrade to ChapterFlow Pro"]
         reveal(upgradeButton)
