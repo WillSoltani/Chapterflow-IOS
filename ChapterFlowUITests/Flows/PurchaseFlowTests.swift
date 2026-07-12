@@ -24,6 +24,13 @@ final class PurchaseFlowTests: CFUITestCase {
             return
         }
 
+        // The iOS 26.1 simulator can expose SwiftUI tab items without a valid
+        // activation frame to headless XCTest. This contract is about the
+        // StoreKit purchase/restore boundary, so enter Settings through the
+        // existing DEBUG-only launch route instead of depending on that
+        // unrelated simulator hit-testing path.
+        app.launchArguments.append("--demo-tab=settings")
+
         let session = try SKTestSession(configurationFileNamed: "ChapterFlow")
         session.resetToDefaultState()
         session.disableDialogs = true
@@ -136,7 +143,6 @@ final class PurchaseFlowTests: CFUITestCase {
         }
 
         robot.waitForTabBar()
-        robot.goToSettings()
         assertPlan("Free")
 
         let upgradeButton = app.buttons["Upgrade to ChapterFlow Pro"]
@@ -190,7 +196,6 @@ final class PurchaseFlowTests: CFUITestCase {
         app.launch()
 
         robot.waitForTabBar()
-        robot.goToSettings()
         assertPlan("Free")
 
         let relaunchedUpgradeButton = app.buttons["Upgrade to ChapterFlow Pro"]
