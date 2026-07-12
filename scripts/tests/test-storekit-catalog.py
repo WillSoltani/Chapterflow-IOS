@@ -3,8 +3,8 @@
 
 The dedicated test plan activates the catalog, then a retained
 ``SKTestSession`` binds it after the app proxy exists and before first launch.
-CI pins this lane to iOS 26.2 because later runtimes do not execute the local
-StoreKit purchase contract reliably.
+CI isolates this lane on macOS 15 with Xcode 26.2 and iOS 26.1 because the iOS
+26.2+ StoreKit daemon can save the catalog yet route product loads to Media API.
 """
 
 from __future__ import annotations
@@ -218,10 +218,16 @@ def main() -> None:
     required_workflow_fragments = [
         "/Applications/Xcode_26.2.app/Contents/Developer",
         'export DEVELOPER_DIR="$storekit_xcode"',
-        "com.apple.CoreSimulator.SimRuntime.iOS-26-2",
+        "runs-on: macos-15",
+        "com.apple.CoreSimulator.SimRuntime.iOS-26-1",
         "com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro",
         "StoreKit runtime unavailable",
-        "Do not run this contract on iOS 26.4+ or weaken the exact test.",
+        "Do not fall forward to the broken iOS 26.2+ CLI path or weaken the exact test.",
+        "name: Hermetic XCUITest Flows",
+        "name: StoreKit Purchase Contract",
+        "name: XCUITest Flows",
+        "HERMETIC_RESULT",
+        "STOREKIT_RESULT",
         "ci-storekit-only",
         "03747305819eccc8bb3c738a21e79d78a82d587d",
         "8b69f4f7eb860dc4da72a10510ca61f88d5fb6a1",
@@ -236,7 +242,7 @@ def main() -> None:
     ]
     if any(fragment not in workflow for fragment in required_workflow_fragments):
         fail("E_STOREKIT_WORKFLOW_RUNTIME_PIN")
-    if workflow.count("if: ${{ always() }}") != 3:
+    if workflow.count("if: ${{ always() }}") != 4:
         fail("E_STOREKIT_WORKFLOW_REQUIRED_CHECK_SCOPE")
 
     app_test_support = (ROOT / "ChapterFlow" / "TestSupport" / "CFAppLaunchSupport.swift")

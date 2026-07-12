@@ -104,15 +104,20 @@ bash scripts/tests/test-release-config.sh
 
 The same suite and an unsigned Release build run on every PR.
 
-The hosted `macos-26` PR job keeps its general build, snapshot, and UI gates on
-the newest installed Xcode 26. The dedicated StoreKit test plan activates the
-local catalog only for the StoreKit scheme. Its UI-test base creates the
-`XCUIApplication` proxy first, then the purchase test creates and retains an
-`SKTestSession` immediately before the app's first launch. The contract still
-exercises the app's real `Product.purchase()` path. It selects
+The hosted `macos-26` PR job keeps its general build, snapshot, and hermetic UI
+gates on the newest installed Xcode 26. StoreKit runs independently on
+`macos-15`, so both lanes can execute in parallel while the required XCUITest
+aggregator fails unless every applicable lane passes. The dedicated StoreKit
+test plan activates the local catalog only for the StoreKit scheme. Its UI-test
+base creates the `XCUIApplication` proxy first, then the purchase test creates
+and retains an `SKTestSession` immediately before the app's first launch. The
+contract still exercises the app's real `Product.purchase()` path. It selects
 `/Applications/Xcode_26.2.app/Contents/Developer` and pins the simulator to iOS
-26.2, the last verified pairing for this contract. If either is unavailable,
-the lane fails closed; it never falls back to the live App Store Connect catalog,
+26.1. The iOS 26.2 daemon accepted the save request but could not read the
+persisted Octane catalog, then routed local product requests to Media API under
+headless `xcodebuild`; iOS 26.1 is the verified unaffected CLI runtime. If
+either pinned dependency is unavailable, the lane fails closed; it never falls
+back to the live App Store Connect catalog,
 substitutes a runner-side purchase, or silently skips the exact purchase/restore
 test.
 

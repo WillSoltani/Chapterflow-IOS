@@ -302,16 +302,16 @@ jobs:
           echo ""
           echo "✅ Full local package suite passed (${#packages[@]} packages)"
 
-  # ── 3. XCUITest flows (stub server, deterministic) ───────────────────────────
+  # ── 3. Hermetic XCUITest flows (stub server, deterministic) ─────────────────
   # Runs the three critical UI flows (sign-in, read→quiz→unlock, purchase) against
   # a URLProtocol stub server fed by Fixtures. SmokeLane tests auto-skip unless
   # CF_REAL_API=1, so this job is always fully deterministic.
   # Required to merge; smoke lane skips are NOT treated as failures.
-  uitest:
-    name: XCUITest Flows
+  ui-flows:
+    name: Hermetic XCUITest Flows
     runs-on: macos-26
     needs: [scope, build-and-test]
-    if: ${{ always() }}
+    if: ${{ always() && needs.scope.result == 'success' && needs.build-and-test.result == 'success' && needs.scope.outputs.storekit_only != 'true' }}
 
     steps:
       - name: Require valid prerequisites
@@ -493,12 +493,40 @@ jobs:
             -skipPackagePluginValidation \
             -skipMacroValidation
 
-      # The production/archive scheme intentionally has no local StoreKit file.
-      # Exercise the real StoreKit 2 purchase UI only through the dedicated test scheme.
-      # StoreKitTest configuration sync is broken on simulator runtimes from
-      # iOS 26.4 onward under xcodebuild (FB22774836). The hosted runner no
-      # longer installs or offers iOS 26.1, while iOS 26.2 is confirmed to sync
-      # the local catalog. Pin the exact matching Xcode/runtime pair.
+  # ── 4. Local StoreKit purchase contract ────────────────────────────────────
+  # Keep StoreKit on its own runner/runtime pair. iOS 26.2 accepted the save
+  # request but could not read the persisted Octane catalog, then routed
+  # Product.products(for:) to Media API under headless xcodebuild. The macos-15
+  # image provides Xcode 26.2 and iOS 26.1, the unaffected CLI pairing. Normal
+  # UI work remains parallel on macos-26 and the required aggregator below
+  # fails unless both lanes pass.
+  storekit:
+    name: StoreKit Purchase Contract
+    runs-on: macos-15
+    needs: [scope, build-and-test]
+    if: ${{ always() }}
+
+    steps:
+      - name: Require valid prerequisites
+        env:
+          BUILD_RESULT: ${{ needs.build-and-test.result }}
+          SCOPE_RESULT: ${{ needs.scope.result }}
+        run: |
+          if [[ "$SCOPE_RESULT" != "success" || "$BUILD_RESULT" != "success" ]]; then
+            echo '::error title=StoreKit prerequisites failed::The purchase contract cannot replace failed prerequisite evidence.'
+            exit 1
+          fi
+
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Cache SPM repositories
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/Library/Caches/org.swift.swiftpm/repositories
+          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
       - name: Run StoreKit Test purchase and restore contract
         shell: bash
         timeout-minutes: 45
@@ -508,14 +536,14 @@ jobs:
 
           storekit_xcode=/Applications/Xcode_26.2.app/Contents/Developer
           if [[ ! -d "$storekit_xcode" ]]; then
-            echo '::error title=StoreKit Xcode unavailable::The StoreKit contract requires the hosted Xcode 26.2 installation paired with iOS 26.2.'
+            echo '::error title=StoreKit Xcode unavailable::The StoreKit contract requires the hosted Xcode 26.2 installation paired with iOS 26.1.'
             exit 1
           fi
           export DEVELOPER_DIR="$storekit_xcode"
           xcodebuild -version
           python3 scripts/tests/test-storekit-catalog.py
 
-          runtime_id="com.apple.CoreSimulator.SimRuntime.iOS-26-2"
+          runtime_id="com.apple.CoreSimulator.SimRuntime.iOS-26-1"
           storekit_runtime_available() {
             xcrun simctl list runtimes available -j | \
               STOREKIT_RUNTIME_ID="$runtime_id" python3 -c '
@@ -529,12 +557,12 @@ jobs:
           }
 
           if ! storekit_runtime_available; then
-            echo '::error title=StoreKit runtime unavailable::The hosted runner does not provide the required iOS 26.2 simulator runtime. Do not run this contract on iOS 26.4+ or weaken the exact test.'
+            echo '::error title=StoreKit runtime unavailable::The hosted macos-15 runner does not provide the required iOS 26.1 simulator runtime. Do not fall forward to the broken iOS 26.2+ CLI path or weaken the exact test.'
             exit 1
           fi
 
           storekit_sim_id="$(xcrun simctl create \
-            'ChapterFlow StoreKit iOS 26.2' \
+            'ChapterFlow StoreKit iOS 26.1' \
             com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro \
             "$runtime_id")"
           cleanup_storekit_simulator() {
@@ -587,3 +615,39 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
           path: ${{ runner.temp }}/StoreKitPurchase.xcresult
+
+  # Preserve the required check name while allowing the hermetic and StoreKit
+  # lanes to run on different compatible hosts. Recovery accepts a skipped
+  # hermetic lane only after the fail-closed scope job proves the exact diff.
+  uitest:
+    name: XCUITest Flows
+    runs-on: ubuntu-latest
+    needs: [scope, build-and-test, ui-flows, storekit]
+    if: ${{ always() }}
+
+    steps:
+      - name: Require all applicable UI lanes
+        env:
+          BUILD_RESULT: ${{ needs.build-and-test.result }}
+          HERMETIC_RESULT: ${{ needs.ui-flows.result }}
+          SCOPE_RESULT: ${{ needs.scope.result }}
+          STOREKIT_ONLY: ${{ needs.scope.outputs.storekit_only }}
+          STOREKIT_RESULT: ${{ needs.storekit.result }}
+        run: |
+          set -euo pipefail
+          if [[ "$SCOPE_RESULT" != "success" \
+            || "$BUILD_RESULT" != "success" \
+            || "$STOREKIT_RESULT" != "success" ]]; then
+            echo '::error title=Required UI lane failed::Scope, build, and StoreKit must all succeed.'
+            exit 1
+          fi
+
+          if [[ "$STOREKIT_ONLY" == "true" ]]; then
+            if [[ "$HERMETIC_RESULT" != "skipped" ]]; then
+              echo '::error title=Invalid recovery execution::The hermetic UI lane must be skipped in StoreKit-only recovery.'
+              exit 1
+            fi
+          elif [[ "$HERMETIC_RESULT" != "success" ]]; then
+            echo '::error title=Hermetic UI lane failed::Normal CI requires the complete deterministic UI flow job.'
+            exit 1
+          fi
