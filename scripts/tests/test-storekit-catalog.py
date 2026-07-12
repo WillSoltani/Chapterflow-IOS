@@ -3,9 +3,10 @@
 
 The dedicated test plan activates the catalog, then a retained
 ``SKTestSession`` binds it after a bounded install launch and before the tested
-relaunch. CI isolates this lane on macOS 15 with the matching Xcode 26.1.1 and
-iOS 26.1 pair because a newer StoreKitTest framework can acknowledge the save
-without persisting ``Configuration.storekit`` into that runtime.
+relaunch. CI requires the exact Xcode 26.6 and iOS 26.6 simulator pairing because
+the tested older hosted runtime acknowledges the save without persisting
+``Configuration.storekit``. Missing fixed-runtime support fails before this
+StoreKit lane's ``xcodebuild``.
 """
 
 from __future__ import annotations
@@ -217,13 +218,13 @@ def main() -> None:
     except OSError:
         fail("E_STOREKIT_WORKFLOW_UNREADABLE")
     required_workflow_fragments = [
-        "/Applications/Xcode_26.1.1.app/Contents/Developer",
+        "/Applications/Xcode_26.6.app/Contents/Developer",
         'export DEVELOPER_DIR="$storekit_xcode"',
-        "runs-on: macos-15",
-        "com.apple.CoreSimulator.SimRuntime.iOS-26-1",
+        "runs-on: macos-26",
+        "com.apple.CoreSimulator.SimRuntime.iOS-26-6",
         "com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro",
         "StoreKit runtime unavailable",
-        "Do not mix in a newer StoreKitTest toolchain or weaken the exact test.",
+        "Keep the purchase gate blocked; do not retry a known-broken runtime",
         "name: Hermetic XCUITest Flows",
         "name: StoreKit Purchase Contract",
         "name: XCUITest Flows",
@@ -243,6 +244,23 @@ def main() -> None:
     ]
     if any(fragment not in workflow for fragment in required_workflow_fragments):
         fail("E_STOREKIT_WORKFLOW_RUNTIME_PIN")
+    storekit_job_index = workflow.index("  storekit:\n")
+    runtime_guard_index = workflow.index(
+        "if ! storekit_runtime_available; then", storekit_job_index
+    )
+    simulator_create_index = workflow.index(
+        'storekit_sim_id="$(xcrun simctl create', runtime_guard_index
+    )
+    storekit_test_index = workflow.index(
+        "NSUnbufferedIO=YES xcodebuild test", simulator_create_index
+    )
+    if not (
+        storekit_job_index
+        < runtime_guard_index
+        < simulator_create_index
+        < storekit_test_index
+    ):
+        fail("E_STOREKIT_RUNTIME_GATE_ORDER")
     if workflow.count("if: ${{ always() }}") != 4:
         fail("E_STOREKIT_WORKFLOW_REQUIRED_CHECK_SCOPE")
 

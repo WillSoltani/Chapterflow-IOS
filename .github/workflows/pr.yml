@@ -494,15 +494,14 @@ jobs:
             -skipMacroValidation
 
   # ── 4. Local StoreKit purchase contract ────────────────────────────────────
-  # Keep StoreKit on its own matched toolchain/runtime pair. Xcode 26.2 with
-  # iOS 26.1 accepted the save request but never persisted Configuration.storekit,
-  # then routed Product.products(for:) to Media API under headless xcodebuild.
-  # The macos-15 image provides the matching Xcode 26.1.1 and iOS 26.1 pair.
-  # Normal UI work remains parallel on macos-26 and the required aggregator
-  # below fails unless both lanes pass.
+  # Keep StoreKit on its own fail-closed runner. Repo CI on hosted iOS 26.1 and
+  # Apple's iOS 26.5 reports show SKTestSession acknowledging the save without
+  # persisting Configuration.storekit, then routing local products to Media API.
+  # Apple says the simulator fix starts with iOS 26.6. Until that exact runtime
+  # is installed, fail before this lane's build instead of weakening the test.
   storekit:
     name: StoreKit Purchase Contract
-    runs-on: macos-15
+    runs-on: macos-26
     needs: [scope, build-and-test]
     if: ${{ always() }}
 
@@ -534,16 +533,16 @@ jobs:
           set -euo pipefail
           result="$RUNNER_TEMP/StoreKitPurchase.xcresult"
 
-          storekit_xcode=/Applications/Xcode_26.1.1.app/Contents/Developer
+          storekit_xcode=/Applications/Xcode_26.6.app/Contents/Developer
           if [[ ! -d "$storekit_xcode" ]]; then
-            echo '::error title=StoreKit Xcode unavailable::The StoreKit contract requires the hosted Xcode 26.1.1 installation paired with iOS 26.1.'
+            echo '::error title=StoreKit Xcode unavailable::The StoreKit contract requires the pinned Xcode 26.6 installation for the minimum supported simulator recovery path.'
             exit 1
           fi
           export DEVELOPER_DIR="$storekit_xcode"
           xcodebuild -version
           python3 scripts/tests/test-storekit-catalog.py
 
-          runtime_id="com.apple.CoreSimulator.SimRuntime.iOS-26-1"
+          runtime_id="com.apple.CoreSimulator.SimRuntime.iOS-26-6"
           storekit_runtime_available() {
             xcrun simctl list runtimes available -j | \
               STOREKIT_RUNTIME_ID="$runtime_id" python3 -c '
@@ -557,12 +556,12 @@ jobs:
           }
 
           if ! storekit_runtime_available; then
-            echo '::error title=StoreKit runtime unavailable::The hosted macos-15 runner does not provide the required iOS 26.1 simulator runtime. Do not mix in a newer StoreKitTest toolchain or weaken the exact test.'
+            echo '::error title=StoreKit runtime unavailable::Apple reports the SKTestSession simulator fix starting with iOS 26.6, but this hosted runner does not provide that runtime. Keep the purchase gate blocked; do not retry a known-broken runtime or weaken the exact test.'
             exit 1
           fi
 
           storekit_sim_id="$(xcrun simctl create \
-            'ChapterFlow StoreKit iOS 26.1' \
+            'ChapterFlow StoreKit iOS 26.6' \
             com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro \
             "$runtime_id")"
           cleanup_storekit_simulator() {
