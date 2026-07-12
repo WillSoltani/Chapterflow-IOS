@@ -25,9 +25,23 @@ final class ForceUpdateConfigurationFlowTests: CFUITestCase {
         )
         let updateActionIsEnabled = updateAction.isEnabled
         XCTAssertTrue(updateActionIsEnabled, "The exact App Store action should be enabled")
+
+        // The gate deliberately scrolls at large Dynamic Type sizes. Target its
+        // semantic scroll container and saturate at the bottom before asking
+        // XCTest for hit points; off-viewport elements have no activation point.
+        let gateScrollView = app.scrollViews
+            .containing(.staticText, identifier: "Update Required")
+            .firstMatch
+        assertExists(
+            gateScrollView,
+            message: "The hard update gate should expose its scrollable recovery surface"
+        )
+        gateScrollView.swipeUp()
+        gateScrollView.swipeUp()
+
         assertHittable(
             updateAction,
-            message: "The exact App Store action should be reachable after presentation"
+            message: "The exact App Store action should be reachable by scrolling"
         )
 
         // SwiftUI Link is exposed as a button on some OS releases and as a link
@@ -44,7 +58,7 @@ final class ForceUpdateConfigurationFlowTests: CFUITestCase {
         XCTAssertTrue(supportActionIsEnabled, "The support recovery action should be enabled")
         assertHittable(
             supportAction,
-            message: "The support recovery action should be reachable after presentation"
+            message: "The support recovery action should be reachable by scrolling"
         )
     }
 }
