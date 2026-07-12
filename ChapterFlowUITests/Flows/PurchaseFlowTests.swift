@@ -1,3 +1,4 @@
+import StoreKitTest
 import XCTest
 
 /// XCUITests for the purchase / subscription flow.
@@ -104,7 +105,14 @@ final class PurchaseFlowTests: CFUITestCase {
     /// purchase, receives the additive backend acknowledgement, and refreshes
     /// the app-wide entitlement to Pro.
     @MainActor
-    func testStoreKitCatalogPurchaseRelaunchAndRestoreCompletes() {
+    func testStoreKitCatalogPurchaseRelaunchAndRestoreCompletes() throws {
+        // The CI simulator intentionally has no Apple Account. Configure the
+        // supported local StoreKit session before the app starts so the real
+        // Product.purchase() transaction does not block on private system UI.
+        app.terminate()
+        let storeKitSession = try makeStoreKitSession()
+        app.launch()
+
         robot.waitForTabBar()
         robot.goToSettings()
 
@@ -130,10 +138,14 @@ final class PurchaseFlowTests: CFUITestCase {
         reveal(subscribeButton)
         subscribeButton.tap()
 
-        confirmStoreKitPurchaseIfPresented()
-
         assertPurchaseSuccessAndContinue()
         assertPlan("Pro")
+        XCTAssertTrue(
+            storeKitSession.allTransactions().contains {
+                $0.productIdentifier == "com.chapterflow.pro.monthly"
+            },
+            "The app purchase must create the approved monthly StoreKit transaction"
+        )
 
         // Relaunch with the stub reset to FREE while the StoreKit transaction
         // remains installed. All automatic authorization/reconciliation
@@ -199,27 +211,12 @@ final class PurchaseFlowTests: CFUITestCase {
     }
 
     @MainActor
-    private func confirmStoreKitPurchaseIfPresented() {
-        guard let app else {
-            XCTFail("The ChapterFlow application must be available during purchase confirmation")
-            return
-        }
-        let confirmationLabels = ["Subscribe", "Confirm", "Buy"]
-        let hosts: [XCUIApplication] = [
-            app,
-            XCUIApplication(bundleIdentifier: "com.apple.springboard"),
-            XCUIApplication(bundleIdentifier: "com.apple.ios.StoreKitUIService")
-        ]
-
-        for host in hosts {
-            for label in confirmationLabels {
-                let confirmationButton = host.buttons[label]
-                if confirmationButton.waitForExistence(timeout: 2) {
-                    confirmationButton.tap()
-                    return
-                }
-            }
-        }
+    private func makeStoreKitSession() throws -> SKTestSession {
+        let session = try SKTestSession(configurationFileNamed: "ChapterFlow")
+        session.resetToDefaultState()
+        session.clearTransactions()
+        session.disableDialogs = true
+        return session
     }
 
     @MainActor
