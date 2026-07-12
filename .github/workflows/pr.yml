@@ -356,25 +356,24 @@ jobs:
 
       # The production/archive scheme intentionally has no local StoreKit file.
       # Exercise the real StoreKit 2 purchase UI only through the dedicated test scheme.
-      # StoreKitTest is broken on the iOS 26.5 simulator runtime (FB22774836),
-      # so this one lane uses Apple's documented runtime downloader and the
-      # last runtime known to execute local StoreKit configurations correctly.
+      # StoreKitTest configuration sync is broken on newer simulator runtimes
+      # under xcodebuild (FB22774836), so this one lane uses Apple's documented
+      # runtime downloader and the last runtime known to sync the local catalog.
       - name: Run StoreKit Test purchase and restore contract
         shell: bash
         run: |
           set -euo pipefail
           result="$RUNNER_TEMP/StoreKitPurchase.xcresult"
 
-          # The hosted macos-26 image currently includes the exact Xcode/runtime
-          # pair that executes local StoreKit configurations reliably. Keep the
-          # rest of this job on the newest Xcode, but pin this contract when the
-          # known-good toolchain is installed.
+          # The hosted macos-26 image includes Xcode 26.2. Keep the rest of this
+          # job on the newest Xcode, but pair this contract with the older runtime
+          # that still syncs local StoreKit configurations under xcodebuild.
           if [[ -d /Applications/Xcode_26.2.app/Contents/Developer ]]; then
             export DEVELOPER_DIR=/Applications/Xcode_26.2.app/Contents/Developer
           fi
           xcodebuild -version
 
-          runtime_id="com.apple.CoreSimulator.SimRuntime.iOS-26-2"
+          runtime_id="com.apple.CoreSimulator.SimRuntime.iOS-26-1"
           storekit_runtime_available() {
             xcrun simctl list runtimes available -j | \
               STOREKIT_RUNTIME_ID="$runtime_id" python3 -c '
@@ -388,19 +387,19 @@ jobs:
           }
 
           if ! storekit_runtime_available; then
-            if ! xcodebuild -downloadPlatform iOS -buildVersion 26.2; then
-              echo '::error title=StoreKit runtime unavailable::iOS 26.2 is required because StoreKitTest is broken on iOS 26.5 (FB22774836), and Xcode could not download the pinned runtime. Do not run this contract against live App Store Connect or weaken the exact test.'
+            if ! xcodebuild -downloadPlatform iOS -buildVersion 26.1; then
+              echo '::error title=StoreKit runtime unavailable::iOS 26.1 is required because later runtimes do not reliably sync StoreKit Test under xcodebuild (FB22774836), and Xcode could not download the pinned runtime. Do not run this contract against live App Store Connect or weaken the exact test.'
               exit 1
             fi
           fi
 
           if ! storekit_runtime_available; then
-            echo '::error title=StoreKit runtime unavailable::Xcode reported a successful download, but the required iOS 26.2 simulator runtime is still unavailable.'
+            echo '::error title=StoreKit runtime unavailable::Xcode reported a successful download, but the required iOS 26.1 simulator runtime is still unavailable.'
             exit 1
           fi
 
           storekit_sim_id="$(xcrun simctl create \
-            'ChapterFlow StoreKit iOS 26.2' \
+            'ChapterFlow StoreKit iOS 26.1' \
             com.apple.CoreSimulator.SimDeviceType.iPhone-16-Pro \
             "$runtime_id")"
           cleanup_storekit_simulator() {

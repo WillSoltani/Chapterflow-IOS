@@ -7,7 +7,8 @@
     }
   ],
   "defaultOptions" : {
-    "codeCoverage" : false
+    "codeCoverage" : false,
+    "storeKitConfigurationFileReference" : "Config/ChapterFlow.storekit"
   },
   "testTargets" : [
     {

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Verify the approved fixture and its isolated StoreKit automation wiring.
 
-The dedicated scheme is the automation authority. CI pins this lane to the iOS
-26.2 simulator because later simulator runtimes currently break StoreKitTest.
+The dedicated scheme and test plan are the automation authority. CI pins this
+lane to iOS 26.1 because later simulator runtimes currently break StoreKitTest
+configuration sync under xcodebuild.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[2]
 APPROVED_PATH = ROOT / "Config" / "ApprovedReleaseIdentity.json"
 STOREKIT_PATH = ROOT / "Config" / "ChapterFlow.storekit"
+TEST_PLAN_PATH = ROOT / "ChapterFlow.xctestplan"
 OLD_APP_STOREKIT_PATH = ROOT / "ChapterFlow" / "Config" / "ChapterFlow.storekit"
 PROJECT_PATH = ROOT / "ChapterFlow.xcodeproj" / "project.pbxproj"
 PR_WORKFLOW_PATH = ROOT / ".github" / "workflows" / "pr.yml"
@@ -62,9 +64,25 @@ def parse_scheme(path: Path) -> ET.Element:
 def main() -> None:
     approved = load_json(APPROVED_PATH)
     fixture = load_json(STOREKIT_PATH)
+    test_plan = load_json(TEST_PLAN_PATH)
 
     if OLD_APP_STOREKIT_PATH.exists():
         fail("E_STOREKIT_FIXTURE_INSIDE_APP_TARGET")
+
+    default_test_options = test_plan.get("defaultOptions")
+    if (
+        not isinstance(default_test_options, dict)
+        or default_test_options.get("storeKitConfigurationFileReference")
+        != "Config/ChapterFlow.storekit"
+    ):
+        fail("E_STOREKIT_TEST_PLAN_REFERENCE")
+
+    fixture_settings = fixture.get("settings")
+    if (
+        not isinstance(fixture_settings, dict)
+        or fixture_settings.get("_disableDialogs") is not True
+    ):
+        fail("E_STOREKIT_AUTOMATION_DIALOGS_ENABLED")
 
     if approved.get("schemaVersion") != 1:
         fail("E_STOREKIT_APPROVED_SCHEMA")
@@ -176,8 +194,8 @@ def main() -> None:
     required_workflow_fragments = [
         "/Applications/Xcode_26.2.app/Contents/Developer",
         "export DEVELOPER_DIR=/Applications/Xcode_26.2.app/Contents/Developer",
-        "xcodebuild -downloadPlatform iOS -buildVersion 26.2",
-        "com.apple.CoreSimulator.SimRuntime.iOS-26-2",
+        "xcodebuild -downloadPlatform iOS -buildVersion 26.1",
+        "com.apple.CoreSimulator.SimRuntime.iOS-26-1",
         "StoreKit runtime unavailable",
         "Do not run this contract against live App Store Connect or weaken the exact test.",
         '-destination "platform=iOS Simulator,id=$storekit_sim_id"',
@@ -201,6 +219,9 @@ def main() -> None:
         purchase_flow_source = PURCHASE_FLOW_PATH.read_text(encoding="utf-8")
     except OSError:
         fail("E_STOREKIT_RESTORE_SEAM_UNREADABLE")
+
+    if "StoreKitTest" in purchase_flow_source or "SKTestSession" in purchase_flow_source:
+        fail("E_STOREKIT_CROSS_PROCESS_SESSION")
 
     restore_environment_key = "CF_UITEST_DEFER_APPLE_VERIFY_UNTIL_RESTORE"
     restore_signal_file = ".chapterflow-uitest-restore-began"

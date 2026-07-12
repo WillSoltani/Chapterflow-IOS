@@ -7,6 +7,7 @@
     "_askToBuyEnabled" : false,
     "_askToBuyInterruptionEnabledForAllTransactions" : false,
     "_billingIssueDialogEnabled" : false,
+    "_disableDialogs" : true,
     "_enableIntroductoryOfferEligibilityForAllTransactions" : false,
     "_enableTransactionExpirationTime" : true,
     "_expirationTimeRate" : 0.01666600000000000077,
