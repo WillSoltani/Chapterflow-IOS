@@ -7,214 +7,6 @@ import Networking
 import UIKit
 #endif
 
-// MARK: - Product display wrapper
-
-/// Display-friendly representation of a StoreKit product.
-///
-/// Separates the display data (usable in previews and tests) from the
-/// live `Product` reference (needed only at purchase time).
-public struct StoreProductInfo: Identifiable, Sendable, Equatable {
-    public let id: String
-    public let displayName: String
-    public let displayPrice: String
-    /// Period label such as "month" or "year".
-    public let periodLabel: String
-    /// Whether this is the popular/recommended pick.
-    public let isPopular: Bool
-    /// Introductory/trial offer display text — only populated when the user
-    /// is confirmed eligible via `Product.SubscriptionInfo.isEligibleForIntroOffer`.
-    public let introductoryOfferText: String?
-    /// The raw decimal price value — used for savings-badge calculation. Nil in
-    /// preview / test stubs where a live `Product` is unavailable.
-    public let priceDecimalValue: Decimal?
-
-    public init(
-        id: String,
-        displayName: String,
-        displayPrice: String,
-        periodLabel: String,
-        isPopular: Bool,
-        introductoryOfferText: String? = nil,
-        priceDecimalValue: Decimal? = nil
-    ) {
-        self.id = id
-        self.displayName = displayName
-        self.displayPrice = displayPrice
-        self.periodLabel = periodLabel
-        self.isPopular = isPopular
-        self.introductoryOfferText = introductoryOfferText
-        self.priceDecimalValue = priceDecimalValue
-    }
-
-    /// Package-internal init from a live `Product`.
-    ///
-    /// `isEligibleForIntroOffer` gates the intro offer text: only users confirmed
-    /// eligible via `Product.SubscriptionInfo.isEligibleForIntroOffer` see trial
-    /// copy on the paywall. Ineligible users (who have previously redeemed the offer)
-    /// see the regular pricing without a trial badge.
-    init(product: Product, isPopular: Bool, isEligibleForIntroOffer: Bool = true) {
-        self.id = product.id
-        self.displayName = product.displayName
-        self.displayPrice = product.displayPrice
-        self.isPopular = isPopular
-
-        if let period = product.subscription?.subscriptionPeriod {
-            switch period.unit {
-            case .day:   self.periodLabel = period.value == 1 ? "day" : "\(period.value) days"
-            case .week:  self.periodLabel = period.value == 1 ? "week" : "\(period.value) weeks"
-            case .month: self.periodLabel = period.value == 1 ? "month" : "\(period.value) months"
-            case .year:  self.periodLabel = period.value == 1 ? "year" : "\(period.value) years"
-            @unknown default: self.periodLabel = "period"
-            }
-        } else {
-            self.periodLabel = "one-time"
-        }
-
-        self.priceDecimalValue = product.price
-
-        if isEligibleForIntroOffer, let intro = product.subscription?.introductoryOffer {
-            switch intro.paymentMode {
-            case .freeTrial:
-                self.introductoryOfferText = "Free \(intro.period.value)-\(intro.period.unit.singular) trial"
-            case .payAsYouGo, .payUpFront:
-                self.introductoryOfferText = "\(intro.displayPrice) intro offer"
-            default:
-                self.introductoryOfferText = nil
-            }
-        } else {
-            self.introductoryOfferText = nil
-        }
-    }
-}
-
-private extension Product.SubscriptionPeriod.Unit {
-    var singular: String {
-        switch self {
-        case .day:   return "day"
-        case .week:  return "week"
-        case .month: return "month"
-        case .year:  return "year"
-        @unknown default: return "period"
-        }
-    }
-}
-
-// MARK: - Win-back offer display
-
-/// Display-friendly representation of a StoreKit win-back offer.
-///
-/// Contains only value types so it is Sendable and preview-safe.
-/// The live `Product` and `Product.SubscriptionOffer` are retained internally
-/// by `PaywallModel` and used exclusively at purchase time.
-public struct WinBackDisplayInfo: Sendable, Equatable {
-    public let productID: String
-    public let productDisplayName: String
-    /// StoreKit-localised price for the introductory offer period (e.g. "Free" or "$4.99").
-    public let offerDisplayPrice: String
-    /// Human-readable duration of the offer (e.g. "7 days", "3 months").
-    public let offerPeriodText: String
-    /// Regular subscription price after the offer period (StoreKit-localised).
-    public let regularDisplayPrice: String
-    /// Regular subscription period label (e.g. "year" or "month").
-    public let regularPeriodLabel: String
-    public let paymentMode: PaymentModeKind
-    /// Identifier used to look up the offer at purchase time.
-    public let offerID: String
-
-    public enum PaymentModeKind: Sendable, Equatable {
-        case freeTrial, payUpFront, payAsYouGo
-    }
-
-    /// Human-readable description of the full offer, suitable for a CTA.
-    /// e.g. "7 days free, then $49.99/year"
-    public var fullDescription: String {
-        switch paymentMode {
-        case .freeTrial:
-            return "\(offerPeriodText) free, then \(regularDisplayPrice)/\(regularPeriodLabel)"
-        case .payUpFront, .payAsYouGo:
-            return "\(offerDisplayPrice) for \(offerPeriodText), then \(regularDisplayPrice)/\(regularPeriodLabel)"
-        }
-    }
-
-    /// Public init for Xcode Previews (all-value-type parameters).
-    public init(
-        productID: String,
-        productDisplayName: String,
-        offerDisplayPrice: String,
-        offerPeriodText: String,
-        regularDisplayPrice: String,
-        regularPeriodLabel: String,
-        paymentMode: PaymentModeKind,
-        offerID: String
-    ) {
-        self.productID = productID
-        self.productDisplayName = productDisplayName
-        self.offerDisplayPrice = offerDisplayPrice
-        self.offerPeriodText = offerPeriodText
-        self.regularDisplayPrice = regularDisplayPrice
-        self.regularPeriodLabel = regularPeriodLabel
-        self.paymentMode = paymentMode
-        self.offerID = offerID
-    }
-
-    /// Package-internal init from live StoreKit objects.
-    init(product: Product, offer: Product.SubscriptionOffer) {
-        self.productID = product.id
-        self.productDisplayName = product.displayName
-        self.offerDisplayPrice = offer.displayPrice
-        self.regularDisplayPrice = product.displayPrice
-        self.offerID = offer.id ?? ""
-
-        let offerPeriod = offer.period
-        switch offerPeriod.unit {
-        case .day:   offerPeriodText = offerPeriod.value == 1 ? "1 day" : "\(offerPeriod.value) days"
-        case .week:  offerPeriodText = offerPeriod.value == 1 ? "1 week" : "\(offerPeriod.value) weeks"
-        case .month: offerPeriodText = offerPeriod.value == 1 ? "1 month" : "\(offerPeriod.value) months"
-        case .year:  offerPeriodText = offerPeriod.value == 1 ? "1 year" : "\(offerPeriod.value) years"
-        @unknown default: offerPeriodText = "\(offerPeriod.value) periods"
-        }
-
-        if let sub = product.subscription?.subscriptionPeriod {
-            switch sub.unit {
-            case .day:   regularPeriodLabel = "day"
-            case .week:  regularPeriodLabel = "week"
-            case .month: regularPeriodLabel = "month"
-            case .year:  regularPeriodLabel = "year"
-            @unknown default: regularPeriodLabel = "period"
-            }
-        } else {
-            regularPeriodLabel = "period"
-        }
-
-        switch offer.paymentMode {
-        case .freeTrial:  paymentMode = .freeTrial
-        case .payAsYouGo: paymentMode = .payAsYouGo
-        default:          paymentMode = .payUpFront
-        }
-    }
-}
-
-// MARK: - Purchase state
-
-/// The in-flight state of a purchase initiated from the paywall.
-public enum PurchaseState: Sendable, Equatable {
-    case idle
-    case purchasing
-    case restoring
-    /// A deferred purchase (Ask-to-Buy) is waiting for parental approval.
-    case pendingApproval
-    /// Purchase completed successfully — show celebration before dismissing.
-    case success(productID: String)
-    case failed(String)  // localizedDescription
-
-    public var isInProgress: Bool {
-        switch self {
-        case .purchasing, .restoring: return true
-        default: return false
-        }
-    }
-}
-
 // MARK: - PaywallModel
 
 /// Observable model driving `PaywallView` and any gating presentation.
@@ -231,8 +23,10 @@ public final class PaywallModel {
 
     public private(set) var productInfos: [StoreProductInfo] = []
     public private(set) var subscriptionStatus: SubscriptionStatus = .unknown
+    public private(set) var entitlementResolution: EntitlementResolutionState = .unresolved
     public private(set) var purchaseState: PurchaseState = .idle
     public private(set) var isLoadingProducts = false
+    public private(set) var productAvailability: ProductAvailabilityState = .idle
     public private(set) var errorMessage: String?
     /// Benefits copy from the server's paywall object; `nil` while loading or
     /// on offline/error — the view falls back to the hardcoded ProBenefit set.
@@ -254,10 +48,6 @@ public final class PaywallModel {
     /// Shown when `subscriptionStatus` is `.expired` or `.revoked`.
     public private(set) var winBackDisplay: WinBackDisplayInfo? = nil
 
-    /// Controls the system offer-code redemption sheet.
-    /// Set to `true` by `redeemOfferCode()` and reset by the sheet on dismiss.
-    public var showOfferCodeRedemption = false
-
     // MARK: - Dependencies
 
     private let storeKitService: any StoreKitServicing
@@ -266,12 +56,17 @@ public final class PaywallModel {
 
     /// Live `Product` objects keyed by product ID, used at purchase time.
     private var liveProducts: [String: Product] = [:]
+    private var entitlementRefreshGeneration = 0
+    private var lastStableEntitlementResolution: EntitlementResolutionState = .unresolved
+    /// A `.purchased(proSource:)` result is a backend-authoritative active Pro
+    /// acknowledgement. Keep it until the entitlement read endpoint has
+    /// observed Pro so a lagging response cannot re-enable purchasing. The
+    /// source comes from the backend and is never assumed to be Apple.
+    private var isAwaitingPurchasedGrantReadback = false
+    private(set) var activeBillingAction: BillingAction?
 
     /// Cancels the entitlement-change listener when the model is torn down.
-    /// `nonisolated(unsafe)` allows `deinit` to cancel it without hopping to the main actor.
-    /// Safe: only written from `startListening()` (always @MainActor); `deinit` runs
-    /// after all strong references are gone so there is no concurrent writer at that point.
-    nonisolated(unsafe) private var entitlementListenerTask: Task<Void, Never>?
+    private let entitlementListenerTaskHandle = TaskCancellationHandle()
 
     // MARK: - Init
 
@@ -289,25 +84,35 @@ public final class PaywallModel {
         self.context = context
         self.productInfos = initialProductInfos
         self.subscriptionStatus = initialStatus
+        self.entitlementResolution = .unresolved
+        self.productAvailability = initialProductInfos.isEmpty ? .idle : .available
     }
 
     /// Injects pre-built state for Xcode Previews and unit tests.
     func inject(
         productInfos: [StoreProductInfo],
         status: SubscriptionStatus,
+        entitlementResolution: EntitlementResolutionState,
         proSource: String? = nil,
         serverBenefits: [String]? = nil,
-        winBackDisplay: WinBackDisplayInfo? = nil
+        winBackDisplay: WinBackDisplayInfo? = nil,
+        productAvailability: ProductAvailabilityState? = nil
     ) {
         self.productInfos = productInfos
         self.subscriptionStatus = status
+        self.entitlementResolution = entitlementResolution
+        if entitlementResolution != .resolving {
+            self.lastStableEntitlementResolution = entitlementResolution
+        }
+        self.isAwaitingPurchasedGrantReadback = false
         self.proSource = proSource
         self.serverBenefits = serverBenefits
         self.winBackDisplay = winBackDisplay
+        self.productAvailability = productAvailability ?? (productInfos.isEmpty ? .idle : .available)
     }
 
     deinit {
-        entitlementListenerTask?.cancel()
+        entitlementListenerTaskHandle.cancel()
     }
 
     // MARK: - On-appear
@@ -330,6 +135,16 @@ public final class PaywallModel {
     // MARK: - Selected product (exposed so views can bind)
 
     public private(set) var selectedProductID: String?
+
+    /// Purchases remain disabled until the backend has authoritatively confirmed
+    /// this account is free, even if StoreKit prices have already loaded.
+    public var canPurchase: Bool {
+        entitlementResolution.permitsPurchase
+            && purchaseState.permitsNewBillingAction
+            && activeBillingAction == nil
+            && productAvailability == .available
+            && selectedProductID != nil
+    }
 
     // MARK: - Savings
 
@@ -358,13 +173,15 @@ public final class PaywallModel {
     /// entitlement from the backend whenever StoreKit signals a change.
     /// Call once on `onAppear` / app launch.
     public func startListening() {
-        guard entitlementListenerTask == nil else { return }
-        let stream = storeKitService.entitlementChanges
-        entitlementListenerTask = Task { [weak self] in
-            for await _ in stream {
-                await self?.refreshEntitlement()
+        let storeKitService = storeKitService
+        entitlementListenerTaskHandle.installIfEmpty(
+            Task { [weak self, storeKitService] in
+                let stream = await storeKitService.entitlementChanges()
+                for await _ in stream {
+                    await self?.refreshEntitlement()
+                }
             }
-        }
+        )
     }
 
     // MARK: - Product loading
@@ -372,13 +189,26 @@ public final class PaywallModel {
     /// Fetches products from the App Store, checks intro-offer eligibility, and
     /// populates `productInfos`. Only eligible users see trial/intro pricing.
     public func loadProducts() async {
+        guard !isLoadingProducts else { return }
+        let hadUsableProducts = !productInfos.isEmpty && !liveProducts.isEmpty
         isLoadingProducts = true
         errorMessage = nil
+        if !hadUsableProducts {
+            productAvailability = .loading
+            clearProducts()
+        }
         defer { isLoadingProducts = false }
 
         do {
             let products = try await storeKitService.loadProducts()
+            try Task.checkCancellation()
+            guard !products.isEmpty else {
+                clearProducts()
+                productAvailability = .storeUnavailable
+                return
+            }
             let eligibleIDs = await storeKitService.introOfferEligibleProductIDs()
+            try Task.checkCancellation()
             liveProducts = Dictionary(uniqueKeysWithValues: products.map { ($0.id, $0) })
             eligibleIntroOfferProductIDs = eligibleIDs
             productInfos = products.map { product in
@@ -388,9 +218,63 @@ public final class PaywallModel {
                     isEligibleForIntroOffer: eligibleIDs.contains(product.id)
                 )
             }
+            selectedProductID = productInfos.first?.id
+            productAvailability = .available
         } catch {
-            errorMessage = error.localizedDescription
+            if Task.isCancelled || Self.isCancellation(error) {
+                productAvailability = hadUsableProducts ? .available : .idle
+                return
+            }
+
+            let failureState = Self.availabilityState(for: error)
+            if hadUsableProducts, failureState != .configurationInvalid {
+                productAvailability = .available
+                errorMessage = "Couldn't refresh subscription options. Showing the last loaded prices."
+            } else {
+                clearProducts()
+                productAvailability = failureState
+            }
         }
+    }
+
+    private func clearProducts() {
+        productInfos = []
+        liveProducts = [:]
+        eligibleIntroOfferProductIDs = []
+        selectedProductID = nil
+    }
+
+    private static func isCancellation(_ error: any Error) -> Bool {
+        if error is CancellationError { return true }
+        if let networkError = storeKitNetworkError(from: error) {
+            return networkError.code == .cancelled
+        }
+        return (error as? URLError)?.code == .cancelled
+    }
+
+    private static func availabilityState(for error: any Error) -> ProductAvailabilityState {
+        if let storeKitError = error as? StoreKitServiceError {
+            switch storeKitError {
+            case .invalidConfiguration, .productNotConfigured:
+                return .configurationInvalid
+            case .noProductsFound, .unverified, .accountBindingUnavailable,
+                 .accountBindingMismatch, .accountChangedDuringVerification,
+                 .unsupportedOwnership, .transactionNotActive,
+                 .processedWithoutActiveEntitlement:
+                return .storeUnavailable
+            }
+        }
+
+        if let appError = error as? AppError, case .offline = appError {
+            return .networkUnavailable
+        }
+        if storeKitNetworkError(from: error) != nil {
+            return .networkUnavailable
+        }
+        if error is URLError {
+            return .networkUnavailable
+        }
+        return .storeUnavailable
     }
 
     // MARK: - Server paywall data
@@ -419,28 +303,25 @@ public final class PaywallModel {
 
     /// Initiates a standard purchase for the product with `productID`.
     public func purchase(productID: String) async {
+        guard activeBillingAction == nil else { return }
+        guard entitlementResolution.permitsPurchase else {
+            errorMessage = Self.entitlementRequiredMessage(for: entitlementResolution)
+            return
+        }
         guard let product = liveProducts[productID] else {
             errorMessage = "Product unavailable. Please try again."
             return
         }
+        guard beginBillingAction(.purchase) else { return }
+        defer { endBillingAction(.purchase) }
         purchaseState = .purchasing
         errorMessage = nil
 
         do {
             let result = try await storeKitService.purchase(product)
-            switch result {
-            case .purchased:
-                analytics.track(.purchase(productId: productID))
-                await refreshEntitlement()
-                purchaseState = .success(productID: productID)
-            case .pending:
-                purchaseState = .pendingApproval
-            case .userCancelled:
-                purchaseState = .idle
-            }
+            handlePurchaseResult(result, productID: productID)
         } catch {
-            purchaseState = .failed(error.localizedDescription)
-            errorMessage = error.localizedDescription
+            handleBillingFailure(error)
         }
     }
 
@@ -449,10 +330,17 @@ public final class PaywallModel {
     /// No-ops gracefully if no win-back offer is cached (e.g. user became ineligible
     /// between loading and tapping).
     public func purchaseWinBack() async {
+        guard activeBillingAction == nil else { return }
+        guard entitlementResolution.permitsPurchase else {
+            errorMessage = Self.entitlementRequiredMessage(for: entitlementResolution)
+            return
+        }
         guard let info = winBackDisplay, !info.offerID.isEmpty else {
             errorMessage = "Win-back offer is no longer available. Please try again."
             return
         }
+        guard beginBillingAction(.winBack) else { return }
+        defer { endBillingAction(.winBack) }
         purchaseState = .purchasing
         errorMessage = nil
 
@@ -461,50 +349,36 @@ public final class PaywallModel {
                 productID: info.productID,
                 offerID: info.offerID
             )
-            switch result {
-            case .purchased:
-                analytics.track(.purchase(productId: info.productID))
-                await refreshEntitlement()
-                purchaseState = .success(productID: info.productID)
-            case .pending:
-                purchaseState = .pendingApproval
-            case .userCancelled:
-                purchaseState = .idle
-            }
+            handlePurchaseResult(result, productID: info.productID)
         } catch {
-            purchaseState = .failed(error.localizedDescription)
-            errorMessage = error.localizedDescription
+            handleBillingFailure(error)
         }
-    }
-
-    // MARK: - Offer code redemption
-
-    /// Triggers the system offer-code redemption sheet.
-    ///
-    /// The resulting transaction arrives through `Transaction.updates` in
-    /// `StoreKitService`, which posts it to the backend and fires
-    /// `entitlementChanges` — no additional action needed here.
-    public func redeemOfferCode() {
-        showOfferCodeRedemption = true
     }
 
     // MARK: - Restore
 
     /// Restores prior purchases.
     public func restorePurchases() async {
+        guard beginBillingAction(.restore) else { return }
+        defer { endBillingAction(.restore) }
         purchaseState = .restoring
         errorMessage = nil
         do {
             try await storeKitService.restorePurchases()
             await refreshEntitlement()
-            if subscriptionStatus.isPro {
+            if entitlementResolution == .resolvedPro {
                 purchaseState = .success(productID: "")
+            } else if entitlementResolution == .resolvedFree {
+                let message = "No previous purchases were found for this ChapterFlow account."
+                purchaseState = .failed(message)
+                errorMessage = message
             } else {
-                purchaseState = .idle
+                let message = "We couldn't confirm restored purchases. Check your connection and try again."
+                purchaseState = .failed(message)
+                errorMessage = message
             }
         } catch {
-            purchaseState = .failed(error.localizedDescription)
-            errorMessage = error.localizedDescription
+            handleBillingFailure(error)
         }
     }
 
@@ -535,28 +409,143 @@ public final class PaywallModel {
     /// `subscriptionStatus.isPro` is `true` and the paywall guard prevents
     /// presenting the purchase flow.
     public func refreshEntitlement() async {
-        do {
-            // 1. Refresh local StoreKit status (grace period, billing retry, etc.)
-            let storeStatus = try await storeKitService.currentSubscriptionStatus()
+        entitlementRefreshGeneration += 1
+        let generation = entitlementRefreshGeneration
+        let stableResolution = lastStableEntitlementResolution
+        if stableResolution == .unresolved || stableResolution == .unavailable {
+            entitlementResolution = .resolving
+        }
 
-            // 2. Re-fetch the backend entitlement so gating reflects the server truth.
+        do {
+            async let storeStatusResult = try? await storeKitService.currentSubscriptionStatus()
             let response: EntitlementResponse = try await apiClient.send(Endpoints.getEntitlements())
+            try Task.checkCancellation()
+            let storeStatus = await storeStatusResult ?? .unknown
+            try Task.checkCancellation()
+            guard generation == entitlementRefreshGeneration else { return }
             let entitlement = response.entitlement
 
             // Backend plan is authoritative for gating; StoreKit state surfaces
             // billing-lifecycle detail (grace period, billing retry).
             let backendIsPro = entitlement.plan == .pro && entitlement.proStatus == "active"
+            let storeKitEnded = Self.isEndedAppleSubscription(storeStatus)
             if backendIsPro {
-                // When backend confirms pro, prefer StoreKit state so billing-UI
-                // banners (grace period, billing retry) are surfaced correctly.
-                subscriptionStatus = storeStatus.isPro ? storeStatus : .subscribed(productID: "", expirationDate: nil)
+                isAwaitingPurchasedGrantReadback = false
+                subscriptionStatus = Self.billingLifecycleStatus(for: storeStatus)
                 proSource = entitlement.proSource
+                commitStableEntitlementResolution(.resolvedPro)
+                if purchaseState == .pendingApproval || purchaseState == .confirmingAccess {
+                    purchaseState = .success(productID: storeStatus.activeProductIds.first ?? "")
+                    errorMessage = nil
+                }
+            } else if isAwaitingPurchasedGrantReadback, !storeKitEnded {
+                // `StoreKitServicing.purchased` is issued only after this same
+                // backend acknowledged active Pro. Preserve that newer fact
+                // until the read endpoint catches up; this also prevents a
+                // duplicate purchase from being offered during propagation.
+                commitStableEntitlementResolution(.resolvedPro)
             } else {
-                subscriptionStatus = .notSubscribed
+                isAwaitingPurchasedGrantReadback = false
+                subscriptionStatus = storeKitEnded ? storeStatus : .notSubscribed
                 proSource = nil
+                commitStableEntitlementResolution(.resolvedFree)
+                if case .success = purchaseState {
+                    purchaseState = .idle
+                }
             }
         } catch {
-            // Keep the last known status on refresh failure to avoid flickering.
+            guard generation == entitlementRefreshGeneration else { return }
+            if Task.isCancelled || Self.isCancellation(error) {
+                entitlementResolution = stableResolution
+            } else if stableResolution == .resolvedPro {
+                commitStableEntitlementResolution(.resolvedPro)
+            } else {
+                commitStableEntitlementResolution(.unavailable)
+            }
         }
     }
+
+    private func commitStableEntitlementResolution(_ resolution: EntitlementResolutionState) {
+        guard resolution != .resolving else { return }
+        entitlementResolution = resolution
+        lastStableEntitlementResolution = resolution
+    }
+
+    private static func billingLifecycleStatus(for storeStatus: SubscriptionStatus) -> SubscriptionStatus {
+        switch storeStatus {
+        case .unknown, .notSubscribed:
+            return .subscribed(productID: "", expirationDate: nil)
+        case .subscribed, .pending, .inGracePeriod, .inBillingRetry, .revoked, .expired:
+            return storeStatus
+        }
+    }
+
+    private static func isEndedAppleSubscription(_ storeStatus: SubscriptionStatus) -> Bool {
+        switch storeStatus {
+        case .revoked, .expired:
+            return true
+        case .unknown, .notSubscribed, .subscribed, .pending, .inGracePeriod, .inBillingRetry:
+            return false
+        }
+    }
+
+    private func beginBillingAction(_ action: BillingAction) -> Bool {
+        guard activeBillingAction == nil,
+              purchaseState.permitsNewBillingAction else {
+            return false
+        }
+        activeBillingAction = action
+        return true
+    }
+
+    private func endBillingAction(_ action: BillingAction) {
+        guard activeBillingAction == action else { return }
+        activeBillingAction = nil
+    }
+
+    /// Applies the documented `StoreKitServicing` result contract. Package
+    /// visibility keeps the state transition deterministic and directly
+    /// testable without constructing an opaque StoreKit `Product` fixture.
+    func handlePurchaseResult(_ result: PurchaseResult, productID: String) {
+        switch result {
+        case .purchased(let authoritativeProSource):
+            // Invalidate any entitlement GET that began before the backend
+            // purchase acknowledgement returned.
+            entitlementRefreshGeneration += 1
+            isAwaitingPurchasedGrantReadback = true
+            analytics.track(.purchase(productId: productID))
+            subscriptionStatus = .subscribed(productID: productID, expirationDate: nil)
+            proSource = authoritativeProSource
+            commitStableEntitlementResolution(.resolvedPro)
+            purchaseState = .success(productID: productID)
+            errorMessage = nil
+        case .pending:
+            purchaseState = .pendingApproval
+        case .userCancelled:
+            purchaseState = .idle
+        }
+    }
+
+    private func handleBillingFailure(_ error: any Error) {
+        guard !Task.isCancelled, !Self.isCancellation(error) else {
+            purchaseState = .idle
+            errorMessage = nil
+            return
+        }
+        let message = Self.safeBillingErrorMessage(for: error)
+        purchaseState = .failed(message)
+        errorMessage = message
+    }
+
+    private static func entitlementRequiredMessage(
+        for state: EntitlementResolutionState
+    ) -> String {
+        switch state {
+        case .resolvedPro:
+            return "This account already has Pro access."
+        case .unresolved, .resolving, .unavailable, .resolvedFree:
+            return "We need to confirm your membership before starting a purchase. Check your connection and try again."
+        }
+    }
+
 }

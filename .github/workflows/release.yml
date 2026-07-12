@@ -1,9 +1,9 @@
-name: Release — Archive & TestFlight
+name: Release — Validated Archive (Upload Blocked)
 
-# Triggers: push of a version tag (e.g. v1.0.0) or a manual workflow dispatch.
-# The entire job is guarded by the presence of ASC_KEY_ID; without it the job
-# is skipped cleanly. Add the secrets listed in docs/ios/SIGNING-AND-RELEASE.md
-# after Apple Developer Program enrollment to activate this workflow.
+# A tag or manual dispatch is only a request to release. Protected production
+# inputs must pass the redacting preflight before signing material is installed
+# or an archive is created. TestFlight upload remains hard-disabled until the
+# audited backend authority gaps are closed and independently verified.
 
 on:
   push:
@@ -11,45 +11,42 @@ on:
       - 'v*'
   workflow_dispatch:
     inputs:
-      notes:
-        description: 'What to Test notes for TestFlight'
-        required: false
-        default: ''
+      marketing_version:
+        description: 'Release version, for example 1.0.0'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  # Gate job: the `secrets` context is NOT available in a job-level `if:`
-  # (only github/needs/vars/inputs are), so referencing it there causes a
-  # workflow startup_failure. Instead, read the secret in a step (env is
-  # allowed there), expose it as an output, and gate the real job on `needs`.
-  guard:
-    name: Check signing secrets
-    runs-on: ubuntu-latest
-    outputs:
-      enabled: ${{ steps.check.outputs.enabled }}
-    steps:
-      - name: Check for ASC_KEY_ID
-        id: check
-        env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-        run: |
-          if [ -n "$ASC_KEY_ID" ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::ASC_KEY_ID not set — TestFlight release SKIPPED. Add Apple Developer secrets (see docs/ios/SIGNING-AND-RELEASE.md) to activate."
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-          fi
-
-  testflight:
-    name: Archive → Export → TestFlight
-    needs: guard
-    # `needs` IS allowed in a job-level if — no-op cleanly until Apple
-    # Developer secrets are configured.
-    if: ${{ needs.guard.outputs.enabled == 'true' }}
-    # macos-26 ships Xcode 26 (iOS 26 SDK) required by the app's Liquid Glass UI.
+  validate-release:
+    name: Validate → Archive → Inspect → Export
     runs-on: macos-26
+    timeout-minutes: 90
+    environment: production
+    outputs:
+      ipa-sha256: ${{ steps.stage-release.outputs.ipa_sha256 }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Require the current reviewed main tip
+        run: |
+          git fetch --no-tags origin \
+            +refs/heads/main:refs/remotes/origin/main
+          checked_out_commit="$(git rev-parse 'HEAD^{commit}')"
+          main_commit="$(git rev-parse 'origin/main^{commit}')"
+          if [ "$checked_out_commit" != "$main_commit" ]; then
+            echo E_RELEASE_COMMIT_NOT_MAIN_TIP
+            exit 1
+          fi
 
       - name: Select Xcode 26
         run: |
@@ -58,30 +55,122 @@ jobs:
           xcodebuild -version
 
       - name: Cache SPM repositories
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/Library/Caches/org.swift.swiftpm/repositories
           key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
           restore-keys: |
             ${{ runner.os }}-spm-
 
-      - name: Create Secrets.xcconfig
-        run: cp Secrets.example.xcconfig Secrets.xcconfig
+      - name: Derive immutable build provenance
+        env:
+          MANUAL_MARKETING_VERSION: ${{ inputs.marketing_version }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="$MANUAL_MARKETING_VERSION"
+          fi
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+            echo E_MARKETING_VERSION_MALFORMED
+            exit 1
+          fi
+          commit_sha="$(git rev-parse 'HEAD^{commit}')"
+          if ! [[ "$commit_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo E_BUILD_COMMIT_SHA_MALFORMED
+            exit 1
+          fi
+          echo "MARKETING_VERSION=$version" >> "$GITHUB_ENV"
+          echo "BUILD_NUMBER=$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+          echo "BUILD_COMMIT_SHA=$commit_sha" >> "$GITHUB_ENV"
+          echo "RELEASE_MANIFEST_PATH=$RUNNER_TEMP/ChapterFlowReleaseManifest.json" >> "$GITHUB_ENV"
+          echo "ARCHIVE_PATH=$RUNNER_TEMP/ChapterFlow.xcarchive" >> "$GITHUB_ENV"
 
-      # Write the ASC .p8 private key where xcrun altool/xcodebuild can find it.
+      - name: Test release preflight and archive inspector
+        run: bash scripts/tests/test-release-config.sh
+
+      - name: Validate protected inputs and generate release configuration
+        env:
+          CHAPTERFLOW_ENVIRONMENT: production
+          BUILD_CONFIGURATION: Release
+          PRODUCT_BUNDLE_IDENTIFIER: com.chapterflow.ios
+          API_BASE_URL: ${{ secrets.RELEASE_API_BASE_URL }}
+          COGNITO_REGION: ${{ secrets.RELEASE_COGNITO_REGION }}
+          COGNITO_USER_POOL_ID: ${{ secrets.RELEASE_COGNITO_USER_POOL_ID }}
+          COGNITO_CLIENT_ID: ${{ secrets.RELEASE_COGNITO_CLIENT_ID }}
+          COGNITO_DOMAIN: ${{ secrets.RELEASE_COGNITO_DOMAIN }}
+          APP_STORE_ID: ${{ vars.APP_STORE_ID }}
+          APP_STORE_URL: ${{ vars.APP_STORE_URL }}
+          SUPPORT_URL: ${{ vars.SUPPORT_URL }}
+          APPROVED_STOREKIT_PRODUCT_IDS: ${{ vars.APPROVED_STOREKIT_PRODUCT_IDS }}
+          SK_MONTHLY_PRODUCT_ID: ${{ vars.SK_MONTHLY_PRODUCT_ID }}
+          SK_ANNUAL_PRODUCT_ID: ${{ vars.SK_ANNUAL_PRODUCT_ID }}
+          SK_ANNUAL_UPFRONT_PRODUCT_ID: ${{ vars.SK_ANNUAL_UPFRONT_PRODUCT_ID }}
+          SENTRY_POLICY: ${{ vars.SENTRY_POLICY }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+          DISTRIBUTION_CERT_P12_BASE64: ${{ secrets.DISTRIBUTION_CERT_P12_BASE64 }}
+          DISTRIBUTION_CERT_PASSWORD: ${{ secrets.DISTRIBUTION_CERT_PASSWORD }}
+          BACKEND_DEPLOYMENT_COMMIT_SHA: ${{ vars.BACKEND_DEPLOYMENT_COMMIT_SHA }}
+          BACKEND_ATTESTATION_ID: ${{ vars.BACKEND_ATTESTATION_ID }}
+          BACKEND_ATTESTATION_APPROVED: ${{ vars.BACKEND_ATTESTATION_APPROVED }}
+          BACKEND_APPLE_BUNDLE_ID: ${{ vars.BACKEND_APPLE_BUNDLE_ID }}
+          BACKEND_APPLE_APP_ID: ${{ vars.BACKEND_APPLE_APP_ID }}
+          BACKEND_VERIFICATION_PRODUCT_ALLOWLIST: ${{ vars.BACKEND_VERIFICATION_PRODUCT_ALLOWLIST }}
+          BACKEND_MOBILE_CONFIG_APP_STORE_URL: ${{ vars.BACKEND_MOBILE_CONFIG_APP_STORE_URL }}
+          BACKEND_APPLE_ENVIRONMENT: ${{ vars.BACKEND_APPLE_ENVIRONMENT }}
+          BACKEND_SUBSCRIPTION_GROUP_ID: ${{ vars.BACKEND_SUBSCRIPTION_GROUP_ID }}
+          BACKEND_PRODUCT_ALLOWLIST_ENFORCED: ${{ vars.BACKEND_PRODUCT_ALLOWLIST_ENFORCED }}
+          BACKEND_APPLE_ENVIRONMENT_ENFORCED: ${{ vars.BACKEND_APPLE_ENVIRONMENT_ENFORCED }}
+          BACKEND_SUBSCRIPTION_GROUP_ENFORCED: ${{ vars.BACKEND_SUBSCRIPTION_GROUP_ENFORCED }}
+          BACKEND_ACCOUNT_BINDING_ENFORCED: ${{ vars.BACKEND_ACCOUNT_BINDING_ENFORCED }}
+        run: |
+          python3 scripts/release-config/release_config.py validate
+          python3 scripts/release-config/release_config.py generate \
+            --xcconfig Secrets.xcconfig \
+            --manifest "$RELEASE_MANIFEST_PATH"
+          python3 scripts/release-config/release_config.py validate \
+            --manifest "$RELEASE_MANIFEST_PATH"
+
+      - name: Install SwiftLint
+        run: brew list swiftlint >/dev/null 2>&1 || brew install swiftlint
+
+      - name: Lint and focused release tests
+        run: |
+          swiftlint lint --strict
+          swift test --package-path Packages/CoreKit
+          swift test --package-path Packages/PaywallFeature
+
+      - name: Unsigned Release build gate
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project ChapterFlow.xcodeproj \
+            -scheme ChapterFlow \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            MARKETING_VERSION="$MARKETING_VERSION" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            BUILD_COMMIT_SHA="$BUILD_COMMIT_SHA" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            -skipPackagePluginValidation \
+            -skipMacroValidation
+
       - name: Install App Store Connect API key
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
         run: |
           mkdir -p ~/.appstoreconnect/private_keys
-          echo "$ASC_API_KEY_P8" > \
+          printf '%s' "$ASC_API_KEY_P8" > \
             "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+          chmod 600 "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
 
-      # Import the distribution certificate (.p12) into a temporary keychain.
-      # DISTRIBUTION_CERT_P12_BASE64: base64 of the exported .p12 file.
-      # DISTRIBUTION_CERT_PASSWORD: the password used when exporting the .p12.
-      # See docs/ios/SIGNING-AND-RELEASE.md for how to generate these.
       - name: Import distribution certificate
         env:
           CERTIFICATE_P12_BASE64: ${{ secrets.DISTRIBUTION_CERT_P12_BASE64 }}
@@ -89,27 +178,17 @@ jobs:
         run: |
           KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
           KEYCHAIN_PASSWORD="$(uuidgen)"
-
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
           CERT_PATH="$RUNNER_TEMP/certificate.p12"
-          echo "$CERTIFICATE_P12_BASE64" | base64 --decode > "$CERT_PATH"
+          printf '%s' "$CERTIFICATE_P12_BASE64" | base64 --decode > "$CERT_PATH"
           security import "$CERT_PATH" \
             -P "$CERTIFICATE_PASSWORD" \
             -A -t cert -f pkcs12 \
             -k "$KEYCHAIN_PATH"
           security list-keychain -d user -s "$KEYCHAIN_PATH"
 
-      # Resolve tag name or use "manual" for workflow_dispatch.
-      - name: Derive version string
-        id: version
-        run: |
-          TAG="${GITHUB_REF_NAME:-manual}"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-
-      # Produce ExportOptions.plist with the real team ID substituted.
       - name: Prepare ExportOptions.plist
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -117,10 +196,7 @@ jobs:
           sed "s/TEAM_ID_PLACEHOLDER/$APPLE_TEAM_ID/" \
             Config/ExportOptions.plist > "$RUNNER_TEMP/ExportOptions.plist"
 
-      # Archive for generic iOS device (arm64).
-      # -allowProvisioningUpdates lets xcodebuild download/create provisioning
-      #   profiles from App Store Connect using the installed API key.
-      - name: Archive (Release)
+      - name: Archive validated Release
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
@@ -132,19 +208,39 @@ jobs:
             -scheme ChapterFlow \
             -configuration Release \
             -destination 'generic/platform=iOS' \
-            -archivePath "$RUNNER_TEMP/ChapterFlow.xcarchive" \
+            -archivePath "$ARCHIVE_PATH" \
             -authenticationKeyPath \
               "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8" \
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            MARKETING_VERSION="$MARKETING_VERSION" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            BUILD_COMMIT_SHA="$BUILD_COMMIT_SHA" \
             CODE_SIGN_STYLE=Automatic \
             -allowProvisioningUpdates \
             -skipPackagePluginValidation \
             -skipMacroValidation
 
-      # Export the archive to an IPA with App Store distribution method.
-      # ExportOptions.plist sets method=app-store and signingStyle=automatic.
+      - name: Inspect archive configuration and provenance
+        run: |
+          python3 scripts/release-config/release_config.py inspect-archive \
+            --archive "$ARCHIVE_PATH" \
+            --manifest "$RELEASE_MANIFEST_PATH"
+
+      - name: Verify signed bundle structure
+        run: |
+          app_path="$ARCHIVE_PATH/Products/Applications/ChapterFlow.app"
+          executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' \
+            "$app_path/Info.plist")"
+          if [ -z "$executable" ] || [ ! -f "$app_path/$executable" ]; then
+            echo E_ARCHIVE_EXECUTABLE_MISSING
+            exit 1
+          fi
+          plutil -lint "$app_path/Info.plist"
+          codesign --verify --deep --strict --verbose=2 "$app_path"
+          otool -L "$app_path/$executable" >/dev/null
+
       - name: Export IPA
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
@@ -152,7 +248,7 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild -exportArchive \
-            -archivePath "$RUNNER_TEMP/ChapterFlow.xcarchive" \
+            -archivePath "$ARCHIVE_PATH" \
             -exportPath "$RUNNER_TEMP/export" \
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
             -authenticationKeyPath \
@@ -161,22 +257,121 @@ jobs:
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
             -allowProvisioningUpdates
 
-      # Upload the IPA to TestFlight via the App Store Connect API.
-      - name: Upload to TestFlight
+      - name: Inspect exported IPA configuration and signing
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          ipa_count="$(find "$RUNNER_TEMP/export" -type f -name '*.ipa' | wc -l | tr -d ' ')"
+          if [ "$ipa_count" != "1" ]; then
+            echo E_EXPORTED_IPA_COUNT
+            exit 1
+          fi
+          ipa_path="$(find "$RUNNER_TEMP/export" -type f -name '*.ipa' -print -quit)"
+          inspection_dir="$RUNNER_TEMP/ipa-inspection"
+          mkdir "$inspection_dir"
+          ditto -x -k "$ipa_path" "$inspection_dir"
+          shopt -s nullglob
+          apps=("$inspection_dir"/Payload/*.app)
+          if [ "${#apps[@]}" != "1" ]; then
+            echo E_IPA_APP_COUNT
+            exit 1
+          fi
+          app_path="${apps[0]}"
+          python3 scripts/release-config/release_config.py inspect-app \
+            --app "$app_path" \
+            --manifest "$RELEASE_MANIFEST_PATH"
+          executable="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' \
+            "$app_path/Info.plist")"
+          if [ -z "$executable" ] || [ ! -f "$app_path/$executable" ]; then
+            echo E_IPA_EXECUTABLE_MISSING
+            exit 1
+          fi
+          plutil -lint "$app_path/Info.plist"
+          codesign --verify --deep --strict --verbose=2 "$app_path"
+          otool -L "$app_path/$executable" >/dev/null
+          signing_team="$(codesign -dvv "$app_path" 2>&1 \
+            | awk -F= '/^TeamIdentifier=/{print $2; exit}')"
+          if [ "$signing_team" != "$APPLE_TEAM_ID" ]; then
+            echo E_IPA_SIGNING_TEAM_MISMATCH
+            exit 1
+          fi
+          profile="$app_path/embedded.mobileprovision"
+          if [ ! -f "$profile" ]; then
+            echo E_IPA_PROVISIONING_PROFILE_MISSING
+            exit 1
+          fi
+          security cms -D -i "$profile" > "$RUNNER_TEMP/ipa-profile.plist"
+          profile_team="$(/usr/libexec/PlistBuddy \
+            -c 'Print :TeamIdentifier:0' "$RUNNER_TEMP/ipa-profile.plist")"
+          profile_app_id="$(/usr/libexec/PlistBuddy \
+            -c 'Print :Entitlements:application-identifier' \
+            "$RUNNER_TEMP/ipa-profile.plist")"
+          if [ "$profile_team" != "$APPLE_TEAM_ID" ] \
+            || [ "$profile_app_id" != "$APPLE_TEAM_ID.com.chapterflow.ios" ]; then
+            echo E_IPA_PROVISIONING_IDENTITY_MISMATCH
+            exit 1
+          fi
+
+      - name: Stage validated release artifact
+        id: stage-release
+        run: |
+          ipa_count="$(find "$RUNNER_TEMP/export" -type f -name '*.ipa' | wc -l | tr -d ' ')"
+          if [ "$ipa_count" != "1" ]; then
+            echo E_EXPORTED_IPA_COUNT
+            exit 1
+          fi
+          ipa_path="$(find "$RUNNER_TEMP/export" -type f -name '*.ipa' -print -quit)"
+          ipa_sha256="$(shasum -a 256 "$ipa_path" | awk '{print $1}')"
+          if ! [[ "$ipa_sha256" =~ ^[0-9a-f]{64}$ ]]; then
+            echo E_EXPORTED_IPA_DIGEST
+            exit 1
+          fi
+          staging_dir="$RUNNER_TEMP/validated-release"
+          mkdir "$staging_dir"
+          staged_ipa="$staging_dir/$(basename "$ipa_path")"
+          cp "$ipa_path" "$staged_ipa"
+          echo "ipa_sha256=$ipa_sha256" >> "$GITHUB_OUTPUT"
+          cp "$RELEASE_MANIFEST_PATH" \
+            "$staging_dir/ChapterFlowReleaseManifest.json"
+          printf '%s  %s\n' "$ipa_sha256" "$(basename "$ipa_path")" > \
+            "$staging_dir/ChapterFlow.ipa.sha256"
+          cd "$staging_dir"
+          shasum -a 256 -c ChapterFlow.ipa.sha256
+
+      - name: Remove signing material before artifact publication
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
         run: |
-          IPA_PATH=$(find "$RUNNER_TEMP/export" -name '*.ipa' | head -1)
-          echo "Uploading: $IPA_PATH"
-          xcrun altool --upload-app \
-            --type ios \
-            --file "$IPA_PATH" \
-            --apiKey "$ASC_KEY_ID" \
-            --apiIssuer "$ASC_ISSUER_ID"
+          security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db"
+          rm -f Secrets.xcconfig
+          rm -f "$RUNNER_TEMP/certificate.p12"
+          rm -f "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
 
-      # Clean up the temporary keychain regardless of step outcomes.
-      - name: Delete temporary keychain
+      - name: Retain validated IPA and nonsecret manifest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: validated-ios-release-${{ github.sha }}
+          path: ${{ runner.temp }}/validated-release
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Best-effort signing cleanup after any failure
         if: always()
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
         run: |
           security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
+          rm -f Secrets.xcconfig
+          rm -f "$RUNNER_TEMP/certificate.p12"
+          rm -f "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
+
+  release-upload-blocked:
+    name: TestFlight upload blocked by backend contract
+    needs: validate-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report the intentional release stop
+        run: |
+          echo E_TESTFLIGHT_UPLOAD_NOT_AUTHORIZED
+          echo "Archive validation completed, but upload is hard-disabled in source."
+          exit 1

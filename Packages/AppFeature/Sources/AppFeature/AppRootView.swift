@@ -52,10 +52,12 @@ public struct AppRootView: View {
             #endif
             .environment(model.reachability)
             .task {
+                await model.emitLaunchConfigurationDiagnostic()
                 try? model.configure()
                 model.wirePushRouting()
                 Task { await model.appConfigService.refresh() } // fails open on error
                 model.analytics.track(.appOpen)
+                await model.resolveTestFlightDiagnosticsAccess()
                 // Defer non-critical work so the first interactive frame lands quickly.
                 // analytics.flush() is a network call — fire and forget, don't await.
                 // IntentDonationManager reads the App Intents catalog — background-safe.
@@ -100,10 +102,10 @@ public struct AppRootView: View {
                     )
                 }
             }
-            .onChange(of: model.session.authState) { _, newState in
+            .onChange(of: model.session.authState, initial: true) { _, newState in
                 switch newState {
                 case .signedIn:
-                    model.hydrateDisplayName()
+                    model.handleSignedIn()
                     model.startAPNS()
                     model.startSyncEngine()
                     model.showAuthGate = false
@@ -115,7 +117,7 @@ public struct AppRootView: View {
                         model.isGuestMode = false
                     }
                 case .signedOut:
-                    model.displayName = ""
+                    model.handleSignedOut()
                 default:
                     break
                 }

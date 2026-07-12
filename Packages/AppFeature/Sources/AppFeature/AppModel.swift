@@ -1,5 +1,6 @@
 // swiftlint:disable file_length
 import SwiftUI
+import StoreKit
 import CoreKit
 import Models
 import AuthKit
@@ -250,6 +251,10 @@ public final class AppModel {
     /// The crash reporter (Sentry-backed in prod, no-op in debug when DSN is empty).
     public let crashReporter: any CrashReporter
 
+    /// Privacy-safe, distribution-gated release diagnostics retained for the
+    /// process lifetime so lifecycle restarts cannot duplicate launch events.
+    public let appConfigurationDiagnostics: AppConfigurationDiagnosticsEmitter
+
     #if os(iOS)
     private let metricKitSubscriber: MetricKitCrashSubscriber
     #endif
@@ -258,6 +263,9 @@ public final class AppModel {
 
     /// Retained so `makePaywallModel(context:)` can build `PaywallModel` without re-creating the client.
     private let apiClient: any APIClientProtocol
+    private let configuration: AppConfig
+    private let configurationReadiness: AppSubsystemReadiness
+    private let configuredStoreKitProductIDs: [String]
 
     /// Thread-safe store for the current user ID, readable cross-actor.
     /// Written on MainActor when sign-in completes; reads are safe because
@@ -268,6 +276,7 @@ public final class AppModel {
 
     // swiftlint:disable:next function_body_length
     public init(config: AppConfig = .fromInfoPlist()) {
+        self.configuration = config
         let svc = AuthService(config: config)
         self.authService = svc
         let sm = SessionManager(authService: svc)
@@ -276,27 +285,53 @@ public final class AppModel {
         let container = try? PersistenceController.makeDefault().container
         let client = APIClient(config: config, tokenProvider: sm)
         self.apiClient = client
-        self.appConfigService = AppConfigService(apiClient: client)
+        self.appConfigService = AppConfigService(
+            apiClient: client,
+            appStoreID: config.appStoreID,
+            appStoreURL: config.exactAppStoreURL,
+            supportURL: config.supportURLValue,
+            environment: config.environment,
+            apiBaseURL: config.apiBaseURL
+        )
 
         let reporter = CrashReporterFactory.make(
             dsn: config.sentryDSN,
-            environment: {
-                #if DEBUG
-                return "development"
-                #else
-                return "production"
-                #endif
-            }()
+            environment: config.environment.rawValue
         )
         self.crashReporter = reporter
 
-        let analyticsBaseURL = URL(string: config.apiBaseURL) ?? URL(string: "https://api.chapterflow.ca")!
-        let analyticsTransport = URLSessionAnalyticsTransport(
-            baseURL: analyticsBaseURL,
-            tokenProvider: { [sm] in try? await sm.validToken() }
-        )
-        let analyticsClient = DefaultAnalyticsClient.makeDurable(transport: analyticsTransport)
+        let analyticsClient: any AnalyticsClient
+        if let analyticsBaseURL = URL(string: config.apiBaseURL), analyticsBaseURL.host != nil {
+            let analyticsTransport = URLSessionAnalyticsTransport(
+                baseURL: analyticsBaseURL,
+                tokenProvider: { [sm] in try? await sm.validToken() }
+            )
+            analyticsClient = DefaultAnalyticsClient.makeDurable(transport: analyticsTransport)
+        } else {
+            analyticsClient = NoopAnalyticsClient()
+        }
         self.analytics = analyticsClient
+        let diagnostics = AppConfigurationDiagnosticsEmitter(
+            analytics: analyticsClient,
+            internalAccess: .resolve(
+                environment: config.environment,
+                appStoreReceiptURL: nil
+            )
+        )
+        self.appConfigurationDiagnostics = diagnostics
+
+        let storeKitConfig = StoreKitConfig.from(config)
+        self.configurationReadiness = AppSubsystemReadiness(
+            networking: URL(string: config.apiBaseURL)?.host != nil,
+            authentication: !config.cognitoRegion.isEmpty
+                && !config.cognitoUserPoolID.isEmpty
+                && !config.cognitoClientID.isEmpty
+                && !config.cognitoDomain.isEmpty,
+            storeKit: storeKitConfig.isValid,
+            crashReporting: config.sentryPolicy == .enabled && !config.sentryDSN.isEmpty,
+            appStoreDestination: config.exactAppStoreURL != nil
+        )
+        self.configuredStoreKitProductIDs = storeKitConfig.allProductIDs.sorted()
 
         #if os(iOS)
         let mkSubscriber = MetricKitCrashSubscriber(reporter: reporter, analytics: analyticsClient)
@@ -361,11 +396,23 @@ public final class AppModel {
         let audioPlayer = AudioPlayer(repository: LiveAudioRepository(client: client))
         self.audioPlayerModel = AudioPlayerModel(player: audioPlayer, preferences: prefs)
 
-        let sks = StoreKitService(apiClient: client, config: StoreKitConfig.from(config))
+        let sks = StoreKitService(
+            apiClient: client,
+            config: storeKitConfig,
+            diagnosticsRecorder: diagnostics
+        )
         self.storeKitService = sks
-        self.entitlementService = EntitlementService(storeKitService: sks, apiClient: client)
+        self.entitlementService = EntitlementService(
+            storeKitService: sks,
+            apiClient: client,
+            storeKitConfig: storeKitConfig
+        )
 
-        let authorizer = NotificationAuthorizer()
+        #if os(iOS)
+        let authorizer: any NotificationAuthorizerProtocol = NotificationAuthorizer()
+        #else
+        let authorizer: any NotificationAuthorizerProtocol = HostNotificationAuthorizer()
+        #endif
         let registrationRepo = LiveDeviceRegistrationRepository(apiClient: client)
         self.apnsManager = APNSRegistrationManager(authorizer: authorizer, repository: registrationRepo)
 
@@ -391,6 +438,38 @@ public final class AppModel {
         #endif
     }
 
+    /// Emits the one-per-process validated-configuration event and seeds the
+    /// internal/TestFlight StoreKit diagnostics record. Invalid configurations
+    /// are rejected by the emitter and can never appear as successful startup.
+    public func emitLaunchConfigurationDiagnostic() async {
+        let result = await appConfigurationDiagnostics.emitValidatedConfiguration(
+            configuration,
+            readiness: configurationReadiness
+        )
+        guard result == .emitted else { return }
+        _ = await appConfigurationDiagnostics.recordStoreKitDiagnostics(
+            StoreKitDiagnosticsRecord(
+                configuredProductIDs: configuredStoreKitProductIDs,
+                loadedProductIDs: [],
+                verificationEndpointHealth: .notChecked
+            )
+        )
+    }
+
+    /// Enables StoreKit diagnostics only when StoreKit verifies that this
+    /// production build is running in Apple's sandbox (TestFlight). App Store
+    /// production and unverified app transactions remain fail-closed.
+    public func resolveTestFlightDiagnosticsAccess() async {
+        guard configuration.environment == .production else { return }
+        guard let result = try? await AppTransaction.shared,
+              case .verified(let transaction) = result,
+              transaction.environment == .sandbox else {
+            return
+        }
+        await appConfigurationDiagnostics.updateInternalAccess(.testFlight)
+        await storeKitService.publishDiagnostics()
+    }
+
     // MARK: - Lifecycle
 
     /// Configures Amplify, starts auth-events listener, and begins entitlement refresh.
@@ -398,6 +477,42 @@ public final class AppModel {
     public func configure() throws {
         try session.configure()
         entitlementService.start()
+    }
+
+    /// Establishes account-private state after authentication reaches `.signedIn`.
+    ///
+    /// The Cognito subject is converted immediately into an opaque entitlement
+    /// cache scope; the raw subject is never retained or persisted by PaywallFeature.
+    public func handleSignedIn() {
+        hydrateDisplayName()
+        guard let subject = authenticatedSubject(),
+              UUID(uuidString: subject) != nil,
+              let scope = EntitlementAccountScope(authenticatedSubject: subject) else {
+            entitlementService.deactivateAccount()
+            storeKitService.deactivateAccount()
+            return
+        }
+
+        guard storeKitService.activateAccount(authenticatedSubject: subject) else {
+            entitlementService.deactivateAccount()
+            return
+        }
+        entitlementService.activateAccount(scope)
+        let entitlementService = entitlementService
+        Task { await entitlementService.refresh() }
+    }
+
+    /// Clears account-private observable state for every signed-out transition.
+    ///
+    /// This is also called before the asynchronous sign-out workflow so stale
+    /// Pro access, unlocks, or billing details disappear immediately.
+    public func handleSignedOut() {
+        userIdBox.userId = nil
+        entitlementService.deactivateAccount()
+        storeKitService.deactivateAccount()
+        displayName = ""
+        showPaywall = false
+        showSubscriptionManagement = false
     }
 
     /// Starts APNs registration. Call once after `authState` transitions to `.signedIn`.
@@ -418,7 +533,7 @@ public final class AppModel {
     /// Signs the user out, unregistering the APNs token from the backend first.
     /// Also removes all Spotlight index entries to honour auth state.
     public func signOut() async {
-        userIdBox.userId = nil
+        handleSignedOut()
         await apnsManager.handleSignOut()
         await syncEngineInternal?.stop()
         await session.signOut()
@@ -557,6 +672,19 @@ public final class AppModel {
             return
         }
         displayName = "Reader"
+    }
+
+    /// Returns a stable Cognito identity only while handling the signed-in event.
+    /// JWT `sub` is preferred because the Sign in with Apple summary may omit userId.
+    private func authenticatedSubject() -> String? {
+        if let token = session.currentIdToken(),
+           let profile = UserProfile.from(idToken: token) {
+            let subject = profile.sub.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !subject.isEmpty { return subject }
+        }
+        guard case .signedIn(let user) = session.authState else { return nil }
+        let userId = user.userId.trimmingCharacters(in: .whitespacesAndNewlines)
+        return userId.isEmpty ? nil : userId
     }
 
     // MARK: - Deep-link handling

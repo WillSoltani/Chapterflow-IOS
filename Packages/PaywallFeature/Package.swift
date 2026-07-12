@@ -32,7 +32,12 @@ let package = Package(
             dependencies: [
                 "PaywallFeature",
                 "CoreKit",
+                "DesignSystem",
                 .product(name: "Fixtures", package: "Fixtures"),
+            ],
+            resources: [
+                .copy("Fixtures"),
+                .copy("__Snapshots__"),
             ]
         ),
     ]

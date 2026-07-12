@@ -7,11 +7,11 @@ import Persistence
 // MARK: - Preview StoreKit stub
 
 private actor PreviewStoreKitService: StoreKitServicing {
-    nonisolated let entitlementChanges: AsyncStream<Void> = AsyncStream { _ in }
     private let isProStatus: Bool
 
     init(isPro: Bool = false) { isProStatus = isPro }
 
+    func entitlementChanges() async -> AsyncStream<Void> { AsyncStream { _ in } }
     func loadProducts() async throws -> [Product] { [] }
     func purchase(_ product: Product) async throws -> PurchaseResult { .userCancelled }
     func restorePurchases() async throws {}
@@ -48,13 +48,17 @@ private func previewService(
     )
     let defaults = UserDefaults(suiteName: "preview.\(UUID().uuidString)") ?? .standard
     let store = KeyValueStore(defaults: defaults)
-    // Write to cache before init — service reads it synchronously in init.
-    try? store.set(entitlement, forKey: "com.chapterflow.entitlement.v1")
-    return EntitlementService(
+    guard let scope = EntitlementAccountScope(authenticatedSubject: "preview-account") else {
+        preconditionFailure("The fixed preview account identifier must be valid")
+    }
+    try? store.set(entitlement, forKey: scope.cacheKey)
+    let service = EntitlementService(
         storeKitService: PreviewStoreKitService(isPro: storeKitIsPro),
         apiClient: MockAPIClient(),
         store: store
     )
+    service.activateAccount(scope)
+    return service
 }
 
 // MARK: - Diagnostic view
@@ -130,8 +134,8 @@ private struct EntitlementStatusView: View {
     }
 }
 
-// StoreKit optimism: backend is still free; after refresh StoreKit flips isPro=true.
-#Preview("StoreKit optimism — SK subscribed, backend free") {
+// StoreKit can trigger reconciliation, but backend state remains authoritative.
+#Preview("StoreKit subscribed — backend free") {
     @Previewable @State var service = previewService(plan: .free, storeKitIsPro: true)
     NavigationStack {
         EntitlementStatusView(service: service, bookId: "book-x")

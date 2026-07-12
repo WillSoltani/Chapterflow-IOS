@@ -1,0 +1,8 @@
+#include "Base.xcconfig"
+
+CHAPTERFLOW_ENVIRONMENT = production
+BUILD_CONFIGURATION = Release
+
+// Release automation generates this ignored file only after fail-closed
+// validation. Never substitute Secrets.example.xcconfig here.
+#include? "../Secrets.xcconfig"

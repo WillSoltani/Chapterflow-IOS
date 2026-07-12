@@ -42,9 +42,13 @@ let package = Package(
             dependencies: modules.map { .product(name: $0, package: $0) }
         ),
         // Fixtures is a preview/test-only dependency — not linked into the production target.
-        .testTarget(name: "AppFeatureTests", dependencies: [
-            "AppFeature",
-            .product(name: "Fixtures", package: "Fixtures"),
-        ]),
+        .testTarget(
+            name: "AppFeatureTests",
+            dependencies: [
+                "AppFeature",
+                .product(name: "Fixtures", package: "Fixtures"),
+            ],
+            resources: [.copy("__Snapshots__")]
+        ),
     ]
 )

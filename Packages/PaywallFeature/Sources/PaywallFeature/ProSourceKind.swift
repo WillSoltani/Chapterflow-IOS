@@ -10,6 +10,7 @@ enum ProSourceKind: Equatable {
     case gift
     case flowPoints
     case admin
+    case unknown
     case other(String)
 
     init(rawSource: String?) {
@@ -21,7 +22,7 @@ enum ProSourceKind: Equatable {
         case "flow_points":   self = .flowPoints
         case "admin":         self = .admin
         case let s?:          self = .other(s)
-        case nil:             self = .apple  // unknown — default to Apple CTAs
+        case nil:             self = .unknown
         }
     }
 
@@ -34,12 +35,13 @@ enum ProSourceKind: Equatable {
     var displayName: String {
         switch self {
         case .apple:       return "Apple subscription"
-        case .stripe:      return "web subscription"
-        case .license:     return "license"
-        case .gift:        return "gift"
+        case .stripe:      return "a web subscription"
+        case .license:     return "a license"
+        case .gift:        return "a gift"
         case .flowPoints:  return "Flow Points"
-        case .admin:       return "admin grant"
-        case .other:       return "subscription"
+        case .admin:       return "an admin grant"
+        case .unknown:     return "an unconfirmed ChapterFlow source"
+        case .other:       return "another ChapterFlow source"
         }
     }
 }

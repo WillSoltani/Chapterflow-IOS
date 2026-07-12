@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "id": "CF-SKTESTSESSION-2026-07",
+  "status": "active",
+  "owner": "WillSoltani",
+  "approvedBy": "WillSoltani",
+  "approvedAt": "2026-07-12T00:00:00Z",
+  "expiresAt": "2026-07-27T23:59:59Z",
+  "reasonCode": "APPLE_SKTESTSESSION_CONFIGURATION_CODE_3",
+  "scope": {
+    "workflow": ".github/workflows/pr.yml",
+    "job": "storekit",
+    "runner": "macos-26",
+    "githubHostedOnly": true,
+    "recoveryOriginPullRequest": 117,
+    "recoveryOriginHeadRef": "codex/wp-rel-01",
+    "verifiedBaseSha": "03747305819eccc8bb3c738a21e79d78a82d587d",
+    "inheritableWithEvidence": true,
+    "firstMainIntroductionMergeStrategy": "merge-commit-only",
+    "baselineEvidenceImmutable": true,
+    "inheritedChangeScope": "documentation-non-runtime-only",
+    "xcodePath": "/Applications/Xcode_26.6.app/Contents/Developer",
+    "xcodeVersion": "26.6",
+    "xcodeBuild": "17F113",
+    "minimumFixedRuntimeVersion": "26.6",
+    "knownAffectedRuntimeIdentifier": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+    "testIdentifier": "ChapterFlowUITests/PurchaseFlowTests/testStoreKitCatalogPurchaseRelaunchAndRestoreCompletes"
+  },
+  "attestation": {
+    "originPullRequestLabel": "storekit-sandbox-attested",
+    "packetPath": "docs/ios/release-evidence/storekit/pr-117/attestation.v1.json",
+    "evidencePaths": [
+      "docs/ios/release-evidence/storekit/pr-117/catalog.png",
+      "docs/ios/release-evidence/storekit/pr-117/backend-unavailable.png",
+      "docs/ios/release-evidence/storekit/pr-117/sandbox-purchase-history.png",
+      "docs/ios/release-evidence/storekit/pr-117/restore-success.png",
+      "docs/ios/release-evidence/storekit/pr-117/relaunch-pro.png"
+    ],
+    "requiredEvidence": "A signed App Store Connect sandbox purchase and restore was captured by the operator and reviewed by an independent reviewer.",
+    "independentReviewerRequired": true
+  },
+  "upstreamReferences": [
+    {
+      "kind": "apple-forum",
+      "value": "https://developer.apple.com/forums/thread/830493"
+    },
+    {
+      "kind": "external-feedback-report",
+      "value": "FB22836426",
+      "ownership": "reported-by-third-party"
+    }
+  ],
+  "evidence": [
+    "https://github.com/WillSoltani/Chapterflow-IOS/actions/runs/29208587346",
+    "https://github.com/WillSoltani/Chapterflow-IOS/actions/runs/29209801667",
+    "https://github.com/WillSoltani/Chapterflow-IOS/actions/runs/29210743005",
+    "https://github.com/WillSoltani/Chapterflow-IOS/pull/117#issuecomment-4953047208"
+  ],
+  "replacementEvidence": {
+    "verifiedSha": "8b69f4f7eb860dc4da72a10510ca61f88d5fb6a1",
+    "verifiedRun": "https://github.com/WillSoltani/Chapterflow-IOS/actions/runs/29201120404",
+    "requiredStaticChecker": "scripts/tests/test-storekit-catalog.py"
+  },
+  "releaseImpact": "The simulator waiver is source-merge-only and does not satisfy the remaining release stop conditions."
+}

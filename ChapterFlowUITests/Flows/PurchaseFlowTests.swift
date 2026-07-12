@@ -1,3 +1,4 @@
+import StoreKitTest
 import XCTest
 
 /// XCUITests for the purchase / subscription flow.
@@ -9,8 +10,57 @@ import XCTest
 ///
 /// No real money is charged: all purchases use the test configuration.
 final class PurchaseFlowTests: CFUITestCase {
+    /// Retains the local StoreKit environment for the complete purchase,
+    /// relaunch, and restore contract. The base case first installs the app,
+    /// then this test case binds the local catalog before the tested launch.
+    private var storeKitSession: SKTestSession?
 
     private var robot: AppRobot { AppRobot(app: app) }
+
+    override func prepareForAppLaunch() throws {
+        guard ProcessInfo.processInfo.environment["XCODE_SCHEME_NAME"]
+            == "ChapterFlow-StoreKitTest" else {
+            return
+        }
+
+        // The iOS 26.1 simulator can expose SwiftUI tab items without a valid
+        // activation frame to headless XCTest. This contract is about the
+        // StoreKit purchase/restore boundary, so enter Settings through the
+        // existing DEBUG-only launch route instead of depending on that
+        // unrelated simulator hit-testing path.
+        app.launchArguments.append("--demo-tab=settings")
+    }
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+
+        guard ProcessInfo.processInfo.environment["XCODE_SCHEME_NAME"]
+            == "ChapterFlow-StoreKitTest" else {
+            return
+        }
+
+        // SKTestSession cannot push its catalog until the application is
+        // installed. The base launch performs that install; stop the warm app,
+        // bind the catalog, then relaunch the app under test.
+        app.terminate()
+        _ = try XCTUnwrap(
+            app.wait(for: .notRunning, timeout: 10) ? true : nil,
+            "The StoreKit warm-install launch must terminate before catalog setup"
+        )
+
+        let session = try SKTestSession(configurationFileNamed: "ChapterFlow")
+        session.resetToDefaultState()
+        session.disableDialogs = true
+        session.clearTransactions()
+        storeKitSession = session
+
+        app.launch()
+    }
+
+    override func tearDownWithError() throws {
+        storeKitSession = nil
+        try super.tearDownWithError()
+    }
 
     // MARK: - Free-tier baseline
 
@@ -96,5 +146,190 @@ final class PurchaseFlowTests: CFUITestCase {
             _ = pricingText.waitForExistence(timeout: 10)
         }
         XCTAssert(app.exists, "App must survive paywall navigation")
+    }
+
+    // MARK: - StoreKit purchase contract
+
+    /// Proves that the dedicated scheme loads the approved monthly product from
+    /// StoreKit, displays its local test price, completes a real StoreKit Test
+    /// purchase, receives the additive backend acknowledgement, and refreshes
+    /// the app-wide entitlement to Pro.
+    @MainActor
+    func testStoreKitCatalogPurchaseRelaunchAndRestoreCompletes() {
+        guard storeKitSession != nil else {
+            XCTFail("The dedicated StoreKit scheme did not retain its prelaunch SKTestSession")
+            return
+        }
+
+        robot.waitForTabBar()
+        assertPlan("Free")
+
+        let upgradeButton = app.buttons["Upgrade to ChapterFlow Pro"]
+        reveal(upgradeButton)
+        upgradeButton.tap()
+
+        let monthlyPlan = app.buttons.matching(
+            NSPredicate(
+                format: "label BEGINSWITH %@",
+                "ChapterFlow Pro Monthly, $7.99 per month"
+            )
+        ).firstMatch
+        guard requireStoreKitProduct(monthlyPlan) else {
+            return
+        }
+        revealExisting(monthlyPlan, maxSwipes: 10)
+        XCTAssertTrue(
+            monthlyPlan.label.contains("renews automatically until canceled"),
+            "StoreKit product disclosure must describe automatic renewal"
+        )
+        monthlyPlan.tap()
+        let selectedPlan = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", "Selected"),
+            object: monthlyPlan
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [selectedPlan], timeout: 5),
+            .completed,
+            "Monthly plan selection must settle before subscribing"
+        )
+
+        let subscribeButton = app.buttons["Subscribe – $7.99 / month"]
+        reveal(subscribeButton)
+        subscribeButton.tap()
+
+        assertPurchaseSuccessAndContinue()
+        assertPlan("Pro")
+        XCTAssertTrue(
+            storeKitSession?.allTransactions().contains {
+                $0.productIdentifier == "com.chapterflow.pro.monthly"
+            } == true,
+            "The app purchase must create the approved monthly StoreKit transaction"
+        )
+
+        // Relaunch with the stub reset to FREE while the StoreKit transaction
+        // remains installed. All automatic authorization/reconciliation
+        // verifies stay suppressed so only the user-visible restore action can
+        // release the fixture-backed backend grant.
+        app.terminate()
+        app.launchEnvironment[TestEnv.deferAppleVerificationUntilRestore] = "1"
+        app.launch()
+
+        robot.waitForTabBar()
+        assertPlan("Free")
+
+        let relaunchedUpgradeButton = app.buttons["Upgrade to ChapterFlow Pro"]
+        reveal(relaunchedUpgradeButton)
+        relaunchedUpgradeButton.tap()
+
+        let restoreButton = app.buttons["Restore previous purchases"]
+        reveal(restoreButton, maxSwipes: 12)
+        guard signalExplicitRestoreStarted() else {
+            return
+        }
+        restoreButton.tap()
+
+        assertPurchaseSuccessAndContinue()
+        assertPlan("Pro")
+    }
+
+    @MainActor
+    private func signalExplicitRestoreStarted(
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Bool {
+        guard let appGroupURL = FileManager.default.containerURL(
+            forSecurityApplicationGroupIdentifier: "group.com.chapterflow"
+        ) else {
+            XCTFail("UI-test runner could not access the ChapterFlow App Group", file: file, line: line)
+            return false
+        }
+
+        let signalURL = appGroupURL.appendingPathComponent(
+            ".chapterflow-uitest-restore-began",
+            isDirectory: false
+        )
+        do {
+            try Data().write(to: signalURL, options: .atomic)
+            return true
+        } catch {
+            XCTFail("UI-test runner could not signal explicit restore", file: file, line: line)
+            return false
+        }
+    }
+
+    @MainActor
+    private func reveal(_ element: XCUIElement, maxSwipes: Int = 6) {
+        assertExists(element, timeout: 20)
+        revealExisting(element, maxSwipes: maxSwipes)
+    }
+
+    @MainActor
+    private func revealExisting(_ element: XCUIElement, maxSwipes: Int) {
+        var remainingSwipes = maxSwipes
+        while !element.isHittable && remainingSwipes > 0 {
+            app.swipeUp()
+            remainingSwipes -= 1
+        }
+        XCTAssertTrue(element.isHittable, "Expected element to become tappable: \(element)")
+    }
+
+    @MainActor
+    private func requireStoreKitProduct(
+        _ product: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Bool {
+        if product.waitForExistence(timeout: 20) {
+            return true
+        }
+
+        let unavailableTitle = app.staticTexts["Subscriptions Unavailable"]
+        let retryButton = app.buttons["Try Again"]
+        if unavailableTitle.exists || retryButton.exists {
+            XCTFail(
+                "The local StoreKit catalog did not bind to the app before launch; "
+                    + "Product.products(for:) returned no subscription options.",
+                file: file,
+                line: line
+            )
+        } else {
+            XCTFail(
+                "The approved monthly StoreKit product was not rendered by the paywall.",
+                file: file,
+                line: line
+            )
+        }
+        return false
+    }
+
+    @MainActor
+    private func assertPurchaseSuccessAndContinue() {
+        let successMessage = app.descendants(matching: .any).matching(
+            NSPredicate(
+                format: "label == %@",
+                "Purchase successful. You're now a Pro member."
+            )
+        ).firstMatch
+        assertExists(
+            successMessage,
+            message: "The backend-acknowledged StoreKit action must show success",
+            timeout: 30
+        )
+
+        let continueButton = app.buttons["Continue"]
+        assertHittable(continueButton, message: "Purchase success must be dismissible")
+        continueButton.tap()
+    }
+
+    @MainActor
+    private func assertPlan(_ plan: String) {
+        let planLabel = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label == %@", "Subscription plan: \(plan)")
+        ).firstMatch
+        assertExists(
+            planLabel,
+            message: "Expected the app-wide subscription plan to become \(plan)",
+            timeout: 20
+        )
     }
 }

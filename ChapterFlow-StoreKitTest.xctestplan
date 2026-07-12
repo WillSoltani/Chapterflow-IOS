@@ -1,0 +1,27 @@
+{
+  "configurations" : [
+    {
+      "id" : "50C7F1BC-E75E-4FB5-B774-E94241DAE57D",
+      "name" : "StoreKit Test Scheme Action",
+      "options" : {}
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : false,
+    "storeKitConfiguration" : "Config/ChapterFlow.storekit"
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : false,
+      "selectedTests" : [
+        "PurchaseFlowTests/testStoreKitCatalogPurchaseRelaunchAndRestoreCompletes()"
+      ],
+      "target" : {
+        "containerPath" : "container:ChapterFlow.xcodeproj",
+        "identifier" : "A066BCAEA69222B49E1A8F3C",
+        "name" : "ChapterFlowUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

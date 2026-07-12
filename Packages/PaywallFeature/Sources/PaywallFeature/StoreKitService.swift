@@ -1,93 +1,13 @@
-import Foundation
-import StoreKit
 import CoreKit
+import Foundation
 import Networking
-import Models
+import StoreKit
 
-// MARK: - Result types
-
-/// The outcome of a `StoreKitService.purchase(_:)` call.
-public enum PurchaseResult: Sendable, Equatable {
-    /// The transaction was verified, the backend granted PRO, and the transaction was finished.
-    case purchased
-    /// The purchase is deferred (Ask-to-Buy awaiting parental approval, or SCA).
-    case pending
-    /// The user cancelled the purchase sheet.
-    case userCancelled
-}
-
-/// Errors specific to `StoreKitService` that are not covered by `AppError`.
-public enum StoreKitServiceError: Error, LocalizedError, Sendable {
-    /// StoreKit returned an `.unverified` transaction — never grant access.
-    case unverified(Error)
-    /// No products were found for the configured product IDs.
-    case noProductsFound
-
-    public var errorDescription: String? {
-        switch self {
-        case .unverified:
-            return "The purchase could not be verified. Please contact support."
-        case .noProductsFound:
-            return "Subscription products are unavailable right now. Please try again later."
-        }
-    }
-}
-
-// MARK: - Protocol
-
-/// Abstraction over the concrete `StoreKitService` actor, allowing
-/// `PaywallModel` and tests to swap in a mock.
-public protocol StoreKitServicing: Sendable {
-    /// Fires whenever the entitlement may have changed (purchase, renewal, refund, revocation).
-    var entitlementChanges: AsyncStream<Void> { get }
-
-    func loadProducts() async throws -> [Product]
-    func purchase(_ product: Product) async throws -> PurchaseResult
-    func restorePurchases() async throws
-    func currentSubscriptionStatus() async throws -> SubscriptionStatus
-
-    /// Re-verifies all currently-entitling Apple transactions with the backend,
-    /// without calling `AppStore.sync()`. Used by `EntitlementService` reconciliation
-    /// to process transactions the backend may have missed (e.g. after a renewal).
-    /// Unlike `restorePurchases()`, this is safe to call on every foreground refresh.
-    func verifyCurrentEntitlements() async throws
-
-    /// Returns the UInt64 transaction ID of the currently-entitling Apple transaction,
-    /// or `nil` when no verified subscription transaction exists.
-    ///
-    /// Used to populate the in-app refund-request sheet
-    /// (`Transaction.beginRefundRequest(for:in:)` / SwiftUI `.refundRequestSheet`).
-    func currentTransactionID() async -> UInt64?
-
-    /// Returns the set of configured product IDs for which the current user is eligible
-    /// to receive an introductory offer (free trial or discounted intro price).
-    ///
-    /// Only products in the returned set should display trial/intro pricing on the
-    /// paywall. Users who have previously redeemed an introductory offer for ANY
-    /// product in the subscription group are ineligible.
-    func introOfferEligibleProductIDs() async -> Set<String>
-
-    /// Returns display info for the best eligible win-back offer across all configured
-    /// products, or `nil` when the user has no lapsed subscription or no win-back
-    /// offers are configured in App Store Connect.
-    ///
-    /// The App Store sorts eligible offers with the best offer first.
-    func winBackDisplayInfo() async -> WinBackDisplayInfo?
-
-    /// Purchases a subscription using a win-back offer identified by `offerID`
-    /// for the product identified by `productID`.
-    ///
-    /// The verify-then-finish path is identical to `purchase(_:)`.
-    func purchaseWithWinBack(productID: String, offerID: String) async throws -> PurchaseResult
-}
-
-// MARK: - Default implementations
-
-/// No-op defaults so existing preview / test stubs only need to override methods they care about.
-public extension StoreKitServicing {
-    func introOfferEligibleProductIDs() async -> Set<String> { [] }
-    func winBackDisplayInfo() async -> WinBackDisplayInfo? { nil }
-    func purchaseWithWinBack(productID: String, offerID: String) async throws -> PurchaseResult { .userCancelled }
+struct VerifiedTransactionExecution: Sendable {
+    let accountBinding: StoreKitAccountBinding
+    let transactionID: UInt64
+    let isLegacyTokenless: Bool
+    let jwsRepresentation: String
 }
 
 // MARK: - StoreKitService
@@ -102,9 +22,9 @@ public extension StoreKitServicing {
 ///   via `POST /book/me/billing/apple/verify` and call `transaction.finish()`
 ///   **only after** the backend acknowledges success. An unverified StoreKit
 ///   transaction is rejected and never grants PRO.
-/// - Maintain a long-lived `Transaction.updates` listener that processes
-///   background renewals, refunds, and revocations through the same
-///   verify-then-finish path.
+/// - Maintain a long-lived `Transaction.updates` listener. Active renewals use
+///   verify-then-finish; expired/revoked transactions finish only after the
+///   backend explicitly acknowledges safe terminal processing.
 /// - `restorePurchases()` via `AppStore.sync()` + re-reading current entitlements.
 /// - Expose `currentSubscriptionStatus()` computed from
 ///   `Transaction.currentEntitlements` + `Product.SubscriptionInfo.Status`.
@@ -113,65 +33,131 @@ public actor StoreKitService: StoreKitServicing {
     // MARK: - Stored properties
 
     private let apiClient: any APIClientProtocol
-    private let config: StoreKitConfig
-    private let log = AppLog(category: .billing)
+    let config: StoreKitConfig
+    private let diagnosticsRecorder: (any StoreKitDiagnosticsRecording)?
+    let log = AppLog(category: .billing)
+    let accountContext = StoreKitAccountContext()
+    private var loadedProductIDs: Set<String> = []
+    private var verificationEndpointHealth: StoreKitVerificationEndpointHealth = .notChecked
+
+    let transactionProcessingCoordinator = StoreKitTransactionProcessingCoordinator()
 
     /// Long-lived listener for `Transaction.updates`.
-    /// `nonisolated(unsafe)` lets the init assign it after capturing `self` in a Task,
-    /// and lets `deinit` cancel it without an actor hop.
-    nonisolated(unsafe) private var listenerTask: Task<Void, Never>?
+    private let listenerTaskHandle = TaskCancellationHandle()
 
-    // MARK: - Entitlement change stream
+    // MARK: - Entitlement change broadcasts
 
-    /// Fires `Void` whenever the entitlement may have changed.
-    /// `nonisolated` so observers can iterate without `await`.
-    public nonisolated let entitlementChanges: AsyncStream<Void>
-    private let entitlementContinuation: AsyncStream<Void>.Continuation
+    let entitlementChangeBroadcaster = AsyncEventBroadcaster<Void>()
 
     // MARK: - Init / deinit
 
-    public init(apiClient: any APIClientProtocol, config: StoreKitConfig) {
+    public init(
+        apiClient: any APIClientProtocol,
+        config: StoreKitConfig,
+        diagnosticsRecorder: (any StoreKitDiagnosticsRecording)? = nil
+    ) {
         self.apiClient = apiClient
         self.config = config
-
-        var continuation: AsyncStream<Void>.Continuation!
-        self.entitlementChanges = AsyncStream<Void> { cont in continuation = cont }
-        self.entitlementContinuation = continuation
+        self.diagnosticsRecorder = diagnosticsRecorder
 
         // listenerTask is nil (Optional default) at this point — self is fully initialized.
-        // Start the background listener after self is complete.
-        self.listenerTask = Task {
-            await self.listenForTransactionUpdates()
-        }
+        // The task owns only a weak handler so an idle infinite sequence cannot retain
+        // StoreKitService forever.
+        listenerTaskHandle.replace(
+            with: Self.liveTransactionListener { [weak self] verificationResult in
+                await self?.handleTransactionUpdate(verificationResult)
+            }
+        )
+    }
+
+    init(
+        apiClient: any APIClientProtocol,
+        config: StoreKitConfig,
+        diagnosticsRecorder: (any StoreKitDiagnosticsRecording)? = nil,
+        listenerTaskFactory: StoreKitTransactionListenerTaskFactory
+    ) {
+        self.apiClient = apiClient
+        self.config = config
+        self.diagnosticsRecorder = diagnosticsRecorder
+        listenerTaskHandle.replace(
+            with: listenerTaskFactory { [weak self] verificationResult in
+                await self?.handleTransactionUpdate(verificationResult)
+            }
+        )
     }
 
     nonisolated deinit {
-        listenerTask?.cancel()
-        entitlementContinuation.finish()
+        listenerTaskHandle.cancel()
     }
 
     // MARK: - Public API
 
+    /// Returns a fresh stream for each observer. Events are broadcast to all
+    /// active streams rather than divided between competing iterators.
+    public func entitlementChanges() async -> AsyncStream<Void> {
+        await entitlementChangeBroadcaster.stream()
+    }
+
+    /// Activates the StoreKit account scope for the signed-in Cognito subject.
+    /// Invalid/non-UUID subjects fail closed and clear any previous binding.
+    @discardableResult
+    public nonisolated func activateAccount(authenticatedSubject: String) -> Bool {
+        accountContext.activate(authenticatedSubject: authenticatedSubject)
+    }
+
+    /// Clears the StoreKit account scope immediately on sign-out/account teardown.
+    public nonisolated func deactivateAccount() {
+        accountContext.deactivate()
+    }
+
     /// Fetches subscription products from the App Store for all configured product IDs.
     public func loadProducts() async throws -> [Product] {
+        guard config.isValid else {
+            loadedProductIDs = []
+            await recordDiagnostics()
+            throw StoreKitServiceError.invalidConfiguration
+        }
         let ids = config.allProductIDs
-        guard !ids.isEmpty else { throw StoreKitServiceError.noProductsFound }
-        let products = try await Product.products(for: ids)
-        guard !products.isEmpty else { throw StoreKitServiceError.noProductsFound }
-        return products.sorted { lhs, rhs in
+        let products: [Product]
+        do {
+            products = try await Product.products(for: ids)
+        } catch {
+            loadedProductIDs = []
+            await recordDiagnostics()
+            throw error
+        }
+        let catalogProducts = products.filter { ids.contains($0.id) }
+        loadedProductIDs = Set(catalogProducts.map(\.id))
+        await recordDiagnostics()
+        guard !catalogProducts.isEmpty else { throw StoreKitServiceError.noProductsFound }
+        return catalogProducts.sorted { lhs, rhs in
             lhs.id == config.annualProductID && rhs.id != config.annualProductID
         }
     }
 
+    /// Re-publishes the latest redacted snapshot after distribution access is
+    /// resolved (for example, once a TestFlight app transaction is verified).
+    public func publishDiagnostics() async {
+        await recordDiagnostics()
+    }
+
     /// Initiates the purchase flow for `product`.
     ///
-    /// - Returns: `.purchased` after backend verification and `transaction.finish()`.
+    /// - Returns: `.purchased(proSource:)` after backend verification and
+    ///   `transaction.finish()`. The source is the backend's authoritative
+    ///   entitlement source, which need not be Apple.
     ///   Returns `.pending` for Ask-to-Buy / SCA deferral, `.userCancelled` when dismissed.
     /// - Throws: `StoreKitServiceError.unverified` if StoreKit cannot verify the transaction.
-    ///   Throws `AppError` propagated from the backend verify call.
-    ///   The transaction is NOT finished in either error path.
+    ///   Throws `AppError` when the backend does not acknowledge processing; those
+    ///   paths remain unfinished. A processed acknowledgement is safe to finish,
+    ///   but the method still throws if no active authoritative Pro entitlement
+    ///   remains or if the ChapterFlow account changed before UI completion.
     public func purchase(_ product: Product) async throws -> PurchaseResult {
-        let result = try await product.purchase()
+        guard config.allProductIDs.contains(product.id) else {
+            log.warning("Purchase rejected because the product is outside the configured catalog")
+            throw StoreKitServiceError.productNotConfigured
+        }
+        let result = try await product.purchase(options: accountBoundPurchaseOptions())
         switch result {
         case .success(let verificationResult):
             switch verificationResult {
@@ -179,8 +165,7 @@ public actor StoreKitService: StoreKitServicing {
                 log.warning("Purchase returned unverified transaction — not granting PRO")
                 throw StoreKitServiceError.unverified(error)
             case .verified:
-                try await handleVerifiedResult(verificationResult)
-                return .purchased
+                return try await purchaseResult(for: handleVerifiedResult(verificationResult))
             }
         case .pending:
             log.info("Purchase is pending (Ask-to-Buy or SCA)")
@@ -196,33 +181,89 @@ public actor StoreKitService: StoreKitServicing {
     /// all current entitlement transactions with the backend.
     public func restorePurchases() async throws {
         try await AppStore.sync()
+        try await verifyUnfinishedTransactions()
         try await verifyCurrentEntitlements()
+    }
+
+    /// Replays every unfinished StoreKit transaction through the same
+    /// catalog, ownership, account-token, backend, and finish gates used by a
+    /// direct purchase. One bad transaction cannot prevent later items from
+    /// being examined, but the first failure is reported after the pass.
+    public func verifyUnfinishedTransactions() async throws {
+        var firstFailure: (any Error)?
+        for await result in Transaction.unfinished {
+            switch result {
+            case .unverified(_, let error):
+                if firstFailure == nil {
+                    firstFailure = StoreKitServiceError.unverified(error)
+                }
+            case .verified:
+                do {
+                    _ = try await handleVerifiedResult(
+                        result,
+                        broadcastsTerminalRejection: false
+                    )
+                } catch {
+                    log.warning("Unfinished transaction replay failed: \(Self.safeErrorCode(error))")
+                    if firstFailure == nil {
+                        firstFailure = error
+                    }
+                }
+            }
+        }
+        if let firstFailure {
+            throw firstFailure
+        }
     }
 
     /// Re-verifies all currently-entitling Apple transactions with the backend,
     /// **without** calling `AppStore.sync()`. Safe to call on every foreground refresh
     /// as part of cross-platform reconciliation.
     public func verifyCurrentEntitlements() async throws {
+        var firstFailure: (any Error)?
         for await result in Transaction.currentEntitlements {
-            guard case .verified(let transaction) = result,
-                  config.allProductIDs.contains(transaction.productID) else { continue }
-            do {
-                try await handleVerifiedResult(result)
-            } catch {
-                log.warning("verifyCurrentEntitlements: failed for \(transaction.productID): \(error.localizedDescription)")
+            switch result {
+            case .unverified(_, let error):
+                let verificationError = StoreKitTransactionVerification.currentEntitlementError(
+                    underlyingError: error
+                )
+                log.warning("A current entitlement was unverified")
+                if firstFailure == nil {
+                    firstFailure = verificationError
+                }
+            case .verified(let transaction):
+                guard config.allProductIDs.contains(transaction.productID) else { continue }
+                do {
+                    try await handleVerifiedResult(result)
+                } catch {
+                    log.warning("Current entitlement verification failed: \(Self.safeErrorCode(error))")
+                    if firstFailure == nil {
+                        firstFailure = error
+                    }
+                }
             }
+        }
+        if let firstFailure {
+            throw firstFailure
         }
     }
 
     /// Computes the current subscription status from `Transaction.currentEntitlements`
     /// and `Product.SubscriptionInfo.Status`.
     public func currentSubscriptionStatus() async throws -> SubscriptionStatus {
+        let products = (try? await Product.products(for: config.allProductIDs)) ?? []
+        await authorizeTokenlessSubscriptionHistory(in: products)
+
         var bestProductID: String?
         var bestExpirationDate: Date?
 
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result else { continue }
             guard config.allProductIDs.contains(transaction.productID) else { continue }
+            guard accountContext.ownsTransaction(
+                id: transaction.id,
+                appAccountToken: transaction.appAccountToken
+            ) else { continue }
 
             if let revoked = transaction.revocationDate, revoked <= Date() {
                 return .revoked
@@ -231,36 +272,57 @@ public actor StoreKitService: StoreKitServicing {
             bestExpirationDate = transaction.expirationDate
         }
 
-        guard let productID = bestProductID else {
-            return .notSubscribed
+        if let lifecycleStatus = await accountOwnedLifecycleStatus(in: products) {
+            return lifecycleStatus
         }
+        guard let bestProductID else { return .notSubscribed }
+        return .subscribed(productID: bestProductID, expirationDate: bestExpirationDate)
+    }
 
-        // Refine with subscription lifecycle state (grace period, billing retry).
-        let products = (try? await Product.products(for: [productID])) ?? []
+    private func accountOwnedLifecycleStatus(
+        in products: [Product]
+    ) async -> SubscriptionStatus? {
+        var terminalStatus: SubscriptionStatus?
         for product in products {
             guard let statuses = try? await product.subscription?.status else { continue }
             for status in statuses {
                 guard case .verified = status.renewalInfo,
-                      case .verified = status.transaction else { continue }
+                      case .verified(let statusTransaction) = status.transaction,
+                      accountContext.ownsTransaction(
+                        id: statusTransaction.id,
+                        appAccountToken: statusTransaction.appAccountToken
+                      ) else { continue }
 
                 let state = status.state
                 if state == .subscribed {
-                    return .subscribed(productID: productID, expirationDate: bestExpirationDate)
+                    return .subscribed(
+                        productID: statusTransaction.productID,
+                        expirationDate: statusTransaction.expirationDate
+                    )
                 } else if state == .inGracePeriod {
-                    return .inGracePeriod(productID: productID, expirationDate: bestExpirationDate)
+                    return .inGracePeriod(
+                        productID: statusTransaction.productID,
+                        expirationDate: statusTransaction.expirationDate
+                    )
                 } else if state == .inBillingRetryPeriod {
-                    return .inBillingRetry(productID: productID)
+                    return .inBillingRetry(productID: statusTransaction.productID)
                 } else if state == .revoked {
-                    return .revoked
+                    terminalStatus = .revoked
                 } else if state == .expired {
-                    return .expired(productID: productID)
+                    if terminalStatus == nil {
+                        terminalStatus = .expired(productID: statusTransaction.productID)
+                    }
+                } else {
+                    // Unknown state: avoid presenting another purchase until
+                    // the backend and StoreKit can resolve the lifecycle.
+                    return .subscribed(
+                        productID: statusTransaction.productID,
+                        expirationDate: statusTransaction.expirationDate
+                    )
                 }
-                // Unknown state — treat as subscribed to avoid incorrectly locking out a user.
-                return .subscribed(productID: productID, expirationDate: bestExpirationDate)
             }
         }
-
-        return .subscribed(productID: productID, expirationDate: bestExpirationDate)
+        return terminalStatus
     }
 
     /// Returns the UInt64 ID of the first currently-entitling verified transaction
@@ -268,140 +330,156 @@ public actor StoreKitService: StoreKitServicing {
     public func currentTransactionID() async -> UInt64? {
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result,
-                  config.allProductIDs.contains(transaction.productID) else { continue }
+                  config.allProductIDs.contains(transaction.productID),
+                  accountContext.ownsTransaction(
+                    id: transaction.id,
+                    appAccountToken: transaction.appAccountToken
+                  ) else { continue }
             return transaction.id
         }
         return nil
     }
 
-    // MARK: - Offer eligibility
-
-    /// Returns product IDs for which the current user is eligible for an introductory offer.
-    ///
-    /// Checks `Product.SubscriptionInfo.isEligibleForIntroOffer` per product.
-    public func introOfferEligibleProductIDs() async -> Set<String> {
-        let ids = config.allProductIDs
-        guard !ids.isEmpty else { return [] }
-        let products = (try? await Product.products(for: ids)) ?? []
-        var eligible = Set<String>()
-        for product in products {
-            guard let subscription = product.subscription else { continue }
-            if await subscription.isEligibleForIntroOffer {
-                eligible.insert(product.id)
-            }
-        }
-        return eligible
-    }
-
-    /// Returns display info for the best eligible win-back offer.
-    ///
-    /// Checks `Product.SubscriptionInfo.RenewalInfo.eligibleWinBackOfferIDs`
-    /// (sorted best-first by the App Store) against the configured win-back offers.
-    public func winBackDisplayInfo() async -> WinBackDisplayInfo? {
-        let ids = config.allProductIDs
-        guard !ids.isEmpty else { return nil }
-        let products = (try? await Product.products(for: ids)) ?? []
-
-        for product in products {
-            guard let subscription = product.subscription else { continue }
-            let availableOffers = subscription.winBackOffers
-            guard !availableOffers.isEmpty else { continue }
-
-            // Pull subscription statuses to find which win-back offer IDs this user is eligible for.
-            let statuses = (try? await product.subscription?.status) ?? []
-            var eligibleOfferIDs: [String] = []
-            for status in statuses {
-                if case .verified(let renewalInfo) = status.renewalInfo {
-                    eligibleOfferIDs.append(contentsOf: renewalInfo.eligibleWinBackOfferIDs)
-                }
-            }
-
-            // Match the first (best) eligible offer to its full offer object.
-            guard let bestID = eligibleOfferIDs.first,
-                  let offer = availableOffers.first(where: { $0.id == bestID })
-            else { continue }
-
-            return WinBackDisplayInfo(product: product, offer: offer)
-        }
-        return nil
-    }
-
-    /// Purchases a subscription using a win-back offer.
-    ///
-    /// Looks up the product and offer by ID, then calls `product.purchase(options:)`
-    /// with `.winBackOffer(_:)`. The verify-then-finish path is identical to
-    /// `purchase(_:)`, including posting the JWS to the backend.
-    public func purchaseWithWinBack(productID: String, offerID: String) async throws -> PurchaseResult {
-        let products = (try? await Product.products(for: [productID])) ?? []
-        guard let product = products.first,
-              let offer = product.subscription?.winBackOffers.first(where: { $0.id == offerID })
-        else { throw StoreKitServiceError.noProductsFound }
-
-        let result = try await product.purchase(options: [.winBackOffer(offer)])
-        switch result {
-        case .success(let verificationResult):
-            switch verificationResult {
-            case .unverified(_, let error):
-                log.warning("Win-back purchase returned unverified transaction — not granting PRO")
-                throw StoreKitServiceError.unverified(error)
-            case .verified:
-                try await handleVerifiedResult(verificationResult)
-                return .purchased
-            }
-        case .pending:
-            log.info("Win-back purchase is pending (Ask-to-Buy or SCA)")
-            return .pending
-        case .userCancelled:
-            return .userCancelled
-        @unknown default:
-            return .userCancelled
-        }
-    }
-
     // MARK: - Private
 
-    private func listenForTransactionUpdates() async {
-        for await verificationResult in Transaction.updates {
-            switch verificationResult {
-            case .unverified(_, let error):
-                log.warning("Transaction.updates: unverified transaction ignored: \(error.localizedDescription)")
-            case .verified:
-                do {
-                    try await handleVerifiedResult(verificationResult)
-                } catch {
-                    log.error("Transaction.updates: failed to handle transaction: \(error.localizedDescription)")
-                }
+    private static func liveTransactionListener(
+        _ handler: @escaping @Sendable (VerificationResult<Transaction>) async -> Void
+    ) -> Task<Void, Never> {
+        Task {
+            for await verificationResult in Transaction.updates {
+                guard !Task.isCancelled else { return }
+                await handler(verificationResult)
             }
         }
     }
 
-    /// Core verify-then-finish routine — handles direct purchases, renewals,
-    /// offer-code redemptions, win-back purchases, and Family Sharing grants.
-    ///
-    /// Family Sharing: `Transaction.ownershipType == .familyShared` transactions arrive
-    /// through `Transaction.updates` and `Transaction.currentEntitlements` the same as
-    /// direct purchases. No special filtering by ownership type is applied here, so a
-    /// family member's shared subscription is POSTed to the backend and grants Pro on
-    /// their account automatically.
-    ///
-    /// 1. Extracts the JWS from `VerificationResult.jwsRepresentation`.
-    /// 2. POSTs the JWS to the backend (backend verifies against Apple certs and grants PRO).
-    /// 3. Calls `transaction.finish()` only after the backend succeeds.
-    /// 4. Signals `entitlementChanges` so observers refresh the UI.
-    private func handleVerifiedResult(_ verificationResult: VerificationResult<Transaction>) async throws {
-        guard case .verified(let transaction) = verificationResult else { return }
+    private func handleTransactionUpdate(
+        _ verificationResult: VerificationResult<Transaction>
+    ) async {
+        switch verificationResult {
+        case .unverified:
+            log.warning("Transaction update was unverified and ignored")
+        case .verified:
+            do {
+                _ = try await handleVerifiedResult(verificationResult)
+            } catch {
+                log.error("Transaction update failed: \(Self.safeErrorCode(error))")
+            }
+        }
+    }
 
-        if transaction.ownershipType == .familyShared {
-            log.info("Processing family-shared transaction for \(transaction.productID)")
+    /// Returns the mandatory account-bound option used by every app-initiated
+    /// purchase path. Package visibility keeps the invariant directly testable.
+    func accountBoundPurchaseOptions() throws -> Set<Product.PurchaseOption> {
+        guard let activeAccountBinding = accountContext.currentBinding() else {
+            throw StoreKitServiceError.accountBindingUnavailable
+        }
+        return [activeAccountBinding.purchaseOption]
+    }
+
+    func purchaseResult(
+        for processingResult: StoreKitTransactionProcessingResult
+    ) throws -> PurchaseResult {
+        switch processingResult {
+        case .activeProcessed(let proSource):
+            return .purchased(proSource: proSource)
+        case .terminal:
+            throw StoreKitServiceError.transactionNotActive
+        case .ignored:
+            throw StoreKitServiceError.productNotConfigured
+        }
+    }
+
+    /// Core transaction routine for direct purchases, renewals, offer-code
+    /// redemptions, and win-back purchases.
+    ///
+    /// 1. Rejects transactions outside the build's configured product catalog.
+    /// 2. Requires a UUID-backed active account and rejects cross-account tokens.
+    /// 3. Extracts the JWS from `VerificationResult.jwsRepresentation`.
+    /// 4. POSTs the JWS to the backend for Apple and account-binding verification.
+    /// 5. Finishes only after an authoritative active or terminal acknowledgement.
+    @discardableResult
+    func handleVerifiedResult(
+        _ verificationResult: VerificationResult<Transaction>,
+        broadcastsTerminalRejection: Bool = true,
+        broadcastsEntitlementChange: Bool = true
+    ) async throws -> StoreKitTransactionProcessingResult {
+        guard case .verified(let transaction) = verificationResult else { return .ignored }
+
+        return try await processVerifiedTransaction(
+            transactionID: transaction.id,
+            productID: transaction.productID,
+            appAccountToken: transaction.appAccountToken,
+            ownershipType: transaction.ownershipType,
+            jwsRepresentation: verificationResult.jwsRepresentation,
+            broadcastsTerminalRejection: broadcastsTerminalRejection,
+            broadcastsEntitlementChange: broadcastsEntitlementChange,
+            finish: { await transaction.finish() }
+        )
+    }
+
+    func performVerifiedTransaction(
+        _ execution: VerifiedTransactionExecution,
+        finish: @Sendable () async -> Void
+    ) async throws -> StoreKitTransactionProcessingResult {
+        let endpoint = try Endpoints.verifyApplePurchase(
+            jwsRepresentation: execution.jwsRepresentation
+        )
+        let processingResult: StoreKitTransactionProcessingResult
+        let processedWithoutActiveEntitlement: Bool
+        do {
+            let response: ApplePurchaseVerificationResponse = try await apiClient.send(endpoint)
+            guard response.confirmsAuthoritativelyProcessed else {
+                throw AppError.decoding(InvalidAppleVerificationAcknowledgement())
+            }
+            switch response.processedTransactionState {
+            case .active:
+                processedWithoutActiveEntitlement = !response.authoritativeProIsActive
+                processingResult = .activeProcessed(proSource: response.entitlement.proSource)
+            case .expired, .revoked:
+                processedWithoutActiveEntitlement = false
+                processingResult = .terminal
+            case .unknown, nil:
+                // `confirmsAuthoritativelyProcessed` already excludes this,
+                // but keep the finish gate locally explicit and fail closed.
+                throw AppError.decoding(InvalidAppleVerificationAcknowledgement())
+            }
+            if execution.isLegacyTokenless {
+                accountContext.authorizeLegacyTransaction(
+                    execution.transactionID,
+                    for: execution.accountBinding
+                )
+            }
+            verificationEndpointHealth = .healthy
+            await recordDiagnostics()
+        } catch {
+            if let health = Self.verificationEndpointHealth(after: error) {
+                verificationEndpointHealth = health
+                await recordDiagnostics()
+            }
+            throw error
         }
 
-        let endpoint = try Endpoints.verifyApplePurchase(
-            jwsRepresentation: verificationResult.jwsRepresentation
-        )
-        let _: EntitlementResponse = try await apiClient.send(endpoint)
-
-        await transaction.finish()
-        log.info("Transaction finished after backend grant: \(transaction.productID)")
-        entitlementContinuation.yield(())
+        await finish()
+        log.info("Transaction finished after authoritative backend processing")
+        guard accountContext.currentBinding() == execution.accountBinding else {
+            throw StoreKitServiceError.accountChangedDuringVerification
+        }
+        if processedWithoutActiveEntitlement {
+            throw StoreKitServiceError.processedWithoutActiveEntitlement
+        }
+        return processingResult
     }
+
+    private func recordDiagnostics() async {
+        guard let diagnosticsRecorder else { return }
+        _ = await diagnosticsRecorder.recordStoreKitDiagnostics(
+            StoreKitDiagnosticsRecord(
+                configuredProductIDs: config.allProductIDs.sorted(),
+                loadedProductIDs: loadedProductIDs.sorted(),
+                verificationEndpointHealth: verificationEndpointHealth
+            )
+        )
+    }
+
 }

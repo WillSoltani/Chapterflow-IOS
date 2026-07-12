@@ -84,22 +84,16 @@ struct WinBackDisplayInfoTests {
 @MainActor
 struct PaywallModelOfferSurfaceTests {
 
-    @Test("redeemOfferCode sets showOfferCodeRedemption to true")
-    func redeemOfferCodeSetsFlag() {
-        let model = PaywallModel(
-            storeKitService: StubStoreKitService(),
-            apiClient: MockAPIClient()
-        )
-        #expect(!model.showOfferCodeRedemption)
-        model.redeemOfferCode()
-        #expect(model.showOfferCodeRedemption)
-    }
-
     @Test("purchaseWinBack with no winBackDisplay sets errorMessage")
     func purchaseWinBackNoDisplay() async {
         let model = PaywallModel(
             storeKitService: StubStoreKitService(),
             apiClient: MockAPIClient()
+        )
+        model.inject(
+            productInfos: [],
+            status: .notSubscribed,
+            entitlementResolution: .resolvedFree
         )
         await model.purchaseWinBack()
         #expect(model.errorMessage != nil)
@@ -125,6 +119,7 @@ struct PaywallModelOfferSurfaceTests {
         model.inject(
             productInfos: [],
             status: .expired(productID: "com.cf.annual"),
+            entitlementResolution: .resolvedFree,
             winBackDisplay: winBack
         )
         #expect(model.winBackDisplay == winBack)
@@ -176,6 +171,7 @@ struct PaywallModelOfferSurfaceTests {
         model.inject(
             productInfos: [],
             status: .expired(productID: "com.cf.annual"),
+            entitlementResolution: .resolvedFree,
             winBackDisplay: winBack
         )
         await model.purchaseWinBack()

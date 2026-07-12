@@ -12,5 +12,5 @@ public protocol EntitlementRepository: Sendable {
 
     /// Posts a signed Apple JWS transaction for server-side verification and PRO grant.
     /// Maps to `POST /book/me/billing/apple/verify`.
-    func verifyAppleTransaction(_ jws: String) async throws -> EntitlementResponse
+    func verifyAppleTransaction(_ jws: String) async throws -> ApplePurchaseVerificationResponse
 }

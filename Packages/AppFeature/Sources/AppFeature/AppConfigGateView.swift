@@ -10,16 +10,32 @@ import Networking
 struct AppConfigGateModifier: ViewModifier {
     let service: AppConfigService
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     func body(content: Content) -> some View {
         content
+            .allowsHitTesting(!isBlocking)
+            .accessibilityHidden(isBlocking)
             // Blocking states cover everything and cannot be dismissed.
             .overlay {
                 switch service.gateState {
                 case .hardGate(let message):
-                    AppUpdateRequiredView(message: message, appStoreURL: service.appStoreURL)
+                    if let appStoreURL = service.appStoreURL {
+                        AppUpdateRequiredView(
+                            message: message,
+                            appStoreURL: appStoreURL,
+                            supportURL: service.supportURL
+                        )
                         .transition(.opacity)
+                    } else {
+                        MaintenanceView(
+                            message: "An update is required, but the App Store listing is temporarily unavailable.",
+                            supportURL: service.supportURL
+                        )
+                        .transition(.opacity)
+                    }
                 case .maintenance(let message):
-                    MaintenanceView(message: message)
+                    MaintenanceView(message: message, supportURL: service.supportURL)
                         .transition(.opacity)
                 case .none, .softNudge:
                     EmptyView()
@@ -27,17 +43,35 @@ struct AppConfigGateModifier: ViewModifier {
             }
             // Soft nudge floats at the top and is dismissible.
             .overlay(alignment: .top) {
-                if service.shouldShowSoftNudge, case .softNudge(_, let message) = service.gateState {
+                if service.shouldShowSoftNudge,
+                   case .softNudge(_, let message) = service.gateState,
+                   let appStoreURL = service.appStoreURL {
                     UpdateAvailableNudge(
                         message: message,
-                        appStoreURL: service.appStoreURL,
+                        appStoreURL: appStoreURL,
                         onDismiss: { service.dismissSoftNudge() }
                     )
                     .padding(.top, .cfSpacing8)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .transition(
+                        reduceMotion
+                            ? .identity
+                            : .move(edge: .top).combined(with: .opacity)
+                    )
                 }
             }
-            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: service.gateState)
+            .animation(
+                reduceMotion ? nil : .spring(response: 0.4, dampingFraction: 0.85),
+                value: service.gateState
+            )
+    }
+
+    private var isBlocking: Bool {
+        switch service.gateState {
+        case .hardGate, .maintenance:
+            return true
+        case .none, .softNudge:
+            return false
+        }
     }
 }
 
@@ -55,6 +89,7 @@ extension View {
 struct AppUpdateRequiredView: View {
     let message: String?
     let appStoreURL: URL
+    let supportURL: URL?
 
     var body: some View {
         BlockingGateScaffold(
@@ -62,15 +97,49 @@ struct AppUpdateRequiredView: View {
             title: "Update Required",
             message: message ?? "This version of ChapterFlow is no longer supported. Please update to the latest version to continue."
         ) {
-            Link(destination: appStoreURL) {
-                Text("Update Now")
-                    .font(.cfHeadline)
-                    .frame(maxWidth: .infinity)
+            AppStoreUpdateActions(appStoreURL: appStoreURL, supportURL: supportURL)
+        }
+    }
+}
+
+private struct AppStoreUpdateActions: View {
+    let appStoreURL: URL
+    let supportURL: URL?
+
+    @Environment(\.openURL) private var openURL
+    @State private var didFailToOpen = false
+    @AccessibilityFocusState private var failureIsFocused: Bool
+
+    var body: some View {
+        VStack(spacing: .cfSpacing12) {
+            Button("Update Now") {
+                didFailToOpen = false
+                openURL(appStoreURL) { accepted in
+                    didFailToOpen = !accepted
+                    failureIsFocused = !accepted
+                }
             }
+            .font(.cfHeadline)
+            .frame(maxWidth: .infinity)
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .tint(.cfAccent)
             .accessibilityLabel("Update ChapterFlow on the App Store")
+
+            if didFailToOpen {
+                Text("The App Store could not be opened. Try again or contact support.")
+                    .font(.cfFootnote)
+                    .foregroundStyle(Color.cfSecondaryLabel)
+                    .multilineTextAlignment(.center)
+                    .accessibilityFocused($failureIsFocused)
+            }
+
+            if let supportURL {
+                Link("Contact Support", destination: supportURL)
+                    .font(.cfSubheadline.weight(.semibold))
+                    .frame(minHeight: .cfSpacing48)
+                    .accessibilityHint("Opens ChapterFlow support")
+            }
         }
     }
 }
@@ -81,13 +150,26 @@ struct AppUpdateRequiredView: View {
 /// downtime. Offers no navigation — the app is unusable until the server returns.
 struct MaintenanceView: View {
     let message: String?
+    let supportURL: URL?
+
+    init(message: String?, supportURL: URL? = nil) {
+        self.message = message
+        self.supportURL = supportURL
+    }
 
     var body: some View {
         BlockingGateScaffold(
             systemImage: "wrench.and.screwdriver.fill",
             title: "Down for Maintenance",
             message: message ?? "ChapterFlow is temporarily unavailable while we make improvements. Please check back soon."
-        )
+        ) {
+            if let supportURL {
+                Link("Contact Support", destination: supportURL)
+                    .font(.cfHeadline)
+                    .frame(minHeight: .cfSpacing48)
+                    .accessibilityHint("Opens ChapterFlow support")
+            }
+        }
     }
 }
 
@@ -101,12 +183,53 @@ struct UpdateAvailableNudge: View {
     let onDismiss: () -> Void
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                verticalLayout
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    horizontalLayout
+                    verticalLayout
+                }
+            }
+        }
+        .padding(.horizontal, .cfSpacing16)
+        .padding(.vertical, .cfSpacing12)
+        .background(nudgeBackground, in: RoundedRectangle(cornerRadius: .cfRadius16, style: .continuous))
+        .padding(.horizontal, .cfSpacing16)
+        .accessibilityElement(children: .contain)
+    }
+
+    private var horizontalLayout: some View {
         HStack(spacing: .cfSpacing12) {
+            updateMessage
+            Spacer(minLength: .cfSpacing8)
+            updateLink
+            dismissButton
+        }
+    }
+
+    private var verticalLayout: some View {
+        VStack(alignment: .leading, spacing: .cfSpacing12) {
+            HStack(alignment: .top, spacing: .cfSpacing8) {
+                updateMessage
+                Spacer(minLength: .cfSpacing8)
+                dismissButton
+            }
+            updateLink
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var updateMessage: some View {
+        HStack(alignment: .top, spacing: .cfSpacing12) {
             Image(systemName: "sparkles")
                 .font(.cfSubheadline)
                 .foregroundStyle(Color.cfAccent)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: .cfSpacing2) {
                 Text("Update available")
                     .font(.cfSubheadline.weight(.semibold))
@@ -114,28 +237,32 @@ struct UpdateAvailableNudge: View {
                 Text(message ?? "A new version of ChapterFlow is ready.")
                     .font(.cfCaption)
                     .foregroundStyle(Color.cfSecondaryLabel)
-                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            Spacer(minLength: .cfSpacing8)
-            Link("Update", destination: appStoreURL)
-                .font(.cfSubheadline.weight(.semibold))
-                .foregroundStyle(Color.cfAccent)
-                .accessibilityLabel("Update ChapterFlow on the App Store")
-            Button {
-                onDismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.cfCaption.weight(.semibold))
-                    .foregroundStyle(Color.cfSecondaryLabel)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Dismiss update notice")
         }
-        .padding(.horizontal, .cfSpacing16)
-        .padding(.vertical, .cfSpacing12)
-        .background(nudgeBackground, in: RoundedRectangle(cornerRadius: .cfRadius16, style: .continuous))
-        .padding(.horizontal, .cfSpacing16)
-        .accessibilityElement(children: .contain)
+    }
+
+    private var updateLink: some View {
+        Link("Update", destination: appStoreURL)
+            .font(.cfSubheadline.weight(.semibold))
+            .foregroundStyle(Color.cfAccent)
+            .frame(minHeight: .cfSpacing48)
+            .accessibilityLabel("Update ChapterFlow on the App Store")
+    }
+
+    private var dismissButton: some View {
+        Button(action: onDismiss) {
+            Image(systemName: "xmark")
+                .font(.cfCaption.weight(.semibold))
+                .foregroundStyle(Color.cfSecondaryLabel)
+                .frame(
+                    minWidth: .cfIconLarge,
+                    minHeight: .cfIconLarge
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Dismiss update notice")
     }
 
     private var nudgeBackground: some ShapeStyle {
@@ -156,6 +283,8 @@ private struct BlockingGateScaffold<Action: View>: View {
     let message: String
     @ViewBuilder var action: () -> Action
 
+    @AccessibilityFocusState private var headingIsFocused: Bool
+
     init(
         systemImage: String,
         title: String,
@@ -169,54 +298,84 @@ private struct BlockingGateScaffold<Action: View>: View {
     }
 
     var body: some View {
-        ZStack {
-            Color.cfBackground.ignoresSafeArea()
-            VStack(spacing: .cfSpacing24) {
-                Spacer()
-                Image(systemName: systemImage)
-                    .font(.system(size: 56, weight: .semibold))
-                    .foregroundStyle(Color.cfAccent)
-                    .accessibilityHidden(true)
-                VStack(spacing: .cfSpacing12) {
-                    Text(title)
-                        .font(.cfTitle1)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(Color.cfLabel)
-                    Text(message)
-                        .font(.cfBody)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(Color.cfSecondaryLabel)
-                }
-                .padding(.horizontal, .cfSpacing24)
-                Spacer()
-                action()
+        GeometryReader { geometry in
+            ZStack {
+                Color.cfBackground.ignoresSafeArea()
+                ScrollView {
+                    VStack(spacing: .cfSpacing24) {
+                        Spacer(minLength: .cfSpacing24)
+                        Image(systemName: systemImage)
+                            .font(.system(size: .cfIconLarge, weight: .semibold))
+                            .foregroundStyle(Color.cfAccent)
+                            .accessibilityHidden(true)
+                        VStack(spacing: .cfSpacing12) {
+                            Text(title)
+                                .font(.cfTitle1)
+                                .multilineTextAlignment(.center)
+                                .foregroundStyle(Color.cfLabel)
+                                .accessibilityAddTraits(.isHeader)
+                                .accessibilityFocused($headingIsFocused)
+                            Text(message)
+                                .font(.cfBody)
+                                .multilineTextAlignment(.center)
+                                .foregroundStyle(Color.cfSecondaryLabel)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        action()
+                        Spacer(minLength: .cfSpacing24)
+                    }
                     .padding(.horizontal, .cfSpacing24)
-                    .padding(.bottom, .cfSpacing32)
+                    .padding(.vertical, .cfSpacing32)
+                    .frame(
+                        maxWidth: .infinity,
+                        minHeight: geometry.size.height,
+                        alignment: .center
+                    )
+                }
+                .scrollBounceBehavior(.basedOnSize)
             }
         }
         // Block all interaction with content behind the gate.
         .contentShape(Rectangle())
         .accessibilityElement(children: .contain)
         .accessibilityAddTraits(.isModal)
+        .task {
+            headingIsFocused = true
+        }
     }
 }
 
 // MARK: - Previews
 
 #if DEBUG
+private enum AppConfigGatePreviewURL {
+    static let appStore = URL(string: "https://apps.apple.com/app/id1234567890")
+        ?? URL(fileURLWithPath: "/")
+    static let support = URL(string: "https://support.chapterflow.test/help")
+}
+
 #Preview("Hard gate — light") {
-    AppUpdateRequiredView(message: nil, appStoreURL: URL(string: "https://apps.apple.com")!)
+    AppUpdateRequiredView(
+        message: nil,
+        appStoreURL: AppConfigGatePreviewURL.appStore,
+        supportURL: AppConfigGatePreviewURL.support
+    )
 }
 
 #Preview("Hard gate — dark") {
-    AppUpdateRequiredView(message: nil, appStoreURL: URL(string: "https://apps.apple.com")!)
+    AppUpdateRequiredView(
+        message: nil,
+        appStoreURL: AppConfigGatePreviewURL.appStore,
+        supportURL: AppConfigGatePreviewURL.support
+    )
         .preferredColorScheme(.dark)
 }
 
-#Preview("Hard gate — XXL") {
+#Preview("Hard gate — small phone · AX5", traits: .fixedLayout(width: 320, height: 568)) {
     AppUpdateRequiredView(
         message: "A critical update is required to keep reading.",
-        appStoreURL: URL(string: "https://apps.apple.com")!
+        appStoreURL: AppConfigGatePreviewURL.appStore,
+        supportURL: AppConfigGatePreviewURL.support
     )
     .environment(\.dynamicTypeSize, .accessibility5)
 }
@@ -239,7 +398,7 @@ private struct BlockingGateScaffold<Action: View>: View {
     VStack {
         UpdateAvailableNudge(
             message: "Version 2.4 adds offline audio.",
-            appStoreURL: URL(string: "https://apps.apple.com")!,
+            appStoreURL: AppConfigGatePreviewURL.appStore,
             onDismiss: {}
         )
         Spacer()
@@ -251,7 +410,7 @@ private struct BlockingGateScaffold<Action: View>: View {
     VStack {
         UpdateAvailableNudge(
             message: nil,
-            appStoreURL: URL(string: "https://apps.apple.com")!,
+            appStoreURL: AppConfigGatePreviewURL.appStore,
             onDismiss: {}
         )
         Spacer()
@@ -260,11 +419,11 @@ private struct BlockingGateScaffold<Action: View>: View {
     .preferredColorScheme(.dark)
 }
 
-#Preview("Soft nudge — XXL") {
+#Preview("Soft nudge — small phone · AX5", traits: .fixedLayout(width: 320, height: 568)) {
     VStack {
         UpdateAvailableNudge(
             message: "A new version of ChapterFlow is ready.",
-            appStoreURL: URL(string: "https://apps.apple.com")!,
+            appStoreURL: AppConfigGatePreviewURL.appStore,
             onDismiss: {}
         )
         Spacer()

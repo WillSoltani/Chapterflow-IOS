@@ -375,9 +375,9 @@ struct PaywallModelAlreadyProGuardTests {
 // MARK: - Mock StoreKit service (test double)
 
 private actor MockStoreKitService: StoreKitServicing {
-    nonisolated let entitlementChanges: AsyncStream<Void> = AsyncStream { _ in }
     var mockStatus: SubscriptionStatus = .notSubscribed
 
+    func entitlementChanges() async -> AsyncStream<Void> { AsyncStream { _ in } }
     func loadProducts() async throws -> [Product] { [] }
     func purchase(_ product: Product) async throws -> PurchaseResult { .userCancelled }
     func restorePurchases() async throws {}

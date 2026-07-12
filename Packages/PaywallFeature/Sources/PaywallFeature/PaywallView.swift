@@ -15,10 +15,26 @@ public struct PaywallView: View {
 
     @State private var model: PaywallModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showSuccessOverlay = false
+    let performsInitialLoad: Bool
+    private let reduceMotionOverride: Bool?
 
     public init(model: PaywallModel) {
         self._model = State(initialValue: model)
+        self.performsInitialLoad = true
+        self.reduceMotionOverride = nil
+    }
+
+    init(
+        previewModel model: PaywallModel,
+        showSuccessOverlay: Bool = false,
+        reduceMotionOverride: Bool? = nil
+    ) {
+        self._model = State(initialValue: model)
+        self._showSuccessOverlay = State(initialValue: showSuccessOverlay)
+        self.performsInitialLoad = false
+        self.reduceMotionOverride = reduceMotionOverride
     }
 
     public var body: some View {
@@ -27,26 +43,18 @@ public struct PaywallView: View {
                 ScrollView {
                     VStack(spacing: .cfSpacing24) {
                         headerSection
-                        if model.subscriptionStatus.isPro {
+                        if model.entitlementResolution == .resolvedPro
+                            || model.subscriptionStatus.isPro {
                             alreadyProSection
                         } else {
                             benefitsSection
-                            if let winBack = model.winBackDisplay, model.subscriptionStatus.isLapsed {
-                                winBackSection(winBack)
-                            } else {
-                                if model.isLoadingProducts {
-                                    productsLoadingSection
-                                } else if !model.productInfos.isEmpty {
-                                    productsSection
-                                }
-                                if let error = model.errorMessage {
-                                    Text(error)
-                                        .font(.cfCaption)
-                                        .foregroundStyle(.red)
-                                        .multilineTextAlignment(.center)
-                                        .padding(.cfSpacing8)
-                                }
-                                ctaSection
+                            entitlementAwareOfferSection
+                            if let error = model.errorMessage {
+                                Text(error)
+                                    .font(.cfCaption)
+                                    .foregroundStyle(.red)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.cfSpacing8)
                             }
                         }
                         footerSection
@@ -68,30 +76,27 @@ public struct PaywallView: View {
                     }
                 }
             }
+            .accessibilityHidden(showSuccessOverlay)
 
             if showSuccessOverlay {
-                successOverlayView
+                PaywallSuccessOverlay(
+                    isActive: showSuccessOverlay,
+                    reduceMotion: reduceMotionOverride ?? reduceMotion
+                ) {
+                    dismiss()
+                }
             }
         }
         .task {
+            guard performsInitialLoad else { return }
             await model.onAppear()
             model.startListening()
         }
         .onChange(of: model.purchaseState) { _, newState in
             if case .success = newState {
                 showSuccessOverlay = true
-                Task {
-                    try? await Task.sleep(for: .seconds(2.5))
-                    dismiss()
-                }
             }
         }
-        #if os(iOS)
-        .offerCodeRedemption(isPresented: Bindable(model).showOfferCodeRedemption) { _ in
-            // Resulting transaction flows through Transaction.updates in StoreKitService,
-            // which posts to the backend and fires entitlementChanges automatically.
-        }
-        #endif
     }
 
     // MARK: - Header
@@ -99,7 +104,7 @@ public struct PaywallView: View {
     private var headerSection: some View {
         VStack(spacing: .cfSpacing12) {
             Image(systemName: "books.vertical.fill")
-                .font(.system(size: 52))
+                .font(.system(size: .cfIconLarge))
                 .foregroundStyle(Color.cfAccent)
                 .accessibilityHidden(true)
 
@@ -107,6 +112,7 @@ public struct PaywallView: View {
                 .font(.cfLargeTitle)
                 .foregroundStyle(Color.cfLabel)
                 .multilineTextAlignment(.center)
+                .accessibilityAddTraits(.isHeader)
 
             Text(model.context.subtitle)
                 .font(.cfSubheadline)
@@ -121,7 +127,7 @@ public struct PaywallView: View {
         let sourceKind = ProSourceKind(rawSource: model.proSource)
         return VStack(spacing: .cfSpacing16) {
             Image(systemName: "checkmark.seal.fill")
-                .font(.system(size: 44))
+                .font(.system(size: .cfIconLarge))
                 .foregroundStyle(Color.cfAccent)
                 .accessibilityHidden(true)
 
@@ -129,6 +135,7 @@ public struct PaywallView: View {
                 .font(.cfTitle3)
                 .foregroundStyle(Color.cfLabel)
                 .multilineTextAlignment(.center)
+                .accessibilityLabel("You are a Pro member via \(sourceKind.displayName).")
 
             if sourceKind.isApple {
                 // Apple subscription: surface billing lifecycle banners + manage in App Store.
@@ -140,14 +147,24 @@ public struct PaywallView: View {
                     Text("Manage Subscription")
                         .font(.cfHeadline)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 52)
+                        .frame(minHeight: .cfSpacing48)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(Color.cfAccent)
                 .accessibilityLabel("Manage Subscription — opens App Store")
+            } else if sourceKind == .unknown {
+                Text("Your Pro access is active.")
+                    .font(.cfSubheadline)
+                    .foregroundStyle(Color.cfSecondaryLabel)
+                    .multilineTextAlignment(.center)
+
+                Text("We're confirming where this membership is managed. Try again shortly.")
+                    .font(.cfFootnote)
+                    .foregroundStyle(Color.cfTertiaryLabel)
+                    .multilineTextAlignment(.center)
             } else {
                 // Non-Apple source (Stripe, license, gift, etc.): explain where to manage.
-                Text("Your Pro access comes from your \(sourceKind.displayName) subscription.")
+                Text("Your Pro access comes from \(sourceKind.displayName).")
                     .font(.cfSubheadline)
                     .foregroundStyle(Color.cfSecondaryLabel)
                     .multilineTextAlignment(.center)
@@ -160,8 +177,7 @@ public struct PaywallView: View {
         }
         .padding(.cfSpacing16)
         .background(Color.cfSecondaryBackground, in: RoundedRectangle(cornerRadius: .cfRadius16))
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("You are a Pro member via \(sourceKind.displayName).")
+        .accessibilityElement(children: .contain)
     }
 
     // MARK: - Benefits
@@ -210,6 +226,63 @@ public struct PaywallView: View {
 
     // MARK: - Products
 
+    @ViewBuilder
+    private var entitlementAwareOfferSection: some View {
+        switch model.entitlementResolution {
+        case .unresolved, .resolving:
+            membershipCheckLoadingSection
+        case .unavailable:
+            membershipCheckUnavailableSection
+        case .resolvedFree:
+            if let winBack = model.winBackDisplay, model.subscriptionStatus.isLapsed {
+                winBackSection(winBack)
+            } else if model.productAvailability == .loading {
+                productsLoadingSection
+            } else if model.productAvailability == .available,
+                      !model.productInfos.isEmpty {
+                productsSection
+                ctaSection
+            } else if model.productAvailability != .idle {
+                productsUnavailableSection
+            }
+        case .resolvedPro:
+            EmptyView()
+        }
+    }
+
+    private var membershipCheckLoadingSection: some View {
+        VStack(spacing: .cfSpacing12) {
+            ProgressView()
+                .controlSize(.large)
+                .tint(Color.cfAccent)
+                .accessibilityHidden(true)
+            Text("Checking your membership…")
+                .font(.cfHeadline)
+                .foregroundStyle(Color.cfLabel)
+            Text("Subscription options will appear after we confirm this account's current access.")
+                .font(.cfFootnote)
+                .foregroundStyle(Color.cfSecondaryLabel)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.cfSpacing16)
+        .frame(maxWidth: .infinity)
+        .background(Color.cfSecondaryBackground, in: RoundedRectangle(cornerRadius: .cfRadius16))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Checking your current ChapterFlow membership")
+    }
+
+    private var membershipCheckUnavailableSection: some View {
+        CFEmptyState(
+            systemImage: "person.crop.circle.badge.questionmark",
+            title: "Membership Check Unavailable",
+            description: "We couldn't confirm this account's current access. Check your connection and try again.",
+            actionLabel: "Try Again"
+        ) {
+            Task { await model.refreshEntitlement() }
+        }
+        .accessibilityElement(children: .contain)
+    }
+
     private var productsLoadingSection: some View {
         VStack(spacing: .cfSpacing12) {
             ForEach(0..<2, id: \.self) { _ in
@@ -218,6 +291,8 @@ public struct PaywallView: View {
                     .clipShape(RoundedRectangle(cornerRadius: .cfRadius16))
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Loading subscription options")
     }
 
     private var productsSection: some View {
@@ -231,6 +306,12 @@ public struct PaywallView: View {
                     model.selectProduct(info.id)
                 }
             }
+        }
+    }
+
+    private var productsUnavailableSection: some View {
+        PaywallProductsUnavailableView(availability: model.productAvailability) {
+            Task { await model.loadProducts() }
         }
     }
 
@@ -252,11 +333,11 @@ public struct PaywallView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .frame(minHeight: 52)
+                .frame(minHeight: .cfSpacing48)
             }
             .buttonStyle(.borderedProminent)
             .tint(Color.cfAccent)
-            .disabled(model.purchaseState.isInProgress || model.selectedProductID == nil)
+            .disabled(!model.canPurchase)
             .accessibilityLabel(ctaTitle)
 
             introTrialDisclosure
@@ -270,6 +351,7 @@ public struct PaywallView: View {
         case .purchasing:       return "Processing…"
         case .restoring:        return "Restoring…"
         case .pendingApproval:  return "Awaiting Approval"
+        case .confirmingAccess: return "Confirming Pro Access…"
         case .success:          return "Welcome to Pro!"
         case .idle, .failed:
             if let id = model.selectedProductID,
@@ -350,25 +432,17 @@ public struct PaywallView: View {
                         .font(.cfFootnote)
                         .foregroundStyle(Color.cfAccent)
                 }
-                .disabled(model.purchaseState.isInProgress)
+                .disabled(purchaseActionsDisabled)
                 .accessibilityLabel("Restore previous purchases")
 
-                Button {
-                    model.redeemOfferCode()
-                } label: {
-                    Text("Redeem Offer Code")
-                        .font(.cfFootnote)
-                        .foregroundStyle(Color.cfAccent)
-                }
-                .accessibilityLabel("Redeem a promotional offer code")
             }
 
-            HStack(spacing: .cfSpacing16) {
-                if let termsURL = URL(string: "https://app.chapterflow.ca/terms") {
-                    Link("Terms of Service", destination: termsURL)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: .cfSpacing16) {
+                    legalLinks
                 }
-                if let privacyURL = URL(string: "https://app.chapterflow.ca/privacy") {
-                    Link("Privacy Policy", destination: privacyURL)
+                VStack(spacing: .cfSpacing8) {
+                    legalLinks
                 }
             }
             .font(.cfCaption)
@@ -378,6 +452,16 @@ public struct PaywallView: View {
                 .font(.cfCaption2)
                 .foregroundStyle(Color.cfTertiaryLabel)
                 .multilineTextAlignment(.center)
+        }
+    }
+
+    @ViewBuilder
+    private var legalLinks: some View {
+        if let termsURL = URL(string: "https://app.chapterflow.ca/terms") {
+            Link("Terms of Service", destination: termsURL)
+        }
+        if let privacyURL = URL(string: "https://app.chapterflow.ca/privacy") {
+            Link("Privacy Policy", destination: privacyURL)
         }
     }
 
@@ -416,11 +500,11 @@ public struct PaywallView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .frame(minHeight: 52)
+                .frame(minHeight: .cfSpacing48)
             }
             .buttonStyle(.borderedProminent)
             .tint(Color.cfAccent)
-            .disabled(model.purchaseState.isInProgress)
+            .disabled(purchaseActionsDisabled)
             .accessibilityLabel(winBackCTATitle(winBack))
 
             Text("Renews at \(winBack.regularDisplayPrice)/\(winBack.regularPeriodLabel) after offer ends. Cancel any time.")
@@ -434,6 +518,7 @@ public struct PaywallView: View {
         switch model.purchaseState {
         case .purchasing: return "Processing…"
         case .pendingApproval: return "Awaiting Approval"
+        case .confirmingAccess: return "Confirming Pro Access…"
         case .success: return "Welcome back!"
         default:
             switch info.paymentMode {
@@ -443,149 +528,12 @@ public struct PaywallView: View {
         }
     }
 
-    // MARK: - Success overlay
-
-    private var successOverlayView: some View {
-        ZStack {
-            Color.cfGroupedBackground
-                .opacity(0.95)
-                .ignoresSafeArea()
-
-            VStack(spacing: .cfSpacing24) {
-                Image(systemName: "checkmark.seal.fill")
-                    .font(.system(size: 72))
-                    .foregroundStyle(Color.cfAccent)
-                    .accessibilityHidden(true)
-
-                Text("You're Pro!")
-                    .font(.cfLargeTitle)
-                    .foregroundStyle(Color.cfLabel)
-
-                Text("Your subscription is active. Enjoy unlimited access.")
-                    .font(.cfSubheadline)
-                    .foregroundStyle(Color.cfSecondaryLabel)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, .cfSpacing32)
-            }
-
-            CFConfetti(isActive: showSuccessOverlay)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Purchase successful. You're now a Pro member.")
-    }
-}
-
-// MARK: - ProductOptionRow
-
-private struct ProductOptionRow: View {
-    let info: StoreProductInfo
-    let isSelected: Bool
-    let savingsPercent: Int?
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: .cfSpacing12) {
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(isSelected ? Color.cfAccent : Color.cfTertiaryLabel)
-                    .font(.title3)
-                    .accessibilityHidden(true)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: .cfSpacing8) {
-                        Text(info.displayName)
-                            .font(.cfHeadline)
-                            .foregroundStyle(Color.cfLabel)
-                        if info.isPopular {
-                            Text("Popular")
-                                .font(.cfCaption2)
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, .cfSpacing8)
-                                .padding(.vertical, 2)
-                                .background(Color.cfAccent, in: Capsule())
-                        }
-                        if let pct = savingsPercent, pct > 0 {
-                            Text("Save \(pct)%")
-                                .font(.cfCaption2)
-                                .foregroundStyle(Color.cfAccent)
-                                .padding(.horizontal, .cfSpacing8)
-                                .padding(.vertical, 2)
-                                .background(Color.cfAccent.opacity(0.12), in: Capsule())
-                        }
-                    }
-                    if let intro = info.introductoryOfferText {
-                        Text(intro)
-                            .font(.cfCaption)
-                            .foregroundStyle(Color.cfAccent)
-                    }
-                }
-
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 2) {
-                    Text(info.displayPrice)
-                        .font(.cfHeadline)
-                        .foregroundStyle(Color.cfLabel)
-                    Text("/ \(info.periodLabel)")
-                        .font(.cfCaption)
-                        .foregroundStyle(Color.cfSecondaryLabel)
-                }
-            }
-            .padding(.cfSpacing16)
-            .background(
-                RoundedRectangle(cornerRadius: .cfRadius16)
-                    .fill(Color.cfSecondaryBackground)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: .cfRadius16)
-                            .strokeBorder(
-                                isSelected ? Color.cfAccent : Color.clear,
-                                lineWidth: 2
-                            )
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(
-            "\(info.displayName), \(info.displayPrice) per \(info.periodLabel)" +
-            (info.isPopular ? ", popular" : "") +
-            (savingsPercent.map { ", save \($0) percent" } ?? "")
-        )
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-}
-
-// MARK: - ProBenefit
-
-private enum ProBenefit: CaseIterable {
-    case unlimitedBooks, offlineReading, aiInsights, quizzes, notes
-
-    var iconName: String {
-        switch self {
-        case .unlimitedBooks:  return "books.vertical.fill"
-        case .offlineReading:  return "arrow.down.circle.fill"
-        case .aiInsights:      return "sparkles"
-        case .quizzes:         return "checkmark.circle.fill"
-        case .notes:           return "pencil.and.outline"
-        }
-    }
-
-    var title: String {
-        switch self {
-        case .unlimitedBooks:  return "Unlimited Books"
-        case .offlineReading:  return "Offline Reading"
-        case .aiInsights:      return "AI Deep Dive"
-        case .quizzes:         return "Spaced-Repetition Quizzes"
-        case .notes:           return "Highlights & Notes"
-        }
-    }
-
-    var subtitle: String {
-        switch self {
-        case .unlimitedBooks:  return "Access our full catalogue of titles"
-        case .offlineReading:  return "Read anywhere — no internet required"
-        case .aiInsights:      return "Ask anything about any book"
-        case .quizzes:         return "Retain what you read, long-term"
-        case .notes:           return "Capture insights and export them"
+    private var purchaseActionsDisabled: Bool {
+        switch model.purchaseState {
+        case .purchasing, .restoring, .pendingApproval, .confirmingAccess, .success:
+            return true
+        case .idle, .failed:
+            return false
         }
     }
 }

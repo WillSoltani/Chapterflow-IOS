@@ -13,25 +13,38 @@ private typealias SubscriptionStatus = PaywallFeature.SubscriptionStatus
 // MARK: - Stub StoreKit service
 
 private actor StubSKService: StoreKitServicing {
-    nonisolated let entitlementChanges: AsyncStream<Void>
-    private let continuation: AsyncStream<Void>.Continuation
+    private let entitlementChangeBroadcaster = AsyncEventBroadcaster<Void>()
     private let isProStatus: Bool
     private let shouldThrow: Bool
+    private var unfinishedReplayCalls = 0
+    private var currentEntitlementVerificationCalls = 0
 
     init(isPro: Bool = false, shouldThrow: Bool = false) {
         isProStatus = isPro
         self.shouldThrow = shouldThrow
-        var cont: AsyncStream<Void>.Continuation!
-        entitlementChanges = AsyncStream { cont = $0 }
-        continuation = cont
     }
 
-    func yieldEntitlementChange() { continuation.yield(()) }
+    func entitlementChanges() async -> AsyncStream<Void> {
+        await entitlementChangeBroadcaster.stream()
+    }
+
+    func yieldEntitlementChange() async {
+        await entitlementChangeBroadcaster.publish(())
+    }
 
     func loadProducts() async throws -> [Product] { [] }
     func purchase(_ product: Product) async throws -> PurchaseResult { .userCancelled }
     func restorePurchases() async throws {}
-    func verifyCurrentEntitlements() async throws {}
+    func verifyUnfinishedTransactions() async throws {
+        unfinishedReplayCalls += 1
+    }
+    func verifyCurrentEntitlements() async throws {
+        currentEntitlementVerificationCalls += 1
+    }
+    func unfinishedReplayCount() -> Int { unfinishedReplayCalls }
+    func currentEntitlementVerificationCount() -> Int {
+        currentEntitlementVerificationCalls
+    }
     func currentSubscriptionStatus() async throws -> SubscriptionStatus {
         if shouldThrow { throw AppError.offline }
         return isProStatus
@@ -69,6 +82,10 @@ private func freshStore() -> KeyValueStore {
     KeyValueStore(defaults: UserDefaults(suiteName: UUID().uuidString) ?? .standard)
 }
 
+private func accountScope(_ subject: String = "test-account") throws -> EntitlementAccountScope {
+    try #require(EntitlementAccountScope(authenticatedSubject: subject))
+}
+
 private struct SUTFixture {
     let service: EntitlementService
     let storeKit: StubSKService
@@ -95,6 +112,7 @@ private func makeSUT(
     let storeKit = StubSKService(isPro: storeKitIsPro, shouldThrow: storeKitShouldThrow)
     let kvStore = store ?? freshStore()
     let sut = EntitlementService(storeKitService: storeKit, apiClient: mockClient, store: kvStore)
+    sut.activateAccount(try accountScope())
     return SUTFixture(service: sut, storeKit: storeKit, apiClient: mockClient)
 }
 
@@ -103,6 +121,30 @@ private func makeSUT(
 @Suite("EntitlementService — isPro")
 @MainActor
 struct EntitlementServiceIsProTests {
+
+    @Test("every authoritative refresh replays retained StoreKit transactions first")
+    func refreshReplaysUnfinishedTransactions() async throws {
+        let fixture = try await makeSUT(
+            entitlement: makeEntitlement(plan: .free)
+        )
+
+        await fixture.service.refresh()
+
+        #expect(await fixture.storeKit.unfinishedReplayCount() == 1)
+    }
+
+    @Test("first refresh after account activation reauthorizes current legacy entitlements")
+    func accountActivationReauthorizesCurrentEntitlementsOnce() async throws {
+        let fixture = try await makeSUT(
+            entitlement: makeEntitlement(plan: .free)
+        )
+
+        await fixture.service.refresh()
+        await fixture.service.refresh()
+
+        #expect(await fixture.storeKit.currentEntitlementVerificationCount() == 1)
+        #expect(await fixture.storeKit.unfinishedReplayCount() == 2)
+    }
 
     @Test("false — free plan, no StoreKit subscription")
     func isProFree() async throws {
@@ -140,14 +182,14 @@ struct EntitlementServiceIsProTests {
         #expect(!fixture.service.isPro)
     }
 
-    @Test("true — StoreKit optimism: backend free, SK subscribed")
-    func isProStoreKitOptimism() async throws {
+    @Test("false — local StoreKit cannot override a free backend entitlement")
+    func localStoreKitCannotGrantPro() async throws {
         let fixture = try await makeSUT(
             entitlement: makeEntitlement(plan: .free),
             storeKitIsPro: true
         )
         await fixture.service.refresh()
-        #expect(fixture.service.isPro)
+        #expect(!fixture.service.isPro)
     }
 
     @Test("true — both backend and StoreKit confirm Pro")
@@ -212,14 +254,14 @@ struct EntitlementServiceCanStartTests {
         #expect(!fixture.service.canStartNewBook)
     }
 
-    @Test("true — StoreKit optimism: no backend Pro, SK is subscribed")
-    func canStartStoreKitPro() async throws {
+    @Test("false — local StoreKit cannot unlock a new book")
+    func localStoreKitCannotUnlockBook() async throws {
         let fixture = try await makeSUT(
             entitlement: makeEntitlement(plan: .free, remainingFreeStarts: 0),
             storeKitIsPro: true
         )
         await fixture.service.refresh()
-        #expect(fixture.service.canStartNewBook)
+        #expect(!fixture.service.canStartNewBook)
     }
 }
 
@@ -362,8 +404,8 @@ struct EntitlementServiceLockReasonTests {
 @MainActor
 struct EntitlementServiceCacheTests {
 
-    @Test("init reads from cache — returns Pro state without a network call")
-    func initReadsProcache() async throws {
+    @Test("account activation reads its cache without a network call")
+    func activationReadsProCache() async throws {
         let store = freshStore()
 
         // First service populates the cache with a Pro entitlement.
@@ -379,7 +421,7 @@ struct EntitlementServiceCacheTests {
             networkShouldFail: true,
             store: store
         )
-        // No refresh called — reads from cache in init.
+        // No refresh called — account activation synchronously reads its cache.
         #expect(fixture2.service.isPro)
     }
 
@@ -400,6 +442,7 @@ struct EntitlementServiceCacheTests {
             apiClient: mockClient,
             store: store
         )
+        service.activateAccount(try accountScope())
         await service.refresh()
         #expect(!service.isPro)
 
@@ -414,7 +457,7 @@ struct EntitlementServiceCacheTests {
         await service.refresh()
         #expect(service.isPro)
 
-        // A fresh service from the same store reads the updated cache.
+        // A fresh service activates the same account and reads its updated cache.
         let offlineClient = MockAPIClient()
         await offlineClient.setDefault(.failure(.offline))
         let service2 = EntitlementService(
@@ -422,6 +465,7 @@ struct EntitlementServiceCacheTests {
             apiClient: offlineClient,
             store: store
         )
+        service2.activateAccount(try accountScope())
         #expect(service2.isPro)
     }
 
@@ -442,6 +486,7 @@ struct EntitlementServiceCacheTests {
             apiClient: mockClient,
             store: store
         )
+        service.activateAccount(try accountScope())
         await service.refresh()
         #expect(service.isPro)
 
@@ -465,7 +510,7 @@ struct EntitlementServiceCacheTests {
     }
 }
 
-// MARK: - Initial state from cache
+// MARK: - Initial and activated cache state
 
 @Suite("EntitlementService — initial state")
 @MainActor
@@ -482,33 +527,37 @@ struct EntitlementServiceInitTests {
         #expect(!service.canStartNewBook)
     }
 
-    @Test("isPro true from cache on init — no network needed")
-    func initialStateFromProCache() throws {
+    @Test("isPro true after account cache activation — no network needed")
+    func activatedStateFromProCache() throws {
         let store = freshStore()
+        let scope = try accountScope()
         try store.set(
             makeEntitlement(plan: .pro, proStatus: "active"),
-            forKey: "com.chapterflow.entitlement.v1"
+            forKey: scope.cacheKey
         )
         let service = EntitlementService(
             storeKitService: StubSKService(),
             apiClient: MockAPIClient(),
             store: store
         )
+        service.activateAccount(scope)
         #expect(service.isPro)
     }
 
     @Test("canStartNewBook true from cached free entitlement with starts")
     func canStartFromCache() throws {
         let store = freshStore()
+        let scope = try accountScope()
         try store.set(
             makeEntitlement(plan: .free, remainingFreeStarts: 2),
-            forKey: "com.chapterflow.entitlement.v1"
+            forKey: scope.cacheKey
         )
         let service = EntitlementService(
             storeKitService: StubSKService(),
             apiClient: MockAPIClient(),
             store: store
         )
+        service.activateAccount(scope)
         #expect(!service.isPro)
         #expect(service.canStartNewBook)
     }

@@ -66,9 +66,9 @@ enum CFUITestSessionSeeder {
         let header  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9" // {"alg":"HS256","typ":"JWT"}
         let payload = base64url(
             """
-            {"sub":"uitest-user-123","email":"test@chapterflow.com",\
+            {"sub":"00000000-0000-4000-8000-000000000123","email":"test@chapterflow.com",\
             "name":"Test User","exp":9999999999,"iat":1750000000,\
-            "cognito:username":"uitest-user-123"}
+            "cognito:username":"00000000-0000-4000-8000-000000000123"}
             """
         )
         return "\(header).\(payload).fakesig"

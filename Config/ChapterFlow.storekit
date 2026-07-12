@@ -7,6 +7,7 @@
     "_askToBuyEnabled" : false,
     "_askToBuyInterruptionEnabledForAllTransactions" : false,
     "_billingIssueDialogEnabled" : false,
+    "_disableDialogs" : true,
     "_enableIntroductoryOfferEligibilityForAllTransactions" : false,
     "_enableTransactionExpirationTime" : true,
     "_expirationTimeRate" : 0.01666600000000000077,
@@ -14,13 +15,13 @@
   },
   "subscriptionGroups" : [
     {
-      "id" : "group.chapterflow.pro",
+      "id" : "22211821",
       "localizations" : [],
       "name" : "ChapterFlow Pro",
       "subscriptions" : [
         {
           "adHocOfferCodes" : [],
-          "displayPrice" : "9.99",
+          "displayPrice" : "7.99",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "CF_PRO_MONTHLY",
@@ -32,26 +33,26 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.chapterflow.ios.pro_monthly",
+          "productID" : "com.chapterflow.pro.monthly",
           "referenceName" : "Pro Monthly",
           "recurringSubscriptionPeriod" : "P1M",
           "type" : "RecurringSubscription"
         },
         {
           "adHocOfferCodes" : [],
-          "displayPrice" : "79.99",
+          "displayPrice" : "44.99",
           "familyShareable" : false,
-          "groupNumber" : 2,
+          "groupNumber" : 1,
           "internalID" : "CF_PRO_ANNUAL",
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Full annual access to ChapterFlow — save 33% vs monthly.",
+              "description" : "Full annual access to ChapterFlow — all books, all depths, all tones.",
               "displayName" : "ChapterFlow Pro Annual",
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.chapterflow.ios.pro_annual",
+          "productID" : "com.chapterflow.pro.annual",
           "referenceName" : "Pro Annual",
           "recurringSubscriptionPeriod" : "P1Y",
           "type" : "RecurringSubscription"

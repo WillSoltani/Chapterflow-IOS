@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:chapterflow:ios:release-manifest:v1",
+  "title": "ChapterFlow iOS Release Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "environment",
+    "apiBaseURL",
+    "cognito",
+    "bundleIdentifier",
+    "appStore",
+    "supportURL",
+    "storeKit",
+    "sentry",
+    "build",
+    "signing",
+    "backendAttestation",
+    "provenanceFingerprint"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "environment": { "const": "production" },
+    "apiBaseURL": { "type": "string", "format": "uri", "pattern": "^https://" },
+    "cognito": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["region", "userPoolID", "clientID", "domain"],
+      "properties": {
+        "region": { "type": "string" },
+        "userPoolID": { "type": "string" },
+        "clientID": { "type": "string" },
+        "domain": { "type": "string" }
+      }
+    },
+    "bundleIdentifier": { "const": "com.chapterflow.ios" },
+    "appStore": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "url"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[1-9][0-9]{5,19}$" },
+        "url": { "type": "string", "format": "uri", "pattern": "^https://apps\\.apple\\.com/" }
+      }
+    },
+    "supportURL": { "type": "string", "format": "uri", "pattern": "^https://" },
+    "storeKit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["approvedProductIDs", "monthlyProductID", "annualProductID", "annualUpfrontProductID"],
+      "properties": {
+        "approvedProductIDs": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        },
+        "monthlyProductID": { "type": "string" },
+        "annualProductID": { "type": "string" },
+        "annualUpfrontProductID": { "type": "string", "const": "" }
+      }
+    },
+    "sentry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policy", "dsnConfigured"],
+      "properties": {
+        "policy": { "enum": ["disabled", "enabled"] },
+        "dsnConfigured": { "type": "boolean" }
+      }
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["configuration", "marketingVersion", "number", "commitSHA"],
+      "properties": {
+        "configuration": { "const": "Release" },
+        "marketingVersion": { "type": "string" },
+        "number": { "type": "string" },
+        "commitSHA": { "type": "string", "pattern": "^[0-9a-fA-F]{40}$" }
+      }
+    },
+    "signing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["teamID", "inputsValidated"],
+      "properties": {
+        "teamID": { "type": "string", "pattern": "^[A-Z0-9]{10}$" },
+        "inputsValidated": { "const": true }
+      }
+    },
+    "backendAttestation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deploymentCommitSHA",
+        "attestationID",
+        "approved",
+        "appleBundleIdentifier",
+        "appleAppID",
+        "verificationProductAllowlist",
+        "mobileConfigAppStoreURL",
+        "appleEnvironment",
+        "subscriptionGroupID",
+        "controls"
+      ],
+      "properties": {
+        "deploymentCommitSHA": { "type": "string", "pattern": "^[0-9a-fA-F]{40}$" },
+        "attestationID": { "type": "string", "minLength": 8 },
+        "approved": { "const": true },
+        "appleBundleIdentifier": { "const": "com.chapterflow.ios" },
+        "appleAppID": { "type": "string", "pattern": "^[1-9][0-9]{5,19}$" },
+        "verificationProductAllowlist": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        },
+        "mobileConfigAppStoreURL": { "type": "string", "format": "uri", "pattern": "^https://apps\\.apple\\.com/" },
+        "appleEnvironment": { "const": "Production" },
+        "subscriptionGroupID": { "type": "string", "minLength": 3 },
+        "controls": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "productAllowlistEnforced",
+            "appleEnvironmentEnforced",
+            "subscriptionGroupEnforced",
+            "accountBindingEnforced"
+          ],
+          "properties": {
+            "productAllowlistEnforced": { "const": true },
+            "appleEnvironmentEnforced": { "const": true },
+            "subscriptionGroupEnforced": { "const": true },
+            "accountBindingEnforced": { "const": true }
+          }
+        }
+      }
+    },
+    "provenanceFingerprint": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

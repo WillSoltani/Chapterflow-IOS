@@ -1,0 +1,7 @@
+#include "Base.xcconfig"
+
+CHAPTERFLOW_ENVIRONMENT = staging
+BUILD_CONFIGURATION = Staging
+
+// Staging automation may generate this ignored file from protected inputs.
+#include? "../Secrets.xcconfig"

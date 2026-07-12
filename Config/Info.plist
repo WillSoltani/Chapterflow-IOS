@@ -10,6 +10,32 @@
 	-->
 	<key>APIBaseURL</key>
 	<string>$(API_BASE_URL)</string>
+	<key>ChapterFlowEnvironment</key>
+	<string>$(CHAPTERFLOW_ENVIRONMENT)</string>
+	<key>BundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>AppStoreID</key>
+	<string>$(APP_STORE_ID)</string>
+	<key>AppStoreURL</key>
+	<string>$(APP_STORE_URL)</string>
+	<key>SupportURL</key>
+	<string>$(SUPPORT_URL)</string>
+	<key>SentryPolicy</key>
+	<string>$(SENTRY_POLICY)</string>
+	<key>BuildConfiguration</key>
+	<string>$(BUILD_CONFIGURATION)</string>
+	<key>BuildCommitSHA</key>
+	<string>$(BUILD_COMMIT_SHA)</string>
+	<key>BackendDeploymentCommitSHA</key>
+	<string>$(BACKEND_DEPLOYMENT_COMMIT_SHA)</string>
+	<key>BackendAttestationID</key>
+	<string>$(BACKEND_ATTESTATION_ID)</string>
+	<key>MarketingVersion</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>BuildNumber</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>ReleaseManifestFingerprint</key>
+	<string>$(RELEASE_MANIFEST_FINGERPRINT)</string>
 	<key>CognitoRegion</key>
 	<string>$(COGNITO_REGION)</string>
 	<key>CognitoUserPoolID</key>

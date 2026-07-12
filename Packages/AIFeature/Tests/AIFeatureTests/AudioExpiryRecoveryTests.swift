@@ -128,6 +128,21 @@ struct AudioExpiryRecoveryTests {
         let count = await repo.fetchCallCount
         #expect(count == 3)
     }
+
+    @Test("notification observers do not retain the audio player")
+    func notificationObserversDoNotRetainPlayer() async throws {
+        let plan = AudioNarrationPlan.makeFake()
+        let repo = FakeAudioRepository(plan: plan)
+        weak var retainedPlayer: AudioPlayer?
+
+        do {
+            let player = AudioPlayer(repository: repo)
+            retainedPlayer = player
+            try await player.loadChapter(bookId: plan.bookId, chapterNumber: plan.chapterNumber)
+        }
+
+        #expect(retainedPlayer == nil)
+    }
 }
 
 // MARK: - AudioSegmentKind tolerant decoding (RF2)

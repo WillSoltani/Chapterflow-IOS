@@ -8,6 +8,15 @@ import Foundation
 /// site. Use `.custom` sparingly for one-off events not worth a dedicated case.
 public enum AnalyticsEvent: Sendable, Equatable {
     case appOpen
+    /// A one-per-launch operational diagnostic emitted only after local build
+    /// configuration validation succeeds. All associated values are explicitly
+    /// allowlisted and contain no credentials, endpoints, or StoreKit IDs.
+    case appConfigurationValidated(
+        environment: AppEnvironment,
+        bundleIdentifier: String,
+        version: String,
+        readiness: AppSubsystemReadiness
+    )
     case signIn(method: String)
     case signOut
     case onboardingStep(index: Int)
@@ -41,6 +50,7 @@ public enum AnalyticsEvent: Sendable, Equatable {
     public var name: String {
         switch self {
         case .appOpen: return "app_open"
+        case .appConfigurationValidated: return "app_configuration_validated"
         case .signIn: return "sign_in"
         case .signOut: return "sign_out"
         case .onboardingStep: return "onboarding_step"
@@ -74,6 +84,22 @@ public enum AnalyticsEvent: Sendable, Equatable {
              .notificationPrimingShown, .notificationPrimingAccepted, .notificationPrimingDismissed,
              .notificationOSGranted, .notificationOSDenied, .notificationProvisionalGranted:
             return [:]
+        case let .appConfigurationValidated(
+            environment,
+            bundleIdentifier,
+            version,
+            readiness
+        ):
+            return [
+                "environment": environment.rawValue,
+                "bundleId": bundleIdentifier,
+                "version": version,
+                "networkingReady": String(readiness.networking),
+                "authenticationReady": String(readiness.authentication),
+                "storeKitReady": String(readiness.storeKit),
+                "crashReportingReady": String(readiness.crashReporting),
+                "appStoreDestinationReady": String(readiness.appStoreDestination)
+            ]
         case .signIn(let method):
             return ["method": method]
         case .onboardingStep(let index):

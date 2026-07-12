@@ -12,8 +12,8 @@ import UIKit
 /// Merges two inputs:
 /// - **Backend entitlement** (`GET /book/me/entitlements`) — authoritative once the
 ///   server has processed an Apple transaction.
-/// - **Local StoreKit status** from ``StoreKitService`` — provides optimistic
-///   `isPro = true` immediately after a purchase while the backend catches up.
+/// - **Local StoreKit status** from ``StoreKitService`` — drives reconciliation
+///   and billing-lifecycle UI but never grants access by itself.
 ///
 /// **Cross-platform reconciliation (P4.7):** on every `refresh()`, an
 /// ``EntitlementReconciler`` compares the backend state with the local StoreKit
@@ -26,16 +26,16 @@ import UIKit
 @MainActor
 public final class EntitlementService {
 
-    // MARK: - Cache key
+    // MARK: - Cache migration
 
-    private static let cacheKey = "com.chapterflow.entitlement.v1"
+    private static let legacyUnscopedCacheKey = "com.chapterflow.entitlement.v1"
 
     // MARK: - Public state
 
     /// `true` when the user holds an active Pro subscription.
     ///
-    /// `true` when either the backend confirms Pro with `proStatus == "active"`,
-    /// OR the local StoreKit subscription is active (optimistic post-purchase bridge).
+    /// `true` only when the backend confirms Pro with `proStatus == "active"`.
+    /// Local StoreKit state can request verification but cannot grant access.
     public private(set) var isPro: Bool = false
 
     /// `true` when the user can open a new book.
@@ -54,6 +54,12 @@ public final class EntitlementService {
 
     private var backendEntitlement: Entitlement?
     private var storeKitStatus: SubscriptionStatus = .unknown
+    private var accountScope: EntitlementAccountScope?
+    private var accountGeneration: UInt64 = 0
+    private var refreshFlightID: UInt64 = 0
+    private var refreshTask: Task<Void, Never>?
+    private var refreshRequestedDuringFlight = false
+    private var needsCurrentEntitlementAuthorization = false
     private let reconciler = EntitlementReconciler()
 
     // MARK: - Dependencies
@@ -64,17 +70,17 @@ public final class EntitlementService {
     private let storeKitConfig: StoreKitConfig
     private let log = AppLog(category: .billing)
 
-    nonisolated(unsafe) private var storeKitListenerTask: Task<Void, Never>?
-    nonisolated(unsafe) private var foregroundListenerTask: Task<Void, Never>?
+    private let storeKitListenerTaskHandle = TaskCancellationHandle()
+    private let foregroundListenerTaskHandle = TaskCancellationHandle()
 
     // MARK: - Init
 
     /// Creates an `EntitlementService`.
     ///
-    /// The initializer synchronously warms from the local cache so that
-    /// offline reads return a useful state before the first network round-trip.
-    /// Call ``start()`` once at app startup to begin background listeners and
-    /// trigger an initial refresh.
+    /// The initializer starts fail-closed with no account-private state. Call
+    /// ``activateAccount(_:)`` after authentication resolves; activation then
+    /// synchronously warms only that account's cache. Call ``start()`` once at
+    /// app startup to begin background listeners.
     ///
     /// - Parameters:
     ///   - storeKitService: The StoreKit 2 service.
@@ -91,9 +97,9 @@ public final class EntitlementService {
         self.apiClient = apiClient
         self.storeKitConfig = storeKitConfig
         self.store = store
-        // Warm from cache — offline reads work before the first network fetch.
-        self.backendEntitlement = store.value(Entitlement.self, forKey: Self.cacheKey)
-        updateDerivedState()
+        // The v1 key was global. Never migrate its account-private value into an
+        // authenticated scope because ownership cannot be proven.
+        store.removeValue(forKey: Self.legacyUnscopedCacheKey)
     }
 
     /// Convenience initializer for use when StoreKit config isn't needed.
@@ -112,8 +118,8 @@ public final class EntitlementService {
     }
 
     nonisolated deinit {
-        storeKitListenerTask?.cancel()
-        foregroundListenerTask?.cancel()
+        storeKitListenerTaskHandle.cancel()
+        foregroundListenerTaskHandle.cancel()
     }
 
     // MARK: - Plan detail accessors
@@ -164,6 +170,40 @@ public final class EntitlementService {
 
     // MARK: - Lifecycle
 
+    /// Activates entitlement state for one authenticated account.
+    ///
+    /// Any prior account is torn down first. Cache warming is synchronous and
+    /// limited to the opaque account scope; network refresh remains explicit.
+    public func activateAccount(_ scope: EntitlementAccountScope) {
+        guard accountScope != scope else { return }
+
+        if let accountScope {
+            store.removeValue(forKey: accountScope.cacheKey)
+        }
+        invalidateRefreshes()
+        accountScope = scope
+        backendEntitlement = store.value(Entitlement.self, forKey: scope.cacheKey)
+        storeKitStatus = .unknown
+        needsCurrentEntitlementAuthorization = true
+        updateDerivedState()
+    }
+
+    /// Ends the current account scope and fails all entitlement gates closed.
+    ///
+    /// The active account cache is erased, in-flight refreshes are invalidated,
+    /// and no late response can restore the signed-out account's state.
+    public func deactivateAccount() {
+        if let accountScope {
+            store.removeValue(forKey: accountScope.cacheKey)
+        }
+        invalidateRefreshes()
+        accountScope = nil
+        backendEntitlement = nil
+        storeKitStatus = .unknown
+        needsCurrentEntitlementAuthorization = false
+        updateDerivedState()
+    }
+
     /// Starts background listeners and triggers an initial refresh.
     ///
     /// Call once at app startup (composition root). Idempotent — safe to call
@@ -189,31 +229,146 @@ public final class EntitlementService {
     /// Public so callers (e.g., post-purchase flow) can trigger an explicit
     /// refresh without waiting for the next background cycle.
     public func refresh() async {
-        await fetchBackendEntitlement()
-        await fetchStoreKitStatus()
-        await reconcileAndVerifyIfNeeded()
+        guard let accountScope else { return }
+        if let refreshTask {
+            refreshRequestedDuringFlight = true
+            let flightID = refreshFlightID
+            await refreshTask.value
+            await finishRefreshFlight(flightID)
+            return
+        }
+
+        refreshFlightID &+= 1
+        let flightID = refreshFlightID
+        let generation = accountGeneration
+        refreshRequestedDuringFlight = false
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return }
+            await performRefreshFlights(
+                accountScope: accountScope,
+                generation: generation
+            )
+        }
+        refreshTask = task
+        await task.value
+        await finishRefreshFlight(flightID)
     }
 
     // MARK: - Private fetch
 
-    private func fetchBackendEntitlement() async {
+    private func performRefresh(
+        accountScope: EntitlementAccountScope,
+        generation: UInt64
+    ) async {
+        await replayUnfinishedTransactions(
+            accountScope: accountScope,
+            generation: generation
+        )
+        await authorizeCurrentEntitlementsIfNeeded(
+            accountScope: accountScope,
+            generation: generation
+        )
+        await fetchBackendEntitlement(accountScope: accountScope, generation: generation)
+        await fetchStoreKitStatus(accountScope: accountScope, generation: generation)
+        await reconcileAndVerifyIfNeeded(accountScope: accountScope, generation: generation)
+    }
+
+    private func replayUnfinishedTransactions(
+        accountScope: EntitlementAccountScope,
+        generation: UInt64
+    ) async {
+        guard isCurrent(accountScope: accountScope, generation: generation) else { return }
         do {
-            let response: EntitlementResponse = try await apiClient.send(Endpoints.getEntitlements())
-            backendEntitlement = response.entitlement
-            updateDerivedState()
-            try? store.set(response.entitlement, forKey: Self.cacheKey)
+            try await storeKitService.verifyUnfinishedTransactions()
+        } catch is CancellationError {
+            return
         } catch {
-            log.warning("EntitlementService: backend fetch failed — \(error.localizedDescription)")
+            guard isCurrent(accountScope: accountScope, generation: generation) else { return }
+            log.warning("Unfinished StoreKit replay failed: \(Self.safeErrorCode(error))")
         }
     }
 
-    private func fetchStoreKitStatus() async {
+    /// Re-establishes ownership of tokenless legacy or offer-code transactions
+    /// after process launch or account activation. Successful authorization is
+    /// remembered for this account session; failures remain retryable.
+    private func authorizeCurrentEntitlementsIfNeeded(
+        accountScope: EntitlementAccountScope,
+        generation: UInt64
+    ) async {
+        guard isCurrent(accountScope: accountScope, generation: generation),
+              needsCurrentEntitlementAuthorization else { return }
+        do {
+            try await storeKitService.verifyCurrentEntitlements()
+            guard isCurrent(accountScope: accountScope, generation: generation) else { return }
+            needsCurrentEntitlementAuthorization = false
+        } catch is CancellationError {
+            return
+        } catch {
+            guard isCurrent(accountScope: accountScope, generation: generation) else { return }
+            log.warning("Current StoreKit account authorization failed: \(Self.safeErrorCode(error))")
+        }
+    }
+
+    /// Runs refreshes serially. Any number of requests received during one
+    /// flight collapse into exactly one trailing flight with a fresh backend
+    /// read, so a response started before an entitlement event cannot win.
+    private func performRefreshFlights(
+        accountScope: EntitlementAccountScope,
+        generation: UInt64
+    ) async {
+        while true {
+            await performRefresh(accountScope: accountScope, generation: generation)
+            guard isCurrent(accountScope: accountScope, generation: generation),
+                  refreshRequestedDuringFlight else { return }
+            refreshRequestedDuringFlight = false
+        }
+    }
+
+    /// Clears the completed shared task. This also closes the narrow window
+    /// where a new request can observe a completed task before its original
+    /// caller resumes and schedules that request as a new trailing flight.
+    private func finishRefreshFlight(_ flightID: UInt64) async {
+        guard refreshFlightID == flightID, refreshTask != nil else { return }
+        refreshTask = nil
+        guard refreshRequestedDuringFlight else { return }
+        refreshRequestedDuringFlight = false
+        await refresh()
+    }
+
+    private func fetchBackendEntitlement(
+        accountScope: EntitlementAccountScope,
+        generation: UInt64
+    ) async {
+        guard isCurrent(accountScope: accountScope, generation: generation) else { return }
+        do {
+            let response: EntitlementResponse = try await apiClient.send(Endpoints.getEntitlements())
+            guard isCurrent(accountScope: accountScope, generation: generation) else { return }
+            backendEntitlement = response.entitlement
+            updateDerivedState()
+            try? store.set(response.entitlement, forKey: accountScope.cacheKey)
+        } catch is CancellationError {
+            return
+        } catch {
+            guard isCurrent(accountScope: accountScope, generation: generation) else { return }
+            log.warning("Entitlement backend fetch failed: \(Self.safeErrorCode(error))")
+        }
+    }
+
+    private func fetchStoreKitStatus(
+        accountScope: EntitlementAccountScope,
+        generation: UInt64
+    ) async {
+        guard isCurrent(accountScope: accountScope, generation: generation) else { return }
         do {
             let status = try await storeKitService.currentSubscriptionStatus()
+            guard isCurrent(accountScope: accountScope, generation: generation) else { return }
             storeKitStatus = status
             updateDerivedState()
+        } catch is CancellationError {
+            return
         } catch {
-            log.warning("EntitlementService: StoreKit status fetch failed — \(error.localizedDescription)")
+            guard isCurrent(accountScope: accountScope, generation: generation) else { return }
+            log.warning("StoreKit status fetch failed: \(Self.safeErrorCode(error))")
         }
     }
 
@@ -225,8 +380,12 @@ public final class EntitlementService {
     /// that StoreKit shows an active Apple subscription the backend hasn't processed
     /// (most commonly: a renewal that arrived before the server webhook fired),
     /// this method re-verifies the transaction and re-fetches the backend entitlement.
-    private func reconcileAndVerifyIfNeeded() async {
-        guard let backend = backendEntitlement else { return }
+    private func reconcileAndVerifyIfNeeded(
+        accountScope: EntitlementAccountScope,
+        generation: UInt64
+    ) async {
+        guard isCurrent(accountScope: accountScope, generation: generation),
+              let backend = backendEntitlement else { return }
 
         let action = reconciler.reconcile(
             backend: backend,
@@ -241,36 +400,43 @@ public final class EntitlementService {
         log.info("EntitlementService: reconciler triggered Apple verify")
         do {
             try await storeKitService.verifyCurrentEntitlements()
+            guard isCurrent(accountScope: accountScope, generation: generation) else { return }
             // Re-fetch the backend entitlement to reflect the newly processed transaction.
-            await fetchBackendEntitlement()
+            await fetchBackendEntitlement(accountScope: accountScope, generation: generation)
+        } catch is CancellationError {
+            return
         } catch {
-            log.warning("EntitlementService: Apple verify during reconciliation failed — \(error.localizedDescription)")
+            guard isCurrent(accountScope: accountScope, generation: generation) else { return }
+            log.warning("Apple verification reconciliation failed: \(Self.safeErrorCode(error))")
         }
     }
 
     // MARK: - Listeners
 
     private func startStoreKitListener() {
-        guard storeKitListenerTask == nil else { return }
-        let stream = storeKitService.entitlementChanges
-        storeKitListenerTask = Task { [weak self] in
-            for await _ in stream {
-                await self?.refresh()
+        let storeKitService = storeKitService
+        storeKitListenerTaskHandle.installIfEmpty(
+            Task { [weak self, storeKitService] in
+                let stream = await storeKitService.entitlementChanges()
+                for await _ in stream {
+                    await self?.refresh()
+                }
             }
-        }
+        )
     }
 
     private func startForegroundListener() {
-        guard foregroundListenerTask == nil else { return }
         #if canImport(UIKit)
-        foregroundListenerTask = Task { [weak self] in
-            let notifications = NotificationCenter.default.notifications(
-                named: UIApplication.didBecomeActiveNotification
-            )
-            for await _ in notifications {
-                await self?.refresh()
+        foregroundListenerTaskHandle.installIfEmpty(
+            Task { [weak self] in
+                let notifications = NotificationCenter.default.notifications(
+                    named: UIApplication.didBecomeActiveNotification
+                )
+                for await _ in notifications {
+                    await self?.refresh()
+                }
             }
-        }
+        )
         #endif
     }
 
@@ -280,11 +446,54 @@ public final class EntitlementService {
         let backendIsPro = backendEntitlement.map { e in
             e.plan == .pro && e.proStatus == "active"
         } ?? false
-        let newIsPro = backendIsPro || storeKitStatus.isPro
+        let newIsPro = backendIsPro
         let newCanStart = newIsPro || (backendEntitlement?.remainingFreeStarts ?? 0) > 0
         let newProSource = backendEntitlement?.proSource
         if isPro != newIsPro { isPro = newIsPro }
         if canStartNewBook != newCanStart { canStartNewBook = newCanStart }
         if proSource != newProSource { proSource = newProSource }
+    }
+
+    private func invalidateRefreshes() {
+        accountGeneration &+= 1
+        refreshFlightID &+= 1
+        refreshRequestedDuringFlight = false
+        refreshTask?.cancel()
+        refreshTask = nil
+    }
+
+    private func isCurrent(
+        accountScope: EntitlementAccountScope,
+        generation: UInt64
+    ) -> Bool {
+        !Task.isCancelled
+            && self.accountScope == accountScope
+            && accountGeneration == generation
+    }
+
+    static func safeErrorCode(_ error: any Error) -> String {
+        guard let error = error as? AppError else { return "entitlement_operation_failed" }
+        switch error {
+        case .unauthenticated:
+            return "unauthenticated"
+        case .reauthRequired:
+            return "reauth_required"
+        case .verifierUnavailable:
+            return "verifier_unavailable"
+        case .rateLimited:
+            return "rate_limited"
+        case .forbidden:
+            return "forbidden"
+        case .offline:
+            return "offline"
+        case .invalidInput:
+            return "invalid_input"
+        case .notFound:
+            return "not_found"
+        case .server:
+            return "server"
+        case .decoding:
+            return "decoding"
+        }
     }
 }

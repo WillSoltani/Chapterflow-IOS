@@ -56,7 +56,7 @@ struct PaywallRenderGuardTests {
     @Test("PaywallView renders across the matrix (not subscribed)")
     func notSubscribedMatrix() {
         assertMatrix("Paywall (offer)") {
-            PaywallView(model: previewPaywallModel(
+            PaywallView(previewModel: previewPaywallModel(
                 status: .notSubscribed,
                 products: previewSampleProducts
             ))
@@ -66,12 +66,52 @@ struct PaywallRenderGuardTests {
     @Test("PaywallView renders the already-Pro (Apple) state")
     func alreadyProMatrix() {
         assertMatrix("Paywall (Pro)") {
-            PaywallView(model: previewPaywallModel(
+            PaywallView(previewModel: previewPaywallModel(
                 status: .subscribed(productID: "com.chapterflow.ios.pro.annual", expirationDate: nil),
                 products: previewSampleProducts,
                 context: .settings,
                 proSource: "apple"
             ))
         }
+    }
+
+    @Test("PaywallView renders a fail-closed product state")
+    func unavailableProductsMatrix() {
+        assertMatrix("Paywall (products unavailable)") {
+            let model = previewPaywallModel(status: .notSubscribed, products: [])
+            model.inject(
+                productInfos: [],
+                status: .notSubscribed,
+                entitlementResolution: .resolvedFree,
+                productAvailability: .configurationInvalid
+            )
+            return PaywallView(previewModel: model)
+        }
+    }
+
+    @Test("Paywall success is scroll-safe at AX5 with reduced motion")
+    func reducedMotionSuccess() {
+        let model = previewPaywallModel(
+            status: .notSubscribed,
+            products: previewSampleProducts
+        )
+        let view = PaywallView(
+            previewModel: model,
+            showSuccessOverlay: true,
+            reduceMotionOverride: true
+        )
+        .environment(\.dynamicTypeSize, .accessibility5)
+
+        assertRenders(view, "Paywall success — AX5 + Reduce Motion", size: RenderDevice.se)
+    }
+
+    @Test("preview composition opts out of live loading")
+    func previewDoesNotLoad() {
+        let view = PaywallView(previewModel: previewPaywallModel(
+            status: .notSubscribed,
+            products: previewSampleProducts
+        ))
+
+        #expect(!view.performsInitialLoad)
     }
 }

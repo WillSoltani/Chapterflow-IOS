@@ -23,6 +23,8 @@
 		3A1095CD2CCE676D593CE128 /* NextReviewWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = B61F7E717429A35DF5B29CCE /* NextReviewWidget.swift */; };
 		3B0A5EA357FF70603E67E49D /* ChapterFlowUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BA9CA550E375E3A7D380397 /* ChapterFlowUITests.swift */; };
 		4EE68ABF407384BBC9B87569 /* PurchaseFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82C8556826731B4C5B553BC9 /* PurchaseFlowTests.swift */; };
+		CFB100000000000000000001 /* ReleaseConfigurationFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFB100000000000000000002 /* ReleaseConfigurationFlowTests.swift */; };
+		CFD100000000000000000002 /* ChapterFlow.storekit in Resources */ = {isa = PBXBuildFile; fileRef = CFD100000000000000000001 /* ChapterFlow.storekit */; };
 		4EE9AB6303D702E3B0C8E059 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = DD1A92E410D3B0C50678EB25 /* Localizable.xcstrings */; };
 		59147E924179F53EE85E0221 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 62337D48E2C6D11D9DD20D70 /* SwiftUI.framework */; };
 		636E2388E043DBDB73EA75B9 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 01BF66985E4B1ED2CC4984CF /* Foundation.framework */; };
@@ -152,7 +154,11 @@
 		15E7517D2FF4A90000FA8025 /* ChapterFlow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ChapterFlow.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		165F7C41C20A17C133A0F496 /* StreakAtRiskLiveActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StreakAtRiskLiveActivity.swift; sourceTree = "<group>"; };
 		17BE303DCA845DE04BECEA02 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		18EA46ABF3A38A13F2985782 /* Secrets.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
+		CFA100000000000000000001 /* Base.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = Base.xcconfig; path = Config/Base.xcconfig; sourceTree = "<group>"; };
+		CFA100000000000000000002 /* Debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Config/Debug.xcconfig; sourceTree = "<group>"; };
+		CFA100000000000000000003 /* Staging.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = Staging.xcconfig; path = Config/Staging.xcconfig; sourceTree = "<group>"; };
+		CFA100000000000000000004 /* Release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Config/Release.xcconfig; sourceTree = "<group>"; };
+		CFD100000000000000000001 /* ChapterFlow.storekit */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text; name = ChapterFlow.storekit; path = Config/ChapterFlow.storekit; sourceTree = "<group>"; };
 		18FF57D0D7433275E7686E57 /* Localizable.xcstrings */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		1A49FBB86C14330D329AC2CA /* ReadingSessionAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReadingSessionAttributes.swift; sourceTree = "<group>"; };
 		1E8ABE24781E94C6EBB7C0AC /* StreakAtRiskAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StreakAtRiskAttributes.swift; sourceTree = "<group>"; };
@@ -186,6 +192,7 @@
 		B61F7E717429A35DF5B29CCE /* NextReviewWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NextReviewWidget.swift; sourceTree = "<group>"; };
 		BAD03588089C043E57CAAB43 /* Localizable.xcstrings */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		C13F2B651927183CE1FEF2D5 /* ActionExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ActionExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		CFB100000000000000000002 /* ReleaseConfigurationFlowTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ReleaseConfigurationFlowTests.swift; sourceTree = "<group>"; };
 		D21DA3CA4633BCC2AC43D204 /* ControlWidgetIntents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ControlWidgetIntents.swift; sourceTree = "<group>"; };
 		D23EAB3CE617CB627A5CD649 /* SmokeLaneTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SmokeLaneTests.swift; sourceTree = "<group>"; };
 		D508754251CADA755D8511E4 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
@@ -305,7 +312,11 @@
 			children = (
 				15E7517F2FF4A90000FA8025 /* ChapterFlow */,
 				15E7517E2FF4A90000FA8025 /* Products */,
-				18EA46ABF3A38A13F2985782 /* Secrets.xcconfig */,
+				CFA100000000000000000001 /* Base.xcconfig */,
+				CFA100000000000000000002 /* Debug.xcconfig */,
+				CFA100000000000000000003 /* Staging.xcconfig */,
+				CFA100000000000000000004 /* Release.xcconfig */,
+				CFD100000000000000000001 /* ChapterFlow.storekit */,
 				0554DCBA2ACC894E0647432D /* Frameworks */,
 				97A058B48F3EB352F62930F3 /* NotificationService */,
 				D1F216CA990CC16EA8C397A0 /* NotificationContent */,
@@ -353,6 +364,7 @@
 		44ACC7F7B59C4D55CE540967 /* Flows */ = {
 			isa = PBXGroup;
 			children = (
+				CFB100000000000000000002 /* ReleaseConfigurationFlowTests.swift */,
 				344F580FA2AB47E35D5426C3 /* SignInFlowTests.swift */,
 				46BE1F7DE8820FF56531C444 /* ReadQuizUnlockFlowTests.swift */,
 				82C8556826731B4C5B553BC9 /* PurchaseFlowTests.swift */,
@@ -644,6 +656,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CFD100000000000000000002 /* ChapterFlow.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -743,6 +756,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				CFB100000000000000000001 /* ReleaseConfigurationFlowTests.swift in Sources */,
 				3B0A5EA357FF70603E67E49D /* ChapterFlowUITests.swift in Sources */,
 				663F3AE2F5238476E35C1AAC /* SignInFlowTests.swift in Sources */,
 				C6DC9B6DB31564A8AFB13902 /* ReadQuizUnlockFlowTests.swift in Sources */,
@@ -946,7 +960,7 @@
 		};
 		15E751892FF4A90400FA8025 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 18EA46ABF3A38A13F2985782 /* Secrets.xcconfig */;
+			baseConfigurationReference = CFA100000000000000000002 /* Debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -984,7 +998,7 @@
 		};
 		15E7518A2FF4A90400FA8025 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 18EA46ABF3A38A13F2985782 /* Secrets.xcconfig */;
+			baseConfigurationReference = CFA100000000000000000004 /* Release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -1046,6 +1060,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = ChapterFlowUITests/ChapterFlowUITests.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1172,6 +1187,7 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = ChapterFlowUITests/ChapterFlowUITests.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -1274,6 +1290,231 @@
 			};
 			name = Debug;
 		};
+		CFA200000000000000000001 /* Staging */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Staging;
+		};
+		CFA200000000000000000002 /* Staging */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = CFA100000000000000000003 /* Staging.xcconfig */;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Config/ChapterFlow.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GCC_TREAT_WARNINGS_AS_ERRORS = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.chapterflow.ios;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_TREAT_WARNINGS_AS_ERRORS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Staging;
+		};
+		CFA200000000000000000003 /* Staging */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = ChapterflowWidgets/ChapterflowWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ChapterflowWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.chapterflow.ios.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Staging;
+		};
+		CFA200000000000000000004 /* Staging */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = NotificationService/NotificationService.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = NotificationService/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.chapterflow.ios.NotificationService;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Staging;
+		};
+		CFA200000000000000000005 /* Staging */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.chapterflow.ios.shareextension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Staging;
+		};
+		CFA200000000000000000006 /* Staging */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.chapterflow.ios.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "";
+				TEST_TARGET_NAME = ChapterFlow;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Staging;
+		};
+		CFA200000000000000000007 /* Staging */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = ActionExtension/ActionExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ActionExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.chapterflow.ios.actionextension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Staging;
+		};
+		CFA200000000000000000008 /* Staging */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = NotificationContent/NotificationContent.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = NotificationContent/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.chapterflow.ios.NotificationContent;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Staging;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1281,6 +1522,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				15E751862FF4A90400FA8025 /* Debug */,
+				CFA200000000000000000001 /* Staging */,
 				15E751872FF4A90400FA8025 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -1290,6 +1532,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				15E751892FF4A90400FA8025 /* Debug */,
+				CFA200000000000000000002 /* Staging */,
 				15E7518A2FF4A90400FA8025 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -1299,6 +1542,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C863F5CF24891372FE62626D /* Release */,
+				CFA200000000000000000005 /* Staging */,
 				C8E271A9E82320820C146E67 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -1308,6 +1552,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				AF5F51C762A8501E94930FE5 /* Release */,
+				CFA200000000000000000003 /* Staging */,
 				6A418F9B541E0C5C31AF0B84 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -1317,6 +1562,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4E7D7DBD2ED4D547F37A31C0 /* Release */,
+				CFA200000000000000000004 /* Staging */,
 				7F7AABF437275E7D33F7BC27 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -1326,6 +1572,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2B20B9663156D0E61E512263 /* Release */,
+				CFA200000000000000000008 /* Staging */,
 				5243BBA9E6A85C8ED9652756 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -1335,6 +1582,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F8AD037F518B66C8DF1B589 /* Release */,
+				CFA200000000000000000006 /* Staging */,
 				9EB28070023E5561414146BE /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
@@ -1344,6 +1592,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				9C5DF3A80DE3A32DE345E520 /* Release */,
+				CFA200000000000000000007 /* Staging */,
 				E967E35CB1306176DF103286 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;

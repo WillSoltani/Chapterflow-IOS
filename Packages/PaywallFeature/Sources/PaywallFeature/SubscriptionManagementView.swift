@@ -185,15 +185,14 @@ public struct SubscriptionManagementView: View {
 
     // MARK: - Promo code section
 
-    /// "Redeem Promo Code" entry point shown for all Apple users.
+    /// "Redeem Promo Code" entry point shown for mapped Apple subscribers.
     ///
-    /// Offer code redemption is available to both free and paying Apple users —
-    /// a code may grant or extend Pro access. Non-Apple users (Stripe, license, gift)
-    /// manage codes via the web app so this section is hidden for them.
+    /// StoreKit offer-code transactions do not carry an appAccountToken. The
+    /// backend therefore accepts them only when an existing transaction mapping
+    /// already proves this account's Apple ownership.
     @ViewBuilder
     private var promoCodeSection: some View {
-        switch model.detailState.proSourceKind {
-        case .apple:
+        if model.detailState.permitsOfferCodeRedemption {
             Section {
                 Button {
                     model.redeemOfferCode()
@@ -204,8 +203,6 @@ public struct SubscriptionManagementView: View {
                 .accessibilityLabel("Redeem a promotional offer code")
                 .accessibilityHint("Opens the App Store offer code redemption sheet")
             }
-        default:
-            EmptyView()
         }
     }
 

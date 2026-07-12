@@ -1,171 +1,452 @@
-# iOS Signing & Release
+# iOS Signing and Release
 
-> **Status:** Authored and ready. Live uploads are deferred until Apple Developer Program enrollment. The signing and TestFlight workflows are fully implemented and secret-guarded — they no-op cleanly when secrets are absent.
+> **Current status:** release configuration is fail-closed and TestFlight upload
+> has no implementation in the release workflow. The iOS and backend release
+> branches contain account-bound StoreKit remediation, but neither branch is
+> production evidence: the backend change is not deployed and the App Store
+> subscription catalog is incomplete. No production identifier was inferred or
+> invented. D-01, a signed authorization artifact, deployment proof,
+> and live App Store/StoreKit proof remain required before upload may be enabled.
 
----
+## Configuration ownership
 
-## Table of contents
+Only the `ChapterFlow` app target consumes application service configuration.
+Extension targets do not reference these xcconfigs and therefore do not inherit
+API, Cognito, Sentry, StoreKit, or provenance values.
 
-1. [Overview](#overview)
-2. [Required GitHub secrets](#required-github-secrets)
-3. [Generating the App Store Connect API key](#generating-the-app-store-connect-api-key)
-4. [Exporting the distribution certificate (.p12)](#exporting-the-distribution-certificate-p12)
-5. [Triggering a TestFlight upload](#triggering-a-testflight-upload)
-6. [Branch protection & required status checks](#branch-protection--required-status-checks)
-7. [Contract-drift monitoring](#contract-drift-monitoring)
-
----
-
-## Overview
-
-The CI system has three workflows:
-
-| Workflow | File | Trigger | Gating secret |
-|---|---|---|---|
-| **PR — Build, Test & Lint** | `.github/workflows/pr.yml` | Every PR + push to `main` | None (always runs) |
-| **Release — Archive & TestFlight** | `.github/workflows/release.yml` | Tag push `v*` or manual dispatch | `ASC_KEY_ID` |
-| **Contract Drift** | `.github/workflows/contract-drift.yml` | Weekly (Sunday 02:00 UTC) or manual | `CF_CI_TOKEN` |
-
-The PR workflow is the **required merge gate**. The release and drift workflows are inert until secrets are configured.
-
----
-
-## Required GitHub secrets
-
-Go to **Settings → Secrets and variables → Actions → New repository secret** for each:
-
-### PR workflow (no secrets needed)
-
-The build/test/lint workflow requires no secrets. It uses placeholder values from `Secrets.example.xcconfig`.
-
-### Release workflow — TestFlight upload
-
-| Secret name | Where to get it |
+| Layer | Purpose |
 |---|---|
-| `ASC_KEY_ID` | App Store Connect → Users and Access → Integrations → App Store Connect API → key ID (8-character string) |
-| `ASC_ISSUER_ID` | Same page — "Issuer ID" (UUID string) |
-| `ASC_API_KEY_P8` | The **full contents** of the downloaded `.p8` file (including `-----BEGIN EC PRIVATE KEY-----` header/footer) |
-| `APPLE_TEAM_ID` | Developer portal → Membership → Team ID (10-character alphanumeric string) |
-| `DISTRIBUTION_CERT_P12_BASE64` | See [Exporting the distribution certificate](#exporting-the-distribution-certificate-p12) |
-| `DISTRIBUTION_CERT_PASSWORD` | Password you chose when exporting the `.p12` |
+| `Config/Base.xcconfig` | Shared app-target keys and safe empty/disabled defaults. |
+| `Config/Debug.xcconfig` | Debug environment; includes Base and optional local override. |
+| `Config/Staging.xcconfig` | Explicit Staging environment with Release-like compiler settings. |
+| `Config/Release.xcconfig` | Production environment; includes Base and validated generated override. |
+| `Secrets.xcconfig` | Optional, gitignored final override for the app target only. |
+| `Secrets.example.xcconfig` | Empty documentation template; never a Release input. |
 
-### Drift workflow (optional)
+The project and every target declare Debug, Staging, and Release. The app target
+points those configurations to `Debug.xcconfig`, `Staging.xcconfig`, and
+`Release.xcconfig`; extension/test Staging configurations clone their existing
+Release settings without an app xcconfig reference. `#include?` makes
+`Secrets.xcconfig` optional, so clean checkouts and PR builds do not manufacture
+placeholder values.
 
-| Secret name | Description |
-|---|---|
-| `CF_CI_TOKEN` | A valid Cognito `id_token` for a dedicated CI test account. Rotate before it expires (or use a long-lived custom authorizer token). |
-| `CF_API_BASE_URL` | Live API base URL (e.g. `https://api.chapterflow.com`) |
-| `CF_TEST_BOOK_ID` | ID of a seeded book in the CI test account (default: `b-atomic-habits`) |
-| `CF_TEST_CHAPTER_N` | Chapter number to fetch (default: `1`) |
-
----
-
-## Generating the App Store Connect API key
-
-1. Log into [App Store Connect](https://appstoreconnect.apple.com).
-2. Navigate to **Users and Access → Integrations → App Store Connect API**.
-3. Click **+** to generate a new key.
-   - Name: `ChapterFlow CI`
-   - Access: **App Manager** (minimum required for uploads; use Admin only if needed)
-4. Download the `.p8` file **immediately** — Apple only lets you download it once.
-5. Note the **Key ID** and **Issuer ID** shown on the same page.
-6. Add `ASC_KEY_ID`, `ASC_ISSUER_ID`, and `ASC_API_KEY_P8` as GitHub secrets (see table above).
-
----
-
-## Exporting the distribution certificate (.p12)
-
-You need a **Apple Distribution** (or **iOS Distribution**) certificate to sign Release builds.
-
-### First-time: create via Xcode
-
-1. Open Xcode → **Settings → Accounts** → select your Apple ID.
-2. Click **Manage Certificates** → **+** → **Apple Distribution**.
-3. Xcode creates the certificate + private key in your Keychain.
-
-### Export from Keychain Access
-
-1. Open **Keychain Access** → **My Certificates**.
-2. Find **Apple Distribution: Your Name (TEAMID)**.
-3. Right-click → **Export** → choose `.p12` format.
-4. Set a strong password (you will need this as `DISTRIBUTION_CERT_PASSWORD`).
-5. Encode as base64:
-   ```sh
-   base64 -i Certificates.p12 | pbcopy
-   ```
-6. Paste the result as the `DISTRIBUTION_CERT_P12_BASE64` secret.
-
----
-
-## Triggering a TestFlight upload
-
-### Via a version tag (recommended)
+For local integration only:
 
 ```sh
-git tag v1.0.0
-git push origin v1.0.0
+cp Secrets.example.xcconfig Secrets.xcconfig
+# Fill the gitignored file. Escape URL separators as https:/$()/host/path.
 ```
 
-The `release.yml` workflow starts automatically. Monitor progress at **Actions → Release — Archive & TestFlight**.
+Do not share or upload `Secrets.xcconfig`.
 
-### Via manual dispatch
+## Fail-closed release tools
 
-Go to **Actions → Release — Archive & TestFlight → Run workflow**. Optionally fill in "What to Test" notes.
-
-### Post-upload steps
-
-After the workflow uploads the build:
-
-1. Log into [App Store Connect](https://appstoreconnect.apple.com).
-2. Navigate to your app → **TestFlight**.
-3. The build appears under **iOS Builds** (may take 5–30 min to process).
-4. Add testers and submit for Beta App Review if required.
-
-> **⚠️ DEFERRED:** The live TestFlight upload has not been verified because Apple Developer Program enrollment is pending. Run the above steps after enrollment and confirm the upload completes successfully.
-
----
-
-## Branch protection & required status checks
-
-After pushing the PR workflow, configure branch protection to gate merges:
-
-1. Go to **Settings → Branches → Add rule** for `main`.
-2. Enable:
-   - **Require status checks to pass before merging**
-   - **Require branches to be up to date before merging**
-3. Add these checks (type the exact job name from `.github/workflows/pr.yml`):
-   - `Build & Test`
-   - `Lint`
-4. Enable **Require pull request reviews before merging** (recommended: 1 review).
-5. Enable **Do not allow bypassing the above settings** to prevent force-pushing around CI.
-
----
-
-## Contract-drift monitoring
-
-The **Contract Drift** workflow runs weekly and validates that live API responses still decode correctly with the current `Codable` models.
-
-### Activating the drift check
-
-1. Create a dedicated ChapterFlow test account (do not use a personal account).
-2. Obtain a Cognito `id_token` for that account (sign in via the app or directly via the Cognito `InitiateAuth` API).
-3. Add it as `CF_CI_TOKEN` in repository secrets.
-4. Add `CF_API_BASE_URL` pointing to the live API.
-5. Optionally set `CF_TEST_BOOK_ID` / `CF_TEST_CHAPTER_N` for the book/chapter used in fixture fetches.
-
-### Token rotation
-
-Cognito `id_token`s expire in 1 hour. For CI, use one of:
-
-- A **refresh token** flow: run `InitiateAuth` with `REFRESH_TOKEN_AUTH` before each drift run (requires storing the refresh token as a secret — also expires eventually).
-- A **long-lived service account token** from a custom Lambda authorizer endpoint (recommended for production CI).
-
-### Running locally
+The entry point is `scripts/release-config/release_config.py`:
 
 ```sh
-CF_CI_TOKEN=<token> API_BASE_URL=https://api.chapterflow.com \
-  bash scripts/refresh-fixtures.sh
-
-swift test --package-path Packages/Models --filter "Evolution"
-swift test --package-path Packages/Fixtures
+python3 scripts/release-config/release_config.py validate
+python3 scripts/release-config/release_config.py generate \
+  --xcconfig Secrets.xcconfig \
+  --manifest "$TMPDIR/ChapterFlowReleaseManifest.json"
+python3 scripts/release-config/release_config.py inspect-archive \
+  --archive "$TMPDIR/ChapterFlow.xcarchive" \
+  --manifest "$TMPDIR/ChapterFlowReleaseManifest.json"
+python3 scripts/release-config/release_config.py inspect-app \
+  --app "$TMPDIR/ipa-inspection/Payload/ChapterFlow.app" \
+  --manifest "$TMPDIR/ChapterFlowReleaseManifest.json"
 ```
+
+The validator emits only stable issue codes such as
+`E_APP_STORE_URL_ID_MISMATCH`; it never prints input values. Validation rejects:
+
+- empty, unexpanded, template, or placeholder values;
+- non-HTTPS production API/support URLs;
+- malformed Cognito region, pool, client, or domain;
+- any app bundle other than `com.chapterflow.ios`;
+- missing/non-numeric App Store ID, invalid App Store URL, or ID/URL mismatch;
+- missing, malformed, duplicate, or non-approved StoreKit product IDs;
+- absent Sentry policy or enabled Sentry without a valid HTTPS DSN;
+- absent/malformed version, build number, full commit SHA, or Release configuration;
+- absent/malformed Team ID, App Store Connect key/issuer/private key, distribution
+  certificate, or certificate password.
+- backend Apple App ID that is missing, malformed, or differs from both the
+  protected `APP_STORE_ID` and `Config/ApprovedReleaseIdentity.json`.
+
+Monthly and annual StoreKit products are required, and together they must exactly
+match `APPROVED_STOREKIT_PRODUCT_IDS`. `SK_ANNUAL_UPFRONT_PRODUCT_ID`
+must remain empty: the audited backend verification route currently requires a
+subscription expiry and cannot safely authorize a non-renewing upfront product.
+The validator rejects a nonempty value until backend support and route tests land.
+
+`generate` first runs the same validation, then writes:
+
+1. gitignored `Secrets.xcconfig`, mode `0600`, containing build-time app values;
+2. a schema-versioned nonsecret JSON manifest with identifiers, backend Apple
+   App ID attestation, build provenance, signing-validation state, and a SHA-256
+   fingerprint.
+
+The manifest never contains Sentry DSN, `.p8`, `.p12`, certificate password, JWT,
+or other credential material. Its contract is documented by
+`Config/ReleaseManifest.schema.json`; `ReleaseManifest.template.json` is a
+non-runnable shape reference with required markers.
+
+The archive and exported-app inspectors compare the generated manifest with the
+built `Info.plist`, including bundle, API/Cognito configuration, App Store
+destination, StoreKit IDs, Sentry policy, configuration, version, build, commit,
+and manifest fingerprint. They reject unexpanded/template strings before export
+or artifact publication.
+
+Run the deterministic failure-injection suite locally with:
+
+```sh
+bash scripts/tests/test-release-config.sh
+```
+
+The same suite and an unsigned Release build run on every PR.
+
+The hosted `macos-26` PR job keeps its general build, snapshot, and hermetic UI
+gates on the newest installed Xcode 26. StoreKit runs independently on another
+`macos-26` job, so both lanes can execute in parallel while the required XCUITest
+aggregator fails unless every applicable lane passes. The dedicated StoreKit
+test plan activates the local catalog only for the StoreKit scheme. Its UI-test
+base performs a bounded install launch, terminates it, then creates and retains
+an `SKTestSession` before the tested relaunch. The contract still exercises the
+app's real `Product.purchase()` path.
+
+### Controlled StoreKit simulator waiver
+
+Repo CI on hosted iOS 26.1 and a local Xcode 26.6/iOS 26.5 run reproduced the
+`SKTestSession` configuration failure before ChapterFlow's backend verification
+boundary. Apple identifies iOS 26.6 as the first simulator fix in forum thread
+830493; external feedback reference `FB22836426` reports continuing concern.
+GitHub's `macos-26` image currently has Xcode 26.6 build 17F113 and iOS 26.5,
+but not iOS 26.6.
+
+`Config/StoreKitSimulatorWaiver.json` records controlled waiver
+`CF-SKTESTSESSION-2026-07`, owned and approved by `WillSoltani`, expiring at
+`2026-07-27T23:59:59Z`. Its evidence packet must be committed at
+`docs/ios/release-evidence/storekit/pr-117/attestation.v1.json` with exactly five
+redacted PNGs beside it: `catalog.png`, `backend-unavailable.png`,
+`sandbox-purchase-history.png`, `restore-success.png`, and `relaunch-pro.png`.
+Those files do not exist until the real run is completed; placeholders are
+forbidden.
+
+The packet is strict and rejects extra fields. It binds the app/team/group,
+tested iOS source SHA, deployed and health-reported backend SHA, deployment run,
+signed build and artifact digest, device/storefront, distinct operator and
+independent reviewer, configured and loaded products, `$7.99`/`P1M` monthly
+product, and a maximum seven-day evidence window. Development-signed Sandbox
+evidence must target staging; TestFlight evidence must target production. In
+both cases the deployed backend SHA must match the health-reported SHA and bind
+to a GitHub deployment run. Its ordered outcomes must show
+an Apple Sandbox purchase, backend-unavailable fail-closed behavior without Pro
+or transaction finish, explicit restore with authoritative `ok`/`processed`/
+`active` acknowledgement, finish only after acknowledgement, success UI, and a
+relaunch into backend `PRO`/`active`/`apple`. Every PNG is SHA-256 bound and the
+packet must set `releaseAuthorization` to `false`.
+
+PR 117 also requires the `storekit-sandbox-attested` label. The label is not
+evidence: it certifies that the independent reviewer validated the committed
+packet. `WillSoltani` is currently the only repository collaborator, so a
+different human reviewer must be added, review the packet and PR, and be recorded
+in the packet before the label is applied. The operator and reviewer identities
+must differ. No protected Environment substitutes for that review.
+
+The first push to `main` that introduces the evidence is accepted only as a
+two-parent merge commit whose first parent is the pre-push `main` SHA and whose
+second parent contains the byte-exact packet and five PNGs. The tested source SHA
+must be an ancestor of that second parent. Merge PR 117 with `gh pr merge --merge`;
+squash and rebase merges intentionally fail this gate.
+
+After that merge, push-main and later PRs may inherit the unexpired packet without
+the label only when all six evidence files are byte-identical to their baseline,
+the tested source remains an ancestor, and no critical path changed after
+testing. All `ChapterFlow/`, `Packages/`, `Config/`, project, workflow, script,
+root test-plan/config/lint, and evidence paths are critical. Inheritance is
+therefore documentation/non-runtime-only; runtime work requires a new controlled
+attestation rather than replacing this packet.
+
+If any available iOS simulator runtime is version 26.6 or newer, the newest is
+selected and the waiver is bypassed automatically. The same exact one-test
+purchase/relaunch/restore contract must report one pass,
+zero failures, and zero skips. An executed test failure is never waivable. The
+exact test runs before PR 117's final packet-and-label gate, so neither proof can
+hide a fixed-runtime failure. When no fixed runtime exists, the same unexpired
+packet and source-drift checks are required before the simulator waiver succeeds.
+The gate never falls back to the live catalog, substitutes a runner-side purchase,
+uses `XCTSkip`/expected failure, or retries the test. The waiver is only a
+source-merge control; sandbox evidence does not satisfy TestFlight, signing,
+deployment, or any other release stop condition below.
+
+Packet and waiver expiry block only the simulator-waiver path and PR 117's
+origin attestation. Once a fixed runtime is available, later CI still validates
+the packet's structure, hashes, immutable baseline, and critical-source drift,
+but an expired packet cannot override a successful execution of the exact test.
+
+Runtime validation emits `app_configuration_validated` at most once per app
+process with allowlisted readiness booleans. After validation, internal and
+verified TestFlight diagnostics may retain the configured and successfully
+loaded StoreKit product IDs plus coarse verifier health. Those identifiers are
+the same nonsecret values in the release manifest; no transaction, account,
+receipt, JWS, token, or response body is retained.
+
+The affected synchronous launch work has a host regression guard: 25 complete
+production-configuration validations must finish within the 250 ms main-thread
+stall budget. A fresh Xcode 26 host run on 2026-07-11 completed the batch in
+16 ms. This is not a substitute for the required signed-device cold-launch
+trace; the 1.5 s physical-device launch proof remains a release stop condition.
+
+## Account-bound StoreKit lifecycle
+
+The native client derives StoreKit's `appAccountToken` from the authenticated
+Cognito `sub`, which must be an RFC UUID. Account binding is replaced
+synchronously during authentication transitions and cleared before a signed-out
+state is exposed. Direct purchases and win-back purchases include that token.
+
+Before calling the backend or finishing a transaction, the StoreKit boundary
+requires a configured product, direct purchased ownership, and an active account.
+A nonempty signed token must match the active account exactly. A tokenless legacy
+transaction is delegated to the backend only; it can be processed only when the
+backend already has a same-account reverse mapping. Local subscription, refund,
+and win-back discovery is filtered to matching tokens or those backend-authorized
+legacy transaction IDs so StoreKit state cannot leak across ChapterFlow accounts.
+
+The backend response is authoritative and additive. The client finishes only an
+acknowledgement with `ok: true`, `processed: true`, and a recognized
+`transactionState` (`active`, `expired`, or `revoked`). Purchase success requires
+an active authoritative Pro entitlement, but its source may remain a
+higher-priority admin, promotion, gift, license, or other backend grant; the
+client never rewrites that source to Apple. Processed terminal transactions and
+processed active transactions that do not leave Pro authoritative are finished
+without granting access locally. Old or unknown acknowledgement shapes fail
+closed and remain unfinished for a later retry.
+
+Every entitlement refresh, foreground refresh, and restore replays unfinished
+transactions. This permits a transaction rejected under the wrong ChapterFlow
+account to succeed when its bound account returns. Offer-code redemption is not
+shown on the free paywall because Apple's sheet cannot attach an
+`appAccountToken`; it is available from subscription management only for an
+account already mapped to an Apple subscription.
+
+## App Store Connect inventory
+
+A signed-in inspection on 2026-07-11 established the following owner-controlled
+values and readiness state. The monthly product shell was then created with the
+owner-approved product identifier and duration. Its United States base price was
+confirmed at `$7.99` per month, with Apple's automatic equivalent prices applied
+to the other storefronts. Availability and customer-facing metadata remain
+unset:
+
+| Item | Observed value/state |
+|---|---|
+| App name/version | ChapterFlow; iOS 1.0 is Prepare for Submission. |
+| Native bundle ID | `com.chapterflow.ios`. |
+| App Apple ID | `6787864558`. |
+| Apple Developer Team ID | `ZG3C9QBA8Z` (confirmed from the existing production SSM identity parameter). |
+| Subscription group | ChapterFlow Pro; group ID `22211821`. |
+| Existing recurring product | `com.chapterflow.pro.annual`; Apple product ID `6787866553`; one year. |
+| Annual readiness | Missing Metadata; United States price `$44.99` per year and Canada price `$59.99` per year exist across 175 territories; English (Canada) localization exists; availability remains unset. |
+| Monthly recurring product | `com.chapterflow.pro.monthly`; Apple product ID `6789951571`; one month. |
+| Monthly readiness | Missing Metadata; United States base price `$7.99` per month with Apple's automatic storefront equivalents; availability/localization/review metadata are not set. |
+| Subscription levels | Annual and monthly are both level 1 in App Store Connect, matching their equivalent Pro access. |
+| Family Sharing | Off for both subscriptions, matching the client/backend rejection policy. |
+| Server Notifications V2 | Production and Sandbox URLs are both unset. |
+| Other in-app purchases | None. |
+
+The canonical destination derived from the confirmed app identity is
+`https://apps.apple.com/app/id6787864558`, but the listing is not yet a live
+storefront proof. The release catalog must not use the old local StoreKit IDs or
+the backend's previous defaults as evidence. Before release, an owner must fully
+configure both recurring products' metadata/pricing/availability, attach the
+first subscriptions to version 1.0, and configure the Production and Sandbox App
+Store Server Notifications V2 URLs. The checked-in StoreKit Test fixture uses
+the observed United States annual price of `$44.99`; it does not replace the
+remaining App Store Connect metadata and availability evidence.
+
+## Protected release inputs
+
+Production GitHub **environment secrets only**:
+
+Do not define these as repository- or organization-scoped Actions secrets. An
+older tagged commit executes its historical workflow, so broadly scoped legacy
+credentials could make an old upload path reachable. Before this branch merges,
+the release owner must remove or rotate every repository/organization-scoped
+App Store Connect and distribution credential, then provision the replacement
+only in the reviewer-protected `production` Environment. Until that external
+control is evidenced, all `v*` tag creation and release workflow execution must
+remain disabled in repository settings.
+
+| Name | Purpose |
+|---|---|
+| `RELEASE_API_BASE_URL` | Approved production HTTPS API base URL. |
+| `RELEASE_COGNITO_REGION` | Production Cognito region. |
+| `RELEASE_COGNITO_USER_POOL_ID` | Production user-pool ID. |
+| `RELEASE_COGNITO_CLIENT_ID` | Native app client ID. |
+| `RELEASE_COGNITO_DOMAIN` | Hosted/custom Cognito domain without scheme/path. |
+| `SENTRY_DSN` | Required only when `SENTRY_POLICY=enabled`. |
+| `APPLE_TEAM_ID` | Ten-character Apple team identifier. |
+| `ASC_KEY_ID` | App Store Connect API key ID. |
+| `ASC_ISSUER_ID` | App Store Connect issuer UUID. |
+| `ASC_API_KEY_P8` | Full private-key contents. |
+| `DISTRIBUTION_CERT_P12_BASE64` | Distribution certificate export, base64 encoded. |
+| `DISTRIBUTION_CERT_PASSWORD` | Password for the `.p12`. |
+
+Protected GitHub **environment variables**:
+
+| Name | Purpose |
+|---|---|
+| `APP_STORE_ID` | Exact numeric ChapterFlow App Store ID. |
+| `APP_STORE_URL` | Exact `https://apps.apple.com/.../id<APP_STORE_ID>` destination. |
+| `SUPPORT_URL` | Live HTTPS support route. |
+| `APPROVED_STOREKIT_PRODUCT_IDS` | Owner-approved comma-separated product allowlist. |
+| `SK_MONTHLY_PRODUCT_ID` | Selected monthly product. |
+| `SK_ANNUAL_PRODUCT_ID` | Selected annual product. |
+| `SK_ANNUAL_UPFRONT_PRODUCT_ID` | Reserved; must remain empty until backend support exists. |
+| `SENTRY_POLICY` | Exactly `disabled` or `enabled`. |
+
+Backend attestation variables, also protected by the production environment:
+
+| Name | Required assertion |
+|---|---|
+| `BACKEND_DEPLOYMENT_COMMIT_SHA` | Full deployed backend commit SHA. |
+| `BACKEND_ATTESTATION_ID` | Owner-approved ADR/change/evidence identifier. |
+| `BACKEND_ATTESTATION_APPROVED` | Exactly `true`. |
+| `BACKEND_APPLE_BUNDLE_ID` | Must equal the iOS bundle identifier. |
+| `BACKEND_APPLE_APP_ID` | Must exactly equal `APP_STORE_ID` and the approved ChapterFlow Apple App ID. |
+| `BACKEND_VERIFICATION_PRODUCT_ALLOWLIST` | Must exactly match the mobile approved product set. |
+| `BACKEND_MOBILE_CONFIG_APP_STORE_URL` | Must exactly match `APP_STORE_URL`. |
+| `BACKEND_APPLE_ENVIRONMENT` | Exactly `Production`. |
+| `BACKEND_SUBSCRIPTION_GROUP_ID` | Approved App Store subscription group. |
+| `BACKEND_PRODUCT_ALLOWLIST_ENFORCED` | Exactly `true`. |
+| `BACKEND_APPLE_ENVIRONMENT_ENFORCED` | Exactly `true`. |
+| `BACKEND_SUBSCRIPTION_GROUP_ENFORCED` | Exactly `true`. |
+| `BACKEND_ACCOUNT_BINDING_ENFORCED` | Exactly `true` only after a verified Apple transaction is bound to the authenticated account (for example with `appAccountToken`) and cross-account replay tests pass. |
+
+These values attest to evidence; they do not authorize upload or make the backend
+safe. A production reviewer may approve them only after backend route tests and
+deployed runtime evidence prove the assertions. The release-branch backend source
+adds exact IAP bundle, product allowlist, environment, subscription-group,
+ownership, and initiating-account enforcement; the release manifest separately
+attests the exact Apple App ID without creating a new runtime authority flag.
+Production still runs the earlier backend and therefore does not satisfy those
+assertions. Upload remains blocked until the reviewed backend is merged,
+configured with owner-approved values, deployed, and independently attested.
+
+Use a protected GitHub Environment with required reviewers for all release
+inputs. Enable prevent-self-review and restrict deployment branches/tags to
+protected `main` release refs. Protect `v*` tags from deletion or creation by
+unreviewed actors. Product IDs and URLs are nonsecret, but protection prevents
+unreviewed release changes. The workflow also requires the requested SHA to be
+exactly the fetched `origin/main` tip; an older main ancestor is rejected.
+Repository settings and environment-only credentials remain mandatory because
+a historical commit runs its historical workflow, not the current file.
+
+## Release workflow order — archive-only safe scaffold
+
+`.github/workflows/release.yml` binds archive validation to the protected GitHub
+Environment named `production`. It prepares an inspected artifact but cannot upload it:
+
+1. Checkout the requested immutable SHA and derive version/build/commit.
+2. Run the release-config failure-injection suite.
+3. Validate all D-01, backend-attestation, and signing inputs.
+4. Generate gitignored xcconfig and nonsecret manifest.
+5. Bind backend attestation into the manifest fingerprint and app provenance.
+6. Run strict SwiftLint, focused CoreKit/Paywall tests, and unsigned Release build.
+7. Install signing material only after all earlier gates pass.
+8. Create the signed archive with the same version/build/commit.
+9. Inspect the archive against the manifest, verify its code signature, lint its
+   built plist, and prove the executable is readable by `otool`.
+10. Export the IPA, require exactly one payload app, and repeat manifest, plist,
+    code-signature, executable, signing-team, and provisioning-identity checks on
+    the final exported app.
+11. Stage only the inspected IPA, nonsecret manifest, and SHA-256 sidecar in a
+    clean directory; immediately verify the sidecar against the staged IPA.
+12. Remove the private key, certificate file, temporary keychain, and generated
+    xcconfig before the pinned artifact action executes.
+13. Retain the clean three-file artifact and its digest for 30 days.
+14. Fail explicitly with `E_TESTFLIGHT_UPLOAD_NOT_AUTHORIZED`; no TestFlight
+    upload job or upload command exists in this workflow.
+
+Missing D-01 data fails before key installation or archive creation. The workflow
+does not copy `Secrets.example.xcconfig`, synthesize product IDs, silently skip
+a requested release, or upload directly from the archive job. A requested
+release remains red after producing its archive artifact so a skipped upload
+cannot be mistaken for success.
+
+Tag releases derive marketing version from `v<version>`. Manual releases require
+the `marketing_version` input. Build number currently uses the GitHub workflow
+run number as a traceable positive value; WP-REL-03 retains ownership of the
+final organization-wide version/build policy.
+
+The workflow is the only supported production archive path. There is currently
+no supported production upload path. A direct local
+`xcodebuild archive` remains possible for developer diagnostics, but it is not
+release-qualified and must not be exported or uploaded: it bypasses protected
+inputs, retained provenance, archive inspection, and the dependent upload gate.
+
+## Signing setup
+
+Create an App Store Connect API key under **Users and Access → Integrations** and
+store its key ID, issuer ID, and downloaded `.p8` in the protected environment.
+Create an Apple Distribution certificate in Xcode, export its certificate and
+private key as password-protected `.p12`, then encode it without committing it:
+
+```sh
+base64 -i Certificates.p12 | pbcopy
+```
+
+The workflow imports it into a temporary keychain and deletes that keychain,
+the decoded `.p12`, the generated xcconfig, and the App Store Connect key in an
+`always()` cleanup step.
+
+## Pending external proof and release stop conditions
+
+The infrastructure is intentionally not proof that external services are ready.
+Do not enable upload until an owner has reviewed the exact production manifest and all
+of the following are demonstrated on the resulting signed archive/TestFlight build:
+
+- repository/organization-scoped legacy Apple signing and upload credentials
+  have been removed or rotated, and replacements are production-Environment-only;
+- the App Store ID/URL opens the exact ChapterFlow listing in supported storefronts;
+- every configured StoreKit product exists, is approved/available, and the backend
+  grants entitlement only for the same allowlist;
+- entitlement cache/listener state is namespaced to the authenticated subject,
+  cleared on sign-out, and cannot survive an account switch;
+- API and Cognito identifiers match the production backend and signed app;
+- certificate, provisioning, associated-domain, SIWA, APNs, and Keychain
+  capabilities pass their signed-device matrix;
+- Sentry policy/DSN and privacy disclosure match actual runtime behavior;
+- an independently signed, expiring authorization binds the exact iOS SHA,
+  deployed backend SHA, environment identities, backend controls, and IPA digest;
+- a separately controlled first upload and TestFlight processing exercise completes.
+
+At the time of this document update, the isolated source branches enforce the
+account-bound contract and cover delayed, tokenless-legacy, cross-account,
+terminal, refund, replay, account-session ABA, and coalesced delivery cases. The
+deployed production backend is still the pre-remediation build and its
+`/book/config/ios` response still lacks the exact listing URL. App Store Connect
+confirms the app/bundle/group and both recurring product shells above, but neither
+subscription is sale-ready and notification URLs are unset. Those live Apple and
+backend proofs remain pending. Mutable GitHub
+variables and an unkeyed manifest fingerprint are consistency checks, not
+authorization. A green source build or archive must not be represented as a
+successful production release.
+
+## Health gate and rollback trigger
+
+The first release uses zero-tolerance gates during internal and TestFlight
+validation:
+
+- every successful launch emits exactly one validated-configuration diagnostic;
+- both approved recurring product IDs load in every supported storefront sample;
+- controlled purchase and restore exercises record a healthy verifier and an
+  authoritative backend Pro entitlement;
+- the exact App Store listing and support fallback both open on the device matrix;
+- no configuration failure, unknown product, cross-account claim, secret scan,
+  or archive/manifest mismatch is accepted.
+
+Any violation stops rollout and leaves upload disabled. If a fault is found
+after a future production enablement, operations must first disable remote hard
+gates/soft nudges, stop the release workflow, and revert to the last inspected
+artifact only after its manifest is revalidated. Billing access must never be
+restored through a client-side entitlement fallback.
