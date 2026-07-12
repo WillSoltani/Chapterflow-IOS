@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import SwiftUI
 import Testing
 import DesignSystem
@@ -94,3 +95,4 @@ struct ReleaseVisualSnapshotTests {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
+#endif

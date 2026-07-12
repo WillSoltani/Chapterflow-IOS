@@ -7,6 +7,8 @@ TOOL="$ROOT/scripts/release-config/release_config.py"
 PROJECT="$ROOT/ChapterFlow.xcodeproj/project.pbxproj"
 RELEASE_WORKFLOW="$ROOT/.github/workflows/release.yml"
 PR_WORKFLOW="$ROOT/.github/workflows/pr.yml"
+APP_RELEASE_SNAPSHOTS="$ROOT/Packages/AppFeature/Tests/AppFeatureTests/ReleaseVisualSnapshotTests.swift"
+PAYWALL_RELEASE_SNAPSHOTS="$ROOT/Packages/PaywallFeature/Tests/PaywallFeatureTests/ReleaseVisualSnapshotTests.swift"
 EXPORT_OPTIONS="$ROOT/Config/ExportOptions.plist"
 STOREKIT_CATALOG_TEST="$ROOT/scripts/tests/test-storekit-catalog.py"
 
@@ -578,12 +580,19 @@ else
 fi
 
 tests=$((tests + 1))
-pr_snapshot_policy="$(python3 - "$PR_WORKFLOW" <<'PY'
+pr_snapshot_policy="$(python3 - \
+  "$PR_WORKFLOW" \
+  "$APP_RELEASE_SNAPSHOTS" \
+  "$PAYWALL_RELEASE_SNAPSHOTS" <<'PY'
 import re
 import sys
 
 with open(sys.argv[1], encoding="utf-8") as handle:
     workflow = handle.read()
+with open(sys.argv[2], encoding="utf-8") as handle:
+    app_snapshots = handle.read()
+with open(sys.argv[3], encoding="utf-8") as handle:
+    paywall_snapshots = handle.read()
 
 
 def job_body(name: str) -> str:
@@ -596,30 +605,31 @@ def job_body(name: str) -> str:
 
 
 build = job_body("build-and-test")
-snapshots = job_body("macos-release-snapshots")
 uitest = job_body("uitest")
 
 checks = (
-    'if [[ "$pkg" == "AppFeature" || "$pkg" == "PaywallFeature" ]]; then' in build,
-    build.count("test_command+=(--skip ReleaseVisualSnapshotTests)") == 1,
-    "for pkg in AppFeature PaywallFeature; do" in snapshots,
-    '--filter "${pkg}Tests.ReleaseVisualSnapshotTests"' in snapshots,
-    'grep -Ec "^${pkg}Tests\\\\.ReleaseVisualSnapshotTests/"' in snapshots,
-    "if [[ \"$selected\" -ne 2 ]]; then" in snapshots,
-    "if: failure()" in snapshots,
-    "*-macos.png" in snapshots,
-    "*-macos-FAIL.png" in snapshots,
-    re.search(r"^    needs: build-and-test$", snapshots, re.MULTILINE) is not None,
+    app_snapshots.startswith("#if canImport(UIKit)\n"),
+    app_snapshots.rstrip().endswith("#endif"),
+    paywall_snapshots.startswith("#if canImport(UIKit)\n"),
+    paywall_snapshots.rstrip().endswith("#endif"),
+    "--skip ReleaseVisualSnapshotTests" not in build,
+    "macos-release-snapshots:" not in workflow,
+    "iPhone 17e" in uitest,
+    "iOS-26-5" in uitest,
+    "-only-testing:AppFeatureTests/ReleaseVisualSnapshotTests" in uitest,
+    "-only-testing:PaywallFeatureTests/ReleaseVisualSnapshotTests" in uitest,
+    uitest.count("if counts != (4, 0, 0):") == 2,
+    "release-snapshot-diagnostics" in uitest,
+    "*-FAIL.png" in uitest,
     re.search(r"^    needs: build-and-test$", uitest, re.MULTILINE) is not None,
-    "macos-release-snapshots" not in uitest,
 )
 print("true" if all(checks) else "false")
 PY
 )"
 if [ "$pr_snapshot_policy" = "true" ]; then
-  printf 'ok %s - PR workflow isolates, counts, gates, and retains macOS snapshots\n' "$tests"
+  printf 'ok %s - PR workflow runs host tests and gates counted UIKit snapshots\n' "$tests"
 else
-  printf 'not ok %s - PR workflow macOS snapshot policy is incomplete\n' "$tests"
+  printf 'not ok %s - PR workflow UIKit snapshot policy is incomplete\n' "$tests"
   failures=$((failures + 1))
 fi
 

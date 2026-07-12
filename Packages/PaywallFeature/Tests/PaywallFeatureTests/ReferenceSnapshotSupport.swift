@@ -4,7 +4,6 @@ import Testing
 
 #if canImport(AppKit)
 import AppKit
-import QuartzCore
 #elseif canImport(UIKit)
 import QuartzCore
 import UIKit
@@ -174,16 +173,7 @@ private func renderedPNG<ViewUnderTest: View>(
     host.appearance = NSAppearance(named: .aqua)
     host.wantsLayer = true
     host.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
-    // Headless runners can defer SwiftUI display-list commits. Flush the first
-    // pass before caching so text and controls are captured deterministically.
-    host.needsLayout = true
     host.layoutSubtreeIfNeeded()
-    host.needsDisplay = true
-    host.displayIfNeeded()
-    CATransaction.flush()
-    host.layoutSubtreeIfNeeded()
-    host.needsDisplay = true
-    host.displayIfNeeded()
 
     let pixelWidth = Int(size.width * scale)
     let pixelHeight = Int(size.height * scale)

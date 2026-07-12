@@ -1,3 +1,4 @@
+#if canImport(UIKit)
 import CoreKit
 import SwiftUI
 import Testing
@@ -102,3 +103,4 @@ struct ReleaseVisualSnapshotTests {
     }
 #endif
 }
+#endif

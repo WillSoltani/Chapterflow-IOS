@@ -1,8 +1,7 @@
 name: PR — Build, Test & Lint
 
 # Runs on every PR targeting main and on direct pushes to main.
-# Configure "build-and-test", "lint", "macos-release-snapshots", and "uitest"
-# as required status checks
+# Configure "build-and-test", "lint", and "uitest" as required status checks
 # in Settings → Branches → Branch protection rules for `main`.
 
 on:
@@ -160,21 +159,10 @@ jobs:
 
           for pkg in "${packages[@]}"; do
             echo "──────────────── Testing $pkg ────────────────"
-            test_command=(
-              swift test
-              --package-path "Packages/$pkg"
-              --scratch-path "$scratch"
-              --parallel
-            )
-
-            # These two AppKit-rendered suites have their own gating job below,
-            # where both packages run even when the first snapshot suite fails
-            # and the rendered failure images are retained for visual review.
-            if [[ "$pkg" == "AppFeature" || "$pkg" == "PaywallFeature" ]]; then
-              test_command+=(--skip ReleaseVisualSnapshotTests)
-            fi
-
-            if "${test_command[@]}"; then
+            if swift test \
+              --package-path "Packages/$pkg" \
+              --scratch-path "$scratch" \
+              --parallel; then
               echo "✓ $pkg passed"
             else
               echo "✗ $pkg FAILED"
@@ -190,103 +178,7 @@ jobs:
           echo ""
           echo "✅ Full local package suite passed (${#packages[@]} packages)"
 
-  # ── 3. macOS release-surface snapshots ──────────────────────────────────────
-  # AppKit pixel output can drift independently of the iOS product renderer.
-  # Keep it gating and diagnosable without preventing the product-target iOS
-  # snapshots, deterministic XCUITests, and StoreKit Test contract from running.
-  macos-release-snapshots:
-    name: macOS Release Snapshots
-    runs-on: macos-26
-    needs: build-and-test
-
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-
-      - name: Select Xcode 26
-        run: |
-          echo "Installed Xcodes:"; ls -d /Applications/Xcode*.app 2>/dev/null || true
-          latest26="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)"
-          if [ -n "$latest26" ]; then
-            sudo xcode-select -s "$latest26/Contents/Developer"
-          fi
-          xcodebuild -version
-
-      - name: Restore SPM repositories & build
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-        with:
-          path: |
-            ~/Library/Caches/org.swift.swiftpm/repositories
-            .spm-build
-          key: ${{ runner.os }}-spm-v2-${{ hashFiles('**/Package.resolved') }}
-          restore-keys: |
-            ${{ runner.os }}-spm-v2-
-
-      - name: Compare macOS release-surface snapshots
-        shell: bash
-        env:
-          SNAPSHOT_RECORD: "0"
-        run: |
-          set -uo pipefail
-          failed=()
-          scratch="$GITHUB_WORKSPACE/.spm-build"
-
-          for pkg in AppFeature PaywallFeature; do
-            echo "──────────────── Testing $pkg macOS snapshots ────────────────"
-            test_list="$RUNNER_TEMP/${pkg}-macos-snapshot-tests.txt"
-            test_log="$RUNNER_TEMP/${pkg}-macos-snapshots.log"
-
-            if ! swift test \
-              --package-path "Packages/$pkg" \
-              --scratch-path "$scratch" \
-              list > "$test_list"; then
-              echo "::error title=$pkg snapshot discovery failed::SwiftPM could not enumerate the release snapshot suite."
-              failed+=("$pkg-discovery")
-              continue
-            fi
-
-            selected="$(grep -Ec "^${pkg}Tests\\.ReleaseVisualSnapshotTests/" "$test_list" || true)"
-            if [[ "$selected" -ne 2 ]]; then
-              echo "::error title=$pkg snapshot count mismatch::Expected 2 AppKit release snapshots, selected $selected."
-              failed+=("$pkg-selection")
-              continue
-            fi
-
-            if swift test \
-              --package-path "Packages/$pkg" \
-              --scratch-path "$scratch" \
-              --filter "${pkg}Tests.ReleaseVisualSnapshotTests" \
-              2>&1 | tee "$test_log"; then
-              echo "✓ $pkg macOS snapshots passed"
-            else
-              echo "✗ $pkg macOS snapshots FAILED"
-              failed+=("$pkg")
-            fi
-          done
-
-          if [[ ${#failed[@]} -gt 0 ]]; then
-            echo ""
-            echo "❌ Failed macOS snapshot suites: ${failed[*]}"
-            exit 1
-          fi
-          echo ""
-          echo "✅ macOS release-surface snapshots passed"
-
-      - name: Upload macOS snapshot diagnostics
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: macos-release-snapshot-diagnostics
-          if-no-files-found: warn
-          retention-days: 7
-          path: |
-            ${{ runner.temp }}/*-macos-snapshots.log
-            ${{ runner.temp }}/*-macos-snapshot-tests.txt
-            Packages/AppFeature/Tests/AppFeatureTests/__Snapshots__/*-macos.png
-            Packages/AppFeature/Tests/AppFeatureTests/__Snapshots__/*-macos-FAIL.png
-            Packages/PaywallFeature/Tests/PaywallFeatureTests/__Snapshots__/*-macos.png
-            Packages/PaywallFeature/Tests/PaywallFeatureTests/__Snapshots__/*-macos-FAIL.png
-
-  # ── 4. XCUITest flows (stub server, deterministic) ───────────────────────────
+  # ── 3. XCUITest flows (stub server, deterministic) ───────────────────────────
   # Runs the three critical UI flows (sign-in, read→quiz→unlock, purchase) against
   # a URLProtocol stub server fed by Fixtures. SmokeLane tests auto-skip unless
   # CF_REAL_API=1, so this job is always fully deterministic.
@@ -344,9 +236,9 @@ jobs:
           xcrun simctl boot "$SIM_ID" 2>/dev/null || true
           xcrun simctl bootstatus "$SIM_ID" -b
 
-      # The package-wide `swift test` job exercises only the AppKit renderer.
-      # Compare the committed iOS references on the same booted simulator used
-      # by the deterministic UI flows, and fail if a renamed filter silently
+      # Release visual suites model small-phone behavior and are UIKit-only.
+      # Compare their committed references on the same pinned simulator used by
+      # the deterministic UI flows, and fail if a renamed filter silently
       # selects fewer tests than expected.
       - name: Compare iOS release-surface snapshots
         shell: bash
