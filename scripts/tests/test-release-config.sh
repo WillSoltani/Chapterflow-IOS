@@ -6,6 +6,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 TOOL="$ROOT/scripts/release-config/release_config.py"
 PROJECT="$ROOT/ChapterFlow.xcodeproj/project.pbxproj"
 RELEASE_WORKFLOW="$ROOT/.github/workflows/release.yml"
+PR_WORKFLOW="$ROOT/.github/workflows/pr.yml"
 EXPORT_OPTIONS="$ROOT/Config/ExportOptions.plist"
 STOREKIT_CATALOG_TEST="$ROOT/scripts/tests/test-storekit-catalog.py"
 
@@ -565,7 +566,7 @@ if grep -Fq 'checked_out_commit="$(git rev-parse '\''HEAD^{commit}'\'')"' "$RELE
   && [ -n "$cleanup_line" ] && [ -n "$artifact_line" ] \
   && [ "$cleanup_line" -lt "$artifact_line" ] \
   && ! grep -Eq 'uses: actions/(checkout|cache|upload-artifact)@v[0-9]' \
-    "$RELEASE_WORKFLOW" "$ROOT/.github/workflows/pr.yml" \
+    "$RELEASE_WORKFLOW" "$PR_WORKFLOW" \
   && ! grep -Eiq -- '--upload-app|--upload-package|upload_to_testflight|pilot upload|iTMSTransporter|notarytool submit' \
     "$RELEASE_WORKFLOW" \
   && ! grep -Fq 'upload-testflight:' "$RELEASE_WORKFLOW" \
@@ -573,6 +574,52 @@ if grep -Fq 'checked_out_commit="$(git rev-parse '\''HEAD^{commit}'\'')"' "$RELE
   printf 'ok %s - workflow is pinned, post-export inspected, cleaned, and archive-only\n' "$tests"
 else
   printf 'not ok %s - workflow upload or provenance guard is unsafe\n' "$tests"
+  failures=$((failures + 1))
+fi
+
+tests=$((tests + 1))
+pr_snapshot_policy="$(python3 - "$PR_WORKFLOW" <<'PY'
+import re
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    workflow = handle.read()
+
+
+def job_body(name: str) -> str:
+    match = re.search(
+        rf"^  {re.escape(name)}:\n(?P<body>.*?)(?=^  [a-z][a-z0-9-]*:\n|\Z)",
+        workflow,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    return match.group("body") if match else ""
+
+
+build = job_body("build-and-test")
+snapshots = job_body("macos-release-snapshots")
+uitest = job_body("uitest")
+
+checks = (
+    'if [[ "$pkg" == "AppFeature" || "$pkg" == "PaywallFeature" ]]; then' in build,
+    build.count("test_command+=(--skip ReleaseVisualSnapshotTests)") == 1,
+    "for pkg in AppFeature PaywallFeature; do" in snapshots,
+    '--filter "${pkg}Tests.ReleaseVisualSnapshotTests"' in snapshots,
+    'grep -Ec "^${pkg}Tests\\\\.ReleaseVisualSnapshotTests/"' in snapshots,
+    "if [[ \"$selected\" -ne 2 ]]; then" in snapshots,
+    "if: failure()" in snapshots,
+    "*-macos.png" in snapshots,
+    "*-macos-FAIL.png" in snapshots,
+    re.search(r"^    needs: build-and-test$", snapshots, re.MULTILINE) is not None,
+    re.search(r"^    needs: build-and-test$", uitest, re.MULTILINE) is not None,
+    "macos-release-snapshots" not in uitest,
+)
+print("true" if all(checks) else "false")
+PY
+)"
+if [ "$pr_snapshot_policy" = "true" ]; then
+  printf 'ok %s - PR workflow isolates, counts, gates, and retains macOS snapshots\n' "$tests"
+else
+  printf 'not ok %s - PR workflow macOS snapshot policy is incomplete\n' "$tests"
   failures=$((failures + 1))
 fi
 
