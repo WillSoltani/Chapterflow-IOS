@@ -2,9 +2,10 @@
 """Verify the approved fixture and its isolated StoreKit automation wiring.
 
 The dedicated test plan activates the catalog, then a retained
-``SKTestSession`` binds it after the app proxy exists and before first launch.
-CI isolates this lane on macOS 15 with Xcode 26.2 and iOS 26.1 because the iOS
-26.2+ StoreKit daemon can save the catalog yet route product loads to Media API.
+``SKTestSession`` binds it after a bounded install launch and before the tested
+relaunch. CI isolates this lane on macOS 15 with the matching Xcode 26.1.1 and
+iOS 26.1 pair because a newer StoreKitTest framework can acknowledge the save
+without persisting ``Configuration.storekit`` into that runtime.
 """
 
 from __future__ import annotations
@@ -216,13 +217,13 @@ def main() -> None:
     except OSError:
         fail("E_STOREKIT_WORKFLOW_UNREADABLE")
     required_workflow_fragments = [
-        "/Applications/Xcode_26.2.app/Contents/Developer",
+        "/Applications/Xcode_26.1.1.app/Contents/Developer",
         'export DEVELOPER_DIR="$storekit_xcode"',
         "runs-on: macos-15",
         "com.apple.CoreSimulator.SimRuntime.iOS-26-1",
         "com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro",
         "StoreKit runtime unavailable",
-        "Do not fall forward to the broken iOS 26.2+ CLI path or weaken the exact test.",
+        "Do not mix in a newer StoreKitTest toolchain or weaken the exact test.",
         "name: Hermetic XCUITest Flows",
         "name: StoreKit Purchase Contract",
         "name: XCUITest Flows",

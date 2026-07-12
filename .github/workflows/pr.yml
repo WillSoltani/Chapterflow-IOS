@@ -494,12 +494,12 @@ jobs:
             -skipMacroValidation
 
   # ── 4. Local StoreKit purchase contract ────────────────────────────────────
-  # Keep StoreKit on its own runner/runtime pair. iOS 26.2 accepted the save
-  # request but could not read the persisted Octane catalog, then routed
-  # Product.products(for:) to Media API under headless xcodebuild. The macos-15
-  # image provides Xcode 26.2 and iOS 26.1, the unaffected CLI pairing. Normal
-  # UI work remains parallel on macos-26 and the required aggregator below
-  # fails unless both lanes pass.
+  # Keep StoreKit on its own matched toolchain/runtime pair. Xcode 26.2 with
+  # iOS 26.1 accepted the save request but never persisted Configuration.storekit,
+  # then routed Product.products(for:) to Media API under headless xcodebuild.
+  # The macos-15 image provides the matching Xcode 26.1.1 and iOS 26.1 pair.
+  # Normal UI work remains parallel on macos-26 and the required aggregator
+  # below fails unless both lanes pass.
   storekit:
     name: StoreKit Purchase Contract
     runs-on: macos-15
@@ -534,9 +534,9 @@ jobs:
           set -euo pipefail
           result="$RUNNER_TEMP/StoreKitPurchase.xcresult"
 
-          storekit_xcode=/Applications/Xcode_26.2.app/Contents/Developer
+          storekit_xcode=/Applications/Xcode_26.1.1.app/Contents/Developer
           if [[ ! -d "$storekit_xcode" ]]; then
-            echo '::error title=StoreKit Xcode unavailable::The StoreKit contract requires the hosted Xcode 26.2 installation paired with iOS 26.1.'
+            echo '::error title=StoreKit Xcode unavailable::The StoreKit contract requires the hosted Xcode 26.1.1 installation paired with iOS 26.1.'
             exit 1
           fi
           export DEVELOPER_DIR="$storekit_xcode"
@@ -557,7 +557,7 @@ jobs:
           }
 
           if ! storekit_runtime_available; then
-            echo '::error title=StoreKit runtime unavailable::The hosted macos-15 runner does not provide the required iOS 26.1 simulator runtime. Do not fall forward to the broken iOS 26.2+ CLI path or weaken the exact test.'
+            echo '::error title=StoreKit runtime unavailable::The hosted macos-15 runner does not provide the required iOS 26.1 simulator runtime. Do not mix in a newer StoreKitTest toolchain or weaken the exact test.'
             exit 1
           fi
 
