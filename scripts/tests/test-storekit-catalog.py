@@ -2,8 +2,8 @@
 """Verify the approved fixture and its isolated StoreKit automation wiring.
 
 The dedicated scheme and test plan are the automation authority. CI pins this
-lane to iOS 26.1 because later simulator runtimes currently break StoreKitTest
-configuration sync under xcodebuild.
+lane to iOS 26.2 because that runtime still syncs StoreKit Test configurations
+under xcodebuild, while hosted runners no longer provide iOS 26.1.
 """
 
 from __future__ import annotations
@@ -193,11 +193,11 @@ def main() -> None:
         fail("E_STOREKIT_WORKFLOW_UNREADABLE")
     required_workflow_fragments = [
         "/Applications/Xcode_26.2.app/Contents/Developer",
-        "export DEVELOPER_DIR=/Applications/Xcode_26.2.app/Contents/Developer",
-        "xcodebuild -downloadPlatform iOS -buildVersion 26.1",
-        "com.apple.CoreSimulator.SimRuntime.iOS-26-1",
+        'export DEVELOPER_DIR="$storekit_xcode"',
+        "com.apple.CoreSimulator.SimRuntime.iOS-26-2",
+        "com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro",
         "StoreKit runtime unavailable",
-        "Do not run this contract against live App Store Connect or weaken the exact test.",
+        "Do not run this contract on iOS 26.4+ or weaken the exact test.",
         '-destination "platform=iOS Simulator,id=$storekit_sim_id"',
         "-only-testing:ChapterFlowUITests/PurchaseFlowTests/"
         "testStoreKitCatalogPurchaseRelaunchAndRestoreCompletes",
