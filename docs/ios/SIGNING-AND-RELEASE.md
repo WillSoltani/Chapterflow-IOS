@@ -111,18 +111,77 @@ aggregator fails unless every applicable lane passes. The dedicated StoreKit
 test plan activates the local catalog only for the StoreKit scheme. Its UI-test
 base performs a bounded install launch, terminates it, then creates and retains
 an `SKTestSession` before the tested relaunch. The contract still exercises the
-app's real `Product.purchase()` path. It selects
-`/Applications/Xcode_26.6.app/Contents/Developer` and requires the exact iOS
-26.6 simulator runtime. Repo CI on hosted iOS 26.1 accepted the save request but
-never persisted `Configuration.storekit`, then routed local product requests to
-Media API under headless `xcodebuild`; Apple separately reports the issue on iOS
-26.5 and identifies iOS 26.6 as the first simulator fix. Current GitHub images
-do not provide that runtime, so this StoreKit lane fails before its target build
-and the PR remains blocked. When a hosted image adds it, the same exact one-test
-purchase/restore contract runs; the gate never falls back to the live App Store
-Connect catalog,
-substitutes a runner-side purchase, or silently skips the exact purchase/restore
-test.
+app's real `Product.purchase()` path.
+
+### Controlled StoreKit simulator waiver
+
+Repo CI on hosted iOS 26.1 and a local Xcode 26.6/iOS 26.5 run reproduced the
+`SKTestSession` configuration failure before ChapterFlow's backend verification
+boundary. Apple identifies iOS 26.6 as the first simulator fix in forum thread
+830493; external feedback reference `FB22836426` reports continuing concern.
+GitHub's `macos-26` image currently has Xcode 26.6 build 17F113 and iOS 26.5,
+but not iOS 26.6.
+
+`Config/StoreKitSimulatorWaiver.json` records controlled waiver
+`CF-SKTESTSESSION-2026-07`, owned and approved by `WillSoltani`, expiring at
+`2026-07-27T23:59:59Z`. Its evidence packet must be committed at
+`docs/ios/release-evidence/storekit/pr-117/attestation.v1.json` with exactly five
+redacted PNGs beside it: `catalog.png`, `backend-unavailable.png`,
+`sandbox-purchase-history.png`, `restore-success.png`, and `relaunch-pro.png`.
+Those files do not exist until the real run is completed; placeholders are
+forbidden.
+
+The packet is strict and rejects extra fields. It binds the app/team/group,
+tested iOS source SHA, deployed and health-reported backend SHA, deployment run,
+signed build and artifact digest, device/storefront, distinct operator and
+independent reviewer, configured and loaded products, `$7.99`/`P1M` monthly
+product, and a maximum seven-day evidence window. Development-signed Sandbox
+evidence must target staging; TestFlight evidence must target production. In
+both cases the deployed backend SHA must match the health-reported SHA and bind
+to a GitHub deployment run. Its ordered outcomes must show
+an Apple Sandbox purchase, backend-unavailable fail-closed behavior without Pro
+or transaction finish, explicit restore with authoritative `ok`/`processed`/
+`active` acknowledgement, finish only after acknowledgement, success UI, and a
+relaunch into backend `PRO`/`active`/`apple`. Every PNG is SHA-256 bound and the
+packet must set `releaseAuthorization` to `false`.
+
+PR 117 also requires the `storekit-sandbox-attested` label. The label is not
+evidence: it certifies that the independent reviewer validated the committed
+packet. `WillSoltani` is currently the only repository collaborator, so a
+different human reviewer must be added, review the packet and PR, and be recorded
+in the packet before the label is applied. The operator and reviewer identities
+must differ. No protected Environment substitutes for that review.
+
+The first push to `main` that introduces the evidence is accepted only as a
+two-parent merge commit whose first parent is the pre-push `main` SHA and whose
+second parent contains the byte-exact packet and five PNGs. The tested source SHA
+must be an ancestor of that second parent. Merge PR 117 with `gh pr merge --merge`;
+squash and rebase merges intentionally fail this gate.
+
+After that merge, push-main and later PRs may inherit the unexpired packet without
+the label only when all six evidence files are byte-identical to their baseline,
+the tested source remains an ancestor, and no critical path changed after
+testing. All `ChapterFlow/`, `Packages/`, `Config/`, project, workflow, script,
+root test-plan/config/lint, and evidence paths are critical. Inheritance is
+therefore documentation/non-runtime-only; runtime work requires a new controlled
+attestation rather than replacing this packet.
+
+If any available iOS simulator runtime is version 26.6 or newer, the newest is
+selected and the waiver is bypassed automatically. The same exact one-test
+purchase/relaunch/restore contract must report one pass,
+zero failures, and zero skips. An executed test failure is never waivable. The
+exact test runs before PR 117's final packet-and-label gate, so neither proof can
+hide a fixed-runtime failure. When no fixed runtime exists, the same unexpired
+packet and source-drift checks are required before the simulator waiver succeeds.
+The gate never falls back to the live catalog, substitutes a runner-side purchase,
+uses `XCTSkip`/expected failure, or retries the test. The waiver is only a
+source-merge control; sandbox evidence does not satisfy TestFlight, signing,
+deployment, or any other release stop condition below.
+
+Packet and waiver expiry block only the simulator-waiver path and PR 117's
+origin attestation. Once a fixed runtime is available, later CI still validates
+the packet's structure, hashes, immutable baseline, and critical-source drift,
+but an expired packet cannot override a successful execution of the exact test.
 
 Runtime validation emits `app_configuration_validated` at most once per app
 process with allowlisted readiness booleans. After validation, internal and
