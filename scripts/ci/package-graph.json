@@ -1,0 +1,182 @@
+{
+  "generated_by": "swift package dump-package",
+  "packages": {
+    "AIFeature": {
+      "dependencies": [
+        "CoreKit",
+        "DesignSystem",
+        "Fixtures",
+        "Models",
+        "Networking",
+        "Persistence"
+      ],
+      "manifest_sha256": "046548543bdb89e6a0e50163809ad4eafc2878808f460d87ed0b866b267f5fa9"
+    },
+    "AppFeature": {
+      "dependencies": [
+        "AIFeature",
+        "AuthKit",
+        "CoreKit",
+        "DesignSystem",
+        "EngagementFeature",
+        "Fixtures",
+        "LibraryFeature",
+        "Models",
+        "Networking",
+        "NotificationsFeature",
+        "OnboardingFeature",
+        "PaywallFeature",
+        "Persistence",
+        "QuizFeature",
+        "ReaderFeature",
+        "SettingsFeature",
+        "SocialFeature",
+        "SyncEngine"
+      ],
+      "manifest_sha256": "07a6e8a2687ab4f8854ee90ab3f362e9f4115f0e1f277df425e486ee72583370"
+    },
+    "AuthKit": {
+      "dependencies": [
+        "CoreKit",
+        "DesignSystem",
+        "Networking",
+        "Persistence"
+      ],
+      "manifest_sha256": "4260ff71262840bc6b45a1e8104540ce2f055e8ed02f43e1c22846ce455f394f"
+    },
+    "CoreKit": {
+      "dependencies": [],
+      "manifest_sha256": "ac4bedc0628531fa0f480100576cc787665fe33b2306f5365792b82ea2c6d152"
+    },
+    "DesignSystem": {
+      "dependencies": [],
+      "manifest_sha256": "55384399e6e4df3beaf6822a13cd8194c9cdd391947838c2e93db1df253560a3"
+    },
+    "EngagementFeature": {
+      "dependencies": [
+        "CoreKit",
+        "DesignSystem",
+        "Models",
+        "Networking",
+        "Persistence"
+      ],
+      "manifest_sha256": "48fdb8b55c22516a1295720cf7635530280251846f89067e744ba10b3e3cd34f"
+    },
+    "Fixtures": {
+      "dependencies": [
+        "Models"
+      ],
+      "manifest_sha256": "9dda1c0f54c2752b87ad43030249debe62973a89500a246809bc3077d2e849f8"
+    },
+    "LibraryFeature": {
+      "dependencies": [
+        "AIFeature",
+        "CoreKit",
+        "DesignSystem",
+        "Fixtures",
+        "Models",
+        "Networking",
+        "Persistence"
+      ],
+      "manifest_sha256": "87b1a9eacfc686628470643ffa83b7896cfd5b3d32f1fc9586151667e21acda7"
+    },
+    "Models": {
+      "dependencies": [],
+      "manifest_sha256": "c9086c7a69e032e21c9ee205e9bc04fff818ce4762ff3351632cdd67e590ae03"
+    },
+    "Networking": {
+      "dependencies": [
+        "CoreKit"
+      ],
+      "manifest_sha256": "bd000a31240422a5b4a50bb93ffdfb84f803835d7cd22ac2f555a10e594891c1"
+    },
+    "NotificationsFeature": {
+      "dependencies": [
+        "CoreKit",
+        "DesignSystem",
+        "Models",
+        "Networking"
+      ],
+      "manifest_sha256": "68d50eff72a9d5effae4e31eb9cb49dddbc69120186a3022bbaa4d2c638bd871"
+    },
+    "OnboardingFeature": {
+      "dependencies": [
+        "CoreKit",
+        "DesignSystem",
+        "Networking",
+        "Persistence"
+      ],
+      "manifest_sha256": "bfa8c1f7f2b6fca9e1d01dd449d5f64600455898f8a23515cc857cfa26adc266"
+    },
+    "PaywallFeature": {
+      "dependencies": [
+        "CoreKit",
+        "DesignSystem",
+        "Fixtures",
+        "Models",
+        "Networking",
+        "Persistence"
+      ],
+      "manifest_sha256": "4b7dd83ca41eb8b6b1014a935535cd27502127a577171a89f60ce0774cca8ab2"
+    },
+    "Persistence": {
+      "dependencies": [
+        "Models"
+      ],
+      "manifest_sha256": "1a295f990658a398147ec421e26fdf6bba206c26ffaeac692dfc2a37b2538d70"
+    },
+    "QuizFeature": {
+      "dependencies": [
+        "CoreKit",
+        "DesignSystem",
+        "Models",
+        "Networking",
+        "Persistence"
+      ],
+      "manifest_sha256": "32002bf257bf0aa205298cb3c62eed3d108b1ab9b7881674e5dccaf85ec81d53"
+    },
+    "ReaderFeature": {
+      "dependencies": [
+        "CoreKit",
+        "DesignSystem",
+        "Models",
+        "Networking",
+        "Persistence"
+      ],
+      "manifest_sha256": "251aa18482246fea607029f04dbaaa9c0af2878757ab91179f85e1e1fed3599a"
+    },
+    "SettingsFeature": {
+      "dependencies": [
+        "AuthKit",
+        "CoreKit",
+        "DesignSystem",
+        "Models",
+        "Networking",
+        "NotificationsFeature",
+        "Persistence",
+        "SyncEngine"
+      ],
+      "manifest_sha256": "32dd0e3c71b60201a69948f437ae151d2ead7d9fa7d79309cfaa02a731234835"
+    },
+    "SocialFeature": {
+      "dependencies": [
+        "CoreKit",
+        "DesignSystem",
+        "Models",
+        "Networking"
+      ],
+      "manifest_sha256": "aac916e5630002ec0bdcb8fe291717b7e9a7b682f644343c708fb7271dc397e0"
+    },
+    "SyncEngine": {
+      "dependencies": [
+        "CoreKit",
+        "DesignSystem",
+        "Models",
+        "Networking",
+        "Persistence"
+      ],
+      "manifest_sha256": "c67c261e44926b12a47294066a087721415b5d92a4315b57959d14253402a140"
+    }
+  },
+  "schema_version": 2
+}

@@ -1,0 +1,758 @@
+name: CI v2 — Advisory
+
+# Stage A candidate. The legacy pr.yml remains the merge authority until a
+# separately authorized branch-protection cutover.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled, ready_for_review]
+  push:
+    branches: [main]
+  merge_group:
+    types: [checks_requested]
+  schedule:
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Validation and cache mode
+        required: true
+        default: affected
+        type: choice
+        options:
+          - affected
+          - full
+          - benchmark
+          - clean
+      packages:
+        description: Optional comma-separated package roots for affected mode
+        required: false
+        default: ""
+        type: string
+      ui:
+        description: UI override; full/high-risk scope cannot be disabled
+        required: true
+        default: auto
+        type: choice
+        options:
+          - auto
+          - "on"
+          - "off"
+      package_shards:
+        description: Benchmark shard count; normal affected/full default is two
+        required: true
+        default: "2"
+        type: choice
+        options:
+          - "1"
+          - "2"
+          - "3"
+          - "4"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: >-
+    ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}-${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'default' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'merge_group' }}
+
+env:
+  CACHE_SCHEMA: spm-source-v1
+  SOURCE_CACHE_BUDGET_BYTES: "4294967296"
+  SWIFTLINT_SHA256: 79306a34e5c7cc55a220cd108cbb861dcad5f10138dcdf261e2624ae8b0a486b
+  SWIFTLINT_VERSION: 0.65.0
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      affected_packages: ${{ steps.planner.outputs.affected_packages }}
+      docs_only: ${{ steps.planner.outputs.docs_only }}
+      duration_seconds: ${{ steps.summary.outputs.duration-seconds }}
+      high_risk: ${{ steps.planner.outputs.high_risk }}
+      package_matrix: ${{ steps.planner.outputs.package_matrix }}
+      plan_json: ${{ steps.planner.outputs.plan_json }}
+      reason_codes: ${{ steps.planner.outputs.reason_codes }}
+      run_app_build: ${{ steps.planner.outputs.run_app_build }}
+      run_full_packages: ${{ steps.planner.outputs.run_full_packages }}
+      run_lint: ${{ steps.planner.outputs.run_lint }}
+      run_package_tests: ${{ steps.planner.outputs.run_package_tests }}
+      run_ui_tests: ${{ steps.planner.outputs.run_ui_tests }}
+
+    steps:
+      - name: Start plan timer
+        id: job-start
+        run: echo "started=$(date +%s)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout exact candidate revision
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Compute conservative change plan
+        id: planner
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || 'origin/main' }}
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+          INPUT_MODE: ${{ inputs.mode || 'affected' }}
+          INPUT_PACKAGES: ${{ inputs.packages || '' }}
+          INPUT_SHARDS: ${{ inputs.package_shards || '2' }}
+          INPUT_UI: ${{ inputs.ui || 'auto' }}
+          LABELS_JSON: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          PLAN_PATH: ${{ runner.temp }}/ci-plan.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          labels="$LABELS_JSON"
+          if [[ -z "$labels" || "$labels" == "null" ]]; then
+            labels='[]'
+          fi
+          python3 scripts/ci/plan.py \
+            --base "$BASE_SHA" \
+            --head "$HEAD_SHA" \
+            --event "$EVENT_NAME" \
+            --mode "$INPUT_MODE" \
+            --labels "$labels" \
+            --packages "$INPUT_PACKAGES" \
+            --ui "$INPUT_UI" \
+            --max-shards "$INPUT_SHARDS" \
+            --output "$PLAN_PATH"
+
+      - name: Run planner and repository-check unit tests
+        run: python3 -m unittest discover -s scripts/tests -p 'test_ci_*.py' -v
+
+      - name: Run docs, link, secret, conflict, and diff checks
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || 'origin/main' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+        run: python3 scripts/ci/check_repository.py --base "$BASE_SHA" --head "$HEAD_SHA"
+
+      - name: Summarize selected scope
+        id: summary
+        if: ${{ always() }}
+        env:
+          PLAN_PATH: ${{ runner.temp }}/ci-plan.json
+        shell: bash
+        run: |
+          duration="$(( $(date +%s) - ${{ steps.job-start.outputs.started }} ))"
+          echo "duration-seconds=$duration" >> "$GITHUB_OUTPUT"
+          if [[ ! -f "$PLAN_PATH" ]]; then
+            echo "### CI plan" >> "$GITHUB_STEP_SUMMARY"
+            echo "Planner output is missing; aggregate must fail closed." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          python3 - "$PLAN_PATH" "$GITHUB_STEP_SUMMARY" "$duration" <<'PY'
+          import json, sys
+          plan = json.load(open(sys.argv[1], encoding="utf-8"))
+          with open(sys.argv[2], "a", encoding="utf-8") as summary:
+              summary.write("### CI plan\n")
+              summary.write(f"- Mode/event: `{plan['mode']}` / `{plan['event']}`\n")
+              summary.write(f"- Docs only: `{plan['docs_only']}`\n")
+              summary.write(f"- Full packages: `{plan['run_full_packages']}`\n")
+              summary.write(f"- App build / UI: `{plan['run_app_build']}` / `{plan['run_ui_tests']}`\n")
+              summary.write(f"- Packages ({len(plan['affected_packages'])}): " +
+                            ", ".join(plan['affected_packages']) + "\n")
+              summary.write("- Reasons: " + ", ".join(plan['reason_codes']) + "\n")
+              summary.write(f"- Plan job duration: {sys.argv[3]}s\n")
+              summary.write(f"- Failure artifact on failure: `ci-plan-${{ github.run_id }}-${{ github.run_attempt }}`\n")
+          PY
+
+      - name: Upload planner diagnostics on failure
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-plan-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/ci-plan.json
+          if-no-files-found: ignore
+          retention-days: 5
+
+  lint:
+    name: Lint
+    needs: plan
+    if: ${{ needs.plan.outputs.run_lint == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    outputs:
+      install_seconds: ${{ steps.install.outputs.duration }}
+      lint_seconds: ${{ steps.lint.outputs.duration }}
+
+    steps:
+      - name: Checkout exact candidate revision
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Install pinned SwiftLint
+        id: install
+        shell: bash
+        run: |
+          set -euo pipefail
+          started="$(date +%s)"
+          archive="$RUNNER_TEMP/swiftlint.zip"
+          curl --fail --location --retry 3 --retry-all-errors \
+            "https://github.com/realm/SwiftLint/releases/download/${SWIFTLINT_VERSION}/swiftlint_linux_amd64.zip" \
+            --output "$archive"
+          echo "${SWIFTLINT_SHA256}  ${archive}" | sha256sum --check --strict
+          unzip -q "$archive" -d "$RUNNER_TEMP/swiftlint"
+          chmod +x "$RUNNER_TEMP/swiftlint/swiftlint-static"
+          "$RUNNER_TEMP/swiftlint/swiftlint-static" version
+          echo "duration=$(( $(date +%s) - started ))" >> "$GITHUB_OUTPUT"
+
+      - name: SwiftLint strict
+        id: lint
+        shell: bash
+        run: |
+          set -uo pipefail
+          started="$(date +%s)"
+          set +e
+          "$RUNNER_TEMP/swiftlint/swiftlint-static" lint \
+            --strict --no-cache --reporter github-actions-logging 2>&1 | tee "$RUNNER_TEMP/swiftlint.log"
+          outcome="${PIPESTATUS[0]}"
+          set -e
+          echo "duration=$(( $(date +%s) - started ))" >> "$GITHUB_OUTPUT"
+          exit "$outcome"
+
+      - name: Summarize lint
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          {
+            echo "### Lint"
+            echo "- SwiftLint: ${SWIFTLINT_VERSION} (checksum verified)"
+            echo "- Install duration: ${{ steps.install.outputs.duration || 'unreported' }}s"
+            echo "- Lint duration: ${{ steps.lint.outputs.duration || 'unreported' }}s"
+            echo "- Result: ${{ steps.lint.outcome }}"
+            echo "- Failure category: ${{ steps.lint.outcome == 'failure' && 'lint/source' || 'none' }}"
+            echo "- Failure artifact on failure: lint-${{ github.run_id }}-${{ github.run_attempt }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload lint log on failure
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lint-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/swiftlint.log
+          if-no-files-found: ignore
+          retention-days: 5
+
+  package-tests:
+    name: Packages (${{ matrix.shard }})
+    needs: plan
+    if: ${{ needs.plan.outputs.run_package_tests == 'true' }}
+    runs-on: macos-26
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: ${{ fromJSON(needs.plan.outputs.package_matrix) }}
+
+    steps:
+      - name: Checkout exact candidate revision
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up exact iOS toolchain
+        id: setup
+        uses: ./.github/actions/setup-ios-ci
+
+      - name: Restore dependency source cache
+        id: source-cache
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.mode == 'clean') }}
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/Library/Caches/org.swift.swiftpm/repositories
+          key: >-
+            ${{ runner.os }}-${{ steps.setup.outputs.arch }}-${{ env.CACHE_SCHEMA }}-${{ steps.setup.outputs.toolchain-key }}-${{ hashFiles('**/Package.swift', '**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ steps.setup.outputs.arch }}-${{ env.CACHE_SCHEMA }}-${{ steps.setup.outputs.toolchain-key }}-
+
+      - name: Run requested package shard
+        id: packages
+        env:
+          PACKAGES_JSON: ${{ toJSON(matrix.packages) }}
+          SHARD: ${{ matrix.shard }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/run_package_shard.py \
+            --packages-json "$PACKAGES_JSON" \
+            --scratch-path "$RUNNER_TEMP/spm-${SHARD}" \
+            --logs-dir "$RUNNER_TEMP/package-logs-${SHARD}" \
+            --metrics-output "$RUNNER_TEMP/package-metrics-${SHARD}.json" \
+            --shard "$SHARD"
+
+      - name: Measure source cache and summarize shard
+        id: cache-size
+        if: ${{ always() }}
+        env:
+          CACHE_HIT: ${{ steps.source-cache.outputs.cache-hit || 'disabled-or-miss' }}
+          ESTIMATED_SECONDS: ${{ matrix.estimated_seconds }}
+          SHARD: ${{ matrix.shard }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cache_path="$HOME/Library/Caches/org.swift.swiftpm/repositories"
+          cache_bytes=0
+          cache_human="0B"
+          if [[ -d "$cache_path" ]]; then
+            cache_kib="$(du -sk "$cache_path" | awk '{print $1}')"
+            cache_bytes="$((cache_kib * 1024))"
+            cache_human="$(du -sh "$cache_path" | awk '{print $1}')"
+          fi
+          within_budget=false
+          if (( cache_bytes <= SOURCE_CACHE_BUDGET_BYTES )); then within_budget=true; fi
+          echo "bytes=$cache_bytes" >> "$GITHUB_OUTPUT"
+          echo "within-budget=$within_budget" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Package cache — ${SHARD}"
+            echo "- Cache result: ${CACHE_HIT}"
+            echo "- Source cache size: ${cache_human} (${cache_bytes} bytes)"
+            echo "- Explicit source-cache budget: ${SOURCE_CACHE_BUDGET_BYTES} bytes"
+            echo "- Historical shard estimate: ${ESTIMATED_SECONDS}s"
+            echo "- Job result: ${{ steps.packages.outcome }}"
+            echo "- Failure category: ${{ steps.packages.outcome == 'failure' && 'package-test/source' || 'none' }}"
+            echo "- Failure artifact on failure: package-${SHARD}-${{ github.run_id }}-${{ github.run_attempt }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload package logs on failure
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: package-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/package-logs-${{ matrix.shard }}
+            ${{ runner.temp }}/package-metrics-${{ matrix.shard }}.json
+          if-no-files-found: ignore
+          retention-days: 5
+
+  app-and-ui:
+    name: App & UI
+    needs: plan
+    if: ${{ needs.plan.outputs.run_app_build == 'true' || needs.plan.outputs.run_ui_tests == 'true' }}
+    runs-on: macos-26
+    timeout-minutes: 75
+    outputs:
+      app_build_seconds: ${{ steps.app-build.outputs.duration }}
+      build_for_testing_seconds: ${{ steps.build-for-testing.outputs.duration }}
+      cache_bytes: ${{ steps.cache-size.outputs.bytes }}
+      cache_hit: ${{ steps.source-cache.outputs.cache-hit }}
+      resolve_seconds: ${{ steps.resolve.outputs.duration }}
+      setup_seconds: ${{ steps.setup.outputs.setup-seconds }}
+      simulator_seconds: ${{ steps.simulator.outputs.duration }}
+      ui_test_seconds: ${{ steps.ui-tests.outputs.duration }}
+
+    steps:
+      - name: Checkout exact candidate revision
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Set up exact iOS toolchain
+        id: setup
+        uses: ./.github/actions/setup-ios-ci
+        with:
+          create-placeholder-config: "true"
+
+      - name: Restore dependency source cache
+        id: source-cache
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.mode == 'clean') }}
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/Library/Caches/org.swift.swiftpm/repositories
+          key: >-
+            ${{ runner.os }}-${{ steps.setup.outputs.arch }}-${{ env.CACHE_SCHEMA }}-${{ steps.setup.outputs.toolchain-key }}-${{ hashFiles('**/Package.swift', '**/Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ steps.setup.outputs.arch }}-${{ env.CACHE_SCHEMA }}-${{ steps.setup.outputs.toolchain-key }}-
+
+      - name: Verify semantic local-package graph
+        run: python3 scripts/ci/generate_package_graph.py --check
+
+      - name: Resolve application dependencies
+        id: resolve
+        shell: bash
+        run: |
+          set -uo pipefail
+          started="$(date +%s)"
+          set +e
+          xcodebuild -resolvePackageDependencies \
+            -project ChapterFlow.xcodeproj \
+            -scheme ChapterFlow \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -skipPackagePluginValidation \
+            -skipMacroValidation 2>&1 | tee "$RUNNER_TEMP/xcodebuild-resolve.log"
+          outcome="${PIPESTATUS[0]}"
+          set -e
+          echo "duration=$(( $(date +%s) - started ))" >> "$GITHUB_OUTPUT"
+          exit "$outcome"
+
+      - name: Boot newest available iPhone simulator
+        id: simulator
+        if: ${{ needs.plan.outputs.run_ui_tests == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          started="$(date +%s)"
+          simulator_json="$(xcrun simctl list devices available -j)"
+          selection="$(python3 -c '
+          import json, re, sys
+          payload = json.load(sys.stdin)
+          def runtime_key(item):
+              return tuple(int(value) for value in re.findall(r"[0-9]+", item[0]))
+          for runtime, devices in sorted(payload["devices"].items(), key=runtime_key, reverse=True):
+              for device in devices:
+                  if device.get("isAvailable") and device["name"].startswith("iPhone"):
+                      print("{}\t{}\t{}".format(device["udid"], device["name"], runtime.rsplit(".", 1)[-1]))
+                      raise SystemExit(0)
+          raise SystemExit(1)
+          ' <<< "$simulator_json")"
+          IFS=$'\t' read -r simulator_id simulator_name simulator_runtime <<< "$selection"
+          if [[ -z "$simulator_id" ]]; then
+            echo "::error::No available iPhone simulator"
+            xcrun simctl list devices available
+            exit 1
+          fi
+          if ! xcrun simctl boot "$simulator_id"; then
+            state="$(xcrun simctl list devices -j | python3 -c 'import json, sys; target = sys.argv[1]; payload = json.load(sys.stdin); print(next(device["state"] for devices in payload["devices"].values() for device in devices if device["udid"] == target))' "$simulator_id")"
+            if [[ "$state" != "Booted" ]]; then
+              echo "::error::Simulator boot failed with state $state"
+              exit 1
+            fi
+          fi
+          xcrun simctl bootstatus "$simulator_id" -b
+          {
+            echo "duration=$(( $(date +%s) - started ))"
+            echo "simulator-id=$simulator_id"
+            echo "simulator-name=$simulator_name"
+            echo "simulator-runtime=$simulator_runtime"
+          } >> "$GITHUB_OUTPUT"
+          echo "Booted $simulator_name on $simulator_runtime"
+
+      - name: Build app for deterministic UI testing
+        id: build-for-testing
+        if: ${{ needs.plan.outputs.run_ui_tests == 'true' }}
+        env:
+          SIMULATOR_ID: ${{ steps.simulator.outputs.simulator-id }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          started="$(date +%s)"
+          set +e
+          xcodebuild build-for-testing \
+            -project ChapterFlow.xcodeproj \
+            -scheme ChapterFlow \
+            -destination "platform=iOS Simulator,id=${SIMULATOR_ID}" \
+            -configuration Debug \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            -skipPackagePluginValidation \
+            -skipMacroValidation 2>&1 | tee "$RUNNER_TEMP/xcodebuild-build-for-testing.log"
+          outcome="${PIPESTATUS[0]}"
+          set -e
+          echo "duration=$(( $(date +%s) - started ))" >> "$GITHUB_OUTPUT"
+          exit "$outcome"
+
+      - name: Run UI tests without rebuilding
+        id: ui-tests
+        if: ${{ needs.plan.outputs.run_ui_tests == 'true' }}
+        env:
+          SIMULATOR_ID: ${{ steps.simulator.outputs.simulator-id }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          started="$(date +%s)"
+          set +e
+          xcodebuild test-without-building \
+            -project ChapterFlow.xcodeproj \
+            -scheme ChapterFlow \
+            -destination "platform=iOS Simulator,id=${SIMULATOR_ID}" \
+            -configuration Debug \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            -resultBundlePath "$RUNNER_TEMP/ChapterFlowUITests.xcresult" \
+            -only-testing:ChapterFlowUITests \
+            -parallel-testing-enabled NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            -skipPackagePluginValidation \
+            -skipMacroValidation 2>&1 | tee "$RUNNER_TEMP/xcodebuild-ui-tests.log"
+          outcome="${PIPESTATUS[0]}"
+          set -e
+          echo "duration=$(( $(date +%s) - started ))" >> "$GITHUB_OUTPUT"
+          exit "$outcome"
+
+      - name: Build unsigned simulator app
+        id: app-build
+        if: ${{ needs.plan.outputs.run_ui_tests != 'true' && needs.plan.outputs.run_app_build == 'true' }}
+        shell: bash
+        run: |
+          set -uo pipefail
+          started="$(date +%s)"
+          set +e
+          xcodebuild build \
+            -project ChapterFlow.xcodeproj \
+            -scheme ChapterFlow \
+            -destination 'generic/platform=iOS Simulator' \
+            -configuration Debug \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            -skipPackagePluginValidation \
+            -skipMacroValidation 2>&1 | tee "$RUNNER_TEMP/xcodebuild-app.log"
+          outcome="${PIPESTATUS[0]}"
+          set -e
+          echo "duration=$(( $(date +%s) - started ))" >> "$GITHUB_OUTPUT"
+          exit "$outcome"
+
+      - name: Measure dependency source cache
+        id: cache-size
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cache_path="$HOME/Library/Caches/org.swift.swiftpm/repositories"
+          cache_bytes=0
+          cache_human="0B"
+          if [[ -d "$cache_path" ]]; then
+            cache_kib="$(du -sk "$cache_path" | awk '{print $1}')"
+            cache_bytes="$((cache_kib * 1024))"
+            cache_human="$(du -sh "$cache_path" | awk '{print $1}')"
+          fi
+          within_budget=false
+          if (( cache_bytes <= SOURCE_CACHE_BUDGET_BYTES )); then within_budget=true; fi
+          {
+            echo "bytes=$cache_bytes"
+            echo "human=$cache_human"
+            echo "within-budget=$within_budget"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Save trusted dependency source cache
+        if: >-
+          ${{
+            success() &&
+            github.event_name != 'pull_request' &&
+            github.event_name != 'merge_group' &&
+            !(github.event_name == 'workflow_dispatch' && inputs.mode == 'clean') &&
+            steps.source-cache.outputs.cache-hit != 'true' &&
+            steps.cache-size.outputs.within-budget == 'true'
+          }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/Library/Caches/org.swift.swiftpm/repositories
+          key: >-
+            ${{ runner.os }}-${{ steps.setup.outputs.arch }}-${{ env.CACHE_SCHEMA }}-${{ steps.setup.outputs.toolchain-key }}-${{ hashFiles('**/Package.swift', '**/Package.resolved') }}
+
+      - name: Summarize app and UI validation
+        if: ${{ always() }}
+        env:
+          CACHE_HIT: ${{ steps.source-cache.outputs.cache-hit || 'disabled-or-miss' }}
+        shell: bash
+        run: |
+          tests="unreported"
+          if [[ -f "$RUNNER_TEMP/xcodebuild-ui-tests.log" ]]; then
+            tests="$(grep -Eo 'Executed [0-9]+ tests?' "$RUNNER_TEMP/xcodebuild-ui-tests.log" | tail -1 || true)"
+            [[ -n "$tests" ]] || tests="unreported"
+          fi
+          {
+            echo "### App and UI"
+            echo "- Planned app / UI: ${{ needs.plan.outputs.run_app_build }} / ${{ needs.plan.outputs.run_ui_tests }}"
+            echo "- Source cache: ${CACHE_HIT}"
+            echo "- Source cache size: ${{ steps.cache-size.outputs.human || 'unreported' }} (${{ steps.cache-size.outputs.bytes || '0' }} bytes)"
+            echo "- Setup duration: ${{ steps.setup.outputs.setup-seconds || 'unreported' }}s"
+            echo "- Dependency resolution duration: ${{ steps.resolve.outputs.duration || 'unreported' }}s"
+            echo "- Simulator boot duration: ${{ steps.simulator.outputs.duration || 'not-run' }}s"
+            echo "- Simulator: ${{ steps.simulator.outputs.simulator-name || 'not-run' }} / ${{ steps.simulator.outputs.simulator-runtime || 'not-run' }}"
+            echo "- Build-for-testing duration: ${{ steps.build-for-testing.outputs.duration || 'not-run' }}s"
+            echo "- Test-without-building duration: ${{ steps.ui-tests.outputs.duration || 'not-run' }}s"
+            echo "- App-only build duration: ${{ steps.app-build.outputs.duration || 'not-run' }}s"
+            echo "- UI test count: ${tests}"
+            echo "- Failure category: ${{ (steps.build-for-testing.outcome == 'failure' || steps.app-build.outcome == 'failure') && 'app-build/source' || (steps.ui-tests.outcome == 'failure' && 'ui-test' || 'none') }}"
+            echo "- Failure artifact on failure: app-ui-${{ github.run_id }}-${{ github.run_attempt }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload app and UI diagnostics on failure
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: app-ui-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/ChapterFlowUITests.xcresult
+            ${{ runner.temp }}/xcodebuild-app.log
+            ${{ runner.temp }}/xcodebuild-build-for-testing.log
+            ${{ runner.temp }}/xcodebuild-resolve.log
+            ${{ runner.temp }}/xcodebuild-ui-tests.log
+          if-no-files-found: ignore
+          retention-days: 5
+
+  required:
+    name: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && 'CI / Required' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'affected' && 'CI Advisory / Required' || 'CI Full / Required') }}
+    needs: [plan, lint, package-tests, app-and-ui]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Verify every planned result
+        env:
+          APP_RESULT: ${{ needs.app-and-ui.result }}
+          LINT_RESULT: ${{ needs.lint.result }}
+          PACKAGE_RESULT: ${{ needs.package-tests.result }}
+          PLAN_JSON: ${{ needs.plan.outputs.plan_json }}
+          PLAN_RESULT: ${{ needs.plan.result }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os, sys
+
+          errors = []
+          if os.environ.get("PLAN_RESULT") != "success":
+              errors.append(f"plan job result={os.environ.get('PLAN_RESULT')!r}")
+          try:
+              plan = json.loads(os.environ.get("PLAN_JSON", ""))
+          except Exception as error:
+              print(f"aggregate: malformed or missing plan output: {error}", file=sys.stderr)
+              raise SystemExit(1)
+
+          boolean_fields = (
+              "docs_only", "run_lint", "run_app_build", "run_ui_tests",
+              "run_full_packages", "high_risk",
+          )
+          for field in boolean_fields:
+              if not isinstance(plan.get(field), bool):
+                  errors.append(f"plan field {field} is not boolean")
+          if plan.get("schema_version") != 1:
+              errors.append("unsupported plan schema")
+          if plan.get("run_ui_tests") and not plan.get("run_app_build"):
+              errors.append("UI was requested without app validation")
+
+          affected = plan.get("affected_packages")
+          matrix = plan.get("package_matrix")
+          if not isinstance(affected, list) or not all(isinstance(p, str) for p in affected):
+              errors.append("affected_packages is malformed")
+              affected = []
+          include = matrix.get("include") if isinstance(matrix, dict) else None
+          if not isinstance(include, list):
+              errors.append("package_matrix is malformed")
+              include = []
+          flattened = []
+          for shard in include:
+              packages = shard.get("packages") if isinstance(shard, dict) else None
+              if not isinstance(packages, list) or not packages:
+                  errors.append("matrix contains an empty or malformed shard")
+                  continue
+              flattened.extend(packages)
+          if sorted(flattened) != sorted(affected) or len(flattened) != len(set(flattened)):
+              errors.append("matrix union does not exactly match affected packages")
+
+          expected = {
+              "lint": bool(plan.get("run_lint")),
+              "package-tests": bool(affected),
+              "app-and-ui": bool(plan.get("run_app_build") or plan.get("run_ui_tests")),
+          }
+          actual = {
+              "lint": os.environ.get("LINT_RESULT"),
+              "package-tests": os.environ.get("PACKAGE_RESULT"),
+              "app-and-ui": os.environ.get("APP_RESULT"),
+          }
+          for job, is_required in expected.items():
+              wanted = "success" if is_required else "skipped"
+              if actual[job] != wanted:
+                  errors.append(
+                      f"{job}: expected {wanted}, observed {actual[job]!r}"
+                  )
+
+          print("Plan reasons:", ", ".join(plan.get("reason_codes", [])))
+          print("Packages:", ", ".join(affected) if affected else "none")
+          for job in ("lint", "package-tests", "app-and-ui"):
+              print(f"{job}: {actual[job]} (required={expected[job]})")
+          if errors:
+              for error in errors:
+                  print(f"aggregate failure: {error}", file=sys.stderr)
+              raise SystemExit(1)
+          print("All required work succeeded and all unrequired work skipped explicitly.")
+          PY
+
+      - name: Summarize aggregate
+        if: ${{ always() }}
+        env:
+          APP_BUILD_SECONDS: ${{ needs.app-and-ui.outputs.app_build_seconds }}
+          APP_RESULT: ${{ needs.app-and-ui.result }}
+          BUILD_FOR_TESTING_SECONDS: ${{ needs.app-and-ui.outputs.build_for_testing_seconds }}
+          CACHE_BYTES: ${{ needs.app-and-ui.outputs.cache_bytes }}
+          CACHE_HIT: ${{ needs.app-and-ui.outputs.cache_hit }}
+          LINT_INSTALL_SECONDS: ${{ needs.lint.outputs.install_seconds }}
+          LINT_RESULT: ${{ needs.lint.result }}
+          LINT_SECONDS: ${{ needs.lint.outputs.lint_seconds }}
+          PACKAGE_RESULT: ${{ needs.package-tests.result }}
+          PLAN_DURATION_SECONDS: ${{ needs.plan.outputs.duration_seconds }}
+          PLAN_JSON: ${{ needs.plan.outputs.plan_json }}
+          PLAN_RESULT: ${{ needs.plan.result }}
+          RESOLVE_SECONDS: ${{ needs.app-and-ui.outputs.resolve_seconds }}
+          SETUP_SECONDS: ${{ needs.app-and-ui.outputs.setup_seconds }}
+          SIMULATOR_SECONDS: ${{ needs.app-and-ui.outputs.simulator_seconds }}
+          UI_TEST_SECONDS: ${{ needs.app-and-ui.outputs.ui_test_seconds }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, os
+
+          def shown(name, fallback="not-run"):
+              return os.environ.get(name) or fallback
+
+          try:
+              plan = json.loads(os.environ.get("PLAN_JSON", ""))
+          except Exception:
+              plan = {}
+          matrix = plan.get("package_matrix", {}).get("include", [])
+          estimates = ", ".join(
+              f"{item.get('shard', '?')}={item.get('estimated_seconds', '?')}s"
+              for item in matrix if isinstance(item, dict)
+          ) or "not-run"
+          packages = plan.get("affected_packages", [])
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write("### Stable aggregate\n")
+              summary.write(f"- Selected packages ({len(packages)}): " +
+                            (", ".join(packages) if packages else "none") + "\n")
+              summary.write("- Reasons: " +
+                            ", ".join(plan.get("reason_codes", [])) + "\n")
+              summary.write(
+                  "- Outcomes: plan={}; lint={}; packages={}; app/UI={}\n".format(
+                      shown("PLAN_RESULT", "missing"), shown("LINT_RESULT", "missing"),
+                      shown("PACKAGE_RESULT", "missing"), shown("APP_RESULT", "missing")
+                  )
+              )
+              summary.write(f"- Plan duration: {shown('PLAN_DURATION_SECONDS')}s\n")
+              summary.write(
+                  f"- Lint install / execution: {shown('LINT_INSTALL_SECONDS')}s / "
+                  f"{shown('LINT_SECONDS')}s\n"
+              )
+              summary.write(f"- Package shard historical estimates: {estimates}\n")
+              summary.write(
+                  "- App setup / resolve / simulator: {}s / {}s / {}s\n".format(
+                      shown("SETUP_SECONDS"), shown("RESOLVE_SECONDS"),
+                      shown("SIMULATOR_SECONDS")
+                  )
+              )
+              summary.write(
+                  "- App build-for-testing / UI execution / app-only build: {}s / {}s / {}s\n".format(
+                      shown("BUILD_FOR_TESTING_SECONDS"), shown("UI_TEST_SECONDS"),
+                      shown("APP_BUILD_SECONDS")
+                  )
+              )
+              summary.write(
+                  f"- Dependency source cache: hit={shown('CACHE_HIT', 'disabled-or-miss')}, "
+                  f"bytes={shown('CACHE_BYTES', '0')}\n"
+              )
+              summary.write(
+                  "- Actual package timings and test counts are in each Packages job summary.\n"
+              )
+          PY
