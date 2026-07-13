@@ -325,8 +325,7 @@ func inferredProducerKind(_ symbol: String) -> String {
         return "analytics_path"
     }
     if symbol == "LiveEntitlementRepository.verifyAppleTransaction"
-        || symbol == "ScenarioRepository.syncPendingUploads"
-    {
+        || symbol == "ScenarioRepository.syncPendingUploads" {
         return "direct_endpoint"
     }
     return "endpoint_factory"
