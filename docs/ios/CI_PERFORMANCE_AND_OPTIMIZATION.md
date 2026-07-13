@@ -439,6 +439,18 @@ failures fail `CI / Required`, a required-job skip fails, a wrong cache key
 rebuilds cleanly, and a superseding push cancels the older run. Canary commits
 must not remain at the final PR head.
 
+The Stage A canaries produced the following evidence:
+
+| Canary | Run / revision | Result |
+|---|---|---|
+| Superseding push cancellation | advisory `29236298032`; legacy `29236298031`; `9f9e495` | Both had active macOS work and completed `cancelled` after push `e114d81`. |
+| Package failure plus required app-job skip | advisory `29236400756`; `e114d81` | Both package shards exited through the controlled sentinel; app/UI was deliberately skipped; aggregate failed with `package-tests: expected success, observed 'failure'` and `app-and-ui: expected success, observed 'skipped'`. |
+| Wrong-key clean build plus UI failure | advisory `29236609886`; `67c6b2e` | All three restores missed the unique `spm-source-canary-ui-20260713` namespace. Both shards passed all 18 host suites, graph/resolve/simulator passed, and `build-for-testing` completed in 11:24 with `TEST BUILD SUCCEEDED`. The UI sentinel then exited 92 and aggregate failed with `app-and-ui: expected success, observed 'failure'`. |
+
+The combined canaries prove every required failure/skip/cancel behavior without
+changing product code. Their short-lived mutations are removed from the final
+workflow; the commits remain auditable in branch history.
+
 ## 10. Runner-time versus wall-clock tradeoff
 
 Legacy successful PR runner p50 is 51:06 and nearly equals wall time because

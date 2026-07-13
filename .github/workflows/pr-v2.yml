@@ -58,7 +58,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'merge_group' }}
 
 env:
-  CACHE_SCHEMA: spm-source-canary-ui-20260713
+  CACHE_SCHEMA: spm-source-v1
   SOURCE_CACHE_BUDGET_BYTES: "4294967296"
   SWIFTLINT_SHA256: 79306a34e5c7cc55a220cd108cbb861dcad5f10138dcdf261e2624ae8b0a486b
   SWIFTLINT_VERSION: 0.65.0
@@ -527,10 +527,6 @@ jobs:
         run: |
           set -uo pipefail
           started="$(date +%s)"
-          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
-            echo "::error::WP-CI-01 UI aggregate canary"
-            exit 92
-          fi
           set +e
           xcodebuild test-without-building \
             -project ChapterFlow.xcodeproj \
