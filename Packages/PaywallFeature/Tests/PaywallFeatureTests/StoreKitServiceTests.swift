@@ -45,9 +45,9 @@ struct StoreKitConfigTests {
         #expect(config.allProductIDs.isEmpty)
     }
 
-    @Test("from AppConfig reads storeKit product IDs")
-    func fromAppConfig() {
-        let appConfig = AppConfig(
+    @Test("hermetic AppConfig overlay reaches StoreKitConfig without erasing product IDs")
+    func hermeticOverlayReachesStoreKitConfig() throws {
+        let source = AppConfig(
             apiBaseURL: "https://api.example.com",
             cognitoRegion: "us-east-1",
             cognitoUserPoolID: "pool",
@@ -56,7 +56,20 @@ struct StoreKitConfigTests {
             storeKitAnnualProductID: "com.example.annual",
             storeKitAnnualUpfrontProductID: "com.example.upfront"
         )
-        let config = StoreKitConfig.from(appConfig)
+        let requiredServices = AppConfig(
+            apiBaseURL: "https://api.chapterflow.test",
+            cognitoRegion: "us-east-1",
+            cognitoUserPoolID: "us-east-1_ChapterFlowUITest",
+            cognitoClientID: "chapterflowuitestclient12345",
+            cognitoDomain: "auth.chapterflow.test"
+        )
+        let overlaid = source.applyingHermeticServiceOverlay(requiredServices)
+
+        guard case .valid(let validated) = overlaid.validate() else {
+            Issue.record("The hermetic configuration should validate before StoreKit construction")
+            return
+        }
+        let config = StoreKitConfig.from(validated.value)
         #expect(config.monthlyProductID == "com.example.monthly")
         #expect(config.annualProductID == "com.example.annual")
         #expect(config.annualUpfrontProductID == "com.example.upfront")

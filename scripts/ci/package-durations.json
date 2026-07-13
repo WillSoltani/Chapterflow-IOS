@@ -1,0 +1,48 @@
+{
+  "affinity_groups": [
+    [
+      "AuthKit",
+      "SettingsFeature"
+    ]
+  ],
+  "measured_from": {
+    "metric": "p50 elapsed seconds between package log boundaries",
+    "run_count": 8,
+    "workflow": "PR — Build, Test & Lint",
+    "workflow_runs": [
+      29077017931,
+      29080967625,
+      29081335103,
+      29088174532,
+      29124763228,
+      29132580794,
+      29219419365,
+      29225201907
+    ]
+  },
+  "p50_seconds": {
+    "AIFeature": 30.2,
+    "AuthKit": 241.1,
+    "CoreKit": 19.4,
+    "DesignSystem": 10.7,
+    "EngagementFeature": 22.5,
+    "Fixtures": 17.8,
+    "LibraryFeature": 19.0,
+    "Models": 16.9,
+    "Networking": 5.1,
+    "NotificationsFeature": 7.5,
+    "OnboardingFeature": 5.1,
+    "PaywallFeature": 8.7,
+    "Persistence": 7.5,
+    "QuizFeature": 18.7,
+    "ReaderFeature": 10.8,
+    "SettingsFeature": 206.4,
+    "SocialFeature": 13.8
+  },
+  "schema_version": 1,
+  "unmeasured_default_seconds": 60.0,
+  "unmeasured_packages": [
+    "AppFeature",
+    "SyncEngine"
+  ]
+}

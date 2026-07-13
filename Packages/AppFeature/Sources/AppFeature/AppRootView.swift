@@ -28,9 +28,9 @@ import SyncEngine
 /// - `.reconnecting`   → main `TabView` + non-destructive top banner
 /// - `.reauthRequired` → main `TabView` + `ReauthView` sheet (blocking)
 public struct AppRootView: View {
-    // `private(set)`, not `private`, so same-module extensions split across files
-    // (e.g. AppRootView+TabContent, +Banners, +WhatsNew) can read it. Setter stays private.
-    @State private(set) var model: AppModel
+    // Internal so same-module extensions split across files can read the
+    // injected observable and form bindings through `@Bindable`.
+    @Bindable var model: AppModel
     @State private var readingFlow: ReadingFlow?
     @State private var showQueuedToast = false
     @Environment(\.scenePhase) private var scenePhase
@@ -39,8 +39,8 @@ public struct AppRootView: View {
     // Observed so SwiftUI tracks changes written by App Intents perform().
     private let intentStore = IntentActionStore.shared
 
-    public init(config: AppConfig = .fromInfoPlist()) {
-        _model = State(initialValue: AppModel(config: config))
+    public init(model: AppModel) {
+        self.model = model
     }
 
     public var body: some View {
@@ -519,8 +519,19 @@ public struct AppRootView: View {
 
 // MARK: - Previews
 
-#Preview("Tab Shell — signed in") {
-    AppRootView()
+#Preview("Invalid development configuration") {
+    ConfiguredAppRootView(
+        bootstrap: AppBootstrap(
+            config: AppConfig(
+                apiBaseURL: "",
+                cognitoRegion: "",
+                cognitoUserPoolID: "",
+                cognitoClientID: "",
+                cognitoDomain: ""
+            ),
+            buildConfiguration: .debug
+        )
+    )
 }
 
 #Preview("Reconnecting banner") {

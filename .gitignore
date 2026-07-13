@@ -10,7 +10,10 @@ xcuserdata/
 *.xccheckout
 *.moved-aside
 *.hmap
+*.app
 *.ipa
+*.xcarchive
+*.xcresult
 *.dSYM.zip
 *.dSYM
 
@@ -18,6 +21,11 @@ xcuserdata/
 .build/
 .swiftpm/
 Packages/**/.build/
+.spm-build/
+
+# Python tooling
+__pycache__/
+*.py[cod]
 
 # Localization: dedicated DerivedData / artifacts used only by scripts/l10n-*.sh
 # (a SWIFT_EMIT_LOC_STRINGS build kept separate from the normal build cache).

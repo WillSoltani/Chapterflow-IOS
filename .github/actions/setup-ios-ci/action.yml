@@ -1,0 +1,104 @@
+name: Set up ChapterFlow iOS CI
+description: Select Xcode 26, report the exact toolchain, and create hermetic configuration.
+
+inputs:
+  create-placeholder-config:
+    description: Copy the committed placeholder configuration when Secrets.xcconfig is absent.
+    required: false
+    default: "false"
+
+outputs:
+  arch:
+    description: Runner CPU architecture.
+    value: ${{ steps.toolchain.outputs.arch }}
+  setup-seconds:
+    description: Toolchain selection and hermetic-configuration setup duration.
+    value: ${{ steps.finalize.outputs.setup-seconds }}
+  swift-version:
+    description: Exact Swift version summary.
+    value: ${{ steps.toolchain.outputs.swift-version }}
+  toolchain-key:
+    description: Cache-safe key containing the exact Xcode build and Swift version.
+    value: ${{ steps.toolchain.outputs.toolchain-key }}
+  xcode-version:
+    description: Exact Xcode version and build summary.
+    value: ${{ steps.toolchain.outputs.xcode-version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Select and verify Xcode 26
+      id: toolchain
+      shell: bash
+      run: |
+        set -euo pipefail
+        started="$(date +%s)"
+        shopt -s nullglob
+        xcode26_candidates=(/Applications/Xcode_26*.app)
+        if (( ${#xcode26_candidates[@]} == 0 )); then
+          echo "::error::Xcode 26 is required but was not found"
+          installed_xcodes=(/Applications/Xcode*.app)
+          printf '%s\n' "${installed_xcodes[@]}" | sort
+          exit 1
+        fi
+        latest26="$(printf '%s\n' "${xcode26_candidates[@]}" | sort -V | tail -1)"
+
+        developer_dir="$latest26/Contents/Developer"
+        echo "DEVELOPER_DIR=$developer_dir" >> "$GITHUB_ENV"
+        export DEVELOPER_DIR="$developer_dir"
+
+        xcode_output="$(xcodebuild -version)"
+        swift_output="$(swift --version | head -1)"
+        if ! grep -Eq '^Xcode 26([.[:space:]]|$)' <<< "$xcode_output"; then
+          echo "::error::Selected toolchain is not Xcode 26"
+          echo "$xcode_output"
+          exit 1
+        fi
+
+        xcode_version="$(tr '\n' ' ' <<< "$xcode_output" | xargs)"
+        swift_version="$(xargs <<< "$swift_output")"
+        arch="$(uname -m)"
+        raw_key="$xcode_version-$swift_version"
+        toolchain_key="$(tr -cs 'A-Za-z0-9._-' '-' <<< "$raw_key" | sed 's/^-//; s/-$//')"
+
+        {
+          echo "arch=$arch"
+          echo "started=$started"
+          echo "swift-version=$swift_version"
+          echo "toolchain-key=$toolchain_key"
+          echo "xcode-version=$xcode_version"
+        } >> "$GITHUB_OUTPUT"
+        echo "$xcode_output"
+        echo "$swift_version"
+        echo "Architecture: $arch"
+
+    - name: Create hermetic placeholder configuration
+      if: ${{ inputs.create-placeholder-config == 'true' }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [[ ! -f Secrets.example.xcconfig ]]; then
+          echo "::error::Secrets.example.xcconfig is missing"
+          exit 1
+        fi
+        if [[ -e Secrets.xcconfig ]]; then
+          echo "Secrets.xcconfig already exists; refusing to overwrite it"
+        else
+          cp Secrets.example.xcconfig Secrets.xcconfig
+          echo "Created ignored placeholder Secrets.xcconfig"
+        fi
+
+    - name: Summarize setup
+      id: finalize
+      shell: bash
+      run: |
+        set -euo pipefail
+        duration="$(( $(date +%s) - ${{ steps.toolchain.outputs.started }} ))"
+        echo "setup-seconds=$duration" >> "$GITHUB_OUTPUT"
+        {
+          echo "### iOS setup"
+          echo "- Xcode: ${{ steps.toolchain.outputs.xcode-version }}"
+          echo "- Swift: ${{ steps.toolchain.outputs.swift-version }}"
+          echo "- Architecture: ${{ steps.toolchain.outputs.arch }}"
+          echo "- Setup duration: ${duration}s"
+        } >> "$GITHUB_STEP_SUMMARY"

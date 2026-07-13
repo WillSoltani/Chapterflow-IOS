@@ -21,6 +21,7 @@ final class SignInFlowTests: CFUITestCase {
 
         let freshApp = XCUIApplication()
         freshApp.launchEnvironment[TestEnv.stubServer] = "1"
+        freshApp.launchEnvironment[TestEnv.hermeticConfiguration] = "1"
         // Deliberately omit bypassAuth so the app starts unauthenticated.
         freshApp.launch()
         defer { freshApp.terminate() }
@@ -52,6 +53,7 @@ final class SignInFlowTests: CFUITestCase {
 
         let freshApp = XCUIApplication()
         freshApp.launchEnvironment[TestEnv.stubServer] = "1"
+        freshApp.launchEnvironment[TestEnv.hermeticConfiguration] = "1"
         freshApp.launch()
         defer { freshApp.terminate() }
 
@@ -87,6 +89,7 @@ final class SignInFlowTests: CFUITestCase {
 
         let freshApp = XCUIApplication()
         freshApp.launchEnvironment[TestEnv.stubServer] = "1"
+        freshApp.launchEnvironment[TestEnv.hermeticConfiguration] = "1"
         freshApp.launch()
         defer { freshApp.terminate() }
 
@@ -133,6 +136,80 @@ final class SignInFlowTests: CFUITestCase {
     func testHomeLoadsWithStubData() {
         assertShellLoaded()
         AppRobot(app: app).assertNoErrorState()
+    }
+
+    // MARK: - Configuration boundary
+
+    /// With no test flags, the supplied Debug configuration remains unchanged.
+    /// The CI-style placeholder build must therefore fail closed.
+    func testNormalDebugConfigurationRemainsUntouchedWithoutTestFlags() {
+        app.terminate()
+
+        let normalDebugApp = XCUIApplication()
+        normalDebugApp.launch()
+        defer { normalDebugApp.terminate() }
+
+        XCTAssertTrue(
+            normalDebugApp.scrollViews["invalid-development-configuration"]
+                .waitForExistence(timeout: 10),
+            "A no-flag Debug launch must not synthesize a service configuration"
+        )
+        XCTAssertFalse(normalDebugApp.tabBars.firstMatch.exists)
+    }
+
+    /// Auth bypass seeds only the local session. Without both service-test flags,
+    /// it must not select the synthetic API/Cognito configuration.
+    func testAuthBypassAloneDoesNotActivateHermeticConfiguration() {
+        app.terminate()
+
+        let bypassOnlyApp = XCUIApplication()
+        bypassOnlyApp.launchEnvironment[TestEnv.bypassAuth] = "1"
+        bypassOnlyApp.launch()
+        defer { bypassOnlyApp.terminate() }
+
+        XCTAssertTrue(
+            bypassOnlyApp.scrollViews["invalid-development-configuration"]
+                .waitForExistence(timeout: 10),
+            "Auth bypass alone must leave the supplied placeholder configuration invalid"
+        )
+        XCTAssertFalse(bypassOnlyApp.tabBars.firstMatch.exists)
+    }
+
+    /// A normal launch using the committed example placeholders must stop at
+    /// the dedicated setup root before any auth or live product UI appears.
+    func testPlaceholderConfigurationFailsClosedBeforeAuthUI() {
+        app.terminate()
+
+        let normalDebugApp = XCUIApplication()
+        normalDebugApp.launchEnvironment[TestEnv.stubServer] = "1"
+        normalDebugApp.launchEnvironment[TestEnv.invalidConfiguration] = "1"
+        normalDebugApp.launch()
+        defer { normalDebugApp.terminate() }
+
+        XCTAssertTrue(
+            normalDebugApp.scrollViews["invalid-development-configuration"]
+                .waitForExistence(timeout: 10),
+            "Placeholder Debug configuration must show the setup root"
+        )
+        let identifiedElements = normalDebugApp.descendants(matching: .any)
+        XCTAssertTrue(identifiedElements["invalid-config-heading"].exists)
+        XCTAssertTrue(identifiedElements["invalid-config-guidance"].exists)
+        let supportCode = identifiedElements["invalid-config-support-code"]
+        XCTAssertTrue(supportCode.exists)
+        XCTAssertEqual(supportCode.label, "Support code: CF-DEV-CFG-001")
+        XCTAssertFalse(normalDebugApp.tabBars.firstMatch.exists)
+
+        let login = normalDebugApp.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'log in' OR label CONTAINS[c] 'sign in'")
+        ).firstMatch
+        XCTAssertFalse(login.exists, "Invalid configuration must not reveal login UI")
+    }
+
+    /// The base test launch uses both explicit hermetic flags and therefore
+    /// continues to reach the deterministic signed-in shell.
+    func testExplicitHermeticConfigurationReachesTestShell() {
+        assertShellLoaded()
+        XCTAssertFalse(app.otherElements["invalid-development-configuration"].exists)
     }
 
     // MARK: -
