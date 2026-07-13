@@ -230,3 +230,225 @@ Exclude Release/Staging deployment policy, signing identities, release manifests
 ## Prohibited-action confirmation
 
 WP-DEV-00 performed no App Store Connect metadata action, TestFlight upload, StoreKit Sandbox purchase or attestation, release evidence creation, production deployment, release labeling, PR #117 merge/close/relabel/comment/push, branch push, or other release action. PR #117 and `codex/wp-rel-01` remain deferred and frozen.
+
+---
+
+## WP-DEV-01 - Deterministic Development Bootstrap
+
+**Completed:** 2026-07-13, America/Halifax
+
+**Branch:** `codex/wp-dev-01-bootstrap`
+
+**Status:** Implementation and deterministic validation complete; draft-PR publication authorized
+
+### Outcome and revisions
+
+WP-DEV-01 now rejects missing, empty, unexpanded, example, placeholder, malformed, insecure, or internally inconsistent API/Cognito configuration before any live application service graph is constructed. Valid configuration is converted into a typed capability and constructs the graph once in `ChapterFlowApp.init()`, outside SwiftUI body evaluation.
+
+| Scope | Revision/state |
+|---|---|
+| Authoritative starting revision | `92a5c351a42771f546b3d0e575b3b37a8cbfb588` |
+| Final tested implementation revision | `53603a2532e8e9ec8b28536009da295b9a1fc522` |
+| Evidence-document revision | Documentation-only successor to the tested implementation; the draft PR head is authoritative |
+| Branch base and merge-base with `origin/main` | `92a5c351a42771f546b3d0e575b3b37a8cbfb588` |
+| Frozen PR #117 reference | `codex/wp-rel-01` at `7bb9b5a88494027832cfe1553cc3c6c464702ab6`, inspected read-only |
+
+The dirty primary `Pro` checkout was not used, reset, stashed, staged, or edited. Work ran in `/private/tmp/Chapterflow-IOS-wp-dev-01-bootstrap`, created directly from the verified starting revision. No backend source or contract changed.
+
+### Implemented behavior
+
+- `AppConfig` retains whether each required Info.plist key was absent, while preserving its existing string API.
+- Validation covers `API_BASE_URL`, `COGNITO_REGION`, `COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID`, and `COGNITO_DOMAIN` with typed fields and issue categories.
+- Example-domain fragments, explicit template words, unexpanded build settings, and X-filled values are rejected before shape validation.
+- Public API URLs require HTTPS; `localhost`, `127.0.0.1`, and `::1` remain valid HTTP development endpoints. User info, queries, and fragments are rejected.
+- Cognito region, pool, client, and hostname shapes are checked, including pool-region agreement. Valid required values are trimmed before service construction.
+- Invalid validation results contain ordered field/category issues only. Diagnostics add only coarse build identity, service-construction readiness, and the stable support code `CF-DEV-CFG-001`.
+- `ValidatedAppConfig` is the capability required by `AppModel`; its initializer can no longer read or accept an unchecked configuration.
+- `AppBootstrap` validates and conditionally creates `AppModel` once in the app initializer. SwiftUI receives the stored result and cannot recreate the graph during root-view initialization or body reevaluation.
+- Invalid configuration routes to a dedicated scrollable root. Debug copy provides local setup guidance; non-Debug copy remains generic. Neither path exposes raw values or product UI.
+- The existing deterministic UI harness gets a valid synthetic `.test` configuration only when both `CF_STUB_SERVER=1` and `CF_HERMETIC_TEST_CONFIGURATION=1` are explicit. Auth bypass alone and normal Debug launches cannot activate it.
+- A separate Debug-only invalid fixture exists solely to test the fail-closed root; that test also enables URL stubbing so a validator regression cannot contact a live service.
+- The AppFeature macOS build/test host uses an inert notification authorizer because `UNUserNotificationCenter.current()` traps in a non-application SwiftPM runner. Shipping iOS construction is unchanged.
+- Existing mobile maintenance/update configuration remains behind the valid bootstrap and its package tests remain green.
+
+No setup action was added because the root has no safe in-app action that can edit local build configuration. The screen instead gives direct, actionable file guidance.
+
+### Changed files
+
+Configuration and bootstrap:
+
+- `Secrets.example.xcconfig`
+- `ChapterFlow/ChapterFlowApp.swift`
+- `ChapterFlow/TestSupport/CFAppLaunchSupport.swift`
+- `Packages/CoreKit/Sources/CoreKit/AppConfig.swift`
+- `Packages/CoreKit/Sources/CoreKit/Config/AppConfigValidation.swift`
+- `Packages/CoreKit/Sources/CoreKit/Config/AppConfigurationTypes.swift`
+- `Packages/CoreKit/Sources/CoreKit/Config/ConfigurationValueInspection.swift`
+- `Packages/CoreKit/Sources/CoreKit/Observability/AppConfigurationDiagnostics.swift`
+
+Application composition and UI:
+
+- `Packages/AppFeature/Sources/AppFeature/AppModel.swift`
+- `Packages/AppFeature/Sources/AppFeature/AppRootView.swift`
+- `Packages/AppFeature/Sources/AppFeature/ConfiguredAppRootView.swift`
+- `Packages/AppFeature/Sources/AppFeature/DebugMenuView.swift`
+
+Tests:
+
+- `Packages/CoreKit/Tests/CoreKitTests/AppConfigValidationTests.swift`
+- `Packages/AppFeature/Tests/AppFeatureTests/AppModelTestSupport.swift`
+- `Packages/AppFeature/Tests/AppFeatureTests/AppModelTests.swift`
+- `Packages/AppFeature/Tests/AppFeatureTests/QuickActionTests.swift`
+- `Packages/AppFeature/Tests/AppFeatureTests/ConfiguredAppRootViewTests.swift`
+- `Packages/AppFeature/Tests/AppFeatureTests/InvalidDevelopmentConfigurationRenderTests.swift`
+- `ChapterFlowUITests/ChapterFlowUITests.swift`
+- `ChapterFlowUITests/Flows/SignInFlowTests.swift`
+
+`DebugMenuView.swift` contains only a two-line `#if os(iOS)` guard around the existing iOS-only navigation-title API. This was the minimum adaptation required for the mandated AppFeature host test to compile; it does not alter the iOS UI.
+
+### Toolchain, tools, and disk
+
+| Item | Value/use |
+|---|---|
+| Xcode | 26.6, build `17F113` |
+| Swift | 6.3.3 |
+| SwiftLint | 0.65.0 |
+| Simulator | iPhone 17 Pro, iOS 26.5, selected by the current CI algorithm |
+| Initial free disk | approximately 146 GiB |
+| Final free disk | approximately 115 GiB after removing only this worktree's generated shared SwiftPM scratch |
+| Skills | `swiftui-expert-skill`, `swift-concurrency`, `swift-testing-expert`, `mobile-ios-design`, and the GitHub publish workflow |
+| Specialized tooling | XcodeBuildMCP session defaults, launch, semantic snapshot, and screenshot; SwiftPM; `xcodebuild`; SwiftLint; local Git; connected GitHub tooling for publication |
+
+No backend search was needed because WP-DEV-01 changes no endpoint, serializer, auth contract, schema, storage, or deployment behavior. No official Apple documentation lookup was required for a new platform API; current SwiftUI, Observation, concurrency, accessibility, and testing guidance from the loaded skills was applied.
+
+### Validation evidence
+
+All pass claims below apply to final tested implementation revision `53603a2532e8e9ec8b28536009da295b9a1fc522`. The later evidence-only documentation change does not affect compiled sources or tests.
+
+#### Focused package tests - PASS
+
+```sh
+swift test --package-path Packages/CoreKit
+```
+
+Result: exit 0; **141 tests in 25 suites passed**. Coverage includes valid, normalized, missing, empty, malformed, unexpanded, template/example, X-filled, URL transport, region mismatch, ordering, redaction, and diagnostic-record cases.
+
+```sh
+swift test --package-path Packages/AppFeature
+```
+
+Result: exit 0; **67 tests in 18 suites passed**. Invalid bootstrap invoked the graph factory zero times; valid bootstrap invoked it exactly once; 50 repeated SwiftUI body evaluations retained one graph; diagnostics failures did not alter routing. Light, Dark, 320x568, and AX5 render guards passed.
+
+The first AppFeature attempt compiled but its macOS test process trapped when existing AppModel tests reached Apple's process-global notification center without an application bundle. The host-only inert authorizer seam was added; the exact command then passed. This was diagnosed rather than retried blindly.
+
+#### Exact 17-package CI loop - PASS
+
+The unmodified package list and shared-scratch loop from `.github/workflows/pr.yml` ran with:
+
+```sh
+swift test --package-path "Packages/$pkg" --scratch-path "$PWD/.spm-build" --parallel
+```
+
+Result: **17 of 17 package targets passed**: Models, CoreKit, Networking, Fixtures, DesignSystem, AIFeature, AuthKit, EngagementFeature, LibraryFeature, NotificationsFeature, OnboardingFeature, PaywallFeature, Persistence, QuizFeature, ReaderFeature, SettingsFeature, and SocialFeature.
+
+An initial sandboxed invocation could not compile any manifest because Swift required `~/.cache/clang/ModuleCache`; it was stopped once the common infrastructure cause was proven. The exact loop was then authorized outside that restriction and passed. The generated shared scratch was deleted afterward; no source, fixture, snapshot, or other worktree was removed.
+
+#### Exact Debug iOS Simulator build - PASS
+
+CI parity first copied `Secrets.example.xcconfig` to ignored `Secrets.xcconfig`, then ran:
+
+```sh
+set -o pipefail
+xcodebuild build \
+  -project ChapterFlow.xcodeproj \
+  -scheme ChapterFlow \
+  -destination 'generic/platform=iOS Simulator' \
+  -configuration Debug \
+  CODE_SIGN_IDENTITY="" \
+  CODE_SIGNING_REQUIRED=NO \
+  CODE_SIGNING_ALLOWED=NO \
+  -skipPackagePluginValidation \
+  -skipMacroValidation
+```
+
+Result: exit 0 and `** BUILD SUCCEEDED **`.
+
+#### Exact ChapterFlowUITests lane - PASS after diagnosed test-query correction
+
+```sh
+set -o pipefail
+xcodebuild test \
+  -project ChapterFlow.xcodeproj \
+  -scheme ChapterFlow \
+  -destination "platform=iOS Simulator,id=<BOOTED_SIMULATOR>" \
+  -only-testing:ChapterFlowUITests \
+  -parallel-testing-enabled NO \
+  CODE_SIGN_IDENTITY="" \
+  CODE_SIGNING_REQUIRED=NO \
+  CODE_SIGNING_ALLOWED=NO \
+  -skipPackagePluginValidation \
+  -skipMacroValidation
+```
+
+Final result: exit 0 and `** TEST SUCCEEDED **`:
+
+- `PurchaseFlowTests`: 6 passed;
+- `ReadQuizUnlockFlowTests`: 6 passed;
+- `SignInFlowTests`: 8 passed, including invalid-normal and explicit-hermetic configuration paths;
+- `SmokeLaneTests`: 2 intentionally skipped because `CF_REAL_API=1` was absent;
+- total: **22 executed, 20 passed, 2 skipped, 0 failures**.
+
+The first full run had one failure because the new test searched `.otherElements` while the runtime accessibility tree attached the root identifier to its `ScrollView`. XcodeBuildMCP proved the invalid screen was present. A focused rerun then exposed the same element-type assumption for the guidance container. The assertions were made identifier-based and element-type agnostic; the focused test passed, followed by the complete green lane above. No production behavior, timeout, retry policy, skip, or test scope was weakened.
+
+#### Lint and diff - PASS
+
+```sh
+swiftlint lint --strict --reporter github-actions-logging
+git diff --check
+```
+
+Results: SwiftLint exit 0 with **0 violations and 0 serious violations in 735 files**; diff check exit 0. An independent read-only reviewer reported no remaining P0-P2 findings and separately passed strict no-cache lint and diff checks.
+
+### Runtime and accessibility evidence
+
+- With the exact CI-style placeholder build installed, XcodeBuildMCP launched `com.chapterflow.ios` with **no test environment variables**. Visual inspection showed only `ChapterFlow Needs Setup`, four nonsecret issue summaries, local setup guidance, and support code `CF-DEV-CFG-001`; there was no login, library, paywall, or other product UI.
+- A separate explicit invalid-fixture launch produced a 34-element semantic snapshot with the fail-closed root identifier and no interactive targets.
+- The UI uses semantic DesignSystem colors and fonts, a flexible `ScrollView`, no fixed text/control height, heading traits, contained reading order, hidden decorative icons, and text labels in addition to icons/color.
+- Render guards covered Light Mode, Dark Mode, 320x568 geometry, and AX5 Dynamic Type. The surface has no motion; the AX5 guard also disables transaction animation, satisfying Reduce Motion without adding a separate animation path.
+- XCUITest verified the root, heading, guidance, support code, absence of tab UI, and absence of login controls. VoiceOver order follows source order and `.contain` accessibility grouping; no physical VoiceOver session was claimed.
+
+### Security, privacy, contracts, and migrations
+
+- Invalid state and diagnostics retain no raw AppConfig, URL, Cognito ID, token, DSN, credential, request/response body, or personal data.
+- Tests reflect invalid results and records to confirm private URL and identifier strings are absent.
+- Invalid configuration cannot reach `AppModel`, `AuthService`, `SessionManager`, `APIClient`, analytics transport, StoreKit/entitlements, live repositories, or other network-backed feature services.
+- Synthetic test values use reserved `.test` hosts and fake non-production identifiers. They require explicit Debug-only launch environment activation.
+- No API contract, model wire shape, persistence schema, migration, deployment order, or rollback mechanism changed. Rollback is a direct revert of the focused bootstrap commit.
+
+### Acceptance and contamination review
+
+| Requirement | Result |
+|---|---|
+| Five required values typed and validated | PASS |
+| Placeholder/example configuration rejected | PASS |
+| Invalid path creates zero live graphs/services | PASS |
+| Valid path creates exactly one graph | PASS |
+| SwiftUI reevaluation cannot duplicate graph | PASS |
+| Explicit hermetic UI-test configuration only | PASS |
+| Normal Debug placeholder launch remains invalid | PASS |
+| Privacy-safe deterministic diagnostics | PASS |
+| Invalid root accessibility/render matrix | PASS |
+| Existing maintenance/update tests | PASS |
+| Sign-In, Home, Library, Book Detail, purchase-fixture regressions | PASS |
+| No Audio or Social file changed | PASS |
+| No PR #117 commit cherry-picked wholesale | PASS |
+| No release-only configuration or machinery imported | PASS |
+
+The complete diff contains no App Store identity, product/price/subscription-group change, release manifest, export options, waiver, attestation, signing, provisioning, TestFlight detection, production Sentry requirement, deployment logic, Audio change, or Social change. Existing StoreKit behavior and its deterministic fixture tests were exercised but not modified.
+
+### Remaining limitations and prohibited-action confirmation
+
+- Live Cognito/SIWA, authenticated deployed-backend behavior, account switching, real StoreKit transactions, StoreKit Sandbox, physical-device installation, and production configuration were **not run** and are not claimed.
+- The two optional real-API smoke tests were **skipped by design** because no `CF_REAL_API=1` authorization or token was supplied.
+- No physical VoiceOver, Reduce Transparency, or signed-device session was run; the deterministic semantic and render evidence above is the scoped accessibility proof.
+- No merge, deployment, App Store Connect action, TestFlight action, Sandbox purchase, signing/provisioning change, production-data action, PR #117 mutation, or unrelated-user change occurred.
