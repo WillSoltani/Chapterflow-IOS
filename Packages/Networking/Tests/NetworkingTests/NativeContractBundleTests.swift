@@ -1,7 +1,7 @@
 import Foundation
 import Testing
 
-private let expectedNativeOperationIDs: Set<String> = [
+let expectedNativeOperationIDs: Set<String> = [
     "account-deactivate.post", "account-delete.post", "analytics-beacon.post",
     "analytics-track.post", "apple-verify.post", "ask-book.post", "audio-plan.get",
     "badges.get", "block-user.post", "blocked-user.delete", "blocked-users.get",
@@ -25,7 +25,7 @@ private let expectedNativeOperationIDs: Set<String> = [
     "user-journey.get",
 ]
 
-private let expectedMatrixRowIDs: Set<String> = [
+let expectedMatrixRowIDs: Set<String> = [
     "catalog", "search-index", "book-detail-manifest", "entitlements-paywall",
     "progress-overview", "saved-books", "start-book", "book-state-cursor-preferences",
     "chapter-content", "quiz-load-check-events", "quiz-submit", "ask-the-book",
@@ -34,6 +34,15 @@ private let expectedMatrixRowIDs: Set<String> = [
     "notification-preferences", "apns-device-registration", "onboarding",
     "apple-purchase-verification", "data-export", "account-deactivation", "account-deletion",
     "mobile-config",
+]
+
+let expectedIOSInventoryRevision = "3bc162719cebda98744b05d261242bd5868841c6"
+
+let expectedProductionAuthorityTests = [
+    "chapter.get": "models.chapter-progress.authority-deletion",
+    "quiz.get": "models.quiz-progress.authority-deletion",
+    "entitlements.get": "models.entitlement.authority-deletion",
+    "own-profile.get": "social.own-profile-identity.authority-deletion",
 ]
 
 @Suite("Backend-owned native contract bundle")
@@ -77,20 +86,29 @@ struct NativeContractBundleTests {
         let bundle = try NativeContractBundleFixture.load()
         let manifest = try IOSSourceInventoryManifest.load()
         let evidence = bundle.inventory.iosSourceEvidence
-        let inventoryRevision = "bb7ca30041dd095dc36144611bea127f0b53099d"
         #expect(evidence.manifestPath == "contracts/native-ios/v1/ios-source-inventory-manifest.json")
         #expect(evidence.iosBaseRevision == manifest.iosBaseRevision)
-        #expect(evidence.iosSourceRevision == inventoryRevision)
+        #expect(evidence.iosSourceRevision == expectedIOSInventoryRevision)
         #expect(evidence.iosSourceRevisionPhase == "committed_contract_branch")
-        #expect(manifest.iosSourceRevision == inventoryRevision)
+        #expect(manifest.schemaVersion == "chapterflow-ios-native-inventory-v2")
+        #expect(manifest.iosSourceRevision == expectedIOSInventoryRevision)
         #expect(manifest.iosSourceRevisionPhase == "committed_contract_branch")
         #expect(evidence.operationKeySha256 == manifest.operationKeySha256)
         #expect(evidence.producerVariantIdSha256 == manifest.producerVariantIdSha256)
+        #expect(evidence.producerIdentitySha256 == manifest.producerIdentitySha256)
+        #expect(evidence.relationalRecordCount == manifest.relationalRecordCount)
+        #expect(evidence.relationalRecordSha256 == manifest.relationalRecordSha256)
+        #expect(evidence.sourceInputTreeSha256 == manifest.sourceInputTreeSha256)
+        #expect(evidence.matrixRowCount == manifest.matrixRowCount)
         #expect(evidence.exactFactoryTestedProducerCount == 6)
         #expect(evidence.bundleSuccessDecoderTestedOperationCount == 24)
         #expect(!evidence.backendRuntimeFactoryValidationPerformed)
         #expect(manifest.operationKeyCount == 83)
         #expect(manifest.producerVariantCount == 93)
+        #expect(manifest.relationalRecordCount == 93)
+        #expect(manifest.records.count == 93)
+        #expect(manifest.matrixRowCount == 29)
+        #expect(manifest.matrixRows.count == 29)
         #expect(manifest.bundleSuccessDecoderTestedOperationCount == 24)
     }
 
@@ -108,6 +126,41 @@ struct NativeContractBundleTests {
         let missingRoutes = blocked.filter { $0.blocker?.kind == "missing_route" }
         #expect(missingRoutes.count == 8)
         #expect(missingRoutes.allSatisfy { $0.blocker?.expectedRouteSource?.isEmpty == false })
+    }
+
+    @Test("blocked operations have closed remediation ownership")
+    func blockerResolutions() throws {
+        let bundle = try NativeContractBundleFixture.load()
+        let blocked = bundle.operations.filter { $0.coverage == "blocked" }
+
+        #expect(blocked.count == 23)
+        for operation in blocked {
+            let blocker = try #require(operation.blocker)
+            try validate(blocker.resolution, operationID: operation.id)
+        }
+        #expect(bundle.operations.filter { $0.coverage != "blocked" }.allSatisfy { $0.blocker == nil })
+    }
+
+    @Test("recent-auth routes do not claim active-user enforcement")
+    func recentAuthClassification() throws {
+        let bundle = try NativeContractBundleFixture.load()
+        let accountDelete = try #require(bundle.operations.first { $0.id == "account-delete.post" })
+        let export = try #require(bundle.operations.first { $0.id == "export.get" })
+
+        #expect(accountDelete.auth.authClass == "recent_auth_user")
+        #expect(export.auth.authClass == "recent_auth_user")
+    }
+
+    @Test("authority proof claims name production consumer tests")
+    func authorityProofs() throws {
+        let bundle = try NativeContractBundleFixture.load()
+        try validateAuthorityProofs(bundle)
+
+        #expect(bundle.authorityProofSummary.structuralFixtureVerifiedOperationCount == 51)
+        #expect(bundle.authorityProofSummary.productionConsumerVerifiedOperationCount == 4)
+        #expect(bundle.authorityProofSummary.blockedOrUnprovenOperationCount == 1)
+        let quizSubmit = try #require(bundle.operations.first { $0.id == "quiz-submit.post" })
+        #expect(quizSubmit.authority.proof.level == "blocked_unproven")
     }
 
     @Test("request fixtures preserve ordered query items and body kind")
@@ -153,448 +206,368 @@ struct NativeContractBundleTests {
             try validate(bundle)
         }
     }
-}
 
-private enum NativeContractValidationError: Error {
-    case invalid(String)
-}
+    @Test("analytics producer reassignment trips the relational canary")
+    func analyticsProducerSwapCanary() throws {
+        var bundle = try NativeContractBundleFixture.load()
+        let trackIndex = try operationIndex("analytics-track.post", in: bundle)
+        let beaconIndex = try operationIndex("analytics-beacon.post", in: bundle)
+        let trackEvidence = bundle.operations[trackIndex].nativeRequestFixtures[0].producerEvidence
+        let beaconEvidence = bundle.operations[beaconIndex].nativeRequestFixtures[0].producerEvidence
+        bundle.operations[trackIndex].nativeRequestFixtures[0].producerEvidence = beaconEvidence
+        bundle.operations[beaconIndex].nativeRequestFixtures[0].producerEvidence = trackEvidence
 
-private func validate(_ bundle: NativeContractBundleFixture) throws {
-    try validateMetadata(bundle)
-    try validateInventory(bundle)
-    for operation in bundle.operations {
-        try validate(operation)
-    }
-}
-
-private func validateMetadata(_ bundle: NativeContractBundleFixture) throws {
-    try requireContract(bundle.schemaVersion == "chapterflow-native-contract-bundle-v1", "schema version")
-    try requireContract(bundle.contractVersion == "1", "contract version")
-    try requireContract(
-        bundle.provenance.backendRepository == "WillSoltani/ChapterFlow",
-        "backend repository"
-    )
-    try requireContract(
-        bundle.provenance.generatorVersion == "chapterflow-native-contract-generator-v1",
-        "generator version"
-    )
-    try requireContract(bundle.provenance.syntheticDataOnly, "synthetic provenance")
-    try requireContract(bundle.provenance.deployedRevision == nil, "deployed revision claim")
-    try requireContract(
-        !bundle.provenance.deployedRevisionVerified,
-        "deployed revision verification claim"
-    )
-    try requireContract(bundle.provenance.behaviorSourceRevision.count == 40, "behavior revision")
-    try requireContract(
-        ISO8601DateFormatter().date(from: bundle.provenance.behaviorSourceTimestamp) != nil,
-        "behavior source timestamp"
-    )
-    try requireContract(bundle.provenance.generatorTreeDigest.count == 64, "generator digest")
-    try requireContract(
-        ISO8601DateFormatter().date(from: bundle.provenance.generatedAt) != nil,
-        "generated timestamp"
-    )
-    switch bundle.provenance.sourceRevisionPhase {
-    case "uncommitted_backend":
-        throw NativeContractValidationError.invalid("iOS bundle must pin a committed backend revision")
-    case "committed_backend_branch", "merged_backend":
-        guard let sourceRevision = bundle.provenance.sourceRevision else {
-            throw NativeContractValidationError.invalid("committed source revision")
+        #expect(throws: NativeContractValidationError.self) {
+            try validate(bundle)
         }
-        try requireContract(isLowercaseGitSHA(sourceRevision), "committed source revision format")
-    default:
-        throw NativeContractValidationError.invalid("source revision phase")
+    }
+
+    @Test("commitment matrix reassignment trips the relational canary")
+    func commitmentMatrixMoveCanary() throws {
+        var bundle = try NativeContractBundleFixture.load()
+        let operationIndex = try operationIndex("commitment.get", in: bundle)
+        let commitmentsIndex = try matrixRowIndex("commitments", in: bundle)
+        let catalogIndex = try matrixRowIndex("catalog", in: bundle)
+
+        bundle.operations[operationIndex].matrixRowId = "catalog"
+        bundle.inventory.matrixRows[commitmentsIndex].operationIds.removeAll {
+            $0 == "commitment.get"
+        }
+        bundle.inventory.matrixRows[catalogIndex].operationIds.append("commitment.get")
+        bundle.inventory.matrixRows[catalogIndex].operationIds.sort()
+
+        #expect(throws: NativeContractValidationError.self) {
+            try validate(bundle)
+        }
+    }
+
+    @Test("matrix summary member replacement trips the grouping canary")
+    func matrixSummaryMutationCanary() throws {
+        var bundle = try NativeContractBundleFixture.load()
+        let catalogIndex = try matrixRowIndex("catalog", in: bundle)
+        bundle.inventory.matrixRows[catalogIndex].operationIds[0] = "account-delete.post"
+
+        #expect(throws: NativeContractValidationError.self) {
+            try validate(bundle)
+        }
+    }
+
+    @Test("producer duplicate and removal trips the relational canary")
+    func duplicateAndRemovalCanary() throws {
+        var bundle = try NativeContractBundleFixture.load()
+        let catalogIndex = try operationIndex("catalog.get", in: bundle)
+        let searchIndex = try operationIndex("search-index.get", in: bundle)
+        bundle.operations[catalogIndex].nativeRequestFixtures[0] =
+            bundle.operations[searchIndex].nativeRequestFixtures[0]
+
+        #expect(throws: NativeContractValidationError.self) {
+            try validate(bundle)
+        }
+    }
+
+    @Test("method and route mutation trips the relational canary")
+    func methodAndRouteCanary() throws {
+        var bundle = try NativeContractBundleFixture.load()
+        let catalogIndex = try operationIndex("catalog.get", in: bundle)
+        bundle.operations[catalogIndex].method = "POST"
+        bundle.operations[catalogIndex].routeTemplate = "/book/catalog-mutated"
+
+        #expect(throws: NativeContractValidationError.self) {
+            try validate(bundle)
+        }
+    }
+
+    @Test("producer symbol and source path mutation trips the relational canary")
+    func producerIdentityCanary() throws {
+        var bundle = try NativeContractBundleFixture.load()
+        let catalogIndex = try operationIndex("catalog.get", in: bundle)
+        bundle.operations[catalogIndex].nativeRequestFixtures[0].producerEvidence = [
+            "getbooks@Packages/Networking/Sources/Networking/Endpoint+Config.swift:10-11",
+        ]
+
+        #expect(throws: NativeContractValidationError.self) {
+            try validate(bundle)
+        }
     }
 }
 
-private func validateInventory(_ bundle: NativeContractBundleFixture) throws {
-    try requireContract(bundle.inventory.uniqueOperationCount == 83, "operation count")
-    try requireContract(bundle.inventory.nativeProducerCount == 93, "producer count")
-    try requireContract(bundle.inventory.matrixRowCount == 29, "matrix count")
+func parseProducerEvidence(
+    _ values: [String],
+    operationID: String
+) throws -> (symbol: String, sourcePath: String) {
+    try requireContract(values.count == 1, "\(operationID) producer evidence count")
+    let evidence = values[0]
+    guard let lineSuffix = evidence.range(
+        of: #":[1-9][0-9]*(?:-[1-9][0-9]*)?$"#,
+        options: .regularExpression
+    ) else {
+        throw NativeContractValidationError.invalid("\(operationID) producer evidence line")
+    }
+    let identity = evidence[..<lineSuffix.lowerBound]
+    guard let separator = identity.lastIndex(of: "@") else {
+        throw NativeContractValidationError.invalid("\(operationID) producer evidence identity")
+    }
+    let symbol = String(identity[..<separator])
+    let sourcePath = String(identity[identity.index(after: separator)...])
+    try requireContract(!symbol.isEmpty, "\(operationID) producer symbol")
     try requireContract(
-        bundle.operations.count == bundle.inventory.uniqueOperationCount,
-        "operation summary"
+        sourcePath.range(
+            of: #"^Packages/.+/Sources/.+\.swift$"#,
+            options: .regularExpression
+        ) != nil,
+        "\(operationID) producer source path"
     )
+    return (symbol, sourcePath)
+}
 
-    let operationIDs = bundle.operations.map(\.id)
-    try requireContract(Set(operationIDs).count == operationIDs.count, "duplicate operation id")
-    let methodRoutes = bundle.operations.map { "\($0.method) \($0.routeTemplate)" }
-    try requireContract(Set(methodRoutes).count == methodRoutes.count, "duplicate method and route")
-    try requireContract(Set(operationIDs) == expectedNativeOperationIDs, "operation set")
-    try requireContract(
-        Set(bundle.inventory.matrixRows.map(\.id)) == expectedMatrixRowIDs,
-        "matrix set"
-    )
+func inferredProducerKind(_ symbol: String) -> String {
+    if symbol.hasPrefix("URLSessionAnalyticsTransport.Path.") {
+        return "analytics_path"
+    }
+    if symbol.hasSuffix(".directEndpoint") || symbol.hasSuffix(".replayDirectEndpoint") {
+        return "direct_endpoint"
+    }
+    return "endpoint_factory"
+}
 
-    let requests = bundle.operations.flatMap(\.nativeRequestFixtures)
-    try requireContract(requests.count == bundle.inventory.nativeProducerCount, "producer summary")
-    let variantIDs = requests.map(\.operationVariantId)
-    try requireContract(Set(variantIDs).count == variantIDs.count, "duplicate request variant")
+func stableVariantSuffix(_ symbol: String) -> String {
+    symbol.lowercased()
+        .replacingOccurrences(
+            of: #"[^a-z0-9]+"#,
+            with: "-",
+            options: .regularExpression
+        )
+        .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+}
+
+func validateMatrixRelations(
+    _ bundle: NativeContractBundleFixture,
+    manifest: IOSSourceInventoryManifest
+) throws {
+    let derived = deriveMatrixRows(bundle.operations)
+    try validateMatrixRows(manifest.matrixRows, label: "manifest")
+    try validateMatrixRows(bundle.inventory.matrixRows, label: "bundle")
+    try requireContract(manifest.matrixRows == derived, "manifest matrix grouping")
+    try requireContract(bundle.inventory.matrixRows == derived, "bundle matrix grouping")
+    try requireContract(bundle.inventory.matrixRows == manifest.matrixRows, "matrix summaries")
+}
+
+private func validateMatrixRows(_ rows: [MatrixRow], label: String) throws {
+    try requireContract(rows.count == 29, "\(label) matrix count")
+    try requireContract(Set(rows.map(\.id)).count == rows.count, "\(label) duplicate matrix row")
+    for row in rows {
+        try requireContract(!row.operationIds.isEmpty, "\(label) empty matrix row \(row.id)")
+        try requireContract(
+            Set(row.operationIds).count == row.operationIds.count,
+            "\(label) duplicate matrix member \(row.id)"
+        )
+        try requireContract(row.operationIds == row.operationIds.sorted(), "\(label) matrix sort")
+    }
+    try requireContract(rows.map(\.id) == rows.map(\.id).sorted(), "\(label) row sort")
+}
+
+private func deriveMatrixRows(_ operations: [NativeContractBundleFixture.Operation]) -> [MatrixRow] {
+    let grouped = Dictionary(grouping: operations.compactMap { operation -> (String, String)? in
+        guard let row = operation.matrixRowId else { return nil }
+        return (row, operation.id)
+    }, by: \.0)
+    return grouped.keys.sorted().map { rowID in
+        MatrixRow(id: rowID, operationIds: grouped[rowID, default: []].map(\.1).sorted())
+    }
+}
+
+func validateAuthorityProofs(_ bundle: NativeContractBundleFixture) throws {
+    for operation in bundle.operations {
+        try validateAuthorityProof(operation)
+    }
+    let authorityOperations = bundle.operations.filter { $0.authority.classification != "none" }
+    let structuralCount = authorityOperations.filter {
+        $0.coverage != "blocked"
+            && ["structural_fixture_only", "production_consumer_verified"]
+                .contains($0.authority.proof.level)
+    }.count
+    let productionOperations = authorityOperations.filter {
+        $0.authority.proof.level == "production_consumer_verified"
+    }
+    let blockedOperations = authorityOperations.filter {
+        $0.authority.proof.level == "blocked_unproven"
+    }
+
+    try requireContract(structuralCount == 51, "structural authority count")
+    try requireContract(productionOperations.count == 4, "production authority count")
+    try requireContract(blockedOperations.count == 1, "blocked authority count")
     try requireContract(
-        bundle.inventory.iosSourceEvidence.iosBaseRevision
-            == "92a5c351a42771f546b3d0e575b3b37a8cbfb588",
-        "iOS inventory base revision"
+        Set(productionOperations.map(\.id)) == Set(expectedProductionAuthorityTests.keys),
+        "production authority operation set"
+    )
+    try requireContract(blockedOperations.map(\.id) == ["quiz-submit.post"], "blocked authority set")
+
+    let summary = bundle.authorityProofSummary
+    try requireContract(
+        summary.structuralFixtureVerifiedOperationCount == structuralCount,
+        "structural authority summary"
     )
     try requireContract(
-        bundle.inventory.iosSourceEvidence.iosSourceRevision
-            == "bb7ca30041dd095dc36144611bea127f0b53099d"
-            && bundle.inventory.iosSourceEvidence.iosSourceRevisionPhase
-                == "committed_contract_branch",
-        "iOS inventory branch provenance"
+        summary.productionConsumerVerifiedOperationCount == productionOperations.count,
+        "production authority summary"
     )
     try requireContract(
-        bundle.inventory.iosSourceEvidence.exactFactoryTestedProducerCount == 6,
-        "exact factory proof count"
-    )
-    try requireContract(
-        bundle.inventory.iosSourceEvidence.bundleSuccessDecoderTestedOperationCount == 24,
-        "bundle success consumer proof count"
-    )
-    try requireContract(
-        !bundle.inventory.iosSourceEvidence.backendRuntimeFactoryValidationPerformed,
-        "backend Swift execution claim"
+        summary.blockedOrUnprovenOperationCount == blockedOperations.count,
+        "blocked authority summary"
     )
 }
 
-private func validate(_ operation: NativeContractBundleFixture.Operation) throws {
-    try requireContract(operation.routeTemplate.hasPrefix("/book/"), "native route")
-    try requireContract(!operation.nativeRequestFixtures.isEmpty, "native requests")
-    try requireContract(!operation.responseContract.iosModels.isEmpty, "response models")
-    try requireContract(!operation.responseContract.decoders.isEmpty, "decoders")
-    try requireContract(!operation.ios.factories.isEmpty, "factories")
-    try requireContract(!operation.ios.callSites.isEmpty, "call sites")
-    try requireContract(!operation.evidence.isEmpty, "operation evidence")
-
-    if operation.coverage == "blocked" {
-        try requireContract(operation.blocker != nil, "blocked evidence")
-        try requireContract(operation.backend == nil && operation.fixtures == nil, "blocked fixtures")
+func validateAuthorityProof(_ operation: NativeContractBundleFixture.Operation) throws {
+    let authority = operation.authority
+    let proof = authority.proof
+    if authority.classification == "none" {
+        try requireContract(authority.failureMode == "not_applicable", "non-authority failure mode")
+        try requireContract(authority.expectedRequiredPointers.isEmpty, "non-authority pointers")
+        try requireContract(proof.level == "not_applicable", "non-authority proof level")
+        try requireContract(proof.structuralEvidence.isEmpty, "non-authority structural proof")
+        try requireContract(proof.productionConsumerTestIds.isEmpty, "non-authority test IDs")
+        try requireContract(proof.productionConsumerEvidence.isEmpty, "non-authority evidence")
+        try requireContract(proof.gaps.isEmpty, "non-authority gaps")
         return
     }
 
-    let backend = try requireValue(operation.backend, "backend evidence")
-    let fixtures = try requireValue(operation.fixtures, "fixtures")
-    try requireContract(operation.blocker == nil, "covered blocker")
-    if operation.coverage == "full" {
-        try requireContract(!fixtures.errors.isEmpty, "documented errors")
-    } else {
-        try requireContract(!operation.gaps.isEmpty, "partial proof gaps")
-    }
+    try requireContract(authority.failureMode == "fail_closed", "\(operation.id) failure mode")
     try requireContract(
-        fixtures.request.operationVariantId == fixtures.requestVariants.first?.operationVariantId,
-        "primary request variant"
+        !authority.expectedRequiredPointers.isEmpty,
+        "\(operation.id) authority pointers"
     )
-    let canonicalNative = Set(
-        operation.nativeRequestFixtures
-            .filter { $0.compatibility == "canonical" }
-            .map(\.operationVariantId)
-    )
-    try requireContract(
-        Set(fixtures.requestVariants.map(\.operationVariantId)) == canonicalNative,
-        "canonical request variant set"
-    )
-    if operation.coverage == "full" {
-        try requireContract(backend.serializerProof.kind == "executed_pure_builder", "full serializer proof")
-    }
-    try requireContract(
-        Set(fixtures.success.requiredAuthorityFields)
-            == Set(operation.authority.expectedRequiredPointers),
-        "authority pointers"
-    )
-    if operation.authority.failureMode == "fail_closed" {
-        try requireContract(!operation.authority.expectedRequiredPointers.isEmpty, "fail-closed pointers")
-    }
-    if case .json(let value) = fixtures.success.payload {
-        for pointer in fixtures.success.requiredAuthorityFields {
-            try requireContract(value.has(pointer: pointer), "authority payload pointer")
-        }
-    }
-    for alias in fixtures.deployedCompatibleSuccessAliases {
-        try requireContract(!alias.aliasId.isEmpty, "alias id")
-        try requireContract(!alias.provenance.evidence.isEmpty, "alias provenance")
-        try requireContract(!alias.evidence.isEmpty, "alias evidence")
-    }
-    for error in fixtures.errors {
-        try requireContract(error.code == error.body.error.code, "error envelope code")
+    if operation.coverage == "blocked" {
+        try requireContract(proof.level == "blocked_unproven", "\(operation.id) blocked proof")
+        try requireContract(proof.structuralEvidence.isEmpty, "\(operation.id) blocked structural proof")
+        try requireContract(proof.productionConsumerTestIds.isEmpty, "\(operation.id) blocked test IDs")
         try requireContract(
-            error.body.error.requestId.hasPrefix("req_synthetic_"),
-            "synthetic request id"
+            proof.productionConsumerEvidence.isEmpty,
+            "\(operation.id) blocked consumer evidence"
         )
+        try requireContract(hasNonEmptyStrings(proof.gaps), "\(operation.id) blocked proof gaps")
+        let blocker = try requireValue(operation.blocker, "\(operation.id) blocked authority owner")
+        let authorityGap = try requireValue(
+            operation.gaps.first { $0.kind == "native_authority_consumer_proof" },
+            "\(operation.id) blocked authority gap"
+        )
+        try requireContract(
+            authorityGap.owner == blocker.resolution.owner,
+            "\(operation.id) blocked authority gap owner"
+        )
+        try requireContract(
+            authorityGap.dependency == blocker.resolution.dependency,
+            "\(operation.id) blocked authority gap dependency"
+        )
+        return
+    }
+
+    try requireContract(
+        hasNonEmptyStrings(proof.structuralEvidence),
+        "\(operation.id) structural authority evidence"
+    )
+    if let testID = expectedProductionAuthorityTests[operation.id] {
+        try requireContract(
+            proof.level == "production_consumer_verified",
+            "\(operation.id) production proof level"
+        )
+        try requireContract(proof.productionConsumerTestIds == [testID], "\(operation.id) test ID")
+        try requireContract(
+            hasNonEmptyStrings(proof.productionConsumerEvidence),
+            "\(operation.id) production evidence"
+        )
+        try requireContract(proof.gaps.isEmpty, "\(operation.id) production proof gaps")
+        try requireContract(
+            !operation.gaps.contains { $0.kind == "native_authority_consumer_proof" },
+            "\(operation.id) production authority operation gap"
+        )
+        return
+    }
+
+    try requireContract(proof.level == "structural_fixture_only", "\(operation.id) proof level")
+    try requireContract(proof.productionConsumerTestIds.isEmpty, "\(operation.id) test IDs")
+    try requireContract(proof.productionConsumerEvidence.isEmpty, "\(operation.id) evidence")
+    try requireContract(hasNonEmptyStrings(proof.gaps), "\(operation.id) structural proof gaps")
+    let authorityGap = try requireValue(
+        operation.gaps.first { $0.kind == "native_authority_consumer_proof" },
+        "\(operation.id) authority operation gap"
+    )
+    try requireContract(authorityGap.owner == "ios", "\(operation.id) authority gap owner")
+    try requireContract(
+        authorityGap.dependency?.isEmpty == false,
+        "\(operation.id) authority gap dependency"
+    )
+}
+
+func validateRecentAuth(_ bundle: NativeContractBundleFixture) throws {
+    for operationID in ["account-delete.post", "export.get"] {
+        let operation = try requireValue(
+            bundle.operations.first { $0.id == operationID },
+            "missing \(operationID)"
+        )
+        try requireContract(operation.auth.authClass == "recent_auth_user", "\(operationID) auth")
     }
 }
 
-private func requireContract(_ condition: @autoclosure () -> Bool, _ message: String) throws {
+func validate(
+    _ resolution: NativeContractBundleFixture.Operation.Blocker.Resolution,
+    operationID: String
+) throws {
+    let owners: Set<String> = [
+        "ios", "backend", "coordinated", "product_or_security_decision",
+    ]
+    try requireContract(owners.contains(resolution.owner), "\(operationID) blocker owner")
+    try requireContract(!resolution.rationale.isEmpty, "\(operationID) blocker rationale")
+    try requireContract(!resolution.dependency.isEmpty, "\(operationID) blocker dependency")
+    if resolution.decisionRequired {
+        try requireContract(
+            resolution.owner == "product_or_security_decision",
+            "\(operationID) decision owner"
+        )
+        try requireContract(
+            resolution.unresolvedDecision?.isEmpty == false,
+            "\(operationID) unresolved decision"
+        )
+    } else {
+        try requireContract(resolution.unresolvedDecision == nil, "\(operationID) closed decision")
+    }
+}
+
+private func operationIndex(
+    _ operationID: String,
+    in bundle: NativeContractBundleFixture
+) throws -> Int {
+    guard let index = bundle.operations.firstIndex(where: { $0.id == operationID }) else {
+        throw NativeContractValidationError.invalid("missing operation \(operationID)")
+    }
+    return index
+}
+
+private func matrixRowIndex(
+    _ rowID: String,
+    in bundle: NativeContractBundleFixture
+) throws -> Int {
+    guard let index = bundle.inventory.matrixRows.firstIndex(where: { $0.id == rowID }) else {
+        throw NativeContractValidationError.invalid("missing matrix row \(rowID)")
+    }
+    return index
+}
+
+private func hasNonEmptyStrings(_ values: [String]) -> Bool {
+    !values.isEmpty && values.allSatisfy { !$0.isEmpty }
+}
+
+func requireContract(_ condition: @autoclosure () -> Bool, _ message: String) throws {
     guard condition() else { throw NativeContractValidationError.invalid(message) }
 }
-private func isLowercaseGitSHA(_ value: String) -> Bool {
+func isLowercaseGitSHA(_ value: String) -> Bool {
     value.range(of: #"^[0-9a-f]{40}$"#, options: .regularExpression) != nil
 }
 
-private func requireValue<Value>(_ value: Value?, _ message: String) throws -> Value {
+func isLowercaseSHA256(_ value: String) -> Bool {
+    value.range(of: #"^[0-9a-f]{64}$"#, options: .regularExpression) != nil
+}
+
+func requireValue<Value>(_ value: Value?, _ message: String) throws -> Value {
     guard let value else { throw NativeContractValidationError.invalid(message) }
     return value
-}
-
-private struct NativeContractBundleFixture: Decodable, Sendable {
-    let schemaVersion: String
-    let contractVersion: String
-    let provenance: Provenance
-    let inventory: Inventory
-    let retryAfterPolicy: RetryAfterPolicy
-    var operations: [Operation]
-
-    static func load() throws -> Self {
-        let data = try Data(contentsOf: bundleURL())
-        return try JSONDecoder().decode(Self.self, from: data)
-    }
-
-    private static func bundleURL() -> URL {
-        contractRepositoryRoot()
-            .appending(path: "contracts/native-ios/v1/contract-bundle.json")
-    }
-
-    struct Provenance: Decodable, Sendable {
-        let backendRepository: String
-        let sourceRevision: String?
-        let behaviorSourceRevision: String
-        let behaviorSourceTimestamp: String
-        let sourceRevisionPhase: String
-        let generatedAt: String
-        let generatorVersion: String
-        let generatorTreeDigest: String
-        let syntheticDataOnly: Bool
-        let deployedRevision: String?
-        let deployedRevisionVerified: Bool
-    }
-
-    struct Inventory: Decodable, Sendable {
-        let uniqueOperationCount: Int
-        let nativeProducerCount: Int
-        let matrixRowCount: Int
-        let iosSourceEvidence: IOSSourceEvidence
-        let matrixRows: [MatrixRow]
-
-        struct IOSSourceEvidence: Decodable, Sendable {
-            let manifestPath: String
-            let iosBaseRevision: String
-            let iosSourceRevision: String?
-            let iosSourceRevisionPhase: String
-            let operationKeySha256: String
-            let producerVariantIdSha256: String
-            let exactFactoryTestedProducerCount: Int
-            let bundleSuccessDecoderTestedOperationCount: Int
-            let backendRuntimeFactoryValidationPerformed: Bool
-        }
-
-        struct MatrixRow: Decodable, Sendable {
-            let id: String
-            let operationIds: [String]
-        }
-    }
-
-    struct RetryAfterPolicy: Decodable, Sendable {
-        let implemented: Bool
-        let fixtureCount: Int
-        let evidence: [String]
-        let gap: String
-    }
-
-    struct Operation: Decodable, Sendable {
-        var id: String
-        let method: String
-        let routeTemplate: String
-        let matrixRowId: String?
-        let nativeRequestFixtures: [Request]
-        let responseContract: ResponseContract
-        let authority: Authority
-        let ios: IOS
-        let coverage: String
-        let gaps: [Gap]
-        let backend: Backend?
-        let blocker: Blocker?
-        let fixtures: Fixtures?
-        let evidence: [String]
-
-        struct Gap: Decodable, Sendable {
-            let kind: String
-            let reason: String
-        }
-
-        struct ResponseContract: Decodable, Sendable {
-            let iosModels: [String]
-            let decoders: [String]
-        }
-
-        struct Authority: Decodable, Sendable {
-            let expectedRequiredPointers: [String]
-            let failureMode: String
-        }
-
-        struct IOS: Decodable, Sendable {
-            let factories: [String]
-            let callSites: [String]
-        }
-
-        struct Backend: Decodable, Sendable {
-            let serializerProof: SerializerProof
-
-            struct SerializerProof: Decodable, Sendable { let kind: String }
-        }
-
-        struct Blocker: Decodable, Sendable {
-            let kind: String
-            let evidence: [String]
-            let expectedRouteSource: String?
-        }
-
-        struct Fixtures: Decodable, Sendable {
-            let request: Request
-            let requestVariants: [Request]
-            let success: Success
-            let deployedCompatibleSuccessAliases: [Alias]
-            let errors: [ErrorFixture]
-
-            struct Success: Decodable, Sendable {
-                let payload: ContractPayload
-                let requiredAuthorityFields: [String]
-            }
-
-            struct Alias: Decodable, Sendable {
-                let aliasId: String
-                let provenance: AliasProvenance
-                let evidence: [String]
-
-                struct AliasProvenance: Decodable, Sendable { let evidence: [String] }
-            }
-        }
-    }
-}
-
-private struct IOSSourceInventoryManifest: Decodable, Sendable {
-    let iosBaseRevision: String
-    let iosSourceRevision: String?
-    let iosSourceRevisionPhase: String
-    let operationKeyCount: Int
-    let operationKeySha256: String
-    let producerVariantCount: Int
-    let producerVariantIdSha256: String
-    let bundleSuccessDecoderTestedOperationCount: Int
-
-    static func load() throws -> Self {
-        let url = contractRepositoryRoot()
-            .appending(path: "contracts/native-ios/v1/ios-source-inventory-manifest.json")
-        return try JSONDecoder().decode(Self.self, from: Data(contentsOf: url))
-    }
-}
-
-private func contractRepositoryRoot() -> URL {
-    var root = URL(fileURLWithPath: #filePath)
-    for _ in 0..<5 { root.deleteLastPathComponent() }
-    return root
-}
-
-private struct Request: Decodable, Sendable {
-    let operationVariantId: String
-    let queryItems: [ContractItem]
-    let body: ContractBody
-    let compatibility: String
-}
-
-private struct ContractBody: Decodable, Sendable {
-    let kind: String
-    let value: ContractJSONValue?
-}
-
-private struct ContractItem: Decodable, Sendable, Equatable {
-    let name: String
-    let value: ContractJSONValue
-}
-
-private enum ContractPayload: Decodable, Sendable {
-    case json(ContractJSONValue)
-    case other
-
-    private enum CodingKeys: String, CodingKey { case kind, value }
-
-    init(from decoder: any Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        if try container.decode(String.self, forKey: .kind) == "json" {
-            self = .json(try container.decode(ContractJSONValue.self, forKey: .value))
-        } else {
-            self = .other
-        }
-    }
-}
-
-private struct ErrorFixture: Decodable, Sendable {
-    let status: Int
-    let code: String
-    let headers: [ContractItem]
-    let body: ErrorBody
-
-    struct ErrorBody: Decodable, Sendable {
-        let error: ErrorValue
-
-        struct ErrorValue: Decodable, Sendable {
-            let code: String
-            let requestId: String
-        }
-    }
-}
-
-private enum ContractJSONValue: Codable, Sendable, Equatable {
-    case string(String)
-    case number(Double)
-    case bool(Bool)
-    case object([String: Self])
-    case array([Self])
-    case null
-
-    init(from decoder: any Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        if container.decodeNil() {
-            self = .null
-        } else if let value = try? container.decode(Bool.self) {
-            self = .bool(value)
-        } else if let value = try? container.decode(Double.self) {
-            self = .number(value)
-        } else if let value = try? container.decode(String.self) {
-            self = .string(value)
-        } else if let value = try? container.decode([Self].self) {
-            self = .array(value)
-        } else {
-            self = .object(try container.decode([String: Self].self))
-        }
-    }
-
-    func encode(to encoder: any Encoder) throws {
-        var container = encoder.singleValueContainer()
-        switch self {
-        case .string(let value): try container.encode(value)
-        case .number(let value): try container.encode(value)
-        case .bool(let value): try container.encode(value)
-        case .object(let value): try container.encode(value)
-        case .array(let value): try container.encode(value)
-        case .null: try container.encodeNil()
-        }
-    }
-
-    func has(pointer: String) -> Bool {
-        guard pointer.hasPrefix("/") else { return false }
-        var current = self
-        for encodedPart in pointer.dropFirst().split(separator: "/", omittingEmptySubsequences: false) {
-            let part = encodedPart.replacingOccurrences(of: "~1", with: "/")
-                .replacingOccurrences(of: "~0", with: "~")
-            switch current {
-            case .object(let object):
-                guard let next = object[part] else { return false }
-                current = next
-            case .array(let array):
-                guard let index = Int(part), array.indices.contains(index) else { return false }
-                current = array[index]
-            default:
-                return false
-            }
-        }
-        return true
-    }
 }

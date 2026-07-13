@@ -3,13 +3,20 @@
   "contractVersion": "1",
   "provenance": {
     "backendRepository": "WillSoltani/ChapterFlow",
-    "sourceRevision": "31c595664394ad6987fbbb2bd8f3e6f8142926a5",
+    "sourceRevision": "01ab81848ce052a6f84709ff7729820609c5a81c",
     "behaviorSourceRevision": "968ff67ecafbed7e8e1d4c7b77badf507cfc5aee",
     "behaviorSourceTimestamp": "2026-07-11T22:16:03-03:00",
     "sourceRevisionPhase": "committed_backend_branch",
     "generatedAt": "2026-07-13T02:27:09-03:00",
     "generatorVersion": "chapterflow-native-contract-generator-v1",
-    "generatorTreeDigest": "93414c9b893cf06a1e2a9437ce4e1764d0ec26e74a41340c5402aef85ed6b0d7",
+    "generatorTreeDigest": "4f08080c87889fae6afb08cb111085f41cf8db42307554988294d6d3535818fa",
+    "committedInputTree": {
+      "sha256": "39deda7363debbc7f4ef044378c16cc25ca50e421d2297dcf186cc4cf1ac3919",
+      "inputPathCount": 120,
+      "expectedMissingPathCount": 7,
+      "trustedMainRef": "refs/remotes/origin/main",
+      "trustedMainRevision": "968ff67ecafbed7e8e1d4c7b77badf507cfc5aee"
+    },
     "syntheticDataOnly": true,
     "deployedRevision": null,
     "deployedRevisionVerified": false
@@ -20,17 +27,23 @@
     "matrixRowCount": 29,
     "iosSourceEvidence": {
       "manifestPath": "contracts/native-ios/v1/ios-source-inventory-manifest.json",
-      "manifestSha256": "d07562a24b49bcfef9e1c9cc2ddad940973fb2ae1a599b18068c89b507bd44a9",
+      "manifestSha256": "4c49bd44e01a86b344c8ab28e3c4fb684045384c38c4dd9cf4dd801764580470",
+      "manifestSchemaVersion": "chapterflow-ios-native-inventory-v2",
       "iosRepository": "WillSoltani/Chapterflow-IOS",
       "iosBaseRevision": "92a5c351a42771f546b3d0e575b3b37a8cbfb588",
-      "iosSourceRevision": "bb7ca30041dd095dc36144611bea127f0b53099d",
+      "iosSourceRevision": "3bc162719cebda98744b05d261242bd5868841c6",
       "iosSourceRevisionPhase": "committed_contract_branch",
       "operationKeySha256": "b24a9ad2861744ad127ce1aca976c13b621fdb7460fc8cd9b9d5669ec9468174",
       "producerVariantIdSha256": "a24b4f233747aa625ddb6ce18f27a5280dd4befe58c35e4b337709a384a036ac",
+      "producerIdentitySha256": "4d68f6336af886e90236cb86c8cbaba2ef60518a0d1c18376615f145246c8cee",
+      "relationalRecordCount": 93,
+      "relationalRecordSha256": "d8f4fcc3af527f1f9b8726f184b565a8d3cd92ab765b53856fa17940c84b8e4c",
+      "sourceInputTreeSha256": "2eaa0584e8ef4cba66e8742f06ab123e53b18bdeabfe8e8e306db66901835f9f",
+      "matrixRowCount": 29,
       "exactFactoryTestedProducerCount": 6,
       "bundleSuccessDecoderTestedOperationCount": 24,
       "backendRuntimeFactoryValidationPerformed": false,
-      "limitation": "The operation and producer digests were collected in the isolated WP-CONTRACT-01 worktree and are pinned to committed iOS contract revision bb7ca30041dd095dc36144611bea127f0b53099d, which includes the source-proven PATCH/GET corrections. The committed iOS source revision contains the inventoried endpoint producers; subsequent workflow- or script-only repair commits do not change the producer inventory. The backend generator validates its hand-registered operations and producer variant IDs against this independent manifest, but it does not inspect or instantiate Swift endpoint factories. Exact factory and call-site membership remains an iOS-consumer validation responsibility; only six native producers currently have exact factory tests. Only 24 of the 60 partial operations currently feed the bundle success payload through the production iOS model decoder and a cache round-trip."
+      "limitation": "The iOS repository owns the complete producer-to-operation-to-matrix mapping. Every producer record is checked against exact production Swift method and path expressions. Committed manifests hash generator, mapping, and every scanned production Swift input from the named Git object. The backend consumes these records but does not replace or regenerate iOS inventory authority."
     },
     "matrixRows": [
       {
@@ -306,6 +319,11 @@
     ],
     "gap": "Rate-limit responses do not currently define a stable Retry-After header, so no fixture is invented."
   },
+  "authorityProofSummary": {
+    "structuralFixtureVerifiedOperationCount": 51,
+    "productionConsumerVerifiedOperationCount": 4,
+    "blockedOrUnprovenOperationCount": 1
+  },
   "operations": [
     {
       "id": "analytics-track.post",
@@ -366,7 +384,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -391,9 +416,18 @@
         "kind": "request_mismatch",
         "reason": "Native sends {events:[...]}; backend requires a singular allowlisted {event,bookId,...} object.",
         "evidence": [
-          "Packages/CoreKit/Sources/CoreKit/Analytics/AnalyticsClient.swift:40-43",
-          "app/app/api/book/me/analytics/track/route.ts:24-39"
+          "Packages/CoreKit/Sources/CoreKit/Analytics/AnalyticsClient.swift:33-43 AnalyticsEvent and AnalyticsBatch define the batched native wire body",
+          "Packages/CoreKit/Sources/CoreKit/Analytics/AnalyticsClient.swift:187-208 URLSessionAnalyticsTransport.send(_:) encodes and posts the batch",
+          "app/app/api/book/me/analytics/track/route.ts:18-29 TRACK_EVENTS defines the backend event allowlist",
+          "app/app/api/book/me/analytics/track/route.ts:31-69 POST validates one event object and its scalar fields"
         ],
+        "resolution": {
+          "owner": "product_or_security_decision",
+          "rationale": "The telemetry taxonomy, payload allowlist, consent boundary, and data minimization rule must be approved before either client or server shape changes.",
+          "dependency": "WP-PRIV-01 and WP-OBS-01",
+          "decisionRequired": true,
+          "unresolvedDecision": "Approve the analytics event schema and privacy/consent policy for batched native events."
+        },
         "backendCandidate": {
           "routeSource": "app/app/api/book/me/analytics/track/route.ts",
           "exportedMethods": [
@@ -474,7 +508,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -499,9 +540,19 @@
         "kind": "request_mismatch",
         "reason": "Native sends {name,properties,timestamp}; backend requires an allowlisted {type,...primitivePayload} object.",
         "evidence": [
-          "Packages/CoreKit/Sources/CoreKit/Analytics/AnalyticsClient.swift:32-38",
-          "app/app/api/book/me/analytics/beacon/route.ts:69-113"
+          "Packages/CoreKit/Sources/CoreKit/Analytics/AnalyticsClient.swift:33-38 AnalyticsEvent defines name, properties, and timestamp",
+          "Packages/CoreKit/Sources/CoreKit/Analytics/AnalyticsClient.swift:212-220 URLSessionAnalyticsTransport.sendBeacon(_:) encodes the event",
+          "app/app/api/book/me/analytics/beacon/route.ts:15-18 defines beacon type and key limits",
+          "app/app/api/book/me/analytics/beacon/route.ts:82-90 enforces analytics consent behavior",
+          "app/app/api/book/me/analytics/beacon/route.ts:98-128 parses type and sanitizes primitive payload values"
         ],
+        "resolution": {
+          "owner": "product_or_security_decision",
+          "rationale": "The beacon taxonomy and primitive payload allowlist are privacy-sensitive product policy, not a unilateral transport rename.",
+          "dependency": "WP-PRIV-01 and WP-OBS-01",
+          "decisionRequired": true,
+          "unresolvedDecision": "Approve the beacon type allowlist, permitted properties, and consent behavior."
+        },
         "backendCandidate": {
           "routeSource": "app/app/api/book/me/analytics/beacon/route.ts",
           "exportedMethods": [
@@ -576,7 +627,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -777,7 +835,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -977,7 +1042,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -1218,7 +1290,22 @@
         "expectedRequiredPointers": [
           "/progress/unlockedThroughChapterNumber"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "production_consumer_verified",
+          "structuralEvidence": [
+            "chapter.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [
+            "models.chapter-progress.authority-deletion"
+          ],
+          "productionConsumerEvidence": [
+            "Packages/Models/Tests/ModelsTests/BackendOwnedContractTests.swift BackendOwnedContractTests.progressAuthorityDeletionFailsClosed (chapter.get argument)",
+            "Packages/Models/Sources/Models/Progress/BookProgress.swift BookProgress.init(from:)",
+            "Packages/Models/Sources/Models/Evaluator/EntitlementEvaluator.swift EntitlementEvaluator.isChapterUnlocked(number:progress:)"
+          ],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -1496,7 +1583,22 @@
         "expectedRequiredPointers": [
           "/progress/unlockedThroughChapterNumber"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "production_consumer_verified",
+          "structuralEvidence": [
+            "quiz.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [
+            "models.quiz-progress.authority-deletion"
+          ],
+          "productionConsumerEvidence": [
+            "Packages/Models/Tests/ModelsTests/BackendOwnedContractTests.swift BackendOwnedContractTests.progressAuthorityDeletionFailsClosed (quiz.get argument)",
+            "Packages/Models/Sources/Models/Responses.swift QuizResponse",
+            "Packages/Models/Sources/Models/Evaluator/EntitlementEvaluator.swift EntitlementEvaluator.isChapterUnlocked(number:progress:)"
+          ],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -1777,7 +1879,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -1809,6 +1918,13 @@
           "app/app/api/book/books/[bookId]/chapters/[chapterNumber]/audio/route.ts:549 returns JSON.stringify(result.plan)",
           "Packages/Models/Sources/Models/Audio/AudioNarrationPlan.swift requires the plan wrapper"
         ],
+        "resolution": {
+          "owner": "coordinated",
+          "rationale": "Backend emits a raw plan while production iOS decodes a plan envelope; both clients and server compatibility must be considered.",
+          "dependency": "WP-AUDIO-01",
+          "decisionRequired": false,
+          "unresolvedDecision": null
+        },
         "backendCandidate": {
           "routeSource": "app/app/api/book/books/[bookId]/chapters/[chapterNumber]/audio/route.ts",
           "exportedMethods": [
@@ -1884,7 +2000,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -2093,7 +2216,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -2323,7 +2453,16 @@
           "/scorePercent",
           "/unlockedNextChapter"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "blocked_unproven",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No compatible success fixture exists; authority fields /passed, /scorePercent, /unlockedNextChapter remain unproven."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -2346,6 +2485,12 @@
         {
           "kind": "request_mismatch",
           "reason": "Backend requires responses:[{questionId,selectedChoiceId|selectedIndex}]; both native producers send incompatible answers shapes."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "No compatible success contract exists, so production iOS authority handling for /passed, /scorePercent, /unlockedNextChapter remains unproven.",
+          "owner": "ios",
+          "dependency": "WP-SYNC-02"
         }
       ],
       "blocker": {
@@ -2356,6 +2501,13 @@
           "Packages/QuizFeature/Sources/QuizFeature/Endpoints+Quiz.swift:9-20",
           "Packages/Networking/Sources/Networking/Endpoint+Sync.swift:18-35"
         ],
+        "resolution": {
+          "owner": "ios",
+          "rationale": "Backend canonical response validation is explicit; both online and replay iOS producers send older incompatible answer DTOs.",
+          "dependency": "WP-SYNC-02",
+          "decisionRequired": false,
+          "unresolvedDecision": null
+        },
         "backendCandidate": {
           "routeSource": "app/app/api/book/me/quiz/[bookId]/[chapterNumber]/submit/route.ts",
           "exportedMethods": [
@@ -2460,7 +2612,18 @@
         "expectedRequiredPointers": [
           "/trackedMinutesToday"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "reading-session.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /trackedMinutesToday."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -2501,6 +2664,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /trackedMinutesToday.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -2696,7 +2865,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -2723,6 +2899,13 @@
         "evidence": [
           "backend tree at behavior revision 968ff67 contains no me/referrals route"
         ],
+        "resolution": {
+          "owner": "product_or_security_decision",
+          "rationale": "No backend route establishes referral eligibility, abuse controls, or entitlement effects for the visible native producer.",
+          "dependency": "WP-NAV-01 and WP-ENT-01",
+          "decisionRequired": true,
+          "unresolvedDecision": "Decide whether referral application ships and approve eligibility, abuse, and reward semantics."
+        },
         "expectedRouteSource": "app/app/api/book/me/referrals/apply/route.ts"
       }
     },
@@ -2783,7 +2966,18 @@
         "expectedRequiredPointers": [
           "/reflection/reflectionId"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "reflection.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /reflection/reflectionId."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -2818,6 +3012,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /reflection/reflectionId.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -3002,7 +3202,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -3030,6 +3237,13 @@
           "app/app/api/book/me/reflections/[bookId]/[chapterNumber]/feedback/route.ts:106-110",
           "app/app/api/book/me/reflections/[bookId]/[chapterNumber]/feedback/route.ts:248-254"
         ],
+        "resolution": {
+          "owner": "coordinated",
+          "rationale": "Backend conditionally streams while iOS expects one JSON response; a single compatible response contract must be chosen across both sides.",
+          "dependency": "WP-NET-01",
+          "decisionRequired": false,
+          "unresolvedDecision": null
+        },
         "backendCandidate": {
           "routeSource": "app/app/api/book/me/reflections/[bookId]/[chapterNumber]/feedback/route.ts",
           "exportedMethods": [
@@ -3111,7 +3325,18 @@
         "expectedRequiredPointers": [
           "/card/cardId"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "review-grade.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /card/cardId."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -3148,6 +3373,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /card/cardId.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -3330,7 +3561,18 @@
         "expectedRequiredPointers": [
           "/savedBookIds"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "saved-toggle.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /savedBookIds."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -3367,6 +3609,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /savedBookIds.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -3542,7 +3790,18 @@
         "expectedRequiredPointers": [
           "/ok"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "share-event.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /ok."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -3577,6 +3836,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /ok.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -3744,7 +4009,18 @@
           "/currentTier",
           "/overallProgress"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "tier.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /currentTier, /overallProgress."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -3779,6 +4055,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /currentTier, /overallProgress.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -3943,7 +4225,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -3970,6 +4259,13 @@
         "evidence": [
           "backend tree at behavior revision 968ff67 contains no moderation reports route"
         ],
+        "resolution": {
+          "owner": "product_or_security_decision",
+          "rationale": "A moderation route requires approved report categories, abuse controls, retention, operator handling, and user feedback semantics.",
+          "dependency": "WP-SAFE-01",
+          "decisionRequired": true,
+          "unresolvedDecision": "Approve the report taxonomy, moderation workflow, retention, and reporter feedback contract."
+        },
         "expectedRouteSource": "app/app/api/book/moderation/reports/route.ts"
       }
     },
@@ -4023,7 +4319,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -4050,6 +4353,13 @@
         "evidence": [
           "backend tree at behavior revision 968ff67 contains no me/blocks route"
         ],
+        "resolution": {
+          "owner": "backend",
+          "rationale": "Server-side unblock and cross-surface enforcement are mandatory safety invariants, while the explicit native route has no backend implementation.",
+          "dependency": "WP-SAFE-01",
+          "decisionRequired": false,
+          "unresolvedDecision": null
+        },
         "expectedRouteSource": "app/app/api/book/me/blocks/[userId]/route.ts"
       }
     },
@@ -4103,7 +4413,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -4132,6 +4449,13 @@
         "evidence": [
           "app/app/api/book/me/notebook/route.ts exports DELETE on the base path"
         ],
+        "resolution": {
+          "owner": "ios",
+          "rationale": "Backend already exposes DELETE on the notebook collection with highlightId; the native path producer is the divergent side.",
+          "dependency": "WP-NOTE-01",
+          "decisionRequired": false,
+          "unresolvedDecision": null
+        },
         "backendCandidate": {
           "routeSource": "app/app/api/book/me/notebook/route.ts",
           "exportedMethods": [
@@ -4212,7 +4536,18 @@
         "expectedRequiredPointers": [
           "/ended"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "pair.delete requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /ended."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -4247,6 +4582,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /ended.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -4412,7 +4753,18 @@
           "/claimed",
           "/status"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "gift-claim.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /claimed, /status."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -4447,6 +4799,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /claimed, /status.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -4624,7 +4982,18 @@
           "/journey/journeyId",
           "/journey/status"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "journey-start.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /journey/journeyId, /journey/status."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -4659,6 +5028,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /journey/journeyId, /journey/status.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -4833,7 +5208,18 @@
         "expectedRequiredPointers": [
           "/entry/entryId"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "notebook.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /entry/entryId."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -4870,6 +5256,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /entry/entryId.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -5051,7 +5443,18 @@
         "expectedRequiredPointers": [
           "/marked"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "notifications-read-all.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /marked."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -5086,6 +5489,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /marked.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -5252,7 +5661,18 @@
         "expectedRequiredPointers": [
           "/success"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "onboarding-complete.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /success."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -5287,6 +5707,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /success.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -5475,7 +5901,18 @@
         "expectedRequiredPointers": [
           "/success"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "onboarding-progress.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /success."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -5510,6 +5947,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /success.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -5685,7 +6128,18 @@
           "/pair/partnerId",
           "/pair/status"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "pair-accept.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /pair/partnerId, /pair/status."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -5720,6 +6174,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /pair/partnerId, /pair/status.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -5892,7 +6352,18 @@
         "expectedRequiredPointers": [
           "/invite/code"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "pair-invite.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /invite/code."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -5927,6 +6398,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /invite/code.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -6092,7 +6569,18 @@
         "expectedRequiredPointers": [
           "/sent"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "pair-nudge.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /sent."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -6127,6 +6615,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /sent.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -6301,7 +6795,18 @@
         "expectedRequiredPointers": [
           "/recorded"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "quiz-event.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /recorded."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -6336,6 +6841,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /recorded.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -6507,7 +7018,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -6534,6 +7052,13 @@
         "evidence": [
           "backend tree at behavior revision 968ff67 contains no me/blocks route"
         ],
+        "resolution": {
+          "owner": "backend",
+          "rationale": "Server-side block enforcement is mandatory across user-content surfaces, and the explicit native contract has no backend route.",
+          "dependency": "WP-SAFE-01",
+          "decisionRequired": false,
+          "unresolvedDecision": null
+        },
         "expectedRouteSource": "app/app/api/book/me/blocks/route.ts"
       }
     },
@@ -6623,7 +7148,18 @@
           "/submission/submissionId",
           "/submission/status"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "scenario.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /submission/submissionId, /submission/status."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -6662,6 +7198,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /submission/submissionId, /submission/status.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -6887,7 +7429,18 @@
           "/entitlement/plan",
           "/entitlement/unlockedBookIds"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "start-book.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /entitlement/plan, /entitlement/unlockedBookIds."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -6922,6 +7475,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /entitlement/plan, /entitlement/unlockedBookIds.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -7110,7 +7669,18 @@
           "/commitment/commitmentId",
           "/commitment/status"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "commitment.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /commitment/commitmentId, /commitment/status."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -7145,6 +7715,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /commitment/commitmentId, /commitment/status.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -7332,7 +7908,18 @@
         "expectedRequiredPointers": [
           "/registered"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "device-register.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /registered."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -7367,6 +7954,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /registered.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -7545,7 +8138,18 @@
         "expectedRequiredPointers": [
           "/unregistered"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "device-unregister.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /unregistered."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -7580,6 +8184,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /unregistered.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -7747,7 +8357,18 @@
           "/participation/eventId",
           "/isNew"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "event-join.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /participation/eventId, /isNew."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -7782,6 +8403,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /participation/eventId, /isNew.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -7958,7 +8585,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -7985,6 +8619,13 @@
         "evidence": [
           "app/app/api/book/me/events/[eventId]/progress/route.ts exports GET"
         ],
+        "resolution": {
+          "owner": "product_or_security_decision",
+          "rationale": "Backend exposes a server-owned read while native emits an empty progress write; mutation authority cannot be inferred from either side.",
+          "dependency": "WP-READER-01 and WP-SYNC-01",
+          "decisionRequired": true,
+          "unresolvedDecision": "Decide whether event progress is server-derived or accepts an idempotent client signal and define its authority semantics."
+        },
         "backendCandidate": {
           "routeSource": "app/app/api/book/me/events/[eventId]/progress/route.ts",
           "exportedMethods": [
@@ -8065,7 +8706,18 @@
           "/ok",
           "/balance"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "flow-points-redeem.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /ok, /balance."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -8100,6 +8752,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /ok, /balance.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -8269,7 +8927,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -8296,6 +8961,13 @@
         "evidence": [
           "backend tree at behavior revision 968ff67 contains only gifts/[code] routes"
         ],
+        "resolution": {
+          "owner": "product_or_security_decision",
+          "rationale": "Gift creation has entitlement, fraud, expiry, and account-binding consequences but no backend route contract.",
+          "dependency": "WP-ENT-01 and WP-NAV-01",
+          "decisionRequired": true,
+          "unresolvedDecision": "Approve who can create gifts, entitlement effects, expiry, abuse controls, and redemption ownership."
+        },
         "expectedRouteSource": "app/app/api/book/me/gifts/route.ts"
       }
     },
@@ -8350,7 +9022,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -8377,6 +9056,13 @@
         "evidence": [
           "backend tree at behavior revision 968ff67 contains no users profile route"
         ],
+        "resolution": {
+          "owner": "product_or_security_decision",
+          "rationale": "A public-profile route cannot be added until field visibility, block enforcement, and privacy defaults are approved.",
+          "dependency": "WP-SAFE-01 and WP-PRIV-01",
+          "decisionRequired": true,
+          "unresolvedDecision": "Approve the public profile field allowlist, privacy defaults, and block/moderation enforcement."
+        },
         "expectedRouteSource": "app/app/api/book/users/[userId]/profile/route.ts"
       }
     },
@@ -8457,7 +9143,18 @@
           "/state/bookId",
           "/state/unlockedChapterIds"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "book-state.patch requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /state/bookId, /state/unlockedChapterIds."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -8498,6 +9195,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /state/bookId, /state/unlockedChapterIds.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -8715,7 +9418,18 @@
         "expectedRequiredPointers": [
           "/commitment/status"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "commitment.patch requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /commitment/status."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -8750,6 +9464,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /commitment/status.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -8935,7 +9655,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -8964,6 +9691,13 @@
         "evidence": [
           "app/app/api/book/me/notebook/route.ts exports PATCH on the base path"
         ],
+        "resolution": {
+          "owner": "ios",
+          "rationale": "Backend already exposes PATCH on the notebook collection with highlightId in the body; the native item-path producer diverges.",
+          "dependency": "WP-NOTE-01",
+          "decisionRequired": false,
+          "unresolvedDecision": null
+        },
         "backendCandidate": {
           "routeSource": "app/app/api/book/me/notebook/route.ts",
           "exportedMethods": [
@@ -9070,7 +9804,18 @@
         "expectedRequiredPointers": [
           "/settings"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "settings.patch requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /settings."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -9111,6 +9856,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /settings.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -9321,7 +10072,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -9349,6 +10107,13 @@
           "app/app/api/book/books/[bookId]/ask/route.ts:429-436 returns text/event-stream",
           "Packages/AIFeature/Sources/AIFeature/Repository/LiveAIRepository.swift:24 decodes BookAskResponse"
         ],
+        "resolution": {
+          "owner": "coordinated",
+          "rationale": "Backend SSE framing and native one-shot JSON decoding are incompatible and must preserve citations, cancellation, and partial failure together.",
+          "dependency": "WP-NET-01 and WP-READER-01",
+          "decisionRequired": false,
+          "unresolvedDecision": null
+        },
         "backendCandidate": {
           "routeSource": "app/app/api/book/books/[bookId]/ask/route.ts",
           "exportedMethods": [
@@ -9429,7 +10194,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -9454,8 +10226,18 @@
         "kind": "path_mismatch",
         "reason": "Backend path is /book/me/quiz/{bookId}/{chapterNumber}/check and expects responses:[{questionId,selectedChoiceId}], not the native singleton body.",
         "evidence": [
-          "app/app/api/book/me/quiz/[bookId]/[chapterNumber]/check/route.ts:90-136"
+          "Packages/QuizFeature/Sources/QuizFeature/Endpoints+Quiz.swift:21-34 Endpoint.checkQuizAnswer defines the native path and singleton body",
+          "Packages/QuizFeature/Sources/QuizFeature/QuizTypes.swift:23-27 defines the native questionId/choiceId DTO",
+          "app/app/api/book/me/quiz/[bookId]/[chapterNumber]/check/route.ts:23-86 validates the responses array",
+          "app/app/api/book/me/quiz/[bookId]/[chapterNumber]/check/route.ts:101-156 parses the request and returns the result array"
         ],
+        "resolution": {
+          "owner": "ios",
+          "rationale": "Backend has a concrete authenticated check route and response validator; native currently sends a different public path and singleton body.",
+          "dependency": "WP-SYNC-02",
+          "decisionRequired": false,
+          "unresolvedDecision": null
+        },
         "backendCandidate": {
           "routeSource": "app/app/api/book/me/quiz/[bookId]/[chapterNumber]/check/route.ts",
           "exportedMethods": [
@@ -9532,7 +10314,18 @@
         "expectedRequiredPointers": [
           "/success"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "account-deactivate.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /success."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -9567,6 +10360,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /success.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -9687,7 +10486,7 @@
       "routeTemplate": "/book/me/account/delete",
       "matrixRowId": "account-deletion",
       "auth": {
-        "class": "recent_auth_active_user",
+        "class": "recent_auth_user",
         "credential": "Authorization: Bearer <Cognito id_token>"
       },
       "nativeRequestFixtures": [
@@ -9730,7 +10529,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -9755,8 +10561,18 @@
         "kind": "request_mismatch",
         "reason": "Native sends {}; backend requires {confirm:\"DELETE\"} plus recent authentication.",
         "evidence": [
-          "app/app/api/book/me/account/delete/route.ts:31-46"
+          "Packages/Networking/Sources/Networking/Endpoint+Account.swift:20-26 Endpoint.deleteAccount sends an empty JSON object",
+          "app/app/api/book/me/account/delete/route.ts:31-60 POST calls requireUser and requireRecentAuth, then requires confirm=DELETE",
+          "app/app/api/_lib/auth.ts:131-199 requireUser and requireRecentAuth define the identity and recency gates",
+          "app/app/api/book/_lib/account-guard.ts:13-27 documents account delete as an intentional requireActiveBookUser bypass"
         ],
+        "resolution": {
+          "owner": "ios",
+          "rationale": "Backend already requires recent authentication and an explicit DELETE confirmation; the native factory currently sends an empty body.",
+          "dependency": "WP-ACCOUNT-01 after WP-AUTH-01",
+          "decisionRequired": false,
+          "unresolvedDecision": null
+        },
         "backendCandidate": {
           "routeSource": "app/app/api/book/me/account/delete/route.ts",
           "exportedMethods": [
@@ -9780,7 +10596,7 @@
             },
             {
               "path": "app/app/api/book/_lib/account-guard.ts",
-              "role": "auth",
+              "role": "auth_policy",
               "sourceSha256": "ddddf2b5fbb416b8d24dd6c1de4215e08534878318b83f1cb8e7b10bde9ec33a"
             }
           ]
@@ -9860,7 +10676,18 @@
           "/entitlement/plan",
           "/entitlement/proStatus"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "apple-verify.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /entitlement/plan, /entitlement/proStatus."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -9899,6 +10726,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /entitlement/plan, /entitlement/proStatus.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -10100,7 +10933,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -10127,6 +10967,13 @@
         "evidence": [
           "app/app/api/book/me/pairs/[partnerId]/route.ts:12 exports DELETE"
         ],
+        "resolution": {
+          "owner": "coordinated",
+          "rationale": "The item route is delete-only while native expects a detail read; collection reuse versus a new detail response must be coordinated.",
+          "dependency": "WP-CONTRACT-01 follow-up",
+          "decisionRequired": false,
+          "unresolvedDecision": null
+        },
         "backendCandidate": {
           "routeSource": "app/app/api/book/me/pairs/[partnerId]/route.ts",
           "exportedMethods": [
@@ -10201,9 +11048,23 @@
       "authority": {
         "classification": "identity",
         "expectedRequiredPointers": [
-          "/identity/userId"
+          "/identity/sub"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "production_consumer_verified",
+          "structuralEvidence": [
+            "own-profile.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [
+            "social.own-profile-identity.authority-deletion"
+          ],
+          "productionConsumerEvidence": [
+            "Packages/SocialFeature/Tests/SocialFeatureTests/BackendOwnedAuthorityContractTests.swift BackendOwnedAuthorityContractTests.ownProfileIdentityAuthorityDeletionFailsClosed",
+            "Packages/SocialFeature/Sources/SocialFeature/Models/OwnProfile.swift OwnProfileResponse.init(from:)"
+          ],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -10279,7 +11140,7 @@
             "value": {
               "profile": null,
               "identity": {
-                "userId": "user-synthetic",
+                "sub": "user-synthetic",
                 "displayName": "Synthetic Reader"
               },
               "inferredLocation": null,
@@ -10287,7 +11148,7 @@
             }
           },
           "requiredAuthorityFields": [
-            "/identity/userId"
+            "/identity/sub"
           ]
         },
         "deployedCompatibleSuccessAliases": [],
@@ -10406,7 +11267,18 @@
         "expectedRequiredPointers": [
           "/books"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "progress.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /books."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -10443,6 +11315,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /books.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -10608,7 +11486,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -10635,6 +11520,13 @@
         "evidence": [
           "backend tree at behavior revision 968ff67 contains no me/referrals route"
         ],
+        "resolution": {
+          "owner": "coordinated",
+          "rationale": "Backend exposes a smaller embedded referral aggregate while native expects a richer standalone reward profile; neither source proves unilateral ownership.",
+          "dependency": "WP-NET-01 and WP-ENT-01",
+          "decisionRequired": false,
+          "unresolvedDecision": null
+        },
         "expectedRouteSource": "app/app/api/book/me/referrals/route.ts"
       }
     },
@@ -10690,7 +11582,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -10717,6 +11616,13 @@
         "evidence": [
           "app/app/api/book/me/reflections/[bookId]/[chapterNumber]/route.ts:28 exports POST"
         ],
+        "resolution": {
+          "owner": "coordinated",
+          "rationale": "Backend item route is write-only while native expects a read projection; persistence and response semantics span both sides.",
+          "dependency": "WP-CONTRACT-01 follow-up",
+          "decisionRequired": false,
+          "unresolvedDecision": null
+        },
         "backendCandidate": {
           "routeSource": "app/app/api/book/me/reflections/[bookId]/[chapterNumber]/route.ts",
           "exportedMethods": [
@@ -10793,7 +11699,18 @@
         "expectedRequiredPointers": [
           "/cards"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "reviews.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /cards."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -10828,6 +11745,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /cards.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -10990,7 +11913,18 @@
         "expectedRequiredPointers": [
           "/savedBookIds"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "saved.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /savedBookIds."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -11027,6 +11961,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /savedBookIds.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -11185,7 +12125,18 @@
         "expectedRequiredPointers": [
           "/settings"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "settings.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /settings."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -11222,6 +12173,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /settings.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -11380,7 +12337,18 @@
         "expectedRequiredPointers": [
           "/items"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "shop.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /items."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -11415,6 +12383,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /items.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -11584,7 +12558,18 @@
           "/currentStreak",
           "/longestStreak"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "streak.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /currentStreak, /longestStreak."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -11619,6 +12604,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /currentStreak, /longestStreak.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -11786,7 +12777,22 @@
           "/entitlement/unlockedBooksCount",
           "/entitlement/remainingFreeStarts"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "production_consumer_verified",
+          "structuralEvidence": [
+            "entitlements.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [
+            "models.entitlement.authority-deletion"
+          ],
+          "productionConsumerEvidence": [
+            "Packages/Models/Tests/ModelsTests/BackendOwnedContractTests.swift BackendOwnedContractTests.entitlementAuthorityDeletionFailsClosed",
+            "Packages/Models/Sources/Models/Responses.swift EntitlementResponse",
+            "Packages/Models/Sources/Models/Evaluator/EntitlementEvaluator.swift EntitlementEvaluator"
+          ],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -12006,7 +13012,18 @@
         "expectedRequiredPointers": [
           "/progress/eventId"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "event-progress.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /progress/eventId."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -12041,6 +13058,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /progress/eventId.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -12162,7 +13185,7 @@
       "routeTemplate": "/book/me/export",
       "matrixRowId": "data-export",
       "auth": {
-        "class": "recent_auth_active_user",
+        "class": "recent_auth_user",
         "credential": "Authorization: Bearer <Cognito id_token>"
       },
       "nativeRequestFixtures": [
@@ -12204,7 +13227,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -12322,7 +13352,7 @@
       "backend": {
         "routeSource": "app/app/api/book/me/export/route.ts",
         "exportedMethod": "GET",
-        "authClass": "recent_auth_active_user",
+        "authClass": "recent_auth_user",
         "sourceFiles": [
           {
             "path": "app/app/api/book/me/export/route.ts",
@@ -12341,7 +13371,7 @@
           },
           {
             "path": "app/app/api/book/_lib/account-guard.ts",
-            "role": "auth",
+            "role": "auth_policy",
             "sourceSha256": "ddddf2b5fbb416b8d24dd6c1de4215e08534878318b83f1cb8e7b10bde9ec33a"
           },
           {
@@ -12413,7 +13443,18 @@
         "expectedRequiredPointers": [
           "/summary/balance"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "flow-points.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /summary/balance."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -12448,6 +13489,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /summary/balance.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -12625,7 +13672,18 @@
         "expectedRequiredPointers": [
           "/status"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "gift-preview.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /status."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -12660,6 +13718,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /status.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -12824,7 +13888,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -12852,6 +13923,13 @@
           "app/app/api/book/me/journeys/[journeyId]/route.ts:52-61 returns {journey:{...definition,progress}}",
           "Packages/Models/Sources/Models/Engagement/Journey.swift requires flat user-state fields"
         ],
+        "resolution": {
+          "owner": "ios",
+          "rationale": "Backend already returns the journey definition with nested progress; the native decoder requires the progress fields at the wrong level.",
+          "dependency": "WP-READER-01",
+          "decisionRequired": false,
+          "unresolvedDecision": null
+        },
         "backendCandidate": {
           "routeSource": "app/app/api/book/me/journeys/[journeyId]/route.ts",
           "exportedMethods": [
@@ -12928,7 +14006,18 @@
         "expectedRequiredPointers": [
           "/entries"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "notebook.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /entries."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -12963,6 +14052,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /entries.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -13127,7 +14222,18 @@
           "/notifications",
           "/unreadCount"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "notifications.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /notifications, /unreadCount."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -13162,6 +14268,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /notifications, /unreadCount.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -13320,7 +14432,18 @@
         "expectedRequiredPointers": [
           "/onboardingCompleted"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "onboarding-progress.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /onboardingCompleted."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -13355,6 +14478,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /onboardingCompleted.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -13514,7 +14643,18 @@
         "expectedRequiredPointers": [
           "/pair"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "pairs.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /pair."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -13549,6 +14689,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /pair.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -13711,7 +14857,18 @@
           "/appStoreURL",
           "/maintenanceMode"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "mobile-config.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /minSupportedVersion, /latestVersion, /featureFlags, /storeKitProductIds, /appStoreURL, /maintenanceMode."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -13742,6 +14899,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /minSupportedVersion, /latestVersion, /featureFlags, /storeKitProductIds, /appStoreURL, /maintenanceMode.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         },
         {
           "kind": "route_error_execution",
@@ -13932,7 +15095,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -14127,7 +15297,18 @@
         "expectedRequiredPointers": [
           "/awards"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "badges.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /awards."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -14164,6 +15345,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /awards.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -14318,7 +15505,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -14346,6 +15540,13 @@
           "Packages/Networking/Sources/Networking/Endpoint+Safety.swift:39-41",
           "backend tree at behavior revision 968ff67 contains no me/blocks route"
         ],
+        "resolution": {
+          "owner": "backend",
+          "rationale": "A server-owned blocklist is required for cross-device and server enforcement, while the explicit native list route is absent.",
+          "dependency": "WP-SAFE-01 and WP-PRIV-01",
+          "decisionRequired": false,
+          "unresolvedDecision": null
+        },
         "expectedRouteSource": "app/app/api/book/me/blocks/route.ts"
       }
     },
@@ -14402,7 +15603,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -14604,7 +15812,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -14810,7 +16025,18 @@
           "/state/bookId",
           "/state/unlockedChapterIds"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "book-state.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /state/bookId, /state/unlockedChapterIds."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -14847,6 +16073,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /state/bookId, /state/unlockedChapterIds.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -15031,7 +16263,18 @@
         "expectedRequiredPointers": [
           "/commitments"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "commitments.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /commitments."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -15066,6 +16309,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /commitments.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {
@@ -15223,7 +16472,14 @@
       "authority": {
         "classification": "none",
         "expectedRequiredPointers": [],
-        "failureMode": "not_applicable"
+        "failureMode": "not_applicable",
+        "proof": {
+          "level": "not_applicable",
+          "structuralEvidence": [],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": []
+        }
       },
       "ios": {
         "factories": [
@@ -15250,6 +16506,13 @@
         "evidence": [
           "app/app/api/book/me/commitments/[commitmentId]/route.ts exports PATCH"
         ],
+        "resolution": {
+          "owner": "coordinated",
+          "rationale": "Backend exposes collection GET and item PATCH; list filtering versus a stable item GET/not-found contract must be chosen across callers.",
+          "dependency": "WP-READER-01",
+          "decisionRequired": false,
+          "unresolvedDecision": null
+        },
         "backendCandidate": {
           "routeSource": "app/app/api/book/me/commitments/[commitmentId]/route.ts",
           "exportedMethods": [
@@ -15326,7 +16589,18 @@
         "expectedRequiredPointers": [
           "/entitlement/plan"
         ],
-        "failureMode": "fail_closed"
+        "failureMode": "fail_closed",
+        "proof": {
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "dashboard.get requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
+          "productionConsumerTestIds": [],
+          "productionConsumerEvidence": [],
+          "gaps": [
+            "No executed production iOS decoder/mapper deletion test is registered for /entitlement/plan."
+          ]
+        }
       },
       "ios": {
         "factories": [
@@ -15361,6 +16635,12 @@
         {
           "kind": "source_dependency_closure",
           "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
+        },
+        {
+          "kind": "native_authority_consumer_proof",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /entitlement/plan.",
+          "owner": "ios",
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
       "fixtures": {

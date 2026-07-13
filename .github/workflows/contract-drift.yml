@@ -6,10 +6,12 @@ on:
       - "contracts/native-ios/**"
       - "Packages/Models/**"
       - "Packages/Networking/**"
+      - "Packages/SocialFeature/**"
       - "Packages/**/Sources/**/*.swift"
       - "scripts/refresh-fixtures.sh"
       - "scripts/verify-backend-contract-provenance.sh"
       - "scripts/test-backend-contract-provenance.sh"
+      - "scripts/contracts/**"
       - ".github/workflows/contract-drift.yml"
   schedule:
     - cron: "0 2 * * 0"
@@ -33,6 +35,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: ios
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Resolve pinned backend contract source
@@ -76,6 +79,7 @@ jobs:
           CHAPTERFLOW_BACKEND_REPO: ${{ github.workspace }}/backend
           CONTRACT_SOURCE_REVISION: ${{ steps.backend_source.outputs.sha }}
           CONTRACT_SOURCE_REVISION_PHASE: ${{ steps.backend_source.outputs.phase }}
+          CONTRACT_TRUSTED_MAIN_REF: refs/remotes/origin/main
         run: |
           git -C "$CHAPTERFLOW_BACKEND_REPO" fetch --no-tags origin main:refs/remotes/origin/main
           bash scripts/verify-backend-contract-provenance.sh
@@ -93,7 +97,7 @@ jobs:
 
       - name: Install backend dependencies
         working-directory: backend
-        run: npm ci
+        run: npm ci --include=optional
 
       - name: Verify backend exporter and serializer fences
         working-directory: backend
@@ -104,12 +108,19 @@ jobs:
           HOMEBREW_NO_AUTO_UPDATE: "1"
         run: brew install ripgrep
 
+      - name: Verify iOS-owned relational inventory canaries
+        working-directory: ios
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 scripts/contracts/test_generate_ios_native_inventory.py
+
       - name: Regenerate twice and compare the committed iOS bundle
         working-directory: ios
         env:
           CHAPTERFLOW_BACKEND_REPO: ${{ github.workspace }}/backend
           CONTRACT_SOURCE_REVISION: ${{ steps.backend_source.outputs.sha }}
           CONTRACT_SOURCE_REVISION_PHASE: ${{ steps.backend_source.outputs.phase }}
+          CONTRACT_TRUSTED_MAIN_REF: refs/remotes/origin/main
         run: bash scripts/refresh-fixtures.sh --check
 
       - name: Consume canonical and compatible fixtures in Models
@@ -134,6 +145,17 @@ jobs:
             --scratch-path "${RUNNER_TEMP}/chapterflow-contract/networking" \
             --parallel
 
+      - name: Verify production social authority consumer
+        working-directory: ios
+        env:
+          CLANG_MODULE_CACHE_PATH: ${{ runner.temp }}/chapterflow-contract/clang
+          SWIFTPM_MODULECACHE_OVERRIDE: ${{ runner.temp }}/chapterflow-contract/swiftpm
+        run: |
+          swift test \
+            --package-path Packages/SocialFeature \
+            --scratch-path "${RUNNER_TEMP}/chapterflow-contract/social" \
+            --parallel
+
       - name: Contract summary
         if: always()
         env:
@@ -147,3 +169,4 @@ jobs:
           echo "- Pinned source: ${PINNED_BACKEND_REVISION:-unavailable} (${PINNED_BACKEND_PHASE:-unavailable})" >> "$GITHUB_STEP_SUMMARY"
           echo "- Coverage: 0 full / 60 partial / 23 blocked" >> "$GITHUB_STEP_SUMMARY"
           echo "- Native proof: request factories 6/93; success consumers 24/60" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Authority proof: 51 structural fixtures; 4 production consumers; 1 blocked/unproven" >> "$GITHUB_STEP_SUMMARY"

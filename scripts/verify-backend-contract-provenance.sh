@@ -1,70 +1,90 @@
 #!/usr/bin/env bash
-# Verifies that an iOS contract bundle points at the correct backend commit and
-# uses a phase consistent with backend main. Exact blob-history matching makes
-# the branch phase fail closed after GitHub squash-merges the backend PR.
+# Verifies the Git-graph portion of a committed backend contract overlay.
+# Exact input-byte fencing is performed by the backend generator itself.
 
 set -euo pipefail
 
 backend_repo=${CHAPTERFLOW_BACKEND_REPO:?CHAPTERFLOW_BACKEND_REPO is required}
 source_revision=${CONTRACT_SOURCE_REVISION:?CONTRACT_SOURCE_REVISION is required}
 source_phase=${CONTRACT_SOURCE_REVISION_PHASE:?CONTRACT_SOURCE_REVISION_PHASE is required}
-main_ref=${CONTRACT_MAIN_REF:-origin/main}
+trusted_main_ref=${CONTRACT_TRUSTED_MAIN_REF:?CONTRACT_TRUSTED_MAIN_REF is required}
 contract_path=contracts/native-ios/v1/contract-bundle.json
 
-if [[ ! "$source_revision" =~ ^[0-9a-f]{40}$ ]]; then
-  echo "error: CONTRACT_SOURCE_REVISION must be a full lowercase Git SHA" >&2
+fail() {
+  echo "error: $*" >&2
   exit 1
-fi
+}
+
+[[ "$source_revision" =~ ^[0-9a-f]{40}$ ]] \
+  || fail "CONTRACT_SOURCE_REVISION must be a full lowercase Git SHA"
 case "$source_phase" in
   committed_backend_branch|merged_backend) ;;
-  *)
-    echo "error: unsupported CONTRACT_SOURCE_REVISION_PHASE: $source_phase" >&2
-    exit 1
-    ;;
+  *) fail "unsupported CONTRACT_SOURCE_REVISION_PHASE: $source_phase" ;;
 esac
+[[ "$trusted_main_ref" =~ ^refs/(heads|remotes)/[A-Za-z0-9._/-]+$ ]] \
+  || fail "CONTRACT_TRUSTED_MAIN_REF must be an explicit refs/heads/... or refs/remotes/... ref"
 
-actual_revision=$(git -C "$backend_repo" rev-parse HEAD)
-if [[ "$actual_revision" != "$source_revision" ]]; then
-  echo "error: backend checkout resolved $actual_revision instead of $source_revision" >&2
-  exit 1
+shallow=$(git -C "$backend_repo" rev-parse --is-shallow-repository) \
+  || fail "unable to determine whether backend history is complete"
+[[ "$shallow" == "false" ]] \
+  || fail "backend contract provenance requires complete non-shallow Git history"
+
+resolved_revision=$(git -C "$backend_repo" rev-parse --verify "$source_revision^{commit}" 2>/dev/null) \
+  || fail "backend source revision does not exist: $source_revision"
+[[ "$resolved_revision" == "$source_revision" ]] \
+  || fail "backend source revision did not resolve exactly"
+
+backend_head=$(git -C "$backend_repo" rev-parse --verify 'HEAD^{commit}') \
+  || fail "backend HEAD is not a commit"
+[[ "$backend_head" == "$source_revision" ]] \
+  || fail "backend HEAD $backend_head does not match CONTRACT_SOURCE_REVISION $source_revision"
+
+git -C "$backend_repo" show-ref --verify --quiet "$trusted_main_ref" \
+  || fail "trusted backend-main ref is missing: $trusted_main_ref"
+trusted_main_revision=$(git -C "$backend_repo" rev-parse --verify "$trusted_main_ref^{commit}") \
+  || fail "trusted backend-main ref is not a commit: $trusted_main_ref"
+
+git -C "$backend_repo" cat-file -e "$source_revision:$contract_path" 2>/dev/null \
+  || fail "source revision does not contain the canonical contract artifact"
+[[ "$(git -C "$backend_repo" cat-file -t "$source_revision:$contract_path")" == "blob" ]] \
+  || fail "canonical contract artifact is not a Git blob"
+
+contract_revision=$(git -C "$backend_repo" log -1 --format=%H "$source_revision" -- "$contract_path") \
+  || fail "unable to resolve the exact contract-changing revision"
+[[ "$contract_revision" == "$source_revision" ]] \
+  || fail "pinned revision is stale; it is not the exact commit that last changed the contract artifact"
+
+source_is_in_main=false
+if git -C "$backend_repo" merge-base --is-ancestor "$source_revision" "$trusted_main_revision"; then
+  source_is_in_main=true
+else
+  ancestry_status=$?
+  [[ "$ancestry_status" -eq 1 ]] \
+    || fail "unable to establish ancestry against trusted backend main"
 fi
 
-contract_revision=$(git -C "$backend_repo" log -1 --format=%H -- "$contract_path")
-if [[ "$contract_revision" != "$source_revision" ]]; then
-  echo "error: pinned revision is not the exact commit that last changed the backend contract bundle" >&2
-  exit 1
-fi
-if ! git -C "$backend_repo" rev-parse --verify "$main_ref^{commit}" >/dev/null 2>&1; then
-  echo "error: backend main ref is missing or is not a commit: $main_ref" >&2
-  exit 1
+source_blob=$(git -C "$backend_repo" rev-parse --verify "$source_revision:$contract_path") \
+  || fail "unable to resolve source contract artifact blob"
+history=$(git -C "$backend_repo" rev-list "$trusted_main_revision" -- "$contract_path") \
+  || fail "unable to inspect trusted-main contract artifact history"
+artifact_is_in_main=false
+while IFS= read -r main_revision; do
+  [[ -n "$main_revision" ]] || continue
+  main_blob=$(git -C "$backend_repo" rev-parse --verify "$main_revision:$contract_path" 2>/dev/null || true)
+  if [[ "$main_blob" == "$source_blob" ]]; then
+    artifact_is_in_main=true
+    break
+  fi
+done <<< "$history"
+
+if [[ "$source_phase" == "committed_backend_branch" ]]; then
+  [[ "$source_is_in_main" == "false" ]] \
+    || fail "branch provenance is false; the exact source revision is reachable from trusted main"
+  [[ "$artifact_is_in_main" == "false" ]] \
+    || fail "branch provenance is false; the contract artifact is already integrated into trusted main"
+else
+  [[ "$source_is_in_main" == "true" ]] \
+    || fail "merged_backend provenance must pin an exact revision reachable from trusted main"
 fi
 
-is_ancestor=false
-if git -C "$backend_repo" merge-base --is-ancestor "$source_revision" "$main_ref"; then
-  is_ancestor=true
-fi
-
-# GitHub normally squash-merges this repository. A squash commit does not retain
-# the topic SHA as an ancestor, so also search main's contract history for the
-# exact pinned bundle blob. Searching history (not only the current main tree)
-# keeps the gate truthful if a later contract change lands before this check.
-is_integrated=$is_ancestor
-if [[ "$is_integrated" == false ]]; then
-  source_blob=$(git -C "$backend_repo" rev-parse "$source_revision:$contract_path")
-  while IFS= read -r main_revision; do
-    main_blob=$(git -C "$backend_repo" rev-parse "$main_revision:$contract_path" 2>/dev/null || true)
-    if [[ "$main_blob" == "$source_blob" ]]; then
-      is_integrated=true
-      break
-    fi
-  done < <(git -C "$backend_repo" rev-list "$main_ref" -- "$contract_path")
-fi
-
-if [[ "$source_phase" == "committed_backend_branch" && "$is_integrated" == true ]]; then
-  echo "error: pinned backend contract is integrated into main; refresh provenance as merged_backend" >&2
-  exit 1
-fi
-if [[ "$source_phase" == "merged_backend" && "$is_ancestor" == false ]]; then
-  echo "error: merged_backend provenance must pin an exact revision reachable from backend main" >&2
-  exit 1
-fi
+echo "Backend contract Git provenance passed ($source_revision; $source_phase; $trusted_main_ref@$trusted_main_revision)."

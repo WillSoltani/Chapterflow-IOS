@@ -9,6 +9,14 @@ struct ModelContractCase: Sendable, CustomTestStringConvertible {
     var testDescription: String { operationID }
 }
 
+struct ProgressAuthorityContractCase: Sendable, CustomTestStringConvertible {
+    let operationID: String
+    let proofTestID: String
+    let decodeProgress: @Sendable (Data) throws -> BookProgress
+
+    var testDescription: String { operationID }
+}
+
 let backendOwnedModelCases: [ModelContractCase] = [
     modelCase("catalog.get", CatalogResponse.self),
     modelCase("search-index.get", SearchIndexResponse.self),
@@ -34,6 +42,21 @@ let backendOwnedModelCases: [ModelContractCase] = [
     modelCase("shop.get", ShopResponse.self),
     modelCase("streak.get", StreakResponse.self),
     modelCase("tier.post", TierResponse.self),
+]
+
+let progressAuthorityContractCases: [ProgressAuthorityContractCase] = [
+    ProgressAuthorityContractCase(
+        operationID: "chapter.get",
+        proofTestID: "models.chapter-progress.authority-deletion"
+    ) { data in
+        try JSONDecoder.chapterFlow.decode(ChapterResponse.self, from: data).progress
+    },
+    ProgressAuthorityContractCase(
+        operationID: "quiz.get",
+        proofTestID: "models.quiz-progress.authority-deletion"
+    ) { data in
+        try JSONDecoder.chapterFlow.decode(QuizResponse.self, from: data).progress
+    },
 ]
 
 @Suite("Backend-owned canonical model fixtures")
@@ -62,39 +85,58 @@ struct BackendOwnedContractTests {
         try contract.decodeAndRoundTrip(try ModelJSONValue.object(object).data())
     }
 
-    @Test("deleting every declared authority pointer fails the bundle authority gate")
-    func authorityPointersFailClosed() throws {
-        let bundle = try ModelContractBundle.load()
-        let guarded = bundle.operations.filter {
-            $0.authority.failureMode == "fail_closed" && $0.fixtures != nil
-        }
+    @Test(
+        "production progress consumers deny later chapters when unlock authority is deleted",
+        arguments: progressAuthorityContractCases
+    )
+    func progressAuthorityDeletionFailsClosed(_ contract: ProgressAuthorityContractCase) throws {
+        let operation = try #require(try ModelContractBundle.load().operation(contract.operationID))
+        #expect(operation.authority.failureMode == "fail_closed")
+        #expect(operation.authority.expectedRequiredPointers == [
+            "/progress/unlockedThroughChapterNumber",
+        ])
+        expectProductionConsumerProof(operation.authority, testID: contract.proofTestID)
 
-        #expect(!guarded.isEmpty)
-        for operation in guarded {
-            let fixture = try #require(operation.fixtures)
-            for pointer in operation.authority.expectedRequiredPointers {
-                let canonical = try #require(fixture.success.payload.value)
-                let mutated = try #require(canonical.removing(pointer: pointer))
-                #expect(throws: MissingAuthorityField.self) {
-                    try requireAuthority(
-                        operation.authority.expectedRequiredPointers,
-                        in: mutated
-                    )
-                }
-            }
-        }
+        let fixture = try #require(operation.fixtures)
+        let canonical = try #require(fixture.success.payload.value)
+        let canonicalProgress = try contract.decodeProgress(canonical.data())
+        let evaluator = EntitlementEvaluator()
+        #expect(evaluator.isChapterUnlocked(number: 1, progress: canonicalProgress))
+
+        let mutated = try #require(
+            canonical.removing(pointer: "/progress/unlockedThroughChapterNumber")
+        )
+        let progressWithoutAuthority = try contract.decodeProgress(mutated.data())
+
+        #expect(progressWithoutAuthority.unlockedThroughChapterNumber == 1)
+        #expect(!evaluator.isChapterUnlocked(number: 2, progress: progressWithoutAuthority))
     }
 
-    @Test("removing each entitlement authority field makes the app decoder reject the fixture")
-    func entitlementDecoderFailsClosed() throws {
+    @Test("production entitlement consumer rejects every deleted authority field")
+    func entitlementAuthorityDeletionFailsClosed() throws {
         let operation = try #require(try ModelContractBundle.load().operation("entitlements.get"))
+        #expect(operation.authority.failureMode == "fail_closed")
+        #expect(operation.authority.expectedRequiredPointers == [
+            "/entitlement/plan",
+            "/entitlement/freeBookSlots",
+            "/entitlement/unlockedBookIds",
+            "/entitlement/unlockedBooksCount",
+            "/entitlement/remainingFreeStarts",
+        ])
+        expectProductionConsumerProof(
+            operation.authority,
+            testID: "models.entitlement.authority-deletion"
+        )
         let fixture = try #require(operation.fixtures)
+        let canonical = try #require(fixture.success.payload.value)
+        let canonicalDecision = try evaluateEntitlementConsumer(canonical.data())
+        #expect(!canonicalDecision.isPro)
+        #expect(canonicalDecision.canStart)
 
         for pointer in operation.authority.expectedRequiredPointers {
-            let canonical = try #require(fixture.success.payload.value)
             let mutated = try #require(canonical.removing(pointer: pointer))
             #expect(throws: DecodingError.self) {
-                _ = try JSONDecoder.chapterFlow.decode(EntitlementResponse.self, from: mutated.data())
+                _ = try evaluateEntitlementConsumer(mutated.data())
             }
         }
     }
@@ -112,19 +154,6 @@ struct BackendOwnedContractTests {
 
         #expect(response.entitlement.plan == .unknown("FUTURE_SYNTHETIC_PLAN"))
         #expect(!EntitlementEvaluator().isPro(response.entitlement))
-    }
-
-    @Test("missing quiz unlock authority defaults to the first chapter")
-    func missingQuizUnlockIsConservative() throws {
-        let operation = try #require(try ModelContractBundle.load().operation("quiz.get"))
-        let fixture = try #require(operation.fixtures)
-        let canonical = try #require(fixture.success.payload.value)
-        let mutated = try #require(
-            canonical.removing(pointer: "/progress/unlockedThroughChapterNumber")
-        )
-
-        let response = try JSONDecoder.chapterFlow.decode(QuizResponse.self, from: mutated.data())
-        #expect(response.progress.unlockedThroughChapterNumber == 1)
     }
 
     @Test("catalog drops a malformed cosmetic item without losing valid books")
@@ -173,12 +202,26 @@ private func modelCase<Value: Codable & Sendable>(
     }
 }
 
-private enum MissingAuthorityField: Error { case pointer(String) }
+private enum ModelMutationError: Error { case pointer(String) }
 
-private func requireAuthority(_ pointers: [String], in value: ModelJSONValue) throws {
-    for pointer in pointers where !value.has(pointer: pointer) {
-        throw MissingAuthorityField.pointer(pointer)
-    }
+private func expectProductionConsumerProof(
+    _ authority: ModelContractBundle.Operation.Authority,
+    testID: String
+) {
+    #expect(authority.proof?.level == "production_consumer_verified")
+    #expect(authority.proof?.productionConsumerTestIds == [testID])
+}
+
+private func evaluateEntitlementConsumer(_ data: Data) throws -> (isPro: Bool, canStart: Bool) {
+    let response = try JSONDecoder.chapterFlow.decode(EntitlementResponse.self, from: data)
+    let evaluator = EntitlementEvaluator()
+    return (
+        evaluator.isPro(response.entitlement),
+        evaluator.canStart(
+            bookId: "book-synthetic-authority-probe",
+            entitlement: response.entitlement
+        )
+    )
 }
 
 private struct ModelContractBundle: Decodable, Sendable {
@@ -201,6 +244,12 @@ private struct ModelContractBundle: Decodable, Sendable {
         struct Authority: Decodable, Sendable {
             let expectedRequiredPointers: [String]
             let failureMode: String
+            let proof: Proof?
+
+            struct Proof: Decodable, Sendable {
+                let level: String
+                let productionConsumerTestIds: [String]
+            }
         }
 
         struct Fixtures: Decodable, Sendable {
@@ -262,8 +311,6 @@ private enum ModelJSONValue: Codable, Sendable, Equatable {
 
     func data() throws -> Data { try JSONEncoder().encode(self) }
 
-    func has(pointer: String) -> Bool { value(at: pointer) != nil }
-
     func removing(pointer: String) -> Self? {
         let parts = Self.pointerParts(pointer)
         guard !parts.isEmpty else { return nil }
@@ -273,27 +320,9 @@ private enum ModelJSONValue: Codable, Sendable, Equatable {
     func replacing(pointer: String, with replacement: Self) throws -> Self {
         let parts = Self.pointerParts(pointer)
         guard !parts.isEmpty, let value = replacing(parts: ArraySlice(parts), with: replacement) else {
-            throw MissingAuthorityField.pointer(pointer)
+            throw ModelMutationError.pointer(pointer)
         }
         return value
-    }
-
-    private func value(at pointer: String) -> Self? {
-        let parts = Self.pointerParts(pointer)
-        guard !parts.isEmpty else { return nil }
-        return value(parts: ArraySlice(parts))
-    }
-
-    private func value(parts: ArraySlice<String>) -> Self? {
-        guard let head = parts.first else { return self }
-        let tail = parts.dropFirst()
-        switch self {
-        case .object(let object): return object[head]?.value(parts: tail)
-        case .array(let array):
-            guard let index = Int(head), array.indices.contains(index) else { return nil }
-            return array[index].value(parts: tail)
-        default: return nil
-        }
     }
 
     private func removing(parts: ArraySlice<String>) -> Self? {
