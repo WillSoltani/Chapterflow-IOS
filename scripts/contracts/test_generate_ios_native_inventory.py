@@ -31,6 +31,12 @@ class IOSNativeInventoryCanaries(unittest.TestCase):
         with self.assertRaisesRegex(inventory.InventoryError, message_pattern):
             inventory.validate_inventory_source(candidate, self.sources)
 
+    def assert_sources_rejected(self, mutate, message_pattern: str) -> None:
+        candidate = copy.deepcopy(self.sources)
+        mutate(candidate)
+        with self.assertRaisesRegex(inventory.InventoryError, message_pattern):
+            inventory.validate_inventory_source(self.mapping, candidate)
+
     def test_current_source_mapping_is_complete_and_deterministic(self) -> None:
         first = inventory.build_draft_manifest(REPO_ROOT, SOURCE_MAPPING)
         second = inventory.build_draft_manifest(REPO_ROOT, SOURCE_MAPPING)
@@ -83,6 +89,66 @@ class IOSNativeInventoryCanaries(unittest.TestCase):
             beacon["operationVariantId"] = f"{beacon['operationId']}:{beacon['stableVariantSuffix']}"
 
         self.assert_mapping_rejected(mutate, "route.*source path")
+
+    def test_count_preserving_analytics_symbol_reassignment_is_rejected(self) -> None:
+        relation_fields = ("producerSymbol", "stableVariantSuffix")
+
+        def mutate(candidate) -> None:
+            track = next(record for record in candidate["records"] if record["operationId"] == "analytics-track.post")
+            beacon = next(record for record in candidate["records"] if record["operationId"] == "analytics-beacon.post")
+            before = {field: track[field] for field in relation_fields}
+            for field in relation_fields:
+                track[field] = beacon[field]
+                beacon[field] = before[field]
+            track["operationVariantId"] = f"{track['operationId']}:{track['stableVariantSuffix']}"
+            beacon["operationVariantId"] = f"{beacon['operationId']}:{beacon['stableVariantSuffix']}"
+
+        self.assert_mapping_rejected(mutate, "analytics producer symbol.*source path expression")
+
+    def test_stale_comment_cannot_hide_endpoint_method_drift(self) -> None:
+        path = "Packages/Networking/Sources/Networking/Endpoint.swift"
+
+        def mutate(candidate) -> None:
+            source = candidate[path].decode("utf-8")
+            old = 'Endpoint(method: .get, path: "/book/me/commitments/\\(id)", requiresAuth: true)'
+            new = (
+                'Endpoint(method: .post, path: "/book/me/commitments/\\(id)", requiresAuth: true) '
+                '// method: .get'
+            )
+            self.assertEqual(source.count(old), 1)
+            candidate[path] = source.replace(old, new).encode("utf-8")
+
+        self.assert_sources_rejected(mutate, "Endpoint method argument")
+
+    def test_stale_comment_cannot_hide_endpoint_path_drift(self) -> None:
+        path = "Packages/Networking/Sources/Networking/Endpoint.swift"
+
+        def mutate(candidate) -> None:
+            source = candidate[path].decode("utf-8")
+            old = 'Endpoint(method: .get, path: "/book/me/commitments/\\(id)", requiresAuth: true)'
+            new = (
+                'Endpoint(method: .get, path: "/book/me/commitments/wrong", requiresAuth: true) '
+                '// "/book/me/commitments/\\(id)"'
+            )
+            self.assertEqual(source.count(old), 1)
+            candidate[path] = source.replace(old, new).encode("utf-8")
+
+        self.assert_sources_rejected(mutate, "Endpoint path argument")
+
+    def test_stale_comment_cannot_hide_analytics_path_drift(self) -> None:
+        path = inventory.ANALYTICS_SOURCE_PATH
+
+        def mutate(candidate) -> None:
+            source = candidate[path].decode("utf-8")
+            old = 'static let track = "/book/me/analytics/track"'
+            new = (
+                'static let track = "/book/me/analytics/wrong" '
+                '// "/book/me/analytics/track"'
+            )
+            self.assertEqual(source.count(old), 1)
+            candidate[path] = source.replace(old, new).encode("utf-8")
+
+        self.assert_sources_rejected(mutate, "analytics producer symbol.*source path expression")
 
     def test_matrix_row_move_changes_the_canonical_relation(self) -> None:
         baseline = inventory.validate_inventory_source(self.mapping, self.sources)

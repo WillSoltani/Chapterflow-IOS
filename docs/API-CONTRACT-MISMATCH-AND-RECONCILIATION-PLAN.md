@@ -141,7 +141,12 @@ App Store, TestFlight, StoreKit, or signing state.
 
 ---
 
-## Implementation Record (added 2026-07-10, post-implementation)
+## Historical Implementation Record (2026-07-10; operationally superseded)
+
+The evidence below records the earlier reconciliation work at its dated revision. Any workflow,
+credential, deployment, or production-probe instruction in this historical record is not a current
+WP-CONTRACT-01 action or attestation; the current static provenance limits in the preceding section
+control.
 
 **Direction taken: Option A (client-side tolerant reconciliation), implemented on
 `feat/api-contract-reconcile`.** All 17 packages pass (2,065+ tests) and the app builds for the
@@ -200,12 +205,16 @@ Wrapper-or-bare envelope adapters where the deployed route nests/flattens/lists 
   `.distantFuture` instead of being dropped (user-authored data); `Chapter`'s no-active-variant
   content fallback made deterministic.
 
-### I.5 Safety net turned on (Phase 5)
-- `scripts/refresh-fixtures.sh` rewritten: correct endpoint paths (the old ones 404'd — wrong
-  prefixes and fake book ids), a PUBLIC tier that needs NO token and FAILS on any error, and an
-  authed tier gated on `CF_CI_TOKEN`.
-- `.github/workflows/contract-drift.yml`: the public tier now ALWAYS runs (weekly + manual) —
-  no more silent full skip; authed tier reports its skip loudly.
+### I.5 Historical Phase 5 safety net (superseded)
+This section described the earlier deployed-fixture workflow; it is retained only as historical
+context. The current WP-CONTRACT-01 refresh is a static, Git-provenance-checked generation path:
+it does not call a deployed backend, does not use `CF_CI_TOKEN`, and does not provide weekly
+production-drift evidence. Runtime/deployed verification remains explicitly blocked until a
+separately authorized environment probe is supplied.
+
+- Historical behavior: `scripts/refresh-fixtures.sh` captured public endpoints and optionally
+  captured authenticated endpoints with `CF_CI_TOKEN`.
+- Historical behavior: `.github/workflows/contract-drift.yml` scheduled that public capture.
 - New always-on PR coverage: `RealContractTests` (verbatim captures) +
   `DeployedShapeContractTests` (serializer-derived authed shapes, Models + SocialFeature) run in
   the normal package suites.
@@ -216,15 +225,22 @@ Wrapper-or-bare envelope adapters where the deployed route nests/flattens/lists 
    deployed sha. The iOS narration player needs a **web deploy** — no client change can fix it.
 2. **`GET /book/config/ios` (B4) 404s in prod** for the same reason (merged `d276ab244`, not
    deployed) — force-update/kill-switch is inert until the next web deploy.
-3. **`CF_CI_TOKEN`** still wanted so the authed tier captures REAL fixtures (replacing the
-   serializer-derived ones); the script + workflow are ready for it.
+3. A future deployed-contract probe requires separate owner authorization and an approved
+   credential strategy; WP-CONTRACT-01 does not accept or consume `CF_CI_TOKEN`.
 4. Dashboard/tier/profile synthesized values are placeholders (0/reader) by design — the UI
    overlays real values from the dedicated endpoints; if any screen shows a zero it shouldn't,
    check whether it reads the aggregate instead of the dedicated endpoint.
-5. Next web deploy should be checked against the drift workflow (manual dispatch) since prod
-   will jump from 19b44fac to a much newer main.
+5. A future web deploy needs a separately authorized deployed-contract check; the current static
+   workflow cannot attest to production behavior.
 
 ---
+
+## Historical analysis and plan (preserved; not current operating guidance)
+
+Everything from this point through the appendices is the original pre-WP-CONTRACT-01 diagnosis and
+proposal. References to production capture, `CF_CI_TOKEN`, weekly jobs, deployment, or owner decisions
+are retained as historical context only and are superseded by the current static contract workflow
+and its explicit limitations above.
 
 ## Table of contents
 

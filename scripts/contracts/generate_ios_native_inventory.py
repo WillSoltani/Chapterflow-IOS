@@ -229,6 +229,79 @@ def _producer_symbol_for_factory(path: str, source_symbol: str) -> str:
     raise InventoryError(f"unclassified submitQuiz producer: {path}")
 
 
+def _swift_projection(source: str, *, mask_strings: bool) -> str:
+    """Mask comments and, optionally, string literals without changing offsets."""
+    projected = list(source)
+    index = 0
+
+    def mask(start: int, end: int) -> None:
+        for position in range(start, end):
+            if projected[position] not in {"\n", "\r"}:
+                projected[position] = " "
+
+    while index < len(source):
+        following = source[index + 1] if index + 1 < len(source) else ""
+        if source[index] == "/" and following == "/":
+            end = source.find("\n", index + 2)
+            if end < 0:
+                end = len(source)
+            mask(index, end)
+            index = end
+            continue
+        if source[index] == "/" and following == "*":
+            start = index
+            depth = 1
+            index += 2
+            while index < len(source) and depth:
+                following = source[index + 1] if index + 1 < len(source) else ""
+                if source[index] == "/" and following == "*":
+                    depth += 1
+                    index += 2
+                elif source[index] == "*" and following == "/":
+                    depth -= 1
+                    index += 2
+                else:
+                    index += 1
+            if depth:
+                raise InventoryError("unterminated Swift block comment")
+            mask(start, index)
+            continue
+
+        hash_count = 0
+        while index + hash_count < len(source) and source[index + hash_count] == "#":
+            hash_count += 1
+        quote_start = index + hash_count
+        if quote_start < len(source) and source[quote_start] == '"':
+            multiline = source.startswith('"""', quote_start)
+            quote_width = 3 if multiline else 1
+            closing = ('"' * quote_width) + ('#' * hash_count)
+            start = index
+            index = quote_start + quote_width
+            while index < len(source):
+                if source.startswith(closing, index):
+                    index += len(closing)
+                    break
+                if hash_count == 0 and source[index] == "\\":
+                    index = min(index + 2, len(source))
+                else:
+                    index += 1
+            else:
+                raise InventoryError("unterminated Swift string literal")
+            if mask_strings:
+                mask(start, index)
+            continue
+        index += 1
+    return "".join(projected)
+
+
+def _swift_without_comments(source: str) -> str:
+    return _swift_projection(source, mask_strings=False)
+
+
+def _swift_code_projection(source: str) -> str:
+    return _swift_projection(source, mask_strings=True)
+
+
 def discover_producers(sources: Mapping[str, bytes]) -> set[tuple[str, str, str]]:
     """Discover every production endpoint factory, direct Endpoint, and analytics path."""
     discovered: set[tuple[str, str, str]] = set()
@@ -244,8 +317,9 @@ def discover_producers(sources: Mapping[str, bytes]) -> set[tuple[str, str, str]
         except UnicodeDecodeError as error:
             raise InventoryError(f"production Swift source is not UTF-8: {path}") from error
 
+        code = _swift_code_projection(source)
         if _is_endpoint_definition_path(path):
-            for match in factory_pattern.finditer(source):
+            for match in factory_pattern.finditer(code):
                 source_symbol = match.group(1)
                 if source_symbol == "getSession":
                     continue
@@ -256,7 +330,7 @@ def discover_producers(sources: Mapping[str, bytes]) -> set[tuple[str, str, str]
                 discovered.add(item)
             continue
 
-        direct_matches = list(direct_pattern.finditer(source))
+        direct_matches = list(direct_pattern.finditer(code))
         if direct_matches:
             producer_symbol = DIRECT_PRODUCER_SYMBOLS.get(path)
             if producer_symbol is None:
@@ -272,77 +346,56 @@ def discover_producers(sources: Mapping[str, bytes]) -> set[tuple[str, str, str]
     if analytics_raw is None:
         raise InventoryError(f"analytics producer source is missing: {ANALYTICS_SOURCE_PATH}")
     analytics_source = analytics_raw.decode("utf-8")
-    analytics_matches = re.findall(
-        r'^\s*static\s+let\s+(track|beacon)\s*=\s*"/book/me/analytics/[^"]+"',
-        analytics_source,
-        re.MULTILINE,
-    )
-    if sorted(analytics_matches) != ["beacon", "track"]:
+    analytics_paths = _analytics_path_declarations(analytics_source)
+    if sorted(analytics_paths) != ["beacon", "track"]:
         raise InventoryError("analytics path producer discovery must find exactly track and beacon")
-    for symbol in analytics_matches:
+    for symbol in analytics_paths:
         discovered.add(
             (
                 "analytics_path",
-                f"URLSessionAnalyticsTransport.Path.{symbol}",
+                f"DefaultAnalyticsClient.Path.{symbol}",
                 ANALYTICS_SOURCE_PATH,
             )
         )
     return discovered
 
 
-def _extract_braced_region(source: str, opening_brace: int, label: str) -> str:
+def _extract_delimited_region(
+    source: str,
+    opening_index: int,
+    opening_character: str,
+    closing_character: str,
+    label: str,
+) -> str:
+    code = _swift_code_projection(source)
+    if opening_index >= len(code) or code[opening_index] != opening_character:
+        raise InventoryError(f"could not find opening delimiter for {label}")
     depth = 0
-    index = opening_brace
-    quote: str | None = None
-    line_comment = False
-    block_comment_depth = 0
-    while index < len(source):
-        char = source[index]
-        following = source[index + 1] if index + 1 < len(source) else ""
-        if line_comment:
-            if char == "\n":
-                line_comment = False
-            index += 1
-            continue
-        if block_comment_depth:
-            if char == "/" and following == "*":
-                block_comment_depth += 1
-                index += 2
-                continue
-            if char == "*" and following == "/":
-                block_comment_depth -= 1
-                index += 2
-                continue
-            index += 1
-            continue
-        if quote is not None:
-            if char == "\\":
-                index += 2
-                continue
-            if char == quote:
-                quote = None
-            index += 1
-            continue
-        if char == "/" and following == "/":
-            line_comment = True
-            index += 2
-            continue
-        if char == "/" and following == "*":
-            block_comment_depth = 1
-            index += 2
-            continue
-        if char in {'"', "'"}:
-            quote = char
-            index += 1
-            continue
-        if char == "{":
+    index = opening_index
+    while index < len(code):
+        if code[index] == opening_character:
             depth += 1
-        elif char == "}":
+        elif code[index] == closing_character:
             depth -= 1
             if depth == 0:
-                return source[opening_brace:index + 1]
+                return source[opening_index:index + 1]
         index += 1
-    raise InventoryError(f"could not find closing brace for {label}")
+    raise InventoryError(f"could not find closing delimiter for {label}")
+
+
+def _extract_braced_region(source: str, opening_brace: int, label: str) -> str:
+    return _extract_delimited_region(source, opening_brace, "{", "}", label)
+
+
+def _declaration_region(source: str, pattern: re.Pattern[str], label: str) -> str:
+    code = _swift_code_projection(source)
+    matches = list(pattern.finditer(code))
+    if len(matches) != 1:
+        raise InventoryError(f"{label} must resolve to one declaration; found {len(matches)}")
+    opening_brace = code.find("{", matches[0].end())
+    if opening_brace < 0:
+        raise InventoryError(f"{label} has no body")
+    return _extract_braced_region(source, opening_brace, label)
 
 
 def _factory_region(source: str, producer_symbol: str, path: str) -> str:
@@ -352,16 +405,104 @@ def _factory_region(source: str, producer_symbol: str, path: str) -> str:
         r"(?:<[^>{}]*>)?\s*\(",
         re.MULTILINE,
     )
-    matches = list(pattern.finditer(source))
+    code = _swift_code_projection(source)
+    matches = list(pattern.finditer(code))
     if len(matches) != 1:
         raise InventoryError(
             f"producer symbol {producer_symbol} must resolve to one factory in {path}; "
             f"found {len(matches)}"
         )
-    opening_brace = source.find("{", matches[0].end())
+    opening_brace = code.find("{", matches[0].end())
     if opening_brace < 0:
         raise InventoryError(f"producer symbol {producer_symbol} has no function body in {path}")
     return _extract_braced_region(source, opening_brace, f"{producer_symbol}@{path}")
+
+
+def _endpoint_initializer_region(source: str, label: str) -> str:
+    code = _swift_code_projection(source)
+    matches = list(re.finditer(r"\bEndpoint\s*\(", code))
+    if len(matches) != 1:
+        raise InventoryError(
+            f"{label} must contain exactly one Endpoint initializer; found {len(matches)}"
+        )
+    opening_parenthesis = code.find("(", matches[0].start())
+    return _extract_delimited_region(
+        source,
+        opening_parenthesis,
+        "(",
+        ")",
+        f"Endpoint initializer in {label}",
+    )
+
+
+def _endpoint_arguments(initializer: str, label: str) -> dict[str, str]:
+    code = _swift_code_projection(initializer)
+    boundaries = [1]
+    depths = {"(": 0, "[": 0, "{": 0}
+    closing_to_opening = {")": "(", "]": "[", "}": "{"}
+    for index in range(1, len(code) - 1):
+        character = code[index]
+        if character in depths:
+            depths[character] += 1
+        elif character in closing_to_opening:
+            opening = closing_to_opening[character]
+            depths[opening] -= 1
+            if depths[opening] < 0:
+                raise InventoryError(f"unbalanced Endpoint argument in {label}")
+        elif character == "," and all(depth == 0 for depth in depths.values()):
+            boundaries.append(index + 1)
+    boundaries.append(len(initializer))
+
+    arguments: dict[str, str] = {}
+    for start, end in zip(boundaries, boundaries[1:]):
+        segment = _swift_without_comments(initializer[start:end - 1]).strip()
+        if not segment:
+            continue
+        match = re.fullmatch(r"([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.+)", segment, re.DOTALL)
+        if match is None:
+            raise InventoryError(f"unlabelled Endpoint argument in {label}: {segment}")
+        argument_label, expression = match.group(1), match.group(2).strip()
+        if argument_label in arguments:
+            raise InventoryError(f"duplicate Endpoint argument {argument_label} in {label}")
+        arguments[argument_label] = expression
+    return arguments
+
+
+def _analytics_path_declarations(source: str) -> dict[str, str]:
+    client_region = _declaration_region(
+        source,
+        re.compile(r"^\s*public\s+actor\s+DefaultAnalyticsClient\b", re.MULTILINE),
+        "DefaultAnalyticsClient",
+    )
+    path_region = _declaration_region(
+        client_region,
+        re.compile(r"^\s*enum\s+Path\b", re.MULTILINE),
+        "DefaultAnalyticsClient.Path",
+    )
+    declarations: dict[str, str] = {}
+    pattern = re.compile(
+        r'^\s*static\s+let\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*("[^"\r\n]*")\s*$',
+        re.MULTILINE,
+    )
+    for match in pattern.finditer(_swift_without_comments(path_region)):
+        symbol, expression = match.groups()
+        if symbol in declarations:
+            raise InventoryError(f"duplicate analytics path declaration: {symbol}")
+        declarations[symbol] = expression
+    return declarations
+
+
+def _analytics_method_region(source: str) -> str:
+    transport_region = _declaration_region(
+        source,
+        re.compile(r"^\s*public\s+struct\s+URLSessionAnalyticsTransport\b", re.MULTILINE),
+        "URLSessionAnalyticsTransport",
+    )
+    return _declaration_region(
+        transport_region,
+        re.compile(r"^\s*public\s+func\s+send\s*\(", re.MULTILINE),
+        "URLSessionAnalyticsTransport.send",
+    )
 
 
 def _method_from_source_expression(expression: str, producer_kind: str) -> str:
@@ -503,24 +644,48 @@ def validate_inventory_source(mapping: Mapping, sources: Mapping[str, bytes]) ->
             source = raw_source.decode("utf-8")
         except UnicodeDecodeError as error:
             raise InventoryError(f"producer source file is not UTF-8: {producer_source_path}") from error
-        if producer_kind == "endpoint_factory":
-            validation_region = _factory_region(source, producer_symbol, producer_source_path)
-            endpoint_initializers = len(re.findall(r"\bEndpoint\s*\(", validation_region))
-            if endpoint_initializers != 1:
+        if producer_kind == "analytics_path":
+            symbol_match = re.fullmatch(
+                r"DefaultAnalyticsClient\.Path\.([A-Za-z_][A-Za-z0-9_]*)",
+                producer_symbol,
+            )
+            if symbol_match is None:
+                raise InventoryError(f"{operation_id} has invalid analytics producer symbol")
+            path_declarations = _analytics_path_declarations(source)
+            declared_path = path_declarations.get(symbol_match.group(1))
+            if declared_path != source_path_expression:
                 raise InventoryError(
-                    f"{operation_id} factory must contain exactly one Endpoint initializer; "
-                    f"found {endpoint_initializers}"
+                    f"{operation_id} analytics producer symbol does not bind to source path expression"
+                )
+            method_region = _swift_without_comments(_analytics_method_region(source))
+            if method_region.count(source_method_expression) != 1:
+                raise InventoryError(
+                    f"{operation_id} source method expression must occur exactly once in "
+                    "URLSessionAnalyticsTransport.send"
                 )
         else:
-            validation_region = source
-        if validation_region.count(source_method_expression) != 1:
-            raise InventoryError(
-                f"{operation_id} source method expression must occur exactly once in {producer_symbol}"
+            producer_region = (
+                _factory_region(source, producer_symbol, producer_source_path)
+                if producer_kind == "endpoint_factory"
+                else source
             )
-        if validation_region.count(source_path_expression) != 1:
-            raise InventoryError(
-                f"{operation_id} source path expression must occur exactly once in {producer_symbol}"
+            initializer = _endpoint_initializer_region(
+                producer_region,
+                f"{producer_symbol}@{producer_source_path}",
             )
+            arguments = _endpoint_arguments(
+                initializer,
+                f"{producer_symbol}@{producer_source_path}",
+            )
+            expected_method_argument = source_method_expression.removeprefix("method: ")
+            if arguments.get("method") != expected_method_argument:
+                raise InventoryError(
+                    f"{operation_id} Endpoint method argument does not match source method expression"
+                )
+            if arguments.get("path") != source_path_expression:
+                raise InventoryError(
+                    f"{operation_id} Endpoint path argument does not match source path expression"
+                )
         if method != _method_from_source_expression(source_method_expression, producer_kind):
             raise InventoryError(f"{operation_id} method does not match source expression")
         if route_template != _route_from_source_expression(source_path_expression, route_template):
