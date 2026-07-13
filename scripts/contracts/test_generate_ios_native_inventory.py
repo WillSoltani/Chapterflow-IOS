@@ -37,6 +37,46 @@ class IOSNativeInventoryCanaries(unittest.TestCase):
         with self.assertRaisesRegex(inventory.InventoryError, message_pattern):
             inventory.validate_inventory_source(self.mapping, candidate)
 
+    def assert_sources_accepted(self, mutate) -> None:
+        candidate = copy.deepcopy(self.sources)
+        mutate(candidate)
+        self.assertEqual(
+            inventory.validate_inventory_source(self.mapping, candidate),
+            inventory.validate_inventory_source(self.mapping, self.sources),
+        )
+
+    def replace_get_books(self, candidate, body: str) -> None:
+        path = "Packages/Networking/Sources/Networking/Endpoint.swift"
+        source = candidate[path].decode("utf-8")
+        old = (
+            "public static func getBooks() -> Endpoint {\n"
+            '        Endpoint(method: .get, path: "/book/books", requiresAuth: false)\n'
+            "    }"
+        )
+        new = "public static func getBooks() -> Endpoint {\n" + body + "\n    }"
+        self.assertEqual(source.count(old), 1)
+        candidate[path] = source.replace(old, new).encode("utf-8")
+
+    def insert_apple_verification_prefix(self, candidate, prefix: str) -> None:
+        path = (
+            "Packages/PaywallFeature/Sources/PaywallFeature/"
+            "LiveEntitlementRepository.swift"
+        )
+        source = candidate[path].decode("utf-8")
+        old = (
+            "    public func verifyAppleTransaction(_ jws: String) "
+            "async throws -> EntitlementResponse {\n"
+            "        let endpoint = try Endpoint("
+        )
+        new = (
+            "    public func verifyAppleTransaction(_ jws: String) "
+            "async throws -> EntitlementResponse {\n"
+            + prefix
+            + "        let endpoint = try Endpoint("
+        )
+        self.assertEqual(source.count(old), 1)
+        candidate[path] = source.replace(old, new).encode("utf-8")
+
     def test_current_source_mapping_is_complete_and_deterministic(self) -> None:
         first = inventory.build_draft_manifest(REPO_ROOT, SOURCE_MAPPING)
         second = inventory.build_draft_manifest(REPO_ROOT, SOURCE_MAPPING)
@@ -404,6 +444,507 @@ class IOSNativeInventoryCanaries(unittest.TestCase):
             candidate[path] = source.replace(old, new).encode("utf-8")
 
         self.assert_sources_rejected(mutate, "transport send is not in its expected live scope")
+
+    def test_factory_alternate_return_in_if_is_rejected(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        if Bool.random() {\n"
+                "            return getSearchIndex()\n"
+                "        }\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_rejected(
+            mutate,
+            r"getBooks@.*alternate normal return.*getSearchIndex",
+        )
+
+    def test_factory_alternate_return_in_multiline_optional_binding_is_rejected(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        if Bool.random(),\n"
+                "            let value = Optional(true) {\n"
+                "            _ = value\n"
+                "            return getSearchIndex()\n"
+                "        }\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_rejected(
+            mutate,
+            r"getBooks@.*alternate normal return.*getSearchIndex",
+        )
+
+    def test_direct_producer_alternate_return_in_if_is_rejected(self) -> None:
+        def mutate(candidate) -> None:
+            self.insert_apple_verification_prefix(
+                candidate,
+                "        if Bool.random() {\n"
+                "            return try await getEntitlements()\n"
+                "        }\n",
+            )
+
+        self.assert_sources_rejected(
+            mutate,
+            r"LiveEntitlementRepository\.verifyAppleTransaction.*alternate normal return.*getEntitlements",
+        )
+
+    def test_direct_alternate_return_in_multiline_optional_binding_is_rejected(self) -> None:
+        def mutate(candidate) -> None:
+            self.insert_apple_verification_prefix(
+                candidate,
+                "        if Bool.random(),\n"
+                "            let value = Optional(true) {\n"
+                "            _ = value\n"
+                "            return try await getEntitlements()\n"
+                "        }\n",
+            )
+
+        self.assert_sources_rejected(
+            mutate,
+            r"LiveEntitlementRepository\.verifyAppleTransaction.*"
+            r"alternate normal return.*getEntitlements",
+        )
+
+    def test_void_direct_producer_newline_return_expression_is_rejected(self) -> None:
+        path = (
+            "Packages/EngagementFeature/Sources/EngagementFeature/Scenarios/"
+            "ScenarioRepository.swift"
+        )
+
+        def mutate(candidate) -> None:
+            source = candidate[path].decode("utf-8")
+            old = (
+                "    public func syncPendingUploads() async {\n"
+                "        guard let container = modelContainer else { return }"
+            )
+            new = (
+                "    public func syncPendingUploads() async {\n"
+                "        if Bool.random() {\n"
+                "            return\n"
+                "                await syncPendingUploads()\n"
+                "        }\n"
+                "        guard let container = modelContainer else { return }"
+            )
+            self.assertEqual(source.count(old), 1)
+            candidate[path] = source.replace(old, new).encode("utf-8")
+
+        self.assert_sources_rejected(
+            mutate,
+            r"ScenarioRepository\.syncPendingUploads.*alternate normal return.*"
+            r"syncPendingUploads",
+        )
+
+    def test_factory_alternate_return_in_guard_is_rejected(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        guard Bool.random() else {\n"
+                "            return getSearchIndex()\n"
+                "        }\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_rejected(
+            mutate,
+            r"getBooks@.*alternate normal return.*getSearchIndex",
+        )
+
+    def test_factory_alternate_return_in_switch_is_rejected(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        switch Bool.random() {\n"
+                "        case true:\n"
+                "            return getSearchIndex()\n"
+                "        case false:\n"
+                "            break\n"
+                "        }\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_rejected(
+            mutate,
+            r"getBooks@.*alternate normal return.*getSearchIndex",
+        )
+
+    def test_factory_equivalent_endpoint_returns_are_accepted(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        if Bool.random() {\n"
+                '            return Endpoint(method: .get, path: "/book/books", '
+                "requiresAuth: false)\n"
+                "        }\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_accepted(mutate)
+
+    def test_factory_return_in_nested_unused_closure_is_ignored(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        let unused = {\n"
+                "            return getSearchIndex()\n"
+                "        }\n"
+                "        _ = unused\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_accepted(mutate)
+
+    def test_factory_return_in_nested_local_function_is_ignored(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        func unused() -> Endpoint {\n"
+                "            return getSearchIndex()\n"
+                "        }\n"
+                "        _ = unused\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_accepted(mutate)
+
+    def test_factory_return_in_nested_local_type_is_ignored(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        struct Unused {\n"
+                "            func endpoint() -> Endpoint {\n"
+                '                return Endpoint(method: .post, path: "/book/wrong")\n'
+                "            }\n"
+                "        }\n"
+                "        _ = Unused.self\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_accepted(mutate)
+
+    def test_factory_fake_return_in_comments_is_ignored(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        // return getSearchIndex()\n"
+                "        /* return getSearchIndex() */\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_accepted(mutate)
+
+    def test_factory_fake_return_in_normal_string_is_ignored(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                '        let unused = "return getSearchIndex()"\n'
+                "        _ = unused\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_accepted(mutate)
+
+    def test_factory_fake_return_in_raw_string_is_ignored(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                '        let unused = #"return getSearchIndex()"#\n'
+                "        _ = unused\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_accepted(mutate)
+
+    def test_factory_fake_return_in_multiline_string_is_ignored(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                '        let unused = """\n'
+                "        return getSearchIndex()\n"
+                '        """\n'
+                "        _ = unused\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_accepted(mutate)
+
+    def test_factory_indirect_return_is_rejected(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        if Bool.random() {\n"
+                "            let selected = getSearchIndex\n"
+                "            return selected()\n"
+                "        }\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_rejected(
+            mutate,
+            r"getBooks@.*alternate normal return.*selected",
+        )
+
+    def test_factory_recursive_return_is_rejected(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        if Bool.random() {\n"
+                "            return getBooks()\n"
+                "        }\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_rejected(
+            mutate,
+            r"getBooks@.*alternate normal return.*getBooks",
+        )
+
+    def test_factory_alternate_return_after_condition_closure_is_rejected(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        if [true].contains(where: {\n"
+                "            $0\n"
+                "        }) {\n"
+                "            return getSearchIndex()\n"
+                "        }\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_rejected(
+            mutate,
+            r"getBooks@.*(?:ambiguous lexical scope|alternate normal return)",
+        )
+
+    def test_factory_alternate_return_after_compound_condition_closure_is_rejected(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        if [true].contains(where: { $0 }) &&\n"
+                "            Bool.random() {\n"
+                "            return getSearchIndex()\n"
+                "        }\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_rejected(
+            mutate,
+            r"getBooks@.*(?:ambiguous lexical scope|alternate normal return)",
+        )
+
+    def test_factory_optional_binding_after_condition_closure_is_rejected(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        if [true].contains(where: { $0 }),\n"
+                "            let value = Optional(true) {\n"
+                "            _ = value\n"
+                "            return getSearchIndex()\n"
+                "        }\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_rejected(
+            mutate,
+            r"getBooks@.*(?:ambiguous lexical scope|alternate normal return)",
+        )
+
+    def test_direct_alternate_return_after_condition_closure_is_rejected(self) -> None:
+        def mutate(candidate) -> None:
+            self.insert_apple_verification_prefix(
+                candidate,
+                "        if [true].contains(where: {\n"
+                "            $0\n"
+                "        }) {\n"
+                "            return try await getEntitlements()\n"
+                "        }\n",
+            )
+
+        self.assert_sources_rejected(
+            mutate,
+            r"LiveEntitlementRepository\.verifyAppleTransaction.*"
+            r"(?:ambiguous lexical scope|alternate normal return)",
+        )
+
+    def test_factory_alternate_return_after_guard_condition_closure_is_rejected(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        guard [true].contains(where: {\n"
+                "            $0\n"
+                "        }) else {\n"
+                "            return getSearchIndex()\n"
+                "        }\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_rejected(
+            mutate,
+            r"getBooks@.*(?:ambiguous lexical scope|alternate normal return)",
+        )
+
+    def test_factory_alternate_return_in_labeled_if_is_rejected(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        selection: if Bool.random() {\n"
+                "            return getSearchIndex()\n"
+                "        }\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_rejected(
+            mutate,
+            r"getBooks@.*alternate normal return.*getSearchIndex",
+        )
+
+    def test_factory_alternate_return_in_labeled_multiline_optional_binding_is_rejected(
+        self,
+    ) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        selection: if Bool.random(),\n"
+                "            let value = Optional(true) {\n"
+                "            _ = value\n"
+                "            return getSearchIndex()\n"
+                "        }\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_rejected(
+            mutate,
+            r"getBooks@.*alternate normal return.*getSearchIndex",
+        )
+
+    def test_factory_alternate_return_in_escaped_labeled_loop_is_rejected(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        `repeat`: while Bool.random() {\n"
+                "            return getSearchIndex()\n"
+                "        }\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_rejected(
+            mutate,
+            r"getBooks@.*alternate normal return.*getSearchIndex",
+        )
+
+    def test_factory_alternate_return_after_compact_nested_else_is_rejected(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        if Bool.random() { do { _ = 1 } } else {\n"
+                "            return getSearchIndex()\n"
+                "        }\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_rejected(
+            mutate,
+            r"getBooks@.*alternate normal return.*getSearchIndex",
+        )
+
+    def test_factory_shadowed_fatal_error_return_is_rejected(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        let fatalError: (String) -> Endpoint = { _ in getSearchIndex() }\n"
+                "        if Bool.random() {\n"
+                '            return fatalError("stop")\n'
+                "        }\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_rejected(
+            mutate,
+            r"getBooks@.*alternate normal return.*fatalError",
+        )
+
+    def test_factory_shadowed_swift_fatal_error_return_is_rejected(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        let Swift = (\n"
+                "            fatalError: { (_: String) in getSearchIndex() },\n"
+                "            unused: ()\n"
+                "        )\n"
+                "        if Bool.random() {\n"
+                '            return Swift.fatalError("stop")\n'
+                "        }\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_rejected(
+            mutate,
+            r"getBooks@.*alternate normal return.*Swift\.fatalError",
+        )
+
+    def test_factory_continued_alternate_return_expression_is_rejected(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        if Bool.random() {\n"
+                '            return Endpoint(method: .get, path: "/book/books", '
+                "requiresAuth: false)\n"
+                "                .path.isEmpty\n"
+                '                ? Endpoint(method: .get, path: "/book/books", '
+                "requiresAuth: false)\n"
+                "                : getSearchIndex()\n"
+                "        }\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_rejected(
+            mutate,
+            r"getBooks@.*alternate normal return.*Endpoint",
+        )
+
+    def test_factory_unicode_operator_continuation_is_rejected(self) -> None:
+        path = "Packages/Networking/Sources/Networking/Endpoint.swift"
+
+        def mutate(candidate) -> None:
+            source = candidate[path].decode("utf-8")
+            declaration = (
+                "infix operator ⊕: AdditionPrecedence\n"
+                "private func ⊕ (lhs: Endpoint, rhs: Endpoint) -> Endpoint { rhs }\n\n"
+            )
+            self.assertEqual(source.count("import Foundation\n"), 1)
+            candidate[path] = source.replace(
+                "import Foundation\n",
+                "import Foundation\n\n" + declaration,
+                1,
+            ).encode("utf-8")
+            self.replace_get_books(
+                candidate,
+                "        if Bool.random() {\n"
+                '            return Endpoint(method: .get, path: "/book/books", '
+                "requiresAuth: false)\n"
+                "                ⊕ getSearchIndex()\n"
+                "        }\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_rejected(
+            mutate,
+            r"getBooks@.*alternate normal return.*Endpoint",
+        )
+
+    def test_factory_known_nonreturning_termination_is_not_an_endpoint_return(self) -> None:
+        def mutate(candidate) -> None:
+            self.replace_get_books(
+                candidate,
+                "        if Bool.random() {\n"
+                '            Swift.fatalError("stop")\n'
+                "        }\n"
+                '        return Endpoint(method: .get, path: "/book/books", requiresAuth: false)',
+            )
+
+        self.assert_sources_accepted(mutate)
 
     def test_matrix_row_move_changes_the_canonical_relation(self) -> None:
         baseline = inventory.validate_inventory_source(self.mapping, self.sources)

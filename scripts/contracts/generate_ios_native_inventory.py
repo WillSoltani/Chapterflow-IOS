@@ -539,31 +539,262 @@ def _function_parameters_from_declaration(
     )
 
 
-def _factory_endpoint_initializer_region(source: str, label: str) -> str:
+_PRODUCER_CONTROL_SCOPE = re.compile(
+    r"^(?:[^{}\r\n]+:\s*)?"
+    r"(?:if\b|else(?:\s+if\b)?|guard\b|switch\b|for\b|while\b|repeat\b|do\b|catch\b)"
+)
+_CONTROL_SCOPE_START = re.compile(
+    r"^[ \t]*(?:[^{}\r\n]+:\s*)?"
+    r"(if|else|guard|switch|for|while|repeat|do|catch)\b",
+    re.MULTILINE,
+)
+_NESTED_DECLARATION_SCOPE = re.compile(
+    r"^(?:func\b|struct\b|class\b|enum\b|actor\b|protocol\b|extension\b|"
+    r"init\b|deinit\b|subscript\b|get\b|set\b|willSet\b|didSet\b)"
+)
+_SCOPE_START = re.compile(
+    r"^[ \t]*(?:[^{}\r\n]+:\s*)?"
+    r"(if|else|guard|switch|for|while|repeat|do|catch|defer|func|struct|"
+    r"class|enum|actor|protocol|extension|init|deinit|subscript|let|var)\b",
+    re.MULTILINE,
+)
+
+
+def _unmatched_call_delimiter_depth(code: str, start: int, end: int) -> int:
+    depth = 0
+    for character in code[start:end]:
+        if character in {"(", "["}:
+            depth += 1
+        elif character in {")", "]"}:
+            depth -= 1
+            if depth < 0:
+                return -1
+    return depth
+
+
+def _nested_scope_kind(code: str, opening_brace: int, parent_brace: int) -> str:
+    """Classify a nested Swift brace for producer-return ownership.
+
+    Control-flow bodies belong to the producer. Nested declarations and proven
+    closure expressions do not. Anything else remains ambiguous so a return in
+    that scope fails closed instead of being silently ignored.
+    """
+
+    line_start = code.rfind("\n", 0, opening_brace) + 1
+    header = code[line_start:opening_brace].strip()
+    header = re.sub(r"^(?:}\s*)+", "", header)
+    delimiter_depth = _unmatched_call_delimiter_depth(
+        code,
+        parent_brace + 1,
+        opening_brace,
+    )
+    if delimiter_depth < 0:
+        return "ambiguous"
+    if delimiter_depth > 0:
+        return "excluded"
+    if _PRODUCER_CONTROL_SCOPE.match(header):
+        return "producer"
+    if re.search(
+        r"\b(?:if|else|guard|switch|for|while|repeat|do|catch)\b",
+        header,
+    ):
+        return "producer"
+
+    context = code[parent_brace + 1:opening_brace]
+    control_starts = list(_CONTROL_SCOPE_START.finditer(context))
+    if control_starts:
+        control_tail = context[control_starts[-1].start():]
+        if not re.search(r"[{};]", control_tail):
+            # The brace ends a multiline producer control header. This includes
+            # optional bindings whose final line begins with `let` or `var`.
+            return "producer"
+        preceding_lines = code[parent_brace + 1:line_start].rstrip()
+        if (
+            re.match(r"^(?:let|var)\b", header)
+            and preceding_lines.endswith(",")
+        ):
+            # A closure or other brace appeared earlier in the same control
+            # condition. Do not mistake the final optional binding for a local
+            # closure declaration; ownership is ambiguous, so fail closed.
+            return "ambiguous"
+
+    if header.startswith("defer") or _NESTED_DECLARATION_SCOPE.match(header):
+        return "excluded"
+    if re.match(r"^(?:let|var)\b", header) or re.search(r"(?<![=!<>])=(?!=)", header):
+        return "excluded"
+
+    # Support declarations and control headers whose opening brace is placed on
+    # a following line. A candidate is usable only if no intervening brace or
+    # semicolon has already ended that construct.
+    starts = list(_SCOPE_START.finditer(context))
+    if starts:
+        last = starts[-1]
+        tail = context[last.start():]
+        if not re.search(r"[{};]", tail):
+            keyword = last.group(1)
+            if keyword in {
+                "if", "else", "guard", "switch", "for", "while", "repeat",
+                "do", "catch",
+            }:
+                return "producer"
+            return "excluded"
+        if last.group(1) in {
+            "if", "else", "guard", "switch", "for", "while", "repeat",
+            "do", "catch",
+        }:
+            return "ambiguous"
+
+    # A call, macro, member chain, or parenthesized expression followed by a
+    # brace is a trailing closure, not a producer control-flow body.
+    if header.startswith((")", "]")):
+        return "ambiguous"
+    if ":" in header:
+        return "ambiguous"
+    if re.search(r"(?:[A-Za-z_][A-Za-z0-9_]*|[)\]])\s*$", header):
+        return "excluded"
+    return "ambiguous"
+
+
+def _return_expression(source: str, return_end: int) -> str:
     code = _swift_code_projection(source)
-    matches = list(re.finditer(r"\bEndpoint\s*\(", code))
-    if len(matches) != 1:
-        raise InventoryError(
-            f"{label} must contain exactly one Endpoint initializer; found {len(matches)}"
-        )
-    endpoint_token = matches[0].start()
-    if _brace_depth_at(source, endpoint_token) != 1:
-        raise InventoryError(f"{label} Endpoint initializer is not a top-level factory expression")
-    line_start = code.rfind("\n", 0, endpoint_token) + 1
-    prefix = code[line_start:endpoint_token].strip()
-    if prefix not in {"", "try", "return", "return try"}:
-        raise InventoryError(f"{label} Endpoint initializer is not the returned factory expression")
+    cursor = return_end
+    while cursor < len(code) and code[cursor].isspace():
+        cursor += 1
+    if cursor >= len(code) or code[cursor] in {";", "}"}:
+        return ""
+
+    start = cursor
+    depths = {"(": 0, "[": 0, "{": 0}
+    closing_to_opening = {")": "(", "]": "[", "}": "{"}
+    while cursor < len(code):
+        character = code[cursor]
+        if character in depths:
+            depths[character] += 1
+        elif character in closing_to_opening:
+            opening = closing_to_opening[character]
+            if character == "}" and depths[opening] == 0 and all(
+                depth == 0 for depth in depths.values()
+            ):
+                break
+            depths[opening] -= 1
+            if depths[opening] < 0:
+                break
+        elif character == ";" and all(depth == 0 for depth in depths.values()):
+            break
+        cursor += 1
+    return source[start:cursor].strip()
+
+
+def _producer_scope_returns(source: str, label: str) -> list[tuple[int, str]]:
+    """Return producer-owned explicit normal returns from a function body."""
+
+    code = _swift_code_projection(source)
+    scopes: list[tuple[int, str]] = []
+    returns: list[tuple[int, str]] = []
+    for token in re.finditer(r"\breturn\b|[{}]", code):
+        value = token.group(0)
+        if value == "{":
+            if not scopes:
+                kind = "producer"
+            else:
+                kind = _nested_scope_kind(code, token.start(), scopes[-1][0])
+            scopes.append((token.start(), kind))
+            continue
+        if value == "}":
+            if not scopes:
+                raise InventoryError(f"{label} has an unbalanced closing brace")
+            scopes.pop()
+            continue
+        if not scopes:
+            raise InventoryError(f"{label} has a return outside its function body")
+        kinds = {kind for _, kind in scopes}
+        if "excluded" in kinds:
+            continue
+        line = source.count("\n", 0, token.start()) + 1
+        if "ambiguous" in kinds:
+            raise InventoryError(
+                f"{label} has a return in an ambiguous lexical scope at body line {line}"
+            )
+        returns.append((token.start(), _return_expression(source, token.end())))
+    if scopes:
+        raise InventoryError(f"{label} has an unbalanced opening brace")
+    return returns
+
+
+def _return_preview(expression: str) -> str:
+    preview = re.sub(r"\s+", " ", expression).strip()
+    return preview if len(preview) <= 160 else preview[:157] + "..."
+
+
+def _returned_endpoint_initializer(expression: str, label: str) -> str | None:
+    code = _swift_code_projection(expression)
+    match = re.match(r"^\s*(?:try[!?]?\s+)?Endpoint\s*\(", code)
+    if match is None:
+        return None
+    endpoint_token = code.find("Endpoint", 0, match.end())
     opening_parenthesis = code.find("(", endpoint_token)
     closing_parenthesis = _closing_delimiter_index(
-        source,
+        expression,
         opening_parenthesis,
         "(",
         ")",
-        f"Endpoint initializer in {label}",
+        f"returned Endpoint initializer in {label}",
     )
-    if code[closing_parenthesis + 1:-1].strip():
-        raise InventoryError(f"{label} Endpoint initializer is not the terminal factory expression")
-    return source[opening_parenthesis:closing_parenthesis + 1]
+    if code[closing_parenthesis + 1:].strip():
+        return None
+    return expression[opening_parenthesis:closing_parenthesis + 1]
+
+
+def _factory_endpoint_initializer_region(source: str, label: str) -> str:
+    code = _swift_code_projection(source)
+    matches = list(re.finditer(r"\bEndpoint\s*\(", code))
+    terminal: list[tuple[int, int]] = []
+    for match in matches:
+        endpoint_token = match.start()
+        if _brace_depth_at(source, endpoint_token) != 1:
+            continue
+        line_start = code.rfind("\n", 0, endpoint_token) + 1
+        prefix = code[line_start:endpoint_token].strip()
+        if prefix not in {"", "try", "return", "return try"}:
+            continue
+        opening_parenthesis = code.find("(", endpoint_token)
+        closing_parenthesis = _closing_delimiter_index(
+            source,
+            opening_parenthesis,
+            "(",
+            ")",
+            f"Endpoint initializer in {label}",
+        )
+        if not code[closing_parenthesis + 1:-1].strip():
+            terminal.append((opening_parenthesis, closing_parenthesis))
+    if len(terminal) != 1:
+        if matches and not terminal:
+            raise InventoryError(
+                f"{label} Endpoint initializer is not a top-level factory expression"
+            )
+        raise InventoryError(
+            f"{label} must contain exactly one terminal factory Endpoint initializer; "
+            f"found {len(terminal)}"
+        )
+
+    opening_parenthesis, closing_parenthesis = terminal[0]
+    canonical = source[opening_parenthesis:closing_parenthesis + 1]
+    canonical_arguments = _endpoint_arguments(canonical, label)
+    for position, expression in _producer_scope_returns(source, label):
+        line = source.count("\n", 0, position) + 1
+        initializer = _returned_endpoint_initializer(expression, label)
+        if initializer is None:
+            raise InventoryError(
+                f"{label} has an alternate normal return at body line {line}: "
+                f"{_return_preview(expression) or '<bare return>'}"
+            )
+        arguments = _endpoint_arguments(initializer, label)
+        if arguments != canonical_arguments:
+            raise InventoryError(
+                f"{label} has a conflicting Endpoint normal return at body line {line}: "
+                f"{_return_preview(expression)}"
+            )
+    return canonical
 
 
 def _endpoint_arguments(initializer: str, label: str) -> dict[str, str]:
@@ -822,6 +1053,58 @@ def _enclosing_brace_prefix(source: str, position: int) -> str | None:
     return code[line_start:opening_brace].strip()
 
 
+def _function_returns_void(
+    source: str,
+    declaration: re.Match[str],
+    label: str,
+) -> bool:
+    code = _swift_code_projection(source)
+    opening_parenthesis = code.find("(", declaration.start(), declaration.end())
+    closing_parenthesis = _closing_delimiter_index(
+        source,
+        opening_parenthesis,
+        "(",
+        ")",
+        f"parameter list for {label}",
+    )
+    opening_brace = code.find("{", closing_parenthesis + 1)
+    if opening_brace < 0:
+        raise InventoryError(f"{label} has no function body")
+    suffix = code[closing_parenthesis + 1:opening_brace].strip()
+    result = re.search(r"->\s*(.+?)(?:\s+where\b.*)?$", suffix, re.DOTALL)
+    if result is None:
+        return True
+    return re.sub(r"\s+", "", result.group(1)) in {"Void", "Swift.Void", "()"}
+
+
+def _validate_direct_normal_returns(
+    function_region: str,
+    producer_symbol: str,
+    client_symbol: str,
+    endpoint_binding_position: int,
+    returns_void: bool,
+) -> None:
+    expected_send = re.compile(
+        rf"^(?:try[!?]?\s+)?(?:await\s+)?{re.escape(client_symbol)}\.send\s*"
+        r"\(\s*endpoint\s*\)$"
+    )
+    for position, expression in _producer_scope_returns(function_region, producer_symbol):
+        line = function_region.count("\n", 0, position) + 1
+        if not expression:
+            if returns_void:
+                continue
+            raise InventoryError(
+                f"{producer_symbol} has an alternate normal return at body line {line}: "
+                "<bare return>"
+            )
+        normalized = re.sub(r"\s+", " ", _swift_code_projection(expression)).strip()
+        if position <= endpoint_binding_position or expected_send.fullmatch(normalized) is None:
+            raise InventoryError(
+                f"{producer_symbol} has an alternate normal return at body line {line}: "
+                f"{_return_preview(expression)}"
+            )
+
+
 def _direct_endpoint_initializer_region(
     source: str,
     producer_symbol: str,
@@ -832,15 +1115,16 @@ def _direct_endpoint_initializer_region(
         raise InventoryError(
             f"{producer_symbol}@{producer_source_path} has no direct producer binding"
         )
-    function_region = _function_region(
+    declaration = _function_declaration(
         source,
         binding["functionSymbol"],
         producer_symbol,
     )
+    function_region = _function_body_region(source, declaration, producer_symbol)
     parameters = _swift_code_projection(
-        _function_parameters_region(
+        _function_parameters_from_declaration(
             source,
-            binding["functionSymbol"],
+            declaration,
             producer_symbol,
         )
     )
@@ -902,6 +1186,14 @@ def _direct_endpoint_initializer_region(
         raise InventoryError(f"{producer_symbol} transport send has the wrong enclosing scope")
     if send_position <= endpoint_bindings[0].start():
         raise InventoryError(f"{producer_symbol} sends endpoint before binding it")
+
+    _validate_direct_normal_returns(
+        function_region,
+        producer_symbol,
+        binding["clientSymbol"],
+        endpoint_bindings[0].start(),
+        _function_returns_void(source, declaration, producer_symbol),
+    )
 
     opening_parenthesis = code.find("(", endpoint_token)
     return _extract_delimited_region(
