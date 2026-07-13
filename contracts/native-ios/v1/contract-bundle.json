@@ -3,15 +3,15 @@
   "contractVersion": "1",
   "provenance": {
     "backendRepository": "WillSoltani/ChapterFlow",
-    "sourceRevision": "af00021422856bd3bd706d337da9a4cb233bd2bb",
+    "sourceRevision": "b34efa4a04478c02af55976c69cab7ca84c9f3a5",
     "behaviorSourceRevision": "968ff67ecafbed7e8e1d4c7b77badf507cfc5aee",
     "behaviorSourceTimestamp": "2026-07-11T22:16:03-03:00",
     "sourceRevisionPhase": "committed_backend_branch",
     "generatedAt": "2026-07-13T02:27:09-03:00",
     "generatorVersion": "chapterflow-native-contract-generator-v1",
-    "generatorTreeDigest": "bf1ee630c3d071343ce5f6c62fb8ef1bb1334e4afd9412c91cda2c322134694e",
+    "generatorTreeDigest": "50c49dff44d58fc2cc0c36cd58826987e5370953a6db4f9c388a92b563d4b056",
     "committedInputTree": {
-      "sha256": "c641bf49fba5801ab9f48a6b10f2a0e15a09f0ea6f1d4756f492d0a723926119",
+      "sha256": "6d87076a5b7651d9b9fc7561d791ce8f920961559486ec077dbc2ca2c6b06e59",
       "inputPathCount": 120,
       "expectedMissingPathCount": 7,
       "trustedMainRef": "refs/remotes/origin/main",
