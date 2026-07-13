@@ -3,11 +3,11 @@ import XCTest
 /// XCUITests for the purchase / subscription flow.
 ///
 /// The stub server returns a FREE-tier entitlement so the app presents
-/// upgrade entry points in the UI.  The StoreKit Test Configuration
-/// (``ChapterFlow.storekit``) provides the subscription products so
-/// StoreKit can function without App Store connectivity.
+/// upgrade entry points in the UI. These checks cover app survival and
+/// navigation only; they do not prove StoreKit product loading or purchase.
 ///
-/// No real money is charged: all purchases use the test configuration.
+/// The AppConfig-to-StoreKitConfig propagation seam is covered separately by
+/// deterministic PaywallFeature unit tests. No purchase is attempted here.
 final class PurchaseFlowTests: CFUITestCase {
 
     private var robot: AppRobot { AppRobot(app: app) }
@@ -62,17 +62,15 @@ final class PurchaseFlowTests: CFUITestCase {
         _ = upgradeVisible // Informational; layout may vary.
     }
 
-    // MARK: - StoreKit test configuration
+    // MARK: - StoreKit-adjacent survival
 
-    /// Verifies the app initialises StoreKit without errors in the test environment.
-    /// A crash here indicates the StoreKit configuration isn't linked correctly.
-    func testStoreKitInitialisesWithTestConfiguration() {
+    /// Verifies only that the app remains alive after the free-tier shell loads.
+    func testAppRemainsAliveInStoreKitAdjacentLane() {
         robot.waitForTabBar()
-        // If StoreKit initialisation throws or crashes, the test never reaches here.
-        XCTAssert(app.exists, "App must remain alive after StoreKit initialisation")
+        XCTAssert(app.exists, "App must remain alive in the StoreKit-adjacent lane")
     }
 
-    func testPaywallReachableFromEntitlementCheck() {
+    func testAppSurvivesUpgradeNavigationAttempt() {
         robot.waitForTabBar()
 
         // Try to trigger the paywall via the Settings upgrade path.
@@ -86,8 +84,8 @@ final class PurchaseFlowTests: CFUITestCase {
         if proButton.waitForExistence(timeout: 8) {
             proButton.tap()
 
-            // After tapping, the paywall sheet / screen should appear.
-            // Check for pricing text surfaced by the stub or StoreKit test config.
+            // Pricing visibility is informational only. This test does not prove
+            // that StoreKit returned products or that a purchase can complete.
             let pricingText = app.staticTexts.matching(
                 NSPredicate(
                     format: "label CONTAINS[c] 'month' OR label CONTAINS[c] 'annual' OR label CONTAINS[c] 'pro'"

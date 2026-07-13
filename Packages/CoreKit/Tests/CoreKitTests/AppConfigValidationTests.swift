@@ -135,17 +135,64 @@ struct AppConfigValidationTests {
         #expect(config.configurationIssues == [issue(.cognitoUserPoolID, .regionMismatch)])
     }
 
+    @Test("standard Cognito hosted domain agrees with the configured region")
+    func hostedDomainRegionMatches() {
+        let config = replacing(
+            .cognitoDomain,
+            with: "chapterflow-dev.auth.us-east-1.amazoncognito.com"
+        )
+
+        #expect(config.configurationIssues.isEmpty)
+    }
+
+    @Test("standard Cognito hosted domain must agree with the configured region")
+    func hostedDomainRegionMismatch() {
+        let config = replacing(
+            .cognitoDomain,
+            with: "chapterflow-dev.auth.ca-central-1.amazoncognito.com"
+        )
+
+        #expect(config.configurationIssues == [issue(.cognitoDomain, .regionMismatch)])
+    }
+
+    @Test(
+        "valid custom Cognito domains do not require an inferable region",
+        arguments: ["auth.chapterflow.ca", "auth.chapterflow.test"]
+    )
+    func customDomainsRemainValid(_ domain: String) {
+        #expect(replacing(.cognitoDomain, with: domain).configurationIssues.isEmpty)
+    }
+
+    @Test(
+        "AWS Cognito hosted-domain lookalikes remain malformed",
+        arguments: [
+            "amazoncognito.com",
+            "auth.us-east-1.amazoncognito.com",
+            "chapterflow.us-east-1.amazoncognito.com",
+            "chapterflow.auth.east-1.amazoncognito.com",
+            "chapterflow.dev.auth.us-east-1.amazoncognito.com",
+        ]
+    )
+    func malformedHostedDomains(_ domain: String) {
+        #expect(
+            replacing(.cognitoDomain, with: domain).configurationIssues == [
+                issue(.cognitoDomain, .malformed),
+            ]
+        )
+    }
+
     @Test("invalid outcomes and issue codes retain no private configuration values")
     func invalidOutcomeIsRedacted() {
         let privateURL = "https://private.internal.test/path/to/account"
         let privatePool = "ca-central-1_PrivatePoolIdentifier"
         let privateClient = "privateclientidentifier123456"
+        let privateDomain = "private-prefix.auth.us-west-2.amazoncognito.com"
         let config = AppConfig(
             apiBaseURL: "\(privateURL)?credential=do-not-log",
             cognitoRegion: "ca-central-1",
             cognitoUserPoolID: privatePool,
             cognitoClientID: privateClient,
-            cognitoDomain: "https://private.auth.test/secret"
+            cognitoDomain: privateDomain
         )
         let result = config.validate()
         let reflected = String(reflecting: result)
@@ -153,11 +200,20 @@ struct AppConfigValidationTests {
         #expect(!reflected.contains(privateURL))
         #expect(!reflected.contains(privatePool))
         #expect(!reflected.contains(privateClient))
+        #expect(!reflected.contains(privateDomain))
         #expect(!reflected.contains("credential"))
         #expect(config.configurationIssues.map(\.code) == [
             "configuration.api_base_url.malformed",
-            "configuration.cognito_domain.malformed",
+            "configuration.cognito_domain.region_mismatch",
         ])
+
+        let record = AppConfigurationDiagnosticRecord(
+            status: .invalid,
+            buildConfiguration: .debug,
+            issues: config.configurationIssues,
+            liveServicesConstructed: false
+        )
+        #expect(!String(reflecting: record).contains(privateDomain))
     }
 
     @Test("diagnostic records expose only safe categories and readiness")

@@ -43,7 +43,12 @@ private enum AppConfigValidator {
             issues: &issues
         )
         validateClientID(config.cognitoClientID, config: config, issues: &issues)
-        validateDomain(config.cognitoDomain, config: config, issues: &issues)
+        validateDomain(
+            config.cognitoDomain,
+            expectedRegion: region,
+            config: config,
+            issues: &issues
+        )
 
         return Array(Set(issues)).sorted {
             if $0.field.sortIndex != $1.field.sortIndex {
@@ -91,7 +96,7 @@ private enum AppConfigValidator {
         guard inspect(value, field: field, config: config, issues: &issues) else { return nil }
 
         let candidate = ConfigurationValueInspection.trimmed(value)
-        guard matches(candidate, pattern: #"^[a-z]{2}(?:-[a-z0-9]+)+-[0-9]+$"#) else {
+        guard isValidRegion(candidate) else {
             issues.append(AppConfigurationIssue(field: field, category: .malformed))
             return nil
         }
@@ -137,6 +142,7 @@ private enum AppConfigValidator {
 
     private static func validateDomain(
         _ value: String,
+        expectedRegion: String?,
         config: AppConfig,
         issues: inout [AppConfigurationIssue]
     ) {
@@ -144,10 +150,28 @@ private enum AppConfigValidator {
         guard inspect(value, field: field, config: config, issues: &issues) else { return }
 
         let candidate = ConfigurationValueInspection.trimmed(value)
-        if candidate.contains("://") || candidate.contains("/") ||
-            candidate.contains("?") || candidate.contains("#") ||
-            !isValidHostname(candidate) {
+        guard !candidate.contains("://"), !candidate.contains("/"),
+              !candidate.contains("?"), !candidate.contains("#"),
+              isValidHostname(candidate) else {
             issues.append(AppConfigurationIssue(field: field, category: .malformed))
+            return
+        }
+
+        let hostname = candidate.lowercased()
+        let isAWSHostedDomain = hostname == "amazoncognito.com" ||
+            hostname.hasSuffix(".amazoncognito.com")
+        guard isAWSHostedDomain else { return }
+
+        let labels = hostname.split(separator: ".", omittingEmptySubsequences: false)
+        guard labels.count == 5,
+              labels[1] == "auth",
+              isValidRegion(String(labels[2])) else {
+            issues.append(AppConfigurationIssue(field: field, category: .malformed))
+            return
+        }
+
+        if let expectedRegion, labels[2] != Substring(expectedRegion) {
+            issues.append(AppConfigurationIssue(field: field, category: .regionMismatch))
         }
     }
 
@@ -170,6 +194,10 @@ private enum AppConfigValidator {
 
     private static func matches(_ value: String, pattern: String) -> Bool {
         value.range(of: pattern, options: .regularExpression) != nil
+    }
+
+    private static func isValidRegion(_ value: String) -> Bool {
+        matches(value, pattern: #"^[a-z]{2}(?:-[a-z0-9]+)+-[0-9]+$"#)
     }
 
     private static func isValidAPIHost(_ host: String) -> Bool {

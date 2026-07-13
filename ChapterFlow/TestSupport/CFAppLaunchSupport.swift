@@ -54,12 +54,19 @@ enum CFAppLaunchSupport {
     static func resolveConfiguration(default defaultConfig: AppConfig) -> AppConfig {
         let env = ProcessInfo.processInfo.environment
         if env[invalidConfigurationKey] == "1" {
+            // This fixture is intentionally minimal. Validation stops before
+            // service construction, so Sentry and StoreKit identities remain
+            // explicitly empty rather than inheriting developer configuration.
             return AppConfig(
                 apiBaseURL: "https://api.chapterflow.example.com",
                 cognitoRegion: "us-east-1",
                 cognitoUserPoolID: "us-east-1_XXXXXXXXX",
                 cognitoClientID: "XXXXXXXXXXXXXXXXXXXXXXXXXX",
-                cognitoDomain: "auth.your-domain.auth.us-east-1.amazoncognito.com"
+                cognitoDomain: "auth.your-domain.auth.us-east-1.amazoncognito.com",
+                sentryDSN: "",
+                storeKitMonthlyProductID: "",
+                storeKitAnnualProductID: "",
+                storeKitAnnualUpfrontProductID: ""
             )
         }
 
@@ -68,13 +75,14 @@ enum CFAppLaunchSupport {
             return defaultConfig
         }
 
-        return AppConfig(
+        let requiredServices = AppConfig(
             apiBaseURL: "https://api.chapterflow.test",
             cognitoRegion: "us-east-1",
             cognitoUserPoolID: "us-east-1_ChapterFlowUITest",
             cognitoClientID: "chapterflowuitestclient12345",
             cognitoDomain: "auth.chapterflow.test"
         )
+        return defaultConfig.applyingHermeticServiceOverlay(requiredServices)
     }
 }
 #endif

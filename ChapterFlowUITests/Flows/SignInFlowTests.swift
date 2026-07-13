@@ -140,6 +140,41 @@ final class SignInFlowTests: CFUITestCase {
 
     // MARK: - Configuration boundary
 
+    /// With no test flags, the supplied Debug configuration remains unchanged.
+    /// The CI-style placeholder build must therefore fail closed.
+    func testNormalDebugConfigurationRemainsUntouchedWithoutTestFlags() {
+        app.terminate()
+
+        let normalDebugApp = XCUIApplication()
+        normalDebugApp.launch()
+        defer { normalDebugApp.terminate() }
+
+        XCTAssertTrue(
+            normalDebugApp.scrollViews["invalid-development-configuration"]
+                .waitForExistence(timeout: 10),
+            "A no-flag Debug launch must not synthesize a service configuration"
+        )
+        XCTAssertFalse(normalDebugApp.tabBars.firstMatch.exists)
+    }
+
+    /// Auth bypass seeds only the local session. Without both service-test flags,
+    /// it must not select the synthetic API/Cognito configuration.
+    func testAuthBypassAloneDoesNotActivateHermeticConfiguration() {
+        app.terminate()
+
+        let bypassOnlyApp = XCUIApplication()
+        bypassOnlyApp.launchEnvironment[TestEnv.bypassAuth] = "1"
+        bypassOnlyApp.launch()
+        defer { bypassOnlyApp.terminate() }
+
+        XCTAssertTrue(
+            bypassOnlyApp.scrollViews["invalid-development-configuration"]
+                .waitForExistence(timeout: 10),
+            "Auth bypass alone must leave the supplied placeholder configuration invalid"
+        )
+        XCTAssertFalse(bypassOnlyApp.tabBars.firstMatch.exists)
+    }
+
     /// A normal launch using the committed example placeholders must stop at
     /// the dedicated setup root before any auth or live product UI appears.
     func testPlaceholderConfigurationFailsClosedBeforeAuthUI() {

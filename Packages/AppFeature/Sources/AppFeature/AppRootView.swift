@@ -28,8 +28,8 @@ import SyncEngine
 /// - `.reconnecting`   → main `TabView` + non-destructive top banner
 /// - `.reauthRequired` → main `TabView` + `ReauthView` sheet (blocking)
 public struct AppRootView: View {
-    // `private(set)`, not `private`, so same-module extensions split across files
-    // (e.g. AppRootView+TabContent, +Banners, +WhatsNew) can read it. Setter stays private.
+    // Internal so same-module extensions split across files can read the
+    // injected observable and form bindings through `@Bindable`.
     @Bindable var model: AppModel
     @State private var readingFlow: ReadingFlow?
     @State private var showQueuedToast = false
