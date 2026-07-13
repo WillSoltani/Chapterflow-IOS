@@ -99,6 +99,11 @@ jobs:
         working-directory: backend
         run: npm run contract:native:check
 
+      - name: Install contract drift source scanner
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+        run: brew install ripgrep
+
       - name: Regenerate twice and compare the committed iOS bundle
         working-directory: ios
         env:
