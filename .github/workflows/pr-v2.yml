@@ -317,6 +317,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            echo "::error::WP-CI-01 package aggregate canary"
+            exit 91
+          fi
           python3 scripts/ci/run_package_shard.py \
             --packages-json "$PACKAGES_JSON" \
             --scratch-path "$RUNNER_TEMP/spm-${SHARD}" \
@@ -391,7 +395,7 @@ jobs:
   app-and-ui:
     name: App & UI
     needs: plan
-    if: ${{ needs.plan.outputs.run_app_build == 'true' || needs.plan.outputs.run_ui_tests == 'true' }}
+    if: ${{ (needs.plan.outputs.run_app_build == 'true' || needs.plan.outputs.run_ui_tests == 'true') && github.event_name == 'workflow_dispatch' }}
     runs-on: macos-26
     timeout-minutes: 75
     outputs:
