@@ -100,7 +100,7 @@ struct AppModelQuickActionTests {
 
     @Test("consumeQuickAction clears the bridge after reading")
     func consumeClears() async {
-        let model = AppModel()
+        let model = makeTestAppModel()
         QuickActionBridge.shared.pendingShortcutType = QuickActionBridge.ShortcutType.reviews
         model.consumeQuickAction()
         #expect(QuickActionBridge.shared.pendingShortcutType == nil)
@@ -109,7 +109,7 @@ struct AppModelQuickActionTests {
 
     @Test("consumeQuickAction is a no-op when bridge is empty")
     func noopWhenEmpty() async {
-        let model = AppModel()
+        let model = makeTestAppModel()
         QuickActionBridge.shared.pendingShortcutType = nil
         let tabBefore = model.selectedTab
         model.consumeQuickAction()

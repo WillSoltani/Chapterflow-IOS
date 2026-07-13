@@ -28,6 +28,10 @@ public struct AppConfig: Sendable, Equatable {
     /// Leave empty in xcconfig to omit this tier from the paywall.
     public let storeKitAnnualUpfrontProductID: String
 
+    /// Required fields absent from the source dictionary. Directly initialized
+    /// empty strings remain distinguishable as explicitly present-but-empty.
+    let missingRequiredFields: Set<AppConfigurationField>
+
     public init(
         apiBaseURL: String,
         cognitoRegion: String,
@@ -48,6 +52,7 @@ public struct AppConfig: Sendable, Equatable {
         self.storeKitMonthlyProductID = storeKitMonthlyProductID
         self.storeKitAnnualProductID = storeKitAnnualProductID
         self.storeKitAnnualUpfrontProductID = storeKitAnnualUpfrontProductID
+        self.missingRequiredFields = []
     }
 
     /// Info.plist keys that carry the xcconfig-injected values.
@@ -67,12 +72,29 @@ public struct AppConfig: Sendable, Equatable {
 
     /// Reads configuration from the given bundle's Info.plist.
     ///
-    /// Missing keys resolve to an empty string rather than trapping, so the app
-    /// still launches during early development when secrets are not yet set.
+    /// Missing keys resolve to empty strings for source compatibility while
+    /// retaining typed missing-field provenance for validation.
     public static func fromInfoPlist(_ bundle: Bundle = .main) -> AppConfig {
+        fromInfoValues(bundle.infoDictionary ?? [:])
+    }
+
+    /// Dictionary-based parser used by the bundle loader and deterministic tests.
+    public static func fromInfoValues(_ values: [String: Any]) -> AppConfig {
+        let fields: [(AppConfigurationField, String)] = [
+            (.apiBaseURL, InfoKey.apiBaseURL),
+            (.cognitoRegion, InfoKey.cognitoRegion),
+            (.cognitoUserPoolID, InfoKey.cognitoUserPoolID),
+            (.cognitoClientID, InfoKey.cognitoClientID),
+            (.cognitoDomain, InfoKey.cognitoDomain),
+        ]
+        let missing = Set(fields.compactMap { field, key in
+            values[key] == nil ? field : nil
+        })
+
         func value(_ key: String) -> String {
-            (bundle.object(forInfoDictionaryKey: key) as? String) ?? ""
+            values[key] as? String ?? ""
         }
+
         return AppConfig(
             apiBaseURL: value(InfoKey.apiBaseURL),
             cognitoRegion: value(InfoKey.cognitoRegion),
@@ -82,7 +104,32 @@ public struct AppConfig: Sendable, Equatable {
             sentryDSN: value(InfoKey.sentryDSN),
             storeKitMonthlyProductID: value(InfoKey.storeKitMonthlyProductID),
             storeKitAnnualProductID: value(InfoKey.storeKitAnnualProductID),
-            storeKitAnnualUpfrontProductID: value(InfoKey.storeKitAnnualUpfrontProductID)
+            storeKitAnnualUpfrontProductID: value(InfoKey.storeKitAnnualUpfrontProductID),
+            missingRequiredFields: missing
         )
+    }
+
+    private init(
+        apiBaseURL: String,
+        cognitoRegion: String,
+        cognitoUserPoolID: String,
+        cognitoClientID: String,
+        cognitoDomain: String,
+        sentryDSN: String,
+        storeKitMonthlyProductID: String,
+        storeKitAnnualProductID: String,
+        storeKitAnnualUpfrontProductID: String,
+        missingRequiredFields: Set<AppConfigurationField>
+    ) {
+        self.apiBaseURL = apiBaseURL
+        self.cognitoRegion = cognitoRegion
+        self.cognitoUserPoolID = cognitoUserPoolID
+        self.cognitoClientID = cognitoClientID
+        self.cognitoDomain = cognitoDomain
+        self.sentryDSN = sentryDSN
+        self.storeKitMonthlyProductID = storeKitMonthlyProductID
+        self.storeKitAnnualProductID = storeKitAnnualProductID
+        self.storeKitAnnualUpfrontProductID = storeKitAnnualUpfrontProductID
+        self.missingRequiredFields = missingRequiredFields
     }
 }

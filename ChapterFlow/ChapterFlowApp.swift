@@ -16,21 +16,30 @@ struct ChapterFlowApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     #endif
 
-    /// App configuration read once at launch from Info.plist (backed by Secrets.xcconfig).
-    private let appConfig = AppConfig.fromInfoPlist()
+    /// Configuration validation and live-graph creation are resolved exactly
+    /// once, before SwiftUI can construct the root view.
+    private let bootstrap: AppBootstrap
 
     init() {
         #if DEBUG
         // Apply XCUITest stub-server and auth-bypass overrides before any
-        // SwiftUI body or AppFeature initialisation touches the network.
+        // configuration selection or AppFeature initialisation touches services.
         CFAppLaunchSupport.applyUITestOverrides()
+        let config = CFAppLaunchSupport.resolveConfiguration(
+            default: AppConfig.fromInfoPlist()
+        )
+        bootstrap = AppBootstrap(config: config, buildConfiguration: .debug)
+        #else
+        bootstrap = AppBootstrap(
+            config: AppConfig.fromInfoPlist(),
+            buildConfiguration: .nonDebug
+        )
         #endif
     }
 
     var body: some Scene {
         WindowGroup {
-            AppRootView(config: appConfig)
-                .environment(\.appConfig, appConfig)
+            ConfiguredAppRootView(bootstrap: bootstrap)
         }
     }
 }

@@ -267,7 +267,8 @@ public final class AppModel {
     // MARK: - Init
 
     // swiftlint:disable:next function_body_length
-    public init(config: AppConfig = .fromInfoPlist()) {
+    public init(config validatedConfig: ValidatedAppConfig) {
+        let config = validatedConfig.value
         let svc = AuthService(config: config)
         self.authService = svc
         let sm = SessionManager(authService: svc)
@@ -365,7 +366,15 @@ public final class AppModel {
         self.storeKitService = sks
         self.entitlementService = EntitlementService(storeKitService: sks, apiClient: client)
 
-        let authorizer = NotificationAuthorizer()
+        #if os(iOS)
+        let authorizer: any NotificationAuthorizerProtocol = NotificationAuthorizer()
+        #else
+        // AppFeature declares macOS only as a SwiftPM build/test host. Apple's
+        // process-global notification center traps there because the test
+        // runner is not an application bundle, so keep host-only composition
+        // inert without changing the shipping iOS graph.
+        let authorizer: any NotificationAuthorizerProtocol = HostNotificationAuthorizer()
+        #endif
         let registrationRepo = LiveDeviceRegistrationRepository(apiClient: client)
         self.apnsManager = APNSRegistrationManager(authorizer: authorizer, repository: registrationRepo)
 
@@ -626,3 +635,13 @@ public final class AppModel {
         #endif
     }
 }
+
+#if !os(iOS)
+private struct HostNotificationAuthorizer: NotificationAuthorizerProtocol {
+    func currentStatus() async -> NotificationPermissionStatus { .denied }
+
+    func requestAuthorization() async -> NotificationAuthorizationOutcome { .denied }
+
+    func requestProvisionalAuthorization() async -> NotificationAuthorizationOutcome { .denied }
+}
+#endif

@@ -9,35 +9,35 @@ struct AppModelTests {
 
     @Test("book URL routes to library tab")
     func bookURLRoutesToLibrary() async {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.handle(url: URL(string: "chapterflow://book/abc123")!)
         #expect(model.selectedTab == .library)
     }
 
     @Test("chapter URL routes to library tab")
     func chapterURLRoutesToLibrary() async {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.handle(url: URL(string: "chapterflow://book/abc123/chapter/3")!)
         #expect(model.selectedTab == .library)
     }
 
     @Test("review URL routes to reviews tab")
     func reviewURLRoutesToReviews() async {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.handle(url: URL(string: "chapterflow://review")!)
         #expect(model.selectedTab == .reviews)
     }
 
     @Test("pair accept URL routes to profile tab")
     func pairAcceptRoutesToProfile() async {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.handle(url: URL(string: "chapterflow://pair/accept/XYZ")!)
         #expect(model.selectedTab == .profile)
     }
 
     @Test("gift URL routes to profile tab and sets pendingGiftCode")
     func giftURLRoutesToProfile() async {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.handle(url: URL(string: "chapterflow://gift/GIFTCODE")!)
         #expect(model.selectedTab == .profile)
         #expect(model.pendingGiftCode == "GIFTCODE")
@@ -45,7 +45,7 @@ struct AppModelTests {
 
     @Test("referral URL routes to profile tab and sets pendingReferralCode")
     func referralURLRoutesToProfile() async {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.handle(url: URL(string: "chapterflow://ref/ALICE42")!)
         #expect(model.selectedTab == .profile)
         #expect(model.pendingReferralCode == "ALICE42")
@@ -53,28 +53,28 @@ struct AppModelTests {
 
     @Test("paywall URL presents the paywall")
     func paywallURLPresentsPaywall() async {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.handle(url: URL(string: "chapterflow://paywall")!)
         #expect(model.showPaywall)
     }
 
     @Test("journey URL routes to home tab")
     func journeyURLRoutesToHome() async {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.handle(url: URL(string: "chapterflow://journey/j-summer")!)
         #expect(model.selectedTab == .home)
     }
 
     @Test("event URL routes to home tab")
     func eventURLRoutesToHome() async {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.handle(url: URL(string: "chapterflow://event/ev-nov")!)
         #expect(model.selectedTab == .home)
     }
 
     @Test("unrecognised chapterflow path leaves tab unchanged")
     func unknownPathIgnored() async {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.handle(url: URL(string: "chapterflow://unknown-feature")!)
         #expect(model.selectedTab == .home)
     }
@@ -88,28 +88,28 @@ struct AppModelUniversalLinkTests {
 
     @Test("Universal Link book URL routes to library tab")
     func universalLinkBookRoutesToLibrary() async {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.handle(url: URL(string: "https://app.chapterflow.ca/book/abc123")!)
         #expect(model.selectedTab == .library)
     }
 
     @Test("Universal Link chapter URL routes to library tab")
     func universalLinkChapterRoutesToLibrary() async {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.handle(url: URL(string: "https://app.chapterflow.ca/book/abc123/chapter/3")!)
         #expect(model.selectedTab == .library)
     }
 
     @Test("Universal Link review URL routes to reviews tab")
     func universalLinkReviewRoutesToReviews() async {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.handle(url: URL(string: "https://app.chapterflow.ca/review")!)
         #expect(model.selectedTab == .reviews)
     }
 
     @Test("Universal Link pair accept URL routes to profile tab")
     func universalLinkPairAcceptRoutesToProfile() async {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.handle(url: URL(string: "https://app.chapterflow.ca/pair/accept/XYZ")!)
         #expect(model.selectedTab == .profile)
         #expect(model.pendingPairAcceptCode == "XYZ")
@@ -117,7 +117,7 @@ struct AppModelUniversalLinkTests {
 
     @Test("Universal Link gift URL routes to profile and sets code")
     func universalLinkGiftRoutesToProfile() async {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.handle(url: URL(string: "https://app.chapterflow.ca/gift/GIFTCODE")!)
         #expect(model.selectedTab == .profile)
         #expect(model.pendingGiftCode == "GIFTCODE")
@@ -125,14 +125,14 @@ struct AppModelUniversalLinkTests {
 
     @Test("Universal Link paywall URL presents paywall")
     func universalLinkPaywallPresentsPaywall() async {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.handle(url: URL(string: "https://app.chapterflow.ca/paywall")!)
         #expect(model.showPaywall)
     }
 
     @Test("wrong-domain https URL is ignored; tab stays at default")
     func wrongDomainIgnored() async {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.handle(url: URL(string: "https://evil.com/book/abc123")!)
         #expect(model.selectedTab == .home)
     }
@@ -146,7 +146,7 @@ struct AppModelHandoffTests {
 
     @Test("handleHandoff sets pendingHandoffFlow with correct bookId and chapter")
     func handoffSetsFlow() {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.handleHandoff(bookId: "book-abc", chapterNumber: 3, variantFamilyRaw: "EMH")
         #expect(model.pendingHandoffFlow?.bookId == "book-abc")
         #expect(model.pendingHandoffFlow?.chapterNumber == 3)
@@ -155,14 +155,14 @@ struct AppModelHandoffTests {
 
     @Test("handleHandoff with nil variantFamily defaults to .emh")
     func handoffDefaultsVariantFamily() {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.handleHandoff(bookId: "book-xyz", chapterNumber: 1, variantFamilyRaw: nil)
         #expect(model.pendingHandoffFlow?.variantFamily == .emh)
     }
 
     @Test("handleHandoff with unknown variantFamily rawValue uses .unknown")
     func handoffUnknownVariantFamily() {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.handleHandoff(bookId: "book-xyz", chapterNumber: 2, variantFamilyRaw: "FUTURE_FORMAT")
         #expect(model.pendingHandoffFlow?.variantFamily == .unknown("FUTURE_FORMAT"))
     }
@@ -176,7 +176,7 @@ struct AppModelGuestTests {
 
     @Test("enterGuestMode sets isGuestMode to true")
     func enterGuestModeSetsFlag() {
-        let model = AppModel()
+        let model = makeTestAppModel()
         #expect(!model.isGuestMode)
         model.enterGuestMode()
         #expect(model.isGuestMode)
@@ -184,7 +184,7 @@ struct AppModelGuestTests {
 
     @Test("requestAuth sets pendingAuthIntent and showAuthGate")
     func requestAuthSetsIntentAndShowsGate() {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.enterGuestMode()
         model.requestAuth(intent: .startBook(bookId: "b-test", variantFamily: .emh))
         #expect(model.showAuthGate)
@@ -193,7 +193,7 @@ struct AppModelGuestTests {
 
     @Test("requestAuth with .none sets showAuthGate without a specific intent")
     func requestAuthNoneShowsGate() {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.enterGuestMode()
         model.requestAuth(intent: .none)
         #expect(model.showAuthGate)
@@ -202,7 +202,7 @@ struct AppModelGuestTests {
 
     @Test("guest book URL goes to library, not auth gate")
     func guestBookURLRoutesToLibrary() {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.enterGuestMode()
         model.handle(url: URL(string: "chapterflow://book/abc123")!)
         #expect(model.selectedTab == .library)
@@ -211,7 +211,7 @@ struct AppModelGuestTests {
 
     @Test("guest gated URL triggers auth gate")
     func guestGatedURLTriggersAuthGate() {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.enterGuestMode()
         model.handle(url: URL(string: "chapterflow://review")!)
         #expect(model.showAuthGate)
@@ -219,7 +219,7 @@ struct AppModelGuestTests {
 
     @Test("replayPendingIntent with .none clears intent and guest mode")
     func replayNoneIntentClearsState() async {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.enterGuestMode()
         model.requestAuth(intent: .none)
 
@@ -233,7 +233,7 @@ struct AppModelGuestTests {
 
     @Test("replayPendingIntent with .startBook clears intent and guest mode")
     func replayStartBookClearsGuestMode() async {
-        let model = AppModel()
+        let model = makeTestAppModel()
         model.enterGuestMode()
         model.requestAuth(intent: .startBook(bookId: "b-atomic-habits", variantFamily: .emh))
 
