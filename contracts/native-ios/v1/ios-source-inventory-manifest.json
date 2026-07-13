@@ -2,18 +2,18 @@
   "schemaVersion": "chapterflow-ios-native-inventory-v2",
   "iosRepository": "WillSoltani/Chapterflow-IOS",
   "iosBaseRevision": "92a5c351a42771f546b3d0e575b3b37a8cbfb588",
-  "iosSourceRevision": "121864285c460fb911dba72ca720a989b97e5d53",
+  "iosSourceRevision": "0b0f6bc8399b18e0abd75c0a444af9cf6fe98d40",
   "iosSourceRevisionPhase": "committed_contract_branch",
   "canonicalization": "UTF-8 records; fixed field order; TAB-separated fields; null matrix row is empty; lexicographically sorted lines joined with LF and a terminal LF",
   "operationKeyCount": 83,
   "operationKeySha256": "b24a9ad2861744ad127ce1aca976c13b621fdb7460fc8cd9b9d5669ec9468174",
   "producerVariantCount": 93,
-  "producerVariantIdSha256": "3225c80badc95a05f437fdd715e2402392f9dd8fecf4fc00facdd1d6011f3987",
-  "producerIdentitySha256": "3d5aee6fc44079b491a81faf9ed4f72de27b96c7ae4a8cee5426b1638ab430ef",
+  "producerVariantIdSha256": "6c52d6b0f465d50f0e68d5a98cca273f90c8611c3b962f1d8f7d36d1f292ba20",
+  "producerIdentitySha256": "9f1c75e50035022d7b46da7be173fec2f265a58110f77504c9e7d247bd8ea453",
   "matrixRowCount": 29,
   "relationalRecordCount": 93,
-  "relationalRecordSha256": "36ec6c76f550bff39d4cd622fa161bf2a3b282d2c1eb27aac589e382f163e9a3",
-  "sourceInputTreeSha256": "d23621eec27dc7b4f9d35d2c98d744702906d443467d0abad571d6ec57e0f817",
+  "relationalRecordSha256": "03103dcada4b7ae3ed2763372dda873aa504a75c18ae4553e91cc71f17007a78",
+  "sourceInputTreeSha256": "2d18ba0c12388cda626da2c2bbaf0319c95d4b2e0a79a79fd4f55c1c2327a234",
   "sourceInputs": [
     {
       "path": "Packages/AIFeature/Sources/AIFeature/AIFeature.swift",
@@ -2321,11 +2321,11 @@
     },
     {
       "path": "contracts/native-ios/v1/ios-native-contract-inventory-source.json",
-      "sha256": "4c71bc8bd87330620072205a0fe45294fe67ee9ff0318a2c0e44c17cd18fd6a3"
+      "sha256": "0c3c7599345b5c5ae71830f071ab600526ca7ea0425288df6d17d08c3f4216ea"
     },
     {
       "path": "scripts/contracts/generate_ios_native_inventory.py",
-      "sha256": "83b65deeb5b7c7212f85fcaec8aea8fbf0a31ac2a4815296698d49cee56ce419"
+      "sha256": "a01b2dd4e848a3ecb61248995529fd0ce0ab4338b01893999604d020f8c90e9f"
     }
   ],
   "records": [
@@ -2386,11 +2386,11 @@
       "method": "POST",
       "routeTemplate": "/book/me/billing/apple/verify",
       "matrixRowId": "apple-purchase-verification",
-      "operationVariantId": "apple-verify.post:liveentitlementrepository-directendpoint",
+      "operationVariantId": "apple-verify.post:liveentitlementrepository-verifyappletransaction",
       "producerKind": "direct_endpoint",
-      "producerSymbol": "LiveEntitlementRepository.directEndpoint",
+      "producerSymbol": "LiveEntitlementRepository.verifyAppleTransaction",
       "producerSourcePath": "Packages/PaywallFeature/Sources/PaywallFeature/LiveEntitlementRepository.swift",
-      "stableVariantSuffix": "liveentitlementrepository-directendpoint",
+      "stableVariantSuffix": "liveentitlementrepository-verifyappletransaction",
       "sourceMethodExpression": "method: .post",
       "sourcePathExpression": "\"/book/me/billing/apple/verify\""
     },
@@ -3374,11 +3374,11 @@
       "method": "POST",
       "routeTemplate": "/book/me/books/{bookId}/chapters/{chapterNumber}/scenarios",
       "matrixRowId": null,
-      "operationVariantId": "scenario.post:scenariorepository-replaydirectendpoint",
+      "operationVariantId": "scenario.post:scenariorepository-syncpendinguploads",
       "producerKind": "direct_endpoint",
-      "producerSymbol": "ScenarioRepository.replayDirectEndpoint",
+      "producerSymbol": "ScenarioRepository.syncPendingUploads",
       "producerSourcePath": "Packages/EngagementFeature/Sources/EngagementFeature/Scenarios/ScenarioRepository.swift",
-      "stableVariantSuffix": "scenariorepository-replaydirectendpoint",
+      "stableVariantSuffix": "scenariorepository-syncpendinguploads",
       "sourceMethodExpression": "method: .post",
       "sourcePathExpression": "\"/book/me/books/\\(ticket.bookId)/chapters/\\(ticket.chapterNumber)/scenarios\""
     },
