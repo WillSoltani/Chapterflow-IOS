@@ -239,7 +239,7 @@ WP-DEV-00 performed no App Store Connect metadata action, TestFlight upload, Sto
 
 **Branch:** `codex/wp-dev-01-bootstrap`
 
-**Status:** Implementation and deterministic validation complete; draft-PR publication authorized
+**Status:** Implementation and narrow remediation validation complete; existing PR #119 remains draft
 
 ### Outcome and revisions
 
@@ -248,7 +248,9 @@ WP-DEV-01 now rejects missing, empty, unexpanded, example, placeholder, malforme
 | Scope | Revision/state |
 |---|---|
 | Authoritative starting revision | `92a5c351a42771f546b3d0e575b3b37a8cbfb588` |
-| Final tested implementation revision | `53603a2532e8e9ec8b28536009da295b9a1fc522` |
+| Initial tested implementation revision | `53603a2532e8e9ec8b28536009da295b9a1fc522` |
+| Remediation starting head | `a8a8dc563289d274ef58cbdbbaa30898693a0376` |
+| Remediation tested implementation revision | `8aca1253a3d0ac07f33ec3226d79f3b33cf0dbf8` |
 | Evidence-document revision | Documentation-only successor to the tested implementation; the draft PR head is authoritative |
 | Branch base and merge-base with `origin/main` | `92a5c351a42771f546b3d0e575b3b37a8cbfb588` |
 | Frozen PR #117 reference | `codex/wp-rel-01` at `7bb9b5a88494027832cfe1553cc3c6c464702ab6`, inspected read-only |
@@ -261,13 +263,13 @@ The dirty primary `Pro` checkout was not used, reset, stashed, staged, or edited
 - Validation covers `API_BASE_URL`, `COGNITO_REGION`, `COGNITO_USER_POOL_ID`, `COGNITO_CLIENT_ID`, and `COGNITO_DOMAIN` with typed fields and issue categories.
 - Example-domain fragments, explicit template words, unexpanded build settings, and X-filled values are rejected before shape validation.
 - Public API URLs require HTTPS; `localhost`, `127.0.0.1`, and `::1` remain valid HTTP development endpoints. User info, queries, and fragments are rejected.
-- Cognito region, pool, client, and hostname shapes are checked, including pool-region agreement. Valid required values are trimmed before service construction.
+- Cognito region, pool, client, and hostname shapes are checked, including pool-region agreement. A structurally valid standard hosted domain in the exact `<prefix>.auth.<region>.amazoncognito.com` form must also agree with `COGNITO_REGION`; malformed AWS-suffix lookalikes remain malformed, while valid custom domains require no inferred region. Validation is synchronous and performs no DNS or network I/O.
 - Invalid validation results contain ordered field/category issues only. Diagnostics add only coarse build identity, service-construction readiness, and the stable support code `CF-DEV-CFG-001`.
 - `ValidatedAppConfig` is the capability required by `AppModel`; its initializer can no longer read or accept an unchecked configuration.
 - `AppBootstrap` validates and conditionally creates `AppModel` once in the app initializer. SwiftUI receives the stored result and cannot recreate the graph during root-view initialization or body reevaluation.
 - Invalid configuration routes to a dedicated scrollable root. Debug copy provides local setup guidance; non-Debug copy remains generic. Neither path exposes raw values or product UI.
-- The existing deterministic UI harness gets a valid synthetic `.test` configuration only when both `CF_STUB_SERVER=1` and `CF_HERMETIC_TEST_CONFIGURATION=1` are explicit. Auth bypass alone and normal Debug launches cannot activate it.
-- A separate Debug-only invalid fixture exists solely to test the fail-closed root; that test also enables URL stubbing so a validator regression cannot contact a live service.
+- The existing deterministic UI harness gets a valid synthetic `.test` configuration only when both `CF_STUB_SERVER=1` and `CF_HERMETIC_TEST_CONFIGURATION=1` are explicit. The overlay replaces only the five required API/Cognito values, preserves the supplied monthly, annual, and optional upfront StoreKit IDs, and forces Sentry off. Auth bypass alone and normal Debug launches cannot activate it.
+- A separate Debug-only invalid fixture explicitly keeps Sentry and all three StoreKit IDs empty because validation stops before service construction. Its UI test also enables URL stubbing so a validator regression cannot contact a live service.
 - The AppFeature macOS build/test host uses an inert notification authorizer because `UNUserNotificationCenter.current()` traps in a non-application SwiftPM runner. Shipping iOS construction is unchanged.
 - Existing mobile maintenance/update configuration remains behind the valid bootstrap and its package tests remain green.
 
@@ -281,6 +283,7 @@ Configuration and bootstrap:
 - `ChapterFlow/ChapterFlowApp.swift`
 - `ChapterFlow/TestSupport/CFAppLaunchSupport.swift`
 - `Packages/CoreKit/Sources/CoreKit/AppConfig.swift`
+- `Packages/CoreKit/Sources/CoreKit/Config/AppConfigOverlay.swift`
 - `Packages/CoreKit/Sources/CoreKit/Config/AppConfigValidation.swift`
 - `Packages/CoreKit/Sources/CoreKit/Config/AppConfigurationTypes.swift`
 - `Packages/CoreKit/Sources/CoreKit/Config/ConfigurationValueInspection.swift`
@@ -296,13 +299,16 @@ Application composition and UI:
 Tests:
 
 - `Packages/CoreKit/Tests/CoreKitTests/AppConfigValidationTests.swift`
+- `Packages/CoreKit/Tests/CoreKitTests/AppConfigOverlayTests.swift`
 - `Packages/AppFeature/Tests/AppFeatureTests/AppModelTestSupport.swift`
 - `Packages/AppFeature/Tests/AppFeatureTests/AppModelTests.swift`
 - `Packages/AppFeature/Tests/AppFeatureTests/QuickActionTests.swift`
 - `Packages/AppFeature/Tests/AppFeatureTests/ConfiguredAppRootViewTests.swift`
 - `Packages/AppFeature/Tests/AppFeatureTests/InvalidDevelopmentConfigurationRenderTests.swift`
 - `ChapterFlowUITests/ChapterFlowUITests.swift`
+- `ChapterFlowUITests/Flows/PurchaseFlowTests.swift`
 - `ChapterFlowUITests/Flows/SignInFlowTests.swift`
+- `Packages/PaywallFeature/Tests/PaywallFeatureTests/StoreKitServiceTests.swift`
 
 `DebugMenuView.swift` contains only a two-line `#if os(iOS)` guard around the existing iOS-only navigation-title API. This was the minimum adaptation required for the mandated AppFeature host test to compile; it does not alter the iOS UI.
 
@@ -323,7 +329,7 @@ No backend search was needed because WP-DEV-01 changes no endpoint, serializer, 
 
 ### Validation evidence
 
-All pass claims below apply to final tested implementation revision `53603a2532e8e9ec8b28536009da295b9a1fc522`. The later evidence-only documentation change does not affect compiled sources or tests.
+The original bootstrap evidence remains tied to `53603a2532e8e9ec8b28536009da295b9a1fc522`. The remediation results below apply to tested implementation revision `8aca1253a3d0ac07f33ec3226d79f3b33cf0dbf8`; the later evidence-only documentation change does not affect compiled sources or tests.
 
 #### Focused package tests - PASS
 
@@ -331,7 +337,7 @@ All pass claims below apply to final tested implementation revision `53603a2532e
 swift test --package-path Packages/CoreKit
 ```
 
-Result: exit 0; **141 tests in 25 suites passed**. Coverage includes valid, normalized, missing, empty, malformed, unexpanded, template/example, X-filled, URL transport, region mismatch, ordering, redaction, and diagnostic-record cases.
+Result: exit 0; **146 tests in 26 suites passed**. Remediation coverage adds matching/mismatched standard Cognito hosted-domain regions, valid custom domains, malformed AWS-like domains, value-free reflected/diagnostic output, and an explicit overlay that preserves all three StoreKit IDs while disabling Sentry.
 
 ```sh
 swift test --package-path Packages/AppFeature
@@ -340,6 +346,12 @@ swift test --package-path Packages/AppFeature
 Result: exit 0; **67 tests in 18 suites passed**. Invalid bootstrap invoked the graph factory zero times; valid bootstrap invoked it exactly once; 50 repeated SwiftUI body evaluations retained one graph; diagnostics failures did not alter routing. Light, Dark, 320x568, and AX5 render guards passed.
 
 The first AppFeature attempt compiled but its macOS test process trapped when existing AppModel tests reached Apple's process-global notification center without an application bundle. The host-only inert authorizer seam was added; the exact command then passed. This was diagnosed rather than retried blindly.
+
+```sh
+swift test --package-path Packages/PaywallFeature
+```
+
+Result: exit 0; **161 tests in 21 suites passed**. The strengthened StoreKit configuration test proves the path `AppConfig` source -> hermetic overlay -> validated configuration -> `StoreKitConfig` retains the existing monthly, annual, and optional upfront identifiers. It does not claim product loading or purchase behavior.
 
 #### Exact 17-package CI loop - PASS
 
@@ -373,7 +385,7 @@ xcodebuild build \
 
 Result: exit 0 and `** BUILD SUCCEEDED **`.
 
-#### Exact ChapterFlowUITests lane - PASS after diagnosed test-query correction
+#### Exact ChapterFlowUITests lane - PASS
 
 ```sh
 set -o pipefail
@@ -394,11 +406,11 @@ Final result: exit 0 and `** TEST SUCCEEDED **`:
 
 - `PurchaseFlowTests`: 6 passed;
 - `ReadQuizUnlockFlowTests`: 6 passed;
-- `SignInFlowTests`: 8 passed, including invalid-normal and explicit-hermetic configuration paths;
+- `SignInFlowTests`: 10 passed, including no-flag, auth-bypass-only, invalid-fixture, and explicit-hermetic configuration paths;
 - `SmokeLaneTests`: 2 intentionally skipped because `CF_REAL_API=1` was absent;
-- total: **22 executed, 20 passed, 2 skipped, 0 failures**.
+- total: **24 executed, 22 passed, 2 skipped, 0 failures**.
 
-The first full run had one failure because the new test searched `.otherElements` while the runtime accessibility tree attached the root identifier to its `ScrollView`. XcodeBuildMCP proved the invalid screen was present. A focused rerun then exposed the same element-type assumption for the guidance container. The assertions were made identifier-based and element-type agnostic; the focused test passed, followed by the complete green lane above. No production behavior, timeout, retry policy, skip, or test scope was weakened.
+The remediation lane passed on its first complete run. No production behavior, timeout, retry policy, skip, or test scope was weakened. `PurchaseFlowTests` proves app survival and navigation only; it does not prove `Product.products(for:)` returned products or that a transaction can complete.
 
 #### Lint and diff - PASS
 
@@ -407,12 +419,13 @@ swiftlint lint --strict --reporter github-actions-logging
 git diff --check
 ```
 
-Results: SwiftLint exit 0 with **0 violations and 0 serious violations in 735 files**; diff check exit 0. An independent read-only reviewer reported no remaining P0-P2 findings and separately passed strict no-cache lint and diff checks.
+Results: SwiftLint exit 0 with **0 violations and 0 serious violations in 737 files**; diff check exit 0. An independent read-only remediation reviewer reported no P0/P1 implementation findings and only the now-corrected stale evidence wording/counts.
 
 ### Runtime and accessibility evidence
 
 - With the exact CI-style placeholder build installed, XcodeBuildMCP launched `com.chapterflow.ios` with **no test environment variables**. Visual inspection showed only `ChapterFlow Needs Setup`, four nonsecret issue summaries, local setup guidance, and support code `CF-DEV-CFG-001`; there was no login, library, paywall, or other product UI.
-- A separate explicit invalid-fixture launch produced a 34-element semantic snapshot with the fail-closed root identifier and no interactive targets.
+- A launch with `CF_STUB_SERVER=1`, `CF_HERMETIC_TEST_CONFIGURATION=1`, and `CF_UITEST_BYPASS_AUTH=1` reached the fixture-backed Home shell with its tab bar and catalog content.
+- A separate launch with `CF_STUB_SERVER=1` and `CF_INVALID_TEST_CONFIGURATION=1` returned to the fail-closed setup root. The full UI lane also proved that auth bypass alone cannot activate synthetic configuration.
 - The UI uses semantic DesignSystem colors and fonts, a flexible `ScrollView`, no fixed text/control height, heading traits, contained reading order, hidden decorative icons, and text labels in addition to icons/color.
 - Render guards covered Light Mode, Dark Mode, 320x568 geometry, and AX5 Dynamic Type. The surface has no motion; the AX5 guard also disables transaction animation, satisfying Reduce Motion without adding a separate animation path.
 - XCUITest verified the root, heading, guidance, support code, absence of tab UI, and absence of login controls. VoiceOver order follows source order and `.contain` accessibility grouping; no physical VoiceOver session was claimed.
@@ -430,25 +443,28 @@ Results: SwiftLint exit 0 with **0 violations and 0 serious violations in 735 fi
 | Requirement | Result |
 |---|---|
 | Five required values typed and validated | PASS |
+| Standard Cognito hosted-domain region agrees with configured region | PASS |
 | Placeholder/example configuration rejected | PASS |
 | Invalid path creates zero live graphs/services | PASS |
 | Valid path creates exactly one graph | PASS |
 | SwiftUI reevaluation cannot duplicate graph | PASS |
 | Explicit hermetic UI-test configuration only | PASS |
+| Hermetic overlay preserves three existing StoreKit IDs and disables Sentry | PASS |
 | Normal Debug placeholder launch remains invalid | PASS |
 | Privacy-safe deterministic diagnostics | PASS |
 | Invalid root accessibility/render matrix | PASS |
 | Existing maintenance/update tests | PASS |
-| Sign-In, Home, Library, Book Detail, purchase-fixture regressions | PASS |
+| Sign-In, Home, Library, Book Detail, and PurchaseFlow survival/navigation regressions | PASS |
 | No Audio or Social file changed | PASS |
 | No PR #117 commit cherry-picked wholesale | PASS |
 | No release-only configuration or machinery imported | PASS |
 
-The complete diff contains no App Store identity, product/price/subscription-group change, release manifest, export options, waiver, attestation, signing, provisioning, TestFlight detection, production Sentry requirement, deployment logic, Audio change, or Social change. Existing StoreKit behavior and its deterministic fixture tests were exercised but not modified.
+The complete diff contains no App Store identity, product/price/subscription-group change, release manifest, export options, waiver, attestation, signing, provisioning, TestFlight detection, production Sentry requirement, deployment logic, Audio change, or Social change. No PaywallFeature implementation, StoreKit catalog, product identifier, or transaction behavior changed. A test-only assertion now proves existing identifier propagation; the XCUITest purchase lane remains intentionally limited to app survival and navigation.
 
 ### Remaining limitations and prohibited-action confirmation
 
 - Live Cognito/SIWA, authenticated deployed-backend behavior, account switching, real StoreKit transactions, StoreKit Sandbox, physical-device installation, and production configuration were **not run** and are not claimed.
 - The two optional real-API smoke tests were **skipped by design** because no `CF_REAL_API=1` authorization or token was supplied.
 - No physical VoiceOver, Reduce Transparency, or signed-device session was run; the deterministic semantic and render evidence above is the scoped accessibility proof.
+- The setup root still contains hard-coded English development guidance. Localization is deferred to `WP-L10N-01`; this remediation intentionally did not broaden into a localization rewrite.
 - No merge, deployment, App Store Connect action, TestFlight action, Sandbox purchase, signing/provisioning change, production-data action, PR #117 mutation, or unrelated-user change occurred.
