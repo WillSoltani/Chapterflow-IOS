@@ -326,6 +326,18 @@ on an exact-key miss, and only below the explicit 4 GiB source-cache budget.
 Manual `clean` disables even source-cache restore. The nightly path never uses
 a compiled cache.
 
+Cold advisory run `29233015194` had zero hits across its three restore attempts;
+each miss check took one to two seconds and transferred no archive. The app lane
+measured 3,476,852,736 bytes (3.24 GiB, 81.0% of budget) after dependency
+resolution. Cache save was correctly skipped for the pull-request event, so no
+one-off PR cache was created.
+
+On the same commit, legacy run `29233015113` restored its 8,010,285,129-byte
+combined archive in 2:21, then missed the separate source-only key on the fresh
+UI runner. CI v2 remained faster in wall time without restoring compiled state,
+but its runner-time increase shows that this cold result is a tradeoff, not a
+free cache win.
+
 The old `macOS-spm-*` family is not a restore fallback because it produced a
 confirmed corruption failure and lacks required invalidation inputs.
 
@@ -371,17 +383,37 @@ Current evidence table:
 
 | Scope | Legacy wall p50 | CI v2 cold | CI v2 warm | Selection equivalence | Status |
 |---|---:|---:|---:|---|---|
-| Docs-only | full workflow; observed failure at 29:08 | pending Stage A | pending Stage A | v2 intentionally removes executable work | Not yet measured |
-| Feature logic | 50:59 overall PR p50 | pending Stage A | pending Stage A | owner + reverse deps, app if linked | Not yet measured |
-| UI/AppFeature | 50:59 | pending Stage A | pending Stage A | full 18 host suites + app/UI; AppFeature stays app/UI-only | Not yet measured |
-| Foundation | 50:59 | pending Stage A | pending Stage A | full 18 host suites + app/UI | Not yet measured |
-| Project/lockfile | 50:59 | pending Stage A | pending Stage A | full 18 host suites + app/UI | Not yet measured |
-| Full/manual | 50:59 | pending Stage A | pending Stage A | full 18 host suites + app/UI | Not yet measured |
+| Docs-only | full workflow; observed failure at 29:08 | blocked pre-cutover | blocked pre-cutover | v2 intentionally removes executable work | Planner-tested; no GitHub sample |
+| Feature logic | 50:59 overall PR p50 | blocked pre-cutover | blocked pre-cutover | owner + reverse deps, app if linked | Planner-tested; no GitHub sample |
+| UI/AppFeature | 50:59 | blocked pre-cutover | blocked pre-cutover | full 18 host suites + app/UI; AppFeature stays app/UI-only | Planner-tested; no isolated GitHub sample |
+| Foundation | 50:59 | blocked pre-cutover | blocked pre-cutover | full 18 host suites + app/UI | Planner-tested; no isolated GitHub sample |
+| Project/lockfile | 50:59 | blocked pre-cutover | blocked pre-cutover | full 18 host suites + app/UI | Planner-tested; no isolated GitHub sample |
+| Full/manual | 50:59 | **34:55** | blocked pre-cutover | full 18 host suites + app/UI | One cold PR sample green |
 
-The analytical full-path expectation is about 30 minutes because app/UI begins
-immediately after planning instead of after the 24-minute build/package job,
-and app compilation occurs once in the UI job. This is a forecast, not a pass:
-the candidate must demonstrate at most 35:41 full-scope p50 before cutover.
+Advisory run `29233015194` on `ec8df029` is the first cold full-scope
+measurement. It passed in 34:55 wall time: 18 host suites and 2,100 package
+tests, plus 20 UI tests with two existing skips. That is 31.5% below the legacy
+PR p50 of 50:59 and 46 seconds inside the 35:41 single-run threshold. It is not
+a p50, warm-cache result, representative-class series, or cutover approval.
+
+The unchanged legacy workflow ran on the exact same commit as run
+`29233015113`:
+
+| Same-commit result | Legacy | CI v2 | Delta |
+|---|---:|---:|---:|
+| Green wall time | 49:01 | **34:55** | **-14:06 (-28.8%)** |
+| Allocated runner time | 49:07 | 56:14 | +7:07 (+14.5%) |
+| Host suites / package tests | 17 / 2,071 | 18 / 2,100 | +SyncEngine / +29 |
+| UI tests | 20, two skipped | 20, two skipped | equivalent |
+
+The same-commit legacy run was faster than the historical p50, so this single
+pair is 36 seconds outside a 30% same-run reduction even though the candidate
+meets the baseline-derived full-scope threshold. More samples are required.
+
+The measured candidate critical path was graph verification 0:24, dependency
+resolution 4:36, simulator boot 4:15, build-for-testing 16:25, and
+test-without-building 8:04. Package jobs completed independently in 12:38 and
+8:40, so further package sharding would not improve this full path.
 
 ## 9. Test-selection equivalence canaries
 
@@ -414,6 +446,13 @@ the macOS critical path is serialized. CI v2 spends up to three macOS jobs in
 parallel: two package shards and one app/UI job. This can increase duplicate
 dependency compilation on a cold cache even while wall time falls sharply.
 
+The first cold candidate consumed 56:14 of allocated runner time, 5:08 (10.0%)
+above the legacy PR runner p50 while reducing wall time by 16:04. Against the
+same-commit legacy run it used 7:07 (14.5%) more runner time while saving 14:06
+of wall time. It also ran the newly covered SyncEngine suite. This is the
+explicit cost of cold parallel compilation; it is not represented as a runner-
+time saving.
+
 The two-shard cap and AuthKit/Settings affinity constrain that cost. No claim of
 runner-time improvement is made until Stage A data exists. A cutover requires
 the wall-time target plus an explicit recorded runner-time delta; further
@@ -438,24 +477,28 @@ full or release gate.
 
 ## 12. GitHub repository feature review
 
-Read-only public REST evidence on 2026-07-13 shows:
+Read-only GitHub REST evidence on 2026-07-13 shows:
 
 - `main.protected = false`;
 - required status enforcement is off and required contexts are empty;
 - repository rulesets are `[]`;
 - no merge queue is configured;
-- sampled workflow tokens effectively had Contents, Metadata, and Packages
-  read-only permissions.
+- default workflow permissions are read-only and workflows cannot approve pull
+  requests;
+- fork pull requests require approval for first-time contributors;
+- automatic branch deletion and auto-merge are disabled, while merge commits,
+  squash merges, and rebases are enabled;
+- no self-hosted runners are registered.
 
 Therefore the legacy comment claiming two required checks is stale: no check is
 actually required today. Stage B should prefer one `CI / Required` context in a
 reviewed ruleset or branch-protection rule. If merge queue is enabled,
 `merge_group` is already present in CI v2.
 
-Admin-only settings remain unverified because the local `gh` token is invalid:
-default Actions permissions, fork-contributor approval, automatic branch
-deletion, merge-method/auto-merge settings, account-level merge-queue
-availability, and larger/self-hosted runner inventory.
+Account-level merge-queue eligibility and larger GitHub-hosted runner
+availability/billing remain unverified; repository REST state cannot prove
+those account capabilities. No runner purchase or infrastructure probe was
+attempted.
 
 Recommendations requiring later owner approval:
 
@@ -502,8 +545,9 @@ rollback.
 
 ## 15. Known limitations and open evidence
 
-- Candidate GitHub benchmark and canary rows are intentionally pending until
-  the draft branch runs on GitHub; forecasts are not reported as measurements.
+- Only one cold full-scope candidate sample is currently measured. It is not a
+  p50, and representative docs/feature/UI/foundation/project classes remain
+  planner evidence rather than live GitHub timing evidence during Stage A.
 - New default-branch cache keys cannot be seeded for sibling PRs until the
   candidate exists on `main`. Manual branch dispatch can measure cold/warm
   transfer but not prove cross-PR default-branch reuse. GitHub also requires a

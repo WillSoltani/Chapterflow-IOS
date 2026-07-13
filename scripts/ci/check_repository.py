@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -203,6 +204,13 @@ def check_generated_artifacts(paths: Iterable[str]) -> list[str]:
     return failures
 
 
+def check_present_generated_artifacts(root: Path, paths: Iterable[str]) -> list[str]:
+    """Reject generated artifacts that would exist at the candidate revision."""
+    return check_generated_artifacts(
+        relative for relative in paths if os.path.lexists(root / relative)
+    )
+
+
 def run_git_diff_check(root: Path, merge_base: str, head: str) -> list[str]:
     result = subprocess.run(
         ["git", "diff", "--check", merge_base, head],
@@ -236,10 +244,10 @@ def run_checks(root: Path, paths: Sequence[str], merge_base: str, head: str) -> 
     if not re.fullmatch(r"[0-9a-fA-F]{40}", merge_base):
         raise CheckFailure("valid merge-base unavailable for repository checks")
     failures = run_git_diff_check(root, merge_base, head)
-    failures.extend(check_generated_artifacts(paths))
+    failures.extend(check_present_generated_artifacts(root, paths))
     failures.extend(check_conflict_markers(root, paths))
     failures.extend(check_markdown(root, paths))
-    deleted = [relative for relative in paths if not (root / relative).exists()]
+    deleted = [relative for relative in paths if not os.path.lexists(root / relative)]
     if deleted:
         failures.extend(
             check_incoming_links_to_deleted(

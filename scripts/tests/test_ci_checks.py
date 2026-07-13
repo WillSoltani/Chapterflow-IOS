@@ -124,6 +124,29 @@ class RepositoryCheckTests(unittest.TestCase):
             [],
         )
 
+    def test_deleted_generated_artifacts_are_not_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            deleted = "scripts/ci/__pycache__/deleted.pyc"
+            present = "scripts/ci/__pycache__/present.pyc"
+            broken_symlink = "scripts/ci/__pycache__/broken.pyc"
+            (root / present).parent.mkdir(parents=True)
+            (root / present).write_bytes(b"generated")
+            (root / broken_symlink).symlink_to("missing-target")
+
+            self.assertEqual(
+                check_repository.check_present_generated_artifacts(root, [deleted]),
+                [],
+            )
+            self.assertEqual(
+                len(
+                    check_repository.check_present_generated_artifacts(
+                        root, [deleted, present, broken_symlink]
+                    )
+                ),
+                2,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

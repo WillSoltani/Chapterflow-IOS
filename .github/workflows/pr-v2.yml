@@ -88,6 +88,7 @@ jobs:
         run: echo "started=$(date +%s)" >> "$GITHUB_OUTPUT"
 
       - name: Checkout exact candidate revision
+        id: checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
@@ -124,9 +125,11 @@ jobs:
             --output "$PLAN_PATH"
 
       - name: Run planner and repository-check unit tests
+        id: unit-tests
         run: python3 -m unittest discover -s scripts/tests -p 'test_ci_*.py' -v
 
       - name: Run docs, link, secret, conflict, and diff checks
+        id: repository-checks
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || 'origin/main' }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
@@ -136,17 +139,36 @@ jobs:
         id: summary
         if: ${{ always() }}
         env:
+          CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
           PLAN_PATH: ${{ runner.temp }}/ci-plan.json
+          PLANNER_OUTCOME: ${{ steps.planner.outcome }}
+          REPOSITORY_CHECKS_OUTCOME: ${{ steps.repository-checks.outcome }}
+          UNIT_TESTS_OUTCOME: ${{ steps.unit-tests.outcome }}
         shell: bash
         run: |
           duration="$(( $(date +%s) - ${{ steps.job-start.outputs.started }} ))"
           echo "duration-seconds=$duration" >> "$GITHUB_OUTPUT"
+          failure_category=none
+          if [[ "$CHECKOUT_OUTCOME" == failure ]]; then
+            failure_category=checkout
+          elif [[ "$PLANNER_OUTCOME" == failure ]]; then
+            failure_category=planner
+          elif [[ "$UNIT_TESTS_OUTCOME" == failure ]]; then
+            failure_category=planner-tests
+          elif [[ "$REPOSITORY_CHECKS_OUTCOME" == failure ]]; then
+            failure_category=repository-checks
+          elif [[ ! -f "$PLAN_PATH" ]]; then
+            failure_category=planner-output-missing
+          fi
           if [[ ! -f "$PLAN_PATH" ]]; then
-            echo "### CI plan" >> "$GITHUB_STEP_SUMMARY"
-            echo "Planner output is missing; aggregate must fail closed." >> "$GITHUB_STEP_SUMMARY"
+            {
+              echo "### CI plan"
+              echo "Planner output is missing; aggregate must fail closed."
+              echo "- Failure category: ${failure_category}"
+            } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          python3 - "$PLAN_PATH" "$GITHUB_STEP_SUMMARY" "$duration" <<'PY'
+          python3 - "$PLAN_PATH" "$GITHUB_STEP_SUMMARY" "$duration" "$failure_category" <<'PY'
           import json, sys
           plan = json.load(open(sys.argv[1], encoding="utf-8"))
           with open(sys.argv[2], "a", encoding="utf-8") as summary:
@@ -159,6 +181,7 @@ jobs:
                             ", ".join(plan['affected_packages']) + "\n")
               summary.write("- Reasons: " + ", ".join(plan['reason_codes']) + "\n")
               summary.write(f"- Plan job duration: {sys.argv[3]}s\n")
+              summary.write(f"- Failure category: {sys.argv[4]}\n")
               summary.write(f"- Failure artifact on failure: `ci-plan-${{ github.run_id }}-${{ github.run_attempt }}`\n")
           PY
 
@@ -183,6 +206,7 @@ jobs:
 
     steps:
       - name: Checkout exact candidate revision
+        id: checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
@@ -219,15 +243,27 @@ jobs:
 
       - name: Summarize lint
         if: ${{ always() }}
+        env:
+          CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          LINT_OUTCOME: ${{ steps.lint.outcome }}
         shell: bash
         run: |
+          failure_category=none
+          if [[ "$CHECKOUT_OUTCOME" == failure ]]; then
+            failure_category=checkout
+          elif [[ "$INSTALL_OUTCOME" == failure ]]; then
+            failure_category=tool-install-or-infrastructure
+          elif [[ "$LINT_OUTCOME" == failure ]]; then
+            failure_category=lint-or-source
+          fi
           {
             echo "### Lint"
             echo "- SwiftLint: ${SWIFTLINT_VERSION} (checksum verified)"
             echo "- Install duration: ${{ steps.install.outputs.duration || 'unreported' }}s"
             echo "- Lint duration: ${{ steps.lint.outputs.duration || 'unreported' }}s"
-            echo "- Result: ${{ steps.lint.outcome }}"
-            echo "- Failure category: ${{ steps.lint.outcome == 'failure' && 'lint/source' || 'none' }}"
+            echo "- Result: ${LINT_OUTCOME}"
+            echo "- Failure category: ${failure_category}"
             echo "- Failure artifact on failure: lint-${{ github.run_id }}-${{ github.run_attempt }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -253,6 +289,7 @@ jobs:
 
     steps:
       - name: Checkout exact candidate revision
+        id: checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
@@ -287,36 +324,56 @@ jobs:
             --metrics-output "$RUNNER_TEMP/package-metrics-${SHARD}.json" \
             --shard "$SHARD"
 
-      - name: Measure source cache and summarize shard
+      - name: Measure source cache
         id: cache-size
         if: ${{ always() }}
-        env:
-          CACHE_HIT: ${{ steps.source-cache.outputs.cache-hit || 'disabled-or-miss' }}
-          ESTIMATED_SECONDS: ${{ matrix.estimated_seconds }}
-          SHARD: ${{ matrix.shard }}
         shell: bash
         run: |
           set -euo pipefail
           cache_path="$HOME/Library/Caches/org.swift.swiftpm/repositories"
           cache_bytes=0
-          cache_human="0B"
           if [[ -d "$cache_path" ]]; then
             cache_kib="$(du -sk "$cache_path" | awk '{print $1}')"
             cache_bytes="$((cache_kib * 1024))"
-            cache_human="$(du -sh "$cache_path" | awk '{print $1}')"
           fi
           within_budget=false
           if (( cache_bytes <= SOURCE_CACHE_BUDGET_BYTES )); then within_budget=true; fi
           echo "bytes=$cache_bytes" >> "$GITHUB_OUTPUT"
           echo "within-budget=$within_budget" >> "$GITHUB_OUTPUT"
+
+      - name: Summarize package shard
+        if: ${{ always() }}
+        env:
+          CACHE_HIT: ${{ steps.source-cache.outputs.cache-hit || 'disabled-or-miss' }}
+          CACHE_SIZE_OUTCOME: ${{ steps.cache-size.outcome }}
+          CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
+          ESTIMATED_SECONDS: ${{ matrix.estimated_seconds }}
+          PACKAGE_OUTCOME: ${{ steps.packages.outcome }}
+          SETUP_OUTCOME: ${{ steps.setup.outcome }}
+          SHARD: ${{ matrix.shard }}
+          SOURCE_CACHE_OUTCOME: ${{ steps.source-cache.outcome }}
+        shell: bash
+        run: |
+          failure_category=none
+          if [[ "$CHECKOUT_OUTCOME" == failure ]]; then
+            failure_category=checkout
+          elif [[ "$SETUP_OUTCOME" == failure ]]; then
+            failure_category=toolchain-or-setup
+          elif [[ "$SOURCE_CACHE_OUTCOME" == failure ]]; then
+            failure_category=cache-restore-or-infrastructure
+          elif [[ "$PACKAGE_OUTCOME" == failure ]]; then
+            failure_category=package-test-or-source
+          elif [[ "$CACHE_SIZE_OUTCOME" == failure ]]; then
+            failure_category=cache-measurement
+          fi
           {
             echo "### Package cache — ${SHARD}"
             echo "- Cache result: ${CACHE_HIT}"
-            echo "- Source cache size: ${cache_human} (${cache_bytes} bytes)"
+            echo "- Source cache size: ${{ steps.cache-size.outputs.bytes || 'unreported' }} bytes"
             echo "- Explicit source-cache budget: ${SOURCE_CACHE_BUDGET_BYTES} bytes"
             echo "- Historical shard estimate: ${ESTIMATED_SECONDS}s"
-            echo "- Job result: ${{ steps.packages.outcome }}"
-            echo "- Failure category: ${{ steps.packages.outcome == 'failure' && 'package-test/source' || 'none' }}"
+            echo "- Package-step result: ${PACKAGE_OUTCOME}"
+            echo "- Failure category: ${failure_category}"
             echo "- Failure artifact on failure: package-${SHARD}-${{ github.run_id }}-${{ github.run_attempt }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -349,6 +406,7 @@ jobs:
 
     steps:
       - name: Checkout exact candidate revision
+        id: checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
@@ -371,6 +429,7 @@ jobs:
             ${{ runner.os }}-${{ steps.setup.outputs.arch }}-${{ env.CACHE_SCHEMA }}-${{ steps.setup.outputs.toolchain-key }}-
 
       - name: Verify semantic local-package graph
+        id: graph
         run: python3 scripts/ci/generate_package_graph.py --check
 
       - name: Resolve application dependencies
@@ -535,6 +594,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Save trusted dependency source cache
+        id: cache-save
         if: >-
           ${{
             success() &&
@@ -553,13 +613,43 @@ jobs:
       - name: Summarize app and UI validation
         if: ${{ always() }}
         env:
+          CACHE_SAVE_OUTCOME: ${{ steps.cache-save.outcome }}
+          CACHE_SIZE_OUTCOME: ${{ steps.cache-size.outcome }}
           CACHE_HIT: ${{ steps.source-cache.outputs.cache-hit || 'disabled-or-miss' }}
+          CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
+          GRAPH_OUTCOME: ${{ steps.graph.outcome }}
+          RESOLVE_OUTCOME: ${{ steps.resolve.outcome }}
+          SETUP_OUTCOME: ${{ steps.setup.outcome }}
+          SIMULATOR_OUTCOME: ${{ steps.simulator.outcome }}
+          SOURCE_CACHE_OUTCOME: ${{ steps.source-cache.outcome }}
         shell: bash
         run: |
           tests="unreported"
           if [[ -f "$RUNNER_TEMP/xcodebuild-ui-tests.log" ]]; then
-            tests="$(grep -Eo 'Executed [0-9]+ tests?' "$RUNNER_TEMP/xcodebuild-ui-tests.log" | tail -1 || true)"
+            tests="$(grep -Eo 'Executed [0-9]+ tests?.*' "$RUNNER_TEMP/xcodebuild-ui-tests.log" | tail -1 || true)"
             [[ -n "$tests" ]] || tests="unreported"
+          fi
+          failure_category=none
+          if [[ "$CHECKOUT_OUTCOME" == failure ]]; then
+            failure_category=checkout
+          elif [[ "$SETUP_OUTCOME" == failure ]]; then
+            failure_category=toolchain-or-setup
+          elif [[ "$SOURCE_CACHE_OUTCOME" == failure ]]; then
+            failure_category=cache-or-infrastructure
+          elif [[ "$GRAPH_OUTCOME" == failure ]]; then
+            failure_category=package-graph
+          elif [[ "$RESOLVE_OUTCOME" == failure ]]; then
+            failure_category=dependency-resolution
+          elif [[ "$SIMULATOR_OUTCOME" == failure ]]; then
+            failure_category=simulator
+          elif [[ "${{ steps.build-for-testing.outcome }}" == failure || "${{ steps.app-build.outcome }}" == failure ]]; then
+            failure_category=app-build-or-source
+          elif [[ "${{ steps.ui-tests.outcome }}" == failure ]]; then
+            failure_category=ui-test
+          elif [[ "$CACHE_SIZE_OUTCOME" == failure ]]; then
+            failure_category=cache-measurement
+          elif [[ "$CACHE_SAVE_OUTCOME" == failure ]]; then
+            failure_category=cache-save-or-infrastructure
           fi
           {
             echo "### App and UI"
@@ -573,8 +663,8 @@ jobs:
             echo "- Build-for-testing duration: ${{ steps.build-for-testing.outputs.duration || 'not-run' }}s"
             echo "- Test-without-building duration: ${{ steps.ui-tests.outputs.duration || 'not-run' }}s"
             echo "- App-only build duration: ${{ steps.app-build.outputs.duration || 'not-run' }}s"
-            echo "- UI test count: ${tests}"
-            echo "- Failure category: ${{ (steps.build-for-testing.outcome == 'failure' || steps.app-build.outcome == 'failure') && 'app-build/source' || (steps.ui-tests.outcome == 'failure' && 'ui-test' || 'none') }}"
+            echo "- UI test summary: ${tests}"
+            echo "- Failure category: ${failure_category}"
             echo "- Failure artifact on failure: app-ui-${{ github.run_id }}-${{ github.run_attempt }}"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -601,6 +691,7 @@ jobs:
 
     steps:
       - name: Verify every planned result
+        id: verify
         env:
           APP_RESULT: ${{ needs.app-and-ui.result }}
           LINT_RESULT: ${{ needs.lint.result }}
@@ -699,6 +790,7 @@ jobs:
           SETUP_SECONDS: ${{ needs.app-and-ui.outputs.setup_seconds }}
           SIMULATOR_SECONDS: ${{ needs.app-and-ui.outputs.simulator_seconds }}
           UI_TEST_SECONDS: ${{ needs.app-and-ui.outputs.ui_test_seconds }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
         shell: bash
         run: |
           python3 - <<'PY'
@@ -754,5 +846,10 @@ jobs:
               )
               summary.write(
                   "- Actual package timings and test counts are in each Packages job summary.\n"
+              )
+              summary.write(
+                  "- Failure category: " +
+                  ("aggregate" if shown("VERIFY_OUTCOME", "missing") == "failure" else "none") +
+                  "\n"
               )
           PY
