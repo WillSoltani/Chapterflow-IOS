@@ -36,7 +36,7 @@ let expectedMatrixRowIDs: Set<String> = [
     "mobile-config",
 ]
 
-let expectedIOSInventoryRevision = "3bc162719cebda98744b05d261242bd5868841c6"
+let expectedIOSInventoryRevision = "0b0f6bc8399b18e0abd75c0a444af9cf6fe98d40"
 
 let expectedProductionAuthorityTests = [
     "chapter.get": "models.chapter-progress.authority-deletion",
@@ -321,10 +321,12 @@ func parseProducerEvidence(
 }
 
 func inferredProducerKind(_ symbol: String) -> String {
-    if symbol.hasPrefix("URLSessionAnalyticsTransport.Path.") {
+    if symbol.hasPrefix("DefaultAnalyticsClient.Path.") {
         return "analytics_path"
     }
-    if symbol.hasSuffix(".directEndpoint") || symbol.hasSuffix(".replayDirectEndpoint") {
+    if symbol == "LiveEntitlementRepository.verifyAppleTransaction"
+        || symbol == "ScenarioRepository.syncPendingUploads"
+    {
         return "direct_endpoint"
     }
     return "endpoint_factory"

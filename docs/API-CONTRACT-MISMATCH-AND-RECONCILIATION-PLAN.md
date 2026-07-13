@@ -10,8 +10,8 @@
 | **Owner decision required** | None for fixture generation. Product/security decisions and deployment verification remain explicit blockers where listed. |
 
 > This document is self-contained. It explains the bug, the root cause, why it went undetected,
-> the full verified scope, the trade-off analysis, and the phased plan. §0–§13 are the original
-> ANALYSIS (kept verbatim); the **Implementation Record** below documents what was actually
+> the full verified scope, the trade-off analysis, and the phased plan. §0–§13 preserve the original
+> analysis as explicitly historical context; the **Implementation Record** below documents what was actually
 > built, what the analysis missed, and what remains.
 
 ## WP-CONTRACT-01 control plane (remediated 2026-07-13)
@@ -43,6 +43,13 @@ producer reassignment, operation-to-row reassignment, duplicate/missing relation
 drift, producer symbol/path drift, stale and dirty sources, false merged provenance, and valid
 branch, normal-merge, and squash-merge cases.
 
+A subsequent fresh review found additional raw-substring and dead-witness risks in the iOS source
+scanner. The final scanner now lexes comments/strings, balances complete function signatures,
+requires terminal factory return expressions, binds direct endpoints through their real function,
+variable, and transport callsites, binds analytics constants through the sent URLRequest, and
+rejects shadowing/reassignment. Its 35 canaries include the reproduced comment, string, default
+closure, dead closure, wrong transport, shadowing, and request-reassignment mutations.
+
 ### Independent iOS inventory authority
 
 iOS is now the sole generator authority for
@@ -53,6 +60,13 @@ sequence is:
 - I1 `3bc162719cebda98744b05d261242bd5868841c6`: add the iOS-owned mapping, generator, and
   relational canaries.
 - I2 `d65d7268c937ac9c571dd7bf165f701f9e8b7549`: pin the generated manifest.
+- I3 `ff13d4b3f0f9495ab2f3fa673d205c216f1d2629`: harden cross-repository provenance checks.
+- I4 `121864285c460fb911dba72ca720a989b97e5d53`: structurally bind source expressions and
+  correct analytics producer identities.
+- I5 `5a349bd27e7f47994c7509a71754bc3c93d7619d`: repin that structural inventory.
+- I6 `0b0f6bc8399b18e0abd75c0a444af9cf6fe98d40`: bind evidence to terminal/live callsites and
+  close shadowing/reassignment paths.
+- I7 `e15db4bd81d5b3604767fbdc672bdf524f1ed182`: repin the final reviewed inventory.
 
 The manifest proves 83 operations, 93 production producers, 29 matrix rows, and 93 relational
 records. Each record has exactly 11 fields: operation ID, method, route template, matrix-row ID,
@@ -62,8 +76,9 @@ inputs: all 576 production Swift source files plus the mapping and generator. Ad
 dirty/staged/untracked changes, or nonmapped source drift therefore fail closed.
 
 The pinned manifest SHA-256 is
-`4c49bd44e01a86b344c8ab28e3c4fb684045384c38c4dd9cf4dd801764580470`; the relational-record
-SHA-256 is `d8f4fcc3af527f1f9b8726f184b565a8d3cd92ab765b53856fa17940c84b8e4c`.
+`f4c0a3ea9cf49ac68f2c0bfd2ec398e6e0800ad6b48ad2c0f6863c344aa2b142`; the relational-record
+SHA-256 is `03103dcada4b7ae3ed2763372dda873aa504a75c18ae4553e91cc71f17007a78`, and the 578-input
+Git-object tree SHA-256 is `2d18ba0c12388cda626da2c2bbaf0319c95d4b2e0a79a79fd4f55c1c2327a234`.
 Backend validation requires one exact registry match per manifest relation and derives matrix
 membership from those records instead of trusting flattened counts or summary sets.
 
@@ -72,12 +87,12 @@ membership from those records instead of trusting flattened counts or summary se
 The backend's checked-in canonical bundle intentionally remains self-reference-safe with
 `sourceRevision: null`, `sourceRevisionPhase: "uncommitted_backend"`, and
 `committedInputTree: null`. The iOS bundle is a generated overlay over backend head
-`01ab81848ce052a6f84709ff7729820609c5a81c`, using trusted backend-main ref
+`af00021422856bd3bd706d337da9a4cb233bd2bb`, using trusted backend-main ref
 `968ff67ecafbed7e8e1d4c7b77badf507cfc5aee` and phase `committed_backend_branch`.
 
 The overlay SHA-256 is
-`120668d6484d3d49d0314a50ebbf764564e0853bd946613f51e3bd715065308a`; its committed input-tree
-SHA-256 is `39deda7363debbc7f4ef044378c16cc25ca50e421d2297dcf186cc4cf1ac3919`.
+`131815cf33eb191ef4e8aff301696248132d56fddeb04e7e282c150cb961329e`; its committed input-tree
+SHA-256 is `c641bf49fba5801ab9f48a6b10f2a0e15a09f0ea6f1d4756f492d0a723926119`.
 Provenance binds 120 present inputs and seven expected-missing route paths to exact Git-object
 bytes, then requires matching worktree bytes. It also requires a full source commit equal to
 `HEAD`, a non-shallow repository, an explicit trusted main ref, the latest contract-changing
