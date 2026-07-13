@@ -150,6 +150,261 @@ class IOSNativeInventoryCanaries(unittest.TestCase):
 
         self.assert_sources_rejected(mutate, "analytics producer symbol.*source path expression")
 
+    def test_string_literal_cannot_hide_analytics_method_drift(self) -> None:
+        path = inventory.ANALYTICS_SOURCE_PATH
+
+        def mutate(candidate) -> None:
+            source = candidate[path].decode("utf-8")
+            old = 'request.httpMethod = "POST"'
+            new = (
+                'request.httpMethod = "GET"\n'
+                '        _ = #"request.httpMethod = "POST""#'
+            )
+            self.assertEqual(source.count(old), 1)
+            candidate[path] = source.replace(old, new).encode("utf-8")
+
+        self.assert_sources_rejected(mutate, "live analytics method assignment")
+
+    def test_dead_closure_cannot_hide_analytics_method_drift(self) -> None:
+        path = inventory.ANALYTICS_SOURCE_PATH
+
+        def mutate(candidate) -> None:
+            source = candidate[path].decode("utf-8")
+            old = 'request.httpMethod = "POST"'
+            new = (
+                "let inventoryWitness = {\n"
+                '            request.httpMethod = "POST"\n'
+                "        }\n"
+                "        _ = inventoryWitness"
+            )
+            self.assertEqual(source.count(old), 1)
+            candidate[path] = source.replace(old, new).encode("utf-8")
+
+        self.assert_sources_rejected(mutate, "not in its expected live scope")
+
+    def test_analytics_path_declaration_must_feed_its_transport_calls(self) -> None:
+        path = inventory.ANALYTICS_SOURCE_PATH
+
+        def mutate(candidate) -> None:
+            source = candidate[path].decode("utf-8")
+            old = "transport.send(path: Path.track"
+            self.assertEqual(source.count(old), 2)
+            candidate[path] = source.replace(
+                old,
+                "transport.send(path: Path.beacon",
+            ).encode("utf-8")
+
+        self.assert_sources_rejected(mutate, "Path.track must feed all flush transport sends")
+
+    def test_analytics_method_witness_must_be_on_the_sent_request(self) -> None:
+        path = inventory.ANALYTICS_SOURCE_PATH
+
+        def mutate(candidate) -> None:
+            source = candidate[path].decode("utf-8")
+            old = "_ = try await session.data(for: request)"
+            new = (
+                "var actualRequest = request\n"
+                '        actualRequest.httpMethod = "GET"\n'
+                "        _ = try await session.data(for: actualRequest)"
+            )
+            self.assertEqual(source.count(old), 1)
+            candidate[path] = source.replace(old, new).encode("utf-8")
+
+        self.assert_sources_rejected(mutate, "analytics URLSession send")
+
+    def test_analytics_path_parameter_cannot_be_shadowed(self) -> None:
+        path = inventory.ANALYTICS_SOURCE_PATH
+
+        def mutate(candidate) -> None:
+            source = candidate[path].decode("utf-8")
+            old = "let url = baseURL.appending(path: path)"
+            new = (
+                'let path = "/book/wrong"\n'
+                "        let url = baseURL.appending(path: path)"
+            )
+            self.assertEqual(source.count(old), 1)
+            candidate[path] = source.replace(old, new).encode("utf-8")
+
+        self.assert_sources_rejected(mutate, "shadowed or rebound request dataflow")
+
+    def test_analytics_path_type_cannot_be_shadowed(self) -> None:
+        path = inventory.ANALYTICS_SOURCE_PATH
+
+        def mutate(candidate) -> None:
+            source = candidate[path].decode("utf-8")
+            old = "public func flush() async {\n        if let diskQueue"
+            new = (
+                "public func flush() async {\n"
+                '        let Path = (track: "/book/wrong", beacon: "/book/wrong")\n'
+                "        if let diskQueue"
+            )
+            self.assertEqual(source.count(old), 1)
+            candidate[path] = source.replace(old, new).encode("utf-8")
+
+        self.assert_sources_rejected(mutate, "must not shadow Path")
+
+    def test_analytics_request_cannot_be_reassigned_after_method_binding(self) -> None:
+        path = inventory.ANALYTICS_SOURCE_PATH
+
+        def mutate(candidate) -> None:
+            source = candidate[path].decode("utf-8")
+            old = 'request.httpMethod = "POST"'
+            new = (
+                'request.httpMethod = "POST"\n'
+                "        request = URLRequest(url: URL(string: \"https://example.invalid\")!)"
+            )
+            self.assertEqual(source.count(old), 1)
+            candidate[path] = source.replace(old, new).encode("utf-8")
+
+        self.assert_sources_rejected(mutate, "must not reassign request")
+
+    def test_default_closure_cannot_replace_endpoint_factory_body(self) -> None:
+        path = "Packages/Networking/Sources/Networking/Endpoint.swift"
+
+        def mutate(candidate) -> None:
+            source = candidate[path].decode("utf-8")
+            old = (
+                "public static func getBooks() -> Endpoint {\n"
+                '        Endpoint(method: .get, path: "/book/books", requiresAuth: false)\n'
+                "    }"
+            )
+            new = (
+                "public static func getBooks(\n"
+                "        _ witness: @escaping () -> Endpoint = {\n"
+                '            Endpoint(method: .get, path: "/book/books", requiresAuth: false)\n'
+                "        }\n"
+                "    ) -> Endpoint {\n"
+                '        Endpoint(method: .post, path: "/book/books/wrong", requiresAuth: false)\n'
+                "    }"
+            )
+            self.assertEqual(source.count(old), 1)
+            candidate[path] = source.replace(old, new).encode("utf-8")
+
+        self.assert_sources_rejected(
+            mutate,
+            "factory parameter list may not shadow Endpoint|Endpoint method argument",
+        )
+
+    def test_dead_body_closure_cannot_replace_returned_endpoint_factory(self) -> None:
+        path = "Packages/Networking/Sources/Networking/Endpoint.swift"
+
+        def mutate(candidate) -> None:
+            source = candidate[path].decode("utf-8")
+            old = (
+                "public static func getBooks() -> Endpoint {\n"
+                '        Endpoint(method: .get, path: "/book/books", requiresAuth: false)\n'
+                "    }"
+            )
+            new = (
+                "public static func getBooks() -> Endpoint {\n"
+                "        let inventoryWitness = {\n"
+                '            Endpoint(method: .get, path: "/book/books", requiresAuth: false)\n'
+                "        }\n"
+                "        _ = inventoryWitness\n"
+                "        return getSearchIndex()\n"
+                "    }"
+            )
+            self.assertEqual(source.count(old), 1)
+            candidate[path] = source.replace(old, new).encode("utf-8")
+
+        self.assert_sources_rejected(mutate, "top-level factory expression")
+
+    def test_dead_closure_cannot_stand_in_for_direct_endpoint_callsite(self) -> None:
+        path = (
+            "Packages/EngagementFeature/Sources/EngagementFeature/Scenarios/"
+            "ScenarioRepository.swift"
+        )
+
+        def mutate(candidate) -> None:
+            source = candidate[path].decode("utf-8")
+            old = (
+                "let endpoint = Endpoint(\n"
+                "                method: .post,\n"
+                '                path: "/book/me/books/\\(ticket.bookId)/chapters/'
+                '\\(ticket.chapterNumber)/scenarios",\n'
+                "                httpBody: bodyData\n"
+                "            )"
+            )
+            new = (
+                "let inventoryWitness: (PendingScenarioUpload, Data) -> Endpoint = "
+                "{ ticket, bodyData in\n"
+                "                Endpoint(\n"
+                "                    method: .post,\n"
+                '                    path: "/book/me/books/\\(ticket.bookId)/chapters/'
+                '\\(ticket.chapterNumber)/scenarios",\n'
+                "                    httpBody: bodyData\n"
+                "                )\n"
+                "            }\n"
+                "            _ = inventoryWitness\n"
+                "            let endpoint = Endpoints.getBooks()"
+            )
+            self.assertEqual(source.count(old), 1)
+            candidate[path] = source.replace(old, new).encode("utf-8")
+
+        self.assert_sources_rejected(mutate, "bind exactly one direct Endpoint")
+
+    def test_direct_endpoint_shadow_before_send_is_rejected(self) -> None:
+        path = (
+            "Packages/EngagementFeature/Sources/EngagementFeature/Scenarios/"
+            "ScenarioRepository.swift"
+        )
+
+        def mutate(candidate) -> None:
+            source = candidate[path].decode("utf-8")
+            old = "do {\n                let resp: ScenarioResponse = try await apiClient.send(endpoint)"
+            new = (
+                "do {\n"
+                "                let endpoint = Endpoints.getBooks()\n"
+                "                let resp: ScenarioResponse = try await apiClient.send(endpoint)"
+            )
+            self.assertEqual(source.count(old), 1)
+            candidate[path] = source.replace(old, new).encode("utf-8")
+
+        self.assert_sources_rejected(mutate, "shadow or rebind endpoint")
+
+    def test_direct_endpoint_wrong_transport_is_rejected(self) -> None:
+        path = (
+            "Packages/EngagementFeature/Sources/EngagementFeature/Scenarios/"
+            "ScenarioRepository.swift"
+        )
+
+        def mutate(candidate) -> None:
+            source = candidate[path].decode("utf-8")
+            old = (
+                "            do {\n"
+                "                let resp: ScenarioResponse = try await apiClient.send(endpoint)"
+            )
+            new = (
+                "            do {\n"
+                "                let otherClient = apiClient\n"
+                "                let resp: ScenarioResponse = try await otherClient.send(endpoint)"
+            )
+            self.assertEqual(source.count(old), 1)
+            candidate[path] = source.replace(old, new).encode("utf-8")
+
+        self.assert_sources_rejected(mutate, "send the bound endpoint through apiClient")
+
+    def test_dead_closure_cannot_replace_direct_endpoint_send(self) -> None:
+        path = (
+            "Packages/PaywallFeature/Sources/PaywallFeature/"
+            "LiveEntitlementRepository.swift"
+        )
+
+        def mutate(candidate) -> None:
+            source = candidate[path].decode("utf-8")
+            old = "return try await client.send(endpoint)"
+            new = (
+                "let inventoryWitness = { [client] in\n"
+                "            try await client.send(endpoint)\n"
+                "        }\n"
+                "        _ = inventoryWitness\n"
+                "        return try await getEntitlements()"
+            )
+            self.assertEqual(source.count(old), 1)
+            candidate[path] = source.replace(old, new).encode("utf-8")
+
+        self.assert_sources_rejected(mutate, "transport send is not in its expected live scope")
+
     def test_matrix_row_move_changes_the_canonical_relation(self) -> None:
         baseline = inventory.validate_inventory_source(self.mapping, self.sources)
         candidate = copy.deepcopy(self.mapping)

@@ -78,16 +78,45 @@ RECORD_FIELDS = (
     "sourcePathExpression",
 )
 
-DIRECT_PRODUCER_SYMBOLS = {
-    "Packages/PaywallFeature/Sources/PaywallFeature/LiveEntitlementRepository.swift":
-        "LiveEntitlementRepository.directEndpoint",
-    "Packages/EngagementFeature/Sources/EngagementFeature/Scenarios/ScenarioRepository.swift":
-        "ScenarioRepository.replayDirectEndpoint",
+DIRECT_PRODUCER_BINDINGS = {
+    "Packages/PaywallFeature/Sources/PaywallFeature/LiveEntitlementRepository.swift": {
+        "producerSymbol": "LiveEntitlementRepository.verifyAppleTransaction",
+        "functionSymbol": "verifyAppleTransaction",
+        "clientSymbol": "client",
+        "initializerBraceDepth": 1,
+        "sendBraceDepth": 1,
+        "initializerScopePrefix": None,
+        "sendScopePrefix": None,
+    },
+    "Packages/EngagementFeature/Sources/EngagementFeature/Scenarios/ScenarioRepository.swift": {
+        "producerSymbol": "ScenarioRepository.syncPendingUploads",
+        "functionSymbol": "syncPendingUploads",
+        "clientSymbol": "apiClient",
+        "initializerBraceDepth": 2,
+        "sendBraceDepth": 3,
+        "initializerScopePrefix": "for ticket in pending",
+        "sendScopePrefix": "do",
+    },
 }
 
 ANALYTICS_SOURCE_PATH = (
     "Packages/CoreKit/Sources/CoreKit/Analytics/AnalyticsClient.swift"
 )
+
+ANALYTICS_PRODUCER_BINDINGS = {
+    "track": {
+        "functionSymbol": "flush",
+        "sendCount": 2,
+        "sendBraceDepth": 3,
+        "sendScopePrefix": "do",
+    },
+    "beacon": {
+        "functionSymbol": "deliverBeacon",
+        "sendCount": 1,
+        "sendBraceDepth": 2,
+        "sendScopePrefix": "do",
+    },
+}
 
 
 class InventoryError(ValueError):
@@ -332,15 +361,15 @@ def discover_producers(sources: Mapping[str, bytes]) -> set[tuple[str, str, str]
 
         direct_matches = list(direct_pattern.finditer(code))
         if direct_matches:
-            producer_symbol = DIRECT_PRODUCER_SYMBOLS.get(path)
-            if producer_symbol is None:
+            binding = DIRECT_PRODUCER_BINDINGS.get(path)
+            if binding is None:
                 line = source.count("\n", 0, direct_matches[0].start()) + 1
                 raise InventoryError(f"unclassified direct Endpoint producer: {path}:{line}")
             if len(direct_matches) != 1:
                 raise InventoryError(
                     f"direct Endpoint producer must be unique in {path}; found {len(direct_matches)}"
                 )
-            discovered.add(("direct_endpoint", producer_symbol, path))
+            discovered.add(("direct_endpoint", binding["producerSymbol"], path))
 
     analytics_raw = sources.get(ANALYTICS_SOURCE_PATH)
     if analytics_raw is None:
@@ -360,13 +389,13 @@ def discover_producers(sources: Mapping[str, bytes]) -> set[tuple[str, str, str]
     return discovered
 
 
-def _extract_delimited_region(
+def _closing_delimiter_index(
     source: str,
     opening_index: int,
     opening_character: str,
     closing_character: str,
     label: str,
-) -> str:
+) -> int:
     code = _swift_code_projection(source)
     if opening_index >= len(code) or code[opening_index] != opening_character:
         raise InventoryError(f"could not find opening delimiter for {label}")
@@ -378,9 +407,26 @@ def _extract_delimited_region(
         elif code[index] == closing_character:
             depth -= 1
             if depth == 0:
-                return source[opening_index:index + 1]
+                return index
         index += 1
     raise InventoryError(f"could not find closing delimiter for {label}")
+
+
+def _extract_delimited_region(
+    source: str,
+    opening_index: int,
+    opening_character: str,
+    closing_character: str,
+    label: str,
+) -> str:
+    closing_index = _closing_delimiter_index(
+        source,
+        opening_index,
+        opening_character,
+        closing_character,
+        label,
+    )
+    return source[opening_index:closing_index + 1]
 
 
 def _extract_braced_region(source: str, opening_brace: int, label: str) -> str:
@@ -412,27 +458,112 @@ def _factory_region(source: str, producer_symbol: str, path: str) -> str:
             f"producer symbol {producer_symbol} must resolve to one factory in {path}; "
             f"found {len(matches)}"
         )
-    opening_brace = code.find("{", matches[0].end())
+    parameters = _function_parameters_from_declaration(
+        source,
+        matches[0],
+        f"{producer_symbol}@{path}",
+    )
+    if re.search(r"\bEndpoint\b", _swift_code_projection(parameters)):
+        raise InventoryError(
+            f"{producer_symbol}@{path} factory parameter list may not shadow Endpoint"
+        )
+    region = _function_body_region(
+        source,
+        matches[0],
+        f"{producer_symbol}@{path}",
+    )
+    code = _swift_code_projection(region)
+    if re.search(r"\b(?:let|var|func|typealias|struct|class|enum)\s+Endpoint\b", code):
+        raise InventoryError(f"{producer_symbol}@{path} factory body shadows Endpoint")
+    return region
+
+
+def _function_body_region(source: str, declaration: re.Match[str], label: str) -> str:
+    code = _swift_code_projection(source)
+    opening_parenthesis = code.find("(", declaration.start(), declaration.end())
+    if opening_parenthesis < 0:
+        raise InventoryError(f"{label} has no parameter list")
+    closing_parenthesis = _closing_delimiter_index(
+        source,
+        opening_parenthesis,
+        "(",
+        ")",
+        f"parameter list for {label}",
+    )
+    opening_brace = code.find("{", closing_parenthesis + 1)
     if opening_brace < 0:
-        raise InventoryError(f"producer symbol {producer_symbol} has no function body in {path}")
-    return _extract_braced_region(source, opening_brace, f"{producer_symbol}@{path}")
+        raise InventoryError(f"{label} has no function body")
+    return _extract_braced_region(source, opening_brace, label)
 
 
-def _endpoint_initializer_region(source: str, label: str) -> str:
+def _function_declaration(
+    source: str,
+    function_symbol: str,
+    label: str,
+) -> re.Match[str]:
+    pattern = re.compile(
+        rf"^\s*(?:public\s+)?func\s+{re.escape(function_symbol)}"
+        r"(?:<[^>{}]*>)?\s*\(",
+        re.MULTILINE,
+    )
+    code = _swift_code_projection(source)
+    matches = list(pattern.finditer(code))
+    if len(matches) != 1:
+        raise InventoryError(f"{label} must resolve to one function; found {len(matches)}")
+    return matches[0]
+
+
+def _function_region(source: str, function_symbol: str, label: str) -> str:
+    declaration = _function_declaration(source, function_symbol, label)
+    return _function_body_region(source, declaration, label)
+
+
+def _function_parameters_region(source: str, function_symbol: str, label: str) -> str:
+    declaration = _function_declaration(source, function_symbol, label)
+    return _function_parameters_from_declaration(source, declaration, label)
+
+
+def _function_parameters_from_declaration(
+    source: str,
+    declaration: re.Match[str],
+    label: str,
+) -> str:
+    code = _swift_code_projection(source)
+    opening_parenthesis = code.find("(", declaration.start(), declaration.end())
+    return _extract_delimited_region(
+        source,
+        opening_parenthesis,
+        "(",
+        ")",
+        f"parameter list for {label}",
+    )
+
+
+def _factory_endpoint_initializer_region(source: str, label: str) -> str:
     code = _swift_code_projection(source)
     matches = list(re.finditer(r"\bEndpoint\s*\(", code))
     if len(matches) != 1:
         raise InventoryError(
             f"{label} must contain exactly one Endpoint initializer; found {len(matches)}"
         )
-    opening_parenthesis = code.find("(", matches[0].start())
-    return _extract_delimited_region(
+    endpoint_token = matches[0].start()
+    if _brace_depth_at(source, endpoint_token) != 1:
+        raise InventoryError(f"{label} Endpoint initializer is not a top-level factory expression")
+    line_start = code.rfind("\n", 0, endpoint_token) + 1
+    prefix = code[line_start:endpoint_token].strip()
+    if prefix not in {"", "try", "return", "return try"}:
+        raise InventoryError(f"{label} Endpoint initializer is not the returned factory expression")
+    opening_parenthesis = code.find("(", endpoint_token)
+    closing_parenthesis = _closing_delimiter_index(
         source,
         opening_parenthesis,
         "(",
         ")",
         f"Endpoint initializer in {label}",
     )
+    if code[closing_parenthesis + 1:-1].strip():
+        raise InventoryError(f"{label} Endpoint initializer is not the terminal factory expression")
+    return source[opening_parenthesis:closing_parenthesis + 1]
 
 
 def _endpoint_arguments(initializer: str, label: str) -> dict[str, str]:
@@ -468,12 +599,16 @@ def _endpoint_arguments(initializer: str, label: str) -> dict[str, str]:
     return arguments
 
 
-def _analytics_path_declarations(source: str) -> dict[str, str]:
-    client_region = _declaration_region(
+def _analytics_client_region(source: str) -> str:
+    return _declaration_region(
         source,
         re.compile(r"^\s*public\s+actor\s+DefaultAnalyticsClient\b", re.MULTILINE),
         "DefaultAnalyticsClient",
     )
+
+
+def _analytics_path_declarations(source: str) -> dict[str, str]:
+    client_region = _analytics_client_region(source)
     path_region = _declaration_region(
         client_region,
         re.compile(r"^\s*enum\s+Path\b", re.MULTILINE),
@@ -498,10 +633,283 @@ def _analytics_method_region(source: str) -> str:
         re.compile(r"^\s*public\s+struct\s+URLSessionAnalyticsTransport\b", re.MULTILINE),
         "URLSessionAnalyticsTransport",
     )
-    return _declaration_region(
+    return _function_region(
         transport_region,
-        re.compile(r"^\s*public\s+func\s+send\s*\(", re.MULTILINE),
+        "send",
         "URLSessionAnalyticsTransport.send",
+    )
+
+
+def _analytics_method_parameters(source: str) -> str:
+    transport_region = _declaration_region(
+        source,
+        re.compile(r"^\s*public\s+struct\s+URLSessionAnalyticsTransport\b", re.MULTILINE),
+        "URLSessionAnalyticsTransport",
+    )
+    return _function_parameters_region(
+        transport_region,
+        "send",
+        "URLSessionAnalyticsTransport.send",
+    )
+
+
+def _validate_analytics_producer_sends(source: str, symbol: str) -> None:
+    binding = ANALYTICS_PRODUCER_BINDINGS.get(symbol)
+    if binding is None:
+        raise InventoryError(f"unclassified analytics producer symbol: {symbol}")
+    function_region = _function_region(
+        _analytics_client_region(source),
+        binding["functionSymbol"],
+        f"DefaultAnalyticsClient.{binding['functionSymbol']}",
+    )
+    parameters = _swift_code_projection(
+        _function_parameters_region(
+            _analytics_client_region(source),
+            binding["functionSymbol"],
+            f"DefaultAnalyticsClient.{binding['functionSymbol']}",
+        )
+    )
+    if re.search(r"\b(?:transport|Path)\b", parameters):
+        raise InventoryError(
+            f"DefaultAnalyticsClient.{binding['functionSymbol']} has a shadowing parameter"
+        )
+    code = _swift_code_projection(function_region)
+    if re.search(r"\b(?:let|var)\s+transport\b", code):
+        raise InventoryError(
+            f"DefaultAnalyticsClient.{binding['functionSymbol']} must not shadow transport"
+        )
+    if re.search(r"\b(?:let|var|func|enum|struct|class|typealias)\s+Path\b", code):
+        raise InventoryError(
+            f"DefaultAnalyticsClient.{binding['functionSymbol']} must not shadow Path"
+        )
+    all_sends = list(re.finditer(r"\btransport\.send\s*\(", code))
+    expected_sends = list(
+        re.finditer(
+            rf"\btransport\.send\s*\(\s*path:\s*Path\.{re.escape(symbol)}\s*,",
+            code,
+        )
+    )
+    expected_count = binding["sendCount"]
+    if len(all_sends) != expected_count or len(expected_sends) != expected_count:
+        raise InventoryError(
+            f"DefaultAnalyticsClient.Path.{symbol} must feed all "
+            f"{binding['functionSymbol']} transport sends"
+        )
+    for match in expected_sends:
+        if _brace_depth_at(function_region, match.start()) != binding["sendBraceDepth"]:
+            raise InventoryError(
+                f"DefaultAnalyticsClient.Path.{symbol} transport send is not in its expected live scope"
+            )
+        if _enclosing_brace_prefix(function_region, match.start()) != binding["sendScopePrefix"]:
+            raise InventoryError(
+                f"DefaultAnalyticsClient.Path.{symbol} transport send has the wrong enclosing scope"
+            )
+
+
+def _single_live_statement_position(
+    region: str,
+    pattern: re.Pattern[str],
+    label: str,
+    *,
+    brace_depth: int,
+) -> int:
+    code = _swift_code_projection(region)
+    matches = list(pattern.finditer(code))
+    if len(matches) != 1:
+        raise InventoryError(f"{label} must occur exactly once; found {len(matches)}")
+    position = matches[0].start()
+    if _brace_depth_at(region, position) != brace_depth:
+        raise InventoryError(f"{label} is not in its expected live scope")
+    return position
+
+
+def _validate_analytics_transport_dataflow(
+    region: str,
+    parameters: str,
+    method_position: int,
+) -> None:
+    parameter_code = _swift_code_projection(parameters)
+    if len(re.findall(r"\bpath\b", parameter_code)) != 1:
+        raise InventoryError("analytics transport must have one path parameter")
+    if re.search(r"\b(?:baseURL|session|url|request)\b", parameter_code):
+        raise InventoryError("analytics transport has a shadowing request parameter")
+    url_position = _single_live_statement_position(
+        region,
+        re.compile(
+            r"^\s*let\s+url\s*=\s*baseURL\.appending\s*\(\s*path:\s*path\s*\)\s*$",
+            re.MULTILINE,
+        ),
+        "analytics URL binding",
+        brace_depth=1,
+    )
+    request_position = _single_live_statement_position(
+        region,
+        re.compile(
+            r"^\s*var\s+request\s*=\s*URLRequest\s*\(\s*url:\s*url\s*\)\s*$",
+            re.MULTILINE,
+        ),
+        "analytics URLRequest binding",
+        brace_depth=1,
+    )
+    send_position = _single_live_statement_position(
+        region,
+        re.compile(
+            r"^\s*_\s*=\s*try\s+await\s+session\.data\s*\(\s*for:\s*request\s*\)\s*$",
+            re.MULTILINE,
+        ),
+        "analytics URLSession send",
+        brace_depth=1,
+    )
+    code = _swift_code_projection(region)
+    binding_counts = {
+        symbol: len(re.findall(rf"\b(?:let|var)\s+{symbol}\b", code))
+        for symbol in ("path", "baseURL", "session", "url", "request")
+    }
+    if binding_counts != {"path": 0, "baseURL": 0, "session": 0, "url": 1, "request": 1}:
+        raise InventoryError(
+            f"analytics transport has shadowed or rebound request dataflow: {binding_counts}"
+        )
+    if len(re.findall(r"\bsession\.data\s*\(", code)) != 1:
+        raise InventoryError("analytics transport must contain exactly one URLSession send")
+    if len(re.findall(r"\brequest\s*=", code)) != 1:
+        raise InventoryError("analytics transport must not reassign request")
+    if re.search(r"\brequest\.url\s*=", code):
+        raise InventoryError("analytics transport must not replace the request URL")
+    if not url_position < request_position < method_position < send_position:
+        raise InventoryError("analytics transport request dataflow is out of order")
+
+
+def _live_assignment(
+    region: str,
+    lhs: str,
+    label: str,
+    *,
+    brace_depth: int,
+) -> tuple[str, int]:
+    code = _swift_code_projection(region)
+    pattern = re.compile(rf"^\s*{re.escape(lhs)}\s*=", re.MULTILINE)
+    matches = list(pattern.finditer(code))
+    if len(matches) != 1:
+        raise InventoryError(f"{label} must contain exactly one live assignment; found {len(matches)}")
+    if _brace_depth_at(region, matches[0].start()) != brace_depth:
+        raise InventoryError(f"{label} is not in its expected live scope")
+    line_end = region.find("\n", matches[0].start())
+    if line_end < 0:
+        line_end = len(region)
+    expression = _swift_without_comments(region[matches[0].start():line_end]).strip()
+    return expression, matches[0].start()
+
+
+def _brace_depth_at(source: str, position: int) -> int:
+    code = _swift_code_projection(source)
+    return code[:position].count("{") - code[:position].count("}")
+
+
+def _enclosing_brace_prefix(source: str, position: int) -> str | None:
+    code = _swift_code_projection(source)
+    stack: list[int] = []
+    for index, character in enumerate(code[:position]):
+        if character == "{":
+            stack.append(index)
+        elif character == "}":
+            if not stack:
+                raise InventoryError("unbalanced Swift scope before contract evidence")
+            stack.pop()
+    if not stack:
+        return None
+    opening_brace = stack[-1]
+    line_start = code.rfind("\n", 0, opening_brace) + 1
+    return code[line_start:opening_brace].strip()
+
+
+def _direct_endpoint_initializer_region(
+    source: str,
+    producer_symbol: str,
+    producer_source_path: str,
+) -> str:
+    binding = DIRECT_PRODUCER_BINDINGS.get(producer_source_path)
+    if binding is None or binding["producerSymbol"] != producer_symbol:
+        raise InventoryError(
+            f"{producer_symbol}@{producer_source_path} has no direct producer binding"
+        )
+    function_region = _function_region(
+        source,
+        binding["functionSymbol"],
+        producer_symbol,
+    )
+    parameters = _swift_code_projection(
+        _function_parameters_region(
+            source,
+            binding["functionSymbol"],
+            producer_symbol,
+        )
+    )
+    if re.search(rf"\b{re.escape(binding['clientSymbol'])}\b", parameters):
+        raise InventoryError(
+            f"{producer_symbol} has a shadowing transport parameter"
+        )
+    if re.search(r"\bEndpoint\b", parameters):
+        raise InventoryError(f"{producer_symbol} has a shadowing Endpoint parameter")
+    code = _swift_code_projection(function_region)
+    if re.search(r"\b(?:let|var|func|typealias|struct|class|enum)\s+Endpoint\b", code):
+        raise InventoryError(f"{producer_symbol} shadows Endpoint")
+    if re.search(rf"\b(?:let|var)\s+{re.escape(binding['clientSymbol'])}\b", code):
+        raise InventoryError(
+            f"{producer_symbol} must not shadow transport {binding['clientSymbol']}"
+        )
+    endpoint_bindings = list(
+        re.finditer(r"\blet\s+endpoint\s*=\s*(?:try\s+)?Endpoint\s*\(", code)
+    )
+    if len(endpoint_bindings) != 1:
+        raise InventoryError(
+            f"{producer_symbol} must bind exactly one direct Endpoint to endpoint; "
+            f"found {len(endpoint_bindings)}"
+        )
+    endpoint_token = code.find("Endpoint", endpoint_bindings[0].start())
+    if _brace_depth_at(function_region, endpoint_token) != binding["initializerBraceDepth"]:
+        raise InventoryError(f"{producer_symbol} direct Endpoint is not in its expected live scope")
+    initializer_scope_prefix = binding["initializerScopePrefix"]
+    if (
+        initializer_scope_prefix is not None
+        and _enclosing_brace_prefix(function_region, endpoint_token) != initializer_scope_prefix
+    ):
+        raise InventoryError(f"{producer_symbol} direct Endpoint has the wrong enclosing scope")
+
+    endpoint_declarations = list(re.finditer(r"\b(?:let|var)\s+endpoint\b", code))
+    if len(endpoint_declarations) != 1:
+        raise InventoryError(f"{producer_symbol} must not shadow or rebind endpoint")
+    send_calls = list(re.finditer(r"\.[A-Za-z_]*send\s*\(", code))
+    if len(send_calls) != 1:
+        raise InventoryError(
+            f"{producer_symbol} must contain exactly one transport send; found {len(send_calls)}"
+        )
+    expected_send = re.compile(
+        rf"\b{re.escape(binding['clientSymbol'])}\.send\s*\(\s*endpoint\s*\)"
+    )
+    expected_send_matches = list(expected_send.finditer(code))
+    if len(expected_send_matches) != 1:
+        raise InventoryError(
+            f"{producer_symbol} must send the bound endpoint through {binding['clientSymbol']}"
+        )
+    send_position = expected_send_matches[0].start()
+    if _brace_depth_at(function_region, send_position) != binding["sendBraceDepth"]:
+        raise InventoryError(f"{producer_symbol} transport send is not in its expected live scope")
+    send_scope_prefix = binding["sendScopePrefix"]
+    if (
+        send_scope_prefix is not None
+        and _enclosing_brace_prefix(function_region, send_position) != send_scope_prefix
+    ):
+        raise InventoryError(f"{producer_symbol} transport send has the wrong enclosing scope")
+    if send_position <= endpoint_bindings[0].start():
+        raise InventoryError(f"{producer_symbol} sends endpoint before binding it")
+
+    opening_parenthesis = code.find("(", endpoint_token)
+    return _extract_delimited_region(
+        function_region,
+        opening_parenthesis,
+        "(",
+        ")",
+        f"direct Endpoint initializer in {producer_symbol}",
     )
 
 
@@ -657,22 +1065,37 @@ def validate_inventory_source(mapping: Mapping, sources: Mapping[str, bytes]) ->
                 raise InventoryError(
                     f"{operation_id} analytics producer symbol does not bind to source path expression"
                 )
-            method_region = _swift_without_comments(_analytics_method_region(source))
-            if method_region.count(source_method_expression) != 1:
+            _validate_analytics_producer_sends(source, symbol_match.group(1))
+            method_region = _analytics_method_region(source)
+            method_assignment, method_position = _live_assignment(
+                method_region,
+                "request.httpMethod",
+                "URLSessionAnalyticsTransport.send HTTP method",
+                brace_depth=1,
+            )
+            if method_assignment != source_method_expression:
                 raise InventoryError(
-                    f"{operation_id} source method expression must occur exactly once in "
-                    "URLSessionAnalyticsTransport.send"
+                    f"{operation_id} live analytics method assignment does not match "
+                    "source method expression"
                 )
+            _validate_analytics_transport_dataflow(
+                method_region,
+                _analytics_method_parameters(source),
+                method_position,
+            )
         else:
-            producer_region = (
-                _factory_region(source, producer_symbol, producer_source_path)
-                if producer_kind == "endpoint_factory"
-                else source
-            )
-            initializer = _endpoint_initializer_region(
-                producer_region,
-                f"{producer_symbol}@{producer_source_path}",
-            )
+            if producer_kind == "endpoint_factory":
+                producer_region = _factory_region(source, producer_symbol, producer_source_path)
+                initializer = _factory_endpoint_initializer_region(
+                    producer_region,
+                    f"{producer_symbol}@{producer_source_path}",
+                )
+            else:
+                initializer = _direct_endpoint_initializer_region(
+                    source,
+                    producer_symbol,
+                    producer_source_path,
+                )
             arguments = _endpoint_arguments(
                 initializer,
                 f"{producer_symbol}@{producer_source_path}",
