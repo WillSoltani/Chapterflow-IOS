@@ -2,7 +2,7 @@
   "schemaVersion": "chapterflow-ios-native-inventory-v2",
   "iosRepository": "WillSoltani/Chapterflow-IOS",
   "iosBaseRevision": "92a5c351a42771f546b3d0e575b3b37a8cbfb588",
-  "iosSourceRevision": "0b0f6bc8399b18e0abd75c0a444af9cf6fe98d40",
+  "iosSourceRevision": "8fec3a3a2ae21af87a799334949491fd90d9af72",
   "iosSourceRevisionPhase": "committed_contract_branch",
   "canonicalization": "UTF-8 records; fixed field order; TAB-separated fields; null matrix row is empty; lexicographically sorted lines joined with LF and a terminal LF",
   "operationKeyCount": 83,
@@ -13,7 +13,7 @@
   "matrixRowCount": 29,
   "relationalRecordCount": 93,
   "relationalRecordSha256": "03103dcada4b7ae3ed2763372dda873aa504a75c18ae4553e91cc71f17007a78",
-  "sourceInputTreeSha256": "2d18ba0c12388cda626da2c2bbaf0319c95d4b2e0a79a79fd4f55c1c2327a234",
+  "sourceInputTreeSha256": "9f1b7285c945cee0f457535066fd7be664b7d28973ffb71b13ac67889c97377e",
   "sourceInputs": [
     {
       "path": "Packages/AIFeature/Sources/AIFeature/AIFeature.swift",
@@ -225,7 +225,7 @@
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/AppModel.swift",
-      "sha256": "ce85247d52f864a52c92cd9be199c23219beac335e7a67f1587b75ca8eddee2f"
+      "sha256": "12a2fe8f7933c83d14e382a5b53db2f01b7a241b1cb69b2fb93e20b141471f9b"
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/AppRootView+Banners.swift",
@@ -241,15 +241,19 @@
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/AppRootView.swift",
-      "sha256": "ef203f07e45b7e36ad5ce3fde8af82146236cf7b105bf151d55f0dc326e6f460"
+      "sha256": "fe263d53467ddc5f4a8ceb73d8c4aa5260632a05ac8c7583af10a11db7840405"
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/AppTab.swift",
       "sha256": "e4d36f695cccd06d6ee894cddc8ea10882cb9dbc082aeba46638ae872cafbda7"
     },
     {
+      "path": "Packages/AppFeature/Sources/AppFeature/ConfiguredAppRootView.swift",
+      "sha256": "683c0480be84382a5941994551aff47d21d7016a285c2d70a2b8be15e5882027"
+    },
+    {
       "path": "Packages/AppFeature/Sources/AppFeature/DebugMenuView.swift",
-      "sha256": "f4a99a83468b7ac23f92d8298110f650fa1f89e0a8104a598bed5f307d825985"
+      "sha256": "c2e6a5415d4c6fe230c5d2bb0208587a9da3d833483a0db7868c256a35c32bb3"
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/GuestBrowse/AuthGateIntent.swift",
@@ -413,7 +417,7 @@
     },
     {
       "path": "Packages/CoreKit/Sources/CoreKit/AppConfig.swift",
-      "sha256": "5c0d3edc2ef608143da311a07fc54be5df3f6e14da8f009af4253a87a58c3d4b"
+      "sha256": "84626fbff364f2be7884098f8b4db3a93f902bc3cacd6c02d987d0d525fbb2db"
     },
     {
       "path": "Packages/CoreKit/Sources/CoreKit/AppError.swift",
@@ -426,6 +430,22 @@
     {
       "path": "Packages/CoreKit/Sources/CoreKit/Config/AppConfigEnvironment.swift",
       "sha256": "7c9706a084c63194d24d02c5141c074f38c4aea5e3eea75abca12250b2045b66"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Config/AppConfigOverlay.swift",
+      "sha256": "2cc0938d75fb44080af782c24df0ba0c675e6c4f6ad2c80459570afd8f028cac"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Config/AppConfigValidation.swift",
+      "sha256": "820f26b10b3dc6ac0f20adea37a7e194c0bd0b83ffe58d736b8bcb8f4e7f1e26"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Config/AppConfigurationTypes.swift",
+      "sha256": "13c930cef864d98be8b432a728a767123926793397e7c76f0dc3338a765a4866"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Config/ConfigurationValueInspection.swift",
+      "sha256": "02e8987a73a2379dc393b858d95d39814bbb896f1da6d28a42356a53e80c3a99"
     },
     {
       "path": "Packages/CoreKit/Sources/CoreKit/Config/FeatureFlags.swift",
@@ -458,6 +478,10 @@
     {
       "path": "Packages/CoreKit/Sources/CoreKit/Observability/APIClientObserver.swift",
       "sha256": "b95652b88377d94b602f9a1f73febab83027a783f12d90ba216c161063fbe301"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Observability/AppConfigurationDiagnostics.swift",
+      "sha256": "a86fdd524e7178b590ec777eb1cb1a5e7f975a3d57de0dfccfa44efcef4474c5"
     },
     {
       "path": "Packages/CoreKit/Sources/CoreKit/Reachability/ReachabilityService.swift",
@@ -2069,7 +2093,7 @@
     },
     {
       "path": "Packages/SettingsFeature/Sources/SettingsFeature/SettingsView.swift",
-      "sha256": "be8615681355fe46b71c99cc4a215b5da78f49b341ae13860e9c4ac00293cfcb"
+      "sha256": "e9512c232f2fa99f5fe22a77a39908ff4ae9825d14656ddd3ac8255c4f1635b2"
     },
     {
       "path": "Packages/SettingsFeature/Sources/SettingsFeature/WhatsNew/WhatsNewContentProvider.swift",
@@ -2325,7 +2349,7 @@
     },
     {
       "path": "scripts/contracts/generate_ios_native_inventory.py",
-      "sha256": "a01b2dd4e848a3ecb61248995529fd0ce0ab4338b01893999604d020f8c90e9f"
+      "sha256": "5cc53394683d272ed1df38e842dff65933c2a504ae8a17f8b57cdc19d2c6c8d7"
     }
   ],
   "records": [
