@@ -50,6 +50,15 @@ variable, and transport callsites, binds analytics constants through the sent UR
 rejects shadowing/reassignment. Its 35 canaries include the reproduced comment, string, default
 closure, dead closure, wrong transport, shadowing, and request-reassignment mutations.
 
+A final cross-repository review then reproduced the same raw-text witness class in the backend
+route-method fence: a comment or string containing an old exported method could satisfy the fence
+after the executable handler changed. Backend commits
+`7d3de18d34f34ef95aa48a767cc4bb4184a19867` and
+`b34efa4a04478c02af55976c69cab7ca84c9f3a5` replace that regular expression with a fail-closed
+TypeScript AST check for a runnable, top-level, named exported function. Committed canaries cover
+line/block comments, string/template literals, real method drift, declaration-only functions,
+default exports, and the valid named-export case.
+
 ### Independent iOS inventory authority
 
 iOS is now the sole generator authority for
@@ -67,6 +76,14 @@ sequence is:
 - I6 `0b0f6bc8399b18e0abd75c0a444af9cf6fe98d40`: bind evidence to terminal/live callsites and
   close shadowing/reassignment paths.
 - I7 `e15db4bd81d5b3604767fbdc672bdf524f1ed182`: repin the final reviewed inventory.
+- I8 `93fa4e7950d0fde26b166575cd2bf2d0480c468d`: pin the reviewed backend overlay and validator
+  output without changing the iOS-owned inventory provenance established by I6/I7.
+- I9 `c8cc60b6cc8e287234c9330629a5489d6f797456`: apply the SwiftLint-only formatting correction in
+  the inventory canary suite.
+- I10 `2ee007fb65a046d4fe88af64b07ffb4fcb63e18b`: repin the overlay after backend method-fence
+  hardening. The following documentation-only commit records I10 and does not change either
+  generated artifact; its SHA is reported in the draft PR because a commit cannot embed its own
+  final object ID.
 
 The manifest proves 83 operations, 93 production producers, 29 matrix rows, and 93 relational
 records. Each record has exactly 11 fields: operation ID, method, route template, matrix-row ID,
@@ -87,12 +104,12 @@ membership from those records instead of trusting flattened counts or summary se
 The backend's checked-in canonical bundle intentionally remains self-reference-safe with
 `sourceRevision: null`, `sourceRevisionPhase: "uncommitted_backend"`, and
 `committedInputTree: null`. The iOS bundle is a generated overlay over backend head
-`af00021422856bd3bd706d337da9a4cb233bd2bb`, using trusted backend-main ref
+`b34efa4a04478c02af55976c69cab7ca84c9f3a5`, using trusted backend-main ref
 `968ff67ecafbed7e8e1d4c7b77badf507cfc5aee` and phase `committed_backend_branch`.
 
 The overlay SHA-256 is
-`131815cf33eb191ef4e8aff301696248132d56fddeb04e7e282c150cb961329e`; its committed input-tree
-SHA-256 is `c641bf49fba5801ab9f48a6b10f2a0e15a09f0ea6f1d4756f492d0a723926119`.
+`03bfcf06702394fd074c5ea68802c92cba33e078e269e54ce8d54d9d386f3d24`; its committed input-tree
+SHA-256 is `6d87076a5b7651d9b9fc7561d791ce8f920961559486ec077dbc2ca2c6b06e59`.
 Provenance binds 120 present inputs and seven expected-missing route paths to exact Git-object
 bytes, then requires matching worktree bytes. It also requires a full source commit equal to
 `HEAD`, a non-shallow repository, an explicit trusted main ref, the latest contract-changing
@@ -106,9 +123,20 @@ normal and squash histories through exact ancestry/blob-history checks.
 
 `account-delete.post` and `export.get` now use the closed class `recent_auth_user`: a Cognito
 `id_token`, `requireUser`, and `requireRecentAuth` are required, while the active-account guard is
-intentionally bypassed. The fenced evidence is the two route files, `app/app/api/_lib/auth.ts`, and
-`app/app/api/book/_lib/account-guard.ts`; account deletion still requires `{confirm:"DELETE"}` and
-remains an iOS-owned request mismatch. No runtime route or account behavior changed.
+intentionally bypassed. Exact source evidence at backend revision
+`b34efa4a04478c02af55976c69cab7ca84c9f3a5` is:
+
+- `app/app/api/book/me/account/delete/route.ts:31-40` — `POST` calls `requireUser` and then
+  `requireRecentAuth`; lines 42-55 enforce the `{confirm:"DELETE"}` body.
+- `app/app/api/book/me/export/route.ts:337-340` — `GET` calls `requireUser` and then
+  `requireRecentAuth`.
+- `app/app/api/_lib/auth.ts:131-199` — Cognito `id_token` verification/identity mapping and the
+  `requireRecentAuth` implementation.
+- `app/app/api/book/_lib/account-guard.ts:13-27` — documents the intentional active-account-guard
+  bypass for delete and export.
+
+Account deletion remains an iOS-owned request mismatch. No runtime route or account behavior
+changed.
 
 All 23 blockers now have a closed resolution owner, rationale, concrete evidence, dependency where
 known, and decision status:
