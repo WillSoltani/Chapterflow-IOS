@@ -10,9 +10,9 @@ extension Endpoints {
         Endpoint(method: .get, path: "/book/me/onboarding/progress")
     }
 
-    /// `POST /book/me/onboarding/progress` — persist the current step and accumulated choices.
+    /// `PATCH /book/me/onboarding/progress` — persist the current step and accumulated choices.
     public static func postOnboardingProgress(_ body: OnboardingProgressBody) throws -> Endpoint {
-        try Endpoint(method: .post, path: "/book/me/onboarding/progress", body: body)
+        try Endpoint(method: .patch, path: "/book/me/onboarding/progress", body: body)
     }
 
     /// `POST /book/me/onboarding/complete` — finalise onboarding with the user's full choices.
@@ -23,7 +23,7 @@ extension Endpoints {
 
 // MARK: - Request body types
 
-/// Body for `POST /book/me/onboarding/progress`.
+/// Body for `PATCH /book/me/onboarding/progress`.
 /// Partial fields are nullable so only accumulated choices are sent at each step.
 public struct OnboardingProgressBody: Encodable, Sendable {
     public let step: String

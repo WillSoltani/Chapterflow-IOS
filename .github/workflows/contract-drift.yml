@@ -1,89 +1,120 @@
-name: Contract Drift — Real-Contract & RF2 Tests
-
-# Catches API schema drift before it reaches users. Runs weekly + on demand.
-#
-# Strategy (two tiers — the PUBLIC tier can NEVER silently skip):
-#   1. PUBLIC tier (no token needed): re-capture the public endpoints
-#      (catalog, search index, book detail) from production and run the
-#      real-contract decode tests against the fresh captures. This is the tier
-#      that would have caught the 2026-07-10 catalog mismatch
-#      (docs/API-CONTRACT-MISMATCH-AND-RECONCILIATION-PLAN.md).
-#   2. AUTHED tier: only when CF_CI_TOKEN (a valid Cognito id_token for the CI
-#      test account) is configured — additionally captures /book/me/* +
-#      chapter/quiz shapes. Absent token = loud warning, but the public tier
-#      still gates the run.
-#
-# Any decoding failure = breaking drift = workflow FAILS.
-#
-# Companion script: scripts/refresh-fixtures.sh (public tier runs tokenless).
-# Note: PRs also run the same decode tests against the COMMITTED prod_* captures
-# via the normal package test suite in pr.yml — no network needed there. This
-# workflow is what keeps those captures honest against the live API.
+name: Contract Drift — Backend-Owned Native Contract
 
 on:
+  pull_request:
+    paths:
+      - "contracts/native-ios/**"
+      - "Packages/Models/**"
+      - "Packages/Networking/**"
+      - "Packages/**/Sources/**/*.swift"
+      - "scripts/refresh-fixtures.sh"
+      - ".github/workflows/contract-drift.yml"
   schedule:
-    - cron: '0 2 * * 0'   # Every Sunday at 02:00 UTC
-  workflow_dispatch:        # Manual trigger for on-demand drift checks
+    - cron: "0 2 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-contract-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  drift:
-    name: Refresh Captures & Run Contract Tests
+  verify-native-contract:
+    name: Generate, compare, and consume backend contract
     runs-on: macos-15
+    timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Check for CI token (authed tier)
-        id: token_check
+      - name: Require cross-repository read credential
         env:
-          CF_CI_TOKEN: ${{ secrets.CF_CI_TOKEN }}
+          CONTRACT_REPO_TOKEN: ${{ secrets.CONTRACT_REPO_TOKEN }}
         run: |
-          if [ -z "$CF_CI_TOKEN" ]; then
-            echo "⚠️  CF_CI_TOKEN not set — AUTHED tier will be skipped."
-            echo "  The PUBLIC tier still runs and gates this workflow."
-            echo "  To enable full coverage: add CF_CI_TOKEN to repository secrets."
-            echo "authed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "authed=true" >> "$GITHUB_OUTPUT"
+          if [ -z "$CONTRACT_REPO_TOKEN" ]; then
+            echo "::error::CONTRACT_REPO_TOKEN is required to read WillSoltani/ChapterFlow."
+            exit 1
           fi
 
-      - name: Cache SPM repositories
-        uses: actions/cache@v4
+      - name: Check out iOS
+        uses: actions/checkout@v4
         with:
-          path: ~/Library/Caches/org.swift.swiftpm/repositories
-          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
-          restore-keys: |
-            ${{ runner.os }}-spm-
+          path: ios
 
-      # Re-capture live production responses into the contract fixtures.
-      # Public tier always runs (no token); authed tier when the secret exists.
-      # The script FAILS if any public capture fails — no silent skips.
-      - name: Refresh contract captures from production
+      - name: Check out backend source of truth
+        uses: actions/checkout@v4
+        with:
+          repository: WillSoltani/ChapterFlow
+          ref: main
+          token: ${{ secrets.CONTRACT_REPO_TOKEN }}
+          path: backend
+          fetch-depth: 0
+
+      - name: Record exact backend contract revision
+        id: backend_revision
+        working-directory: backend
+        run: |
+          contract_revision=$(git log -1 --format=%H -- contracts/native-ios/v1/contract-bundle.json)
+          if [ -z "$contract_revision" ]; then
+            echo "::error::No committed backend contract bundle revision was found."
+            exit 1
+          fi
+          echo "sha=$contract_revision" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.20.0
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Verify backend exporter and serializer fences
+        working-directory: backend
+        run: npm run contract:native:check
+
+      - name: Regenerate twice and compare the committed iOS bundle
+        working-directory: ios
         env:
-          CF_CI_TOKEN: ${{ secrets.CF_CI_TOKEN }}
-          API_BASE_URL: ${{ secrets.CF_API_BASE_URL }}
+          CHAPTERFLOW_BACKEND_REPO: ${{ github.workspace }}/backend
+          CONTRACT_SOURCE_REVISION: ${{ steps.backend_revision.outputs.sha }}
+        run: bash scripts/refresh-fixtures.sh --check
+
+      - name: Consume canonical and compatible fixtures in Models
+        working-directory: ios
+        env:
+          CLANG_MODULE_CACHE_PATH: ${{ runner.temp }}/chapterflow-contract/clang
+          SWIFTPM_MODULECACHE_OVERRIDE: ${{ runner.temp }}/chapterflow-contract/swiftpm
         run: |
-          chmod +x scripts/refresh-fixtures.sh
-          bash scripts/refresh-fixtures.sh
+          swift test \
+            --package-path Packages/Models \
+            --scratch-path "${RUNNER_TEMP}/chapterflow-contract/models" \
+            --parallel
 
-      # Decode the FRESH captures with the shipped Codable models. Any failure
-      # means production emitted JSON the app cannot tolerate — breaking drift.
-      - name: Real-contract decode tests (fresh captures)
-        run: swift test --package-path Packages/Models --parallel --filter "ContractTests"
+      - name: Verify endpoint requests, errors, inventory, and drift canary
+        working-directory: ios
+        env:
+          CLANG_MODULE_CACHE_PATH: ${{ runner.temp }}/chapterflow-contract/clang
+          SWIFTPM_MODULECACHE_OVERRIDE: ${{ runner.temp }}/chapterflow-contract/swiftpm
+        run: |
+          swift test \
+            --package-path Packages/Networking \
+            --scratch-path "${RUNNER_TEMP}/chapterflow-contract/networking" \
+            --parallel
 
-      - name: RF2 evolution tests — Models
-        run: swift test --package-path Packages/Models --parallel --filter "Evolution"
-
-      - name: Fixtures package decode tests
-        run: swift test --package-path Packages/Fixtures --parallel
-
-      - name: Summary
+      - name: Contract summary
         if: always()
+        working-directory: ios
         run: |
-          echo "### Contract-Drift Result" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Public tier: captured + decode-tested against production" >> "$GITHUB_STEP_SUMMARY"
-          if [ "${{ steps.token_check.outputs.authed }}" = "true" ]; then
-            echo "- Authed tier: captured + tested (CF_CI_TOKEN present)" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "- Authed tier: ⚠️ SKIPPED (CF_CI_TOKEN not configured)" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Native contract drift" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Source: backend-generated synthetic bundle" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Live production routes called: no" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Expected inventory: 83 operations / 93 native producers / 29 matrix rows" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f contracts/native-ios/v1/contract-bundle.json ]; then
+            echo "- Behavior source: $(jq -r '.provenance.behaviorSourceRevision' contracts/native-ios/v1/contract-bundle.json)" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Coverage: $(jq -r '[.operations[].coverage] | group_by(.) | map({(.[0]): length}) | add' contracts/native-ios/v1/contract-bundle.json)" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Native proof: $(jq -r '.inventory.iosSourceEvidence | "request factories \(.exactFactoryTestedProducerCount)/93; success consumers \(.bundleSuccessDecoderTestedOperationCount)/60"' contracts/native-ios/v1/contract-bundle.json)" >> "$GITHUB_STEP_SUMMARY"
           fi

@@ -1,144 +1,291 @@
 #!/usr/bin/env bash
-# scripts/refresh-fixtures.sh
+# Regenerates the synthetic native-iOS contract bundle from backend source.
 #
-# Captures VERBATIM JSON from the live ChapterFlow API into the real-contract
-# fixture directory consumed by RealContractTests (Packages/Models). These
-# captures are the ground truth for the client ↔ server contract:
-# docs/API-CONTRACT-MISMATCH-AND-RECONCILIATION-PLAN.md.
-#
-# Two tiers:
-#   PUBLIC  — needs NO token; always captured. Covers the browse surface
-#             (catalog, search index, book detail).
-#   AUTHED  — captured only when CF_CI_TOKEN is set (a valid Cognito id_token
-#             for the CI test account). Covers /book/me/* and chapter/quiz.
-#
-# Environment:
-#   API_BASE_URL  — API base (default: production https://app.chapterflow.ca/app/api,
-#                   falling back to Secrets.xcconfig when present).
-#   CF_CI_TOKEN   — optional; enables the authed tier.
-#   CF_TEST_BOOK_ID / CF_TEST_CHAPTER_N — authed-tier book/chapter (defaults below).
-#
-# Run locally:
-#   bash scripts/refresh-fixtures.sh                       # public tier only
-#   CF_CI_TOKEN=<token> bash scripts/refresh-fixtures.sh   # both tiers
-#
-# NOTE: this script deliberately does NOT touch the curated preview fixtures in
-# Packages/Fixtures/Sources/Fixtures/Resources — those are small, hand-picked
-# sample sets for #Previews. Contract truth lives in the prod_* captures.
+# This script never calls a deployed service and never accepts an API token. The
+# ChapterFlow backend owns the serializer-derived bundle; iOS commits a verbatim
+# copy so Swift contract tests are hermetic.
 
 set -euo pipefail
 
-# ── Configuration ─────────────────────────────────────────────────────────────
+usage() {
+  cat <<'USAGE'
+Usage: scripts/refresh-fixtures.sh [--check]
 
-if [ -z "${API_BASE_URL:-}" ] && [ -f Secrets.xcconfig ]; then
-  raw=$(grep '^API_BASE_URL' Secrets.xcconfig | cut -d'=' -f2 | tr -d ' ' || true)
-  # xcconfig escapes // as $()/; undo that.
-  API_BASE_URL="${raw/\$()\/\//\/\/}"
-fi
-API_BASE_URL="${API_BASE_URL:-https://app.chapterflow.ca/app/api}"
-API_BASE_URL="${API_BASE_URL%/}"
+Environment:
+  CHAPTERFLOW_BACKEND_REPO  Path to a ChapterFlow backend checkout.
+                            Default: sibling directory ../ChapterFlow
+  CONTRACT_SOURCE_REVISION Exact backend HEAD to record after the backend
+                            contract change is merged. Omit only while the
+                            coordinated backend change is still uncommitted.
 
-CONTRACT_DIR="Packages/Models/Tests/ModelsTests/Resources"
-
-# A published book that exists in the production catalog.
-PUBLIC_BOOK_ID="${CF_PUBLIC_BOOK_ID:-seven-powers}"
-# Authed-tier fixtures come from the CI test account's started book.
-TEST_BOOK_ID="${CF_TEST_BOOK_ID:-atomic-habits}"
-TEST_CHAPTER_N="${CF_TEST_CHAPTER_N:-1}"
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-FAILED=0
-
-fetch() { # fetch <url> <dest> [--auth]
-  local url="$1" dest="$2" auth="${3:-}"
-  local -a headers=(-H "Accept: application/json")
-  if [ "$auth" = "--auth" ]; then
-    headers+=(-H "Authorization: Bearer $CF_CI_TOKEN")
-  fi
-  echo "  → GET $url"
-  http_code=$(curl -sS -m 30 -w "%{http_code}" "${headers[@]}" \
-    -o "$dest.tmp" "$url" || echo "000")
-
-  if [ "$http_code" -ge 200 ] 2>/dev/null && [ "$http_code" -lt 300 ] 2>/dev/null; then
-    # Pretty-print JSON for diff-friendliness; keep raw bytes if not JSON.
-    python3 -m json.tool "$dest.tmp" > "$dest" 2>/dev/null || mv "$dest.tmp" "$dest"
-    rm -f "$dest.tmp"
-    echo "     ✓ saved $dest (HTTP $http_code)"
-  else
-    echo "     ⚠ skipped — HTTP $http_code"
-    rm -f "$dest.tmp"
-    FAILED=$((FAILED + 1))
-  fi
+Options:
+  --check  Regenerate and fail if the committed iOS bundle differs.
+USAGE
 }
 
-# ── Tier 1: PUBLIC (no token required) ───────────────────────────────────────
+mode="refresh"
+case "${1:-}" in
+  "") ;;
+  --check) mode="check" ;;
+  -h|--help) usage; exit 0 ;;
+  *) usage >&2; exit 64 ;;
+esac
 
-echo "Refreshing PUBLIC contract fixtures from $API_BASE_URL ..."
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+backend_repo=${CHAPTERFLOW_BACKEND_REPO:-"$(dirname "$repo_root")/ChapterFlow"}
+relative_bundle="contracts/native-ios/v1/contract-bundle.json"
+relative_inventory_manifest="contracts/native-ios/v1/ios-source-inventory-manifest.json"
+backend_bundle="$backend_repo/$relative_bundle"
+backend_inventory_manifest="$backend_repo/$relative_inventory_manifest"
+ios_bundle="$repo_root/$relative_bundle"
+ios_inventory_manifest="$repo_root/$relative_inventory_manifest"
 
-fetch "$API_BASE_URL/book/books" \
-  "$CONTRACT_DIR/prod_catalog.json"
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "error: required command not found: $1" >&2
+    exit 69
+  }
+}
 
-fetch "$API_BASE_URL/book/search-index" \
-  "$CONTRACT_DIR/prod_search_index.json"
+require_command jq
+require_command npm
+require_command rg
+require_command shasum
 
-fetch "$API_BASE_URL/book/books/$PUBLIC_BOOK_ID" \
-  "$CONTRACT_DIR/prod_book_detail.json"
+if [[ ! -f "$backend_repo/package.json" ]]; then
+  echo "error: backend checkout not found at $backend_repo" >&2
+  exit 66
+fi
 
-if [ "$FAILED" -gt 0 ]; then
-  echo "❌ $FAILED public capture(s) failed — aborting (the API should always serve these)." >&2
+tmp_bundle=$(mktemp "${TMPDIR:-/tmp}/chapterflow-native-contract.XXXXXX.json")
+tmp_strings=$(mktemp "${TMPDIR:-/tmp}/chapterflow-native-contract-strings.XXXXXX.txt")
+tmp_source_producers=$(mktemp "${TMPDIR:-/tmp}/chapterflow-native-contract-source.XXXXXX.txt")
+tmp_bundle_producers=$(mktemp "${TMPDIR:-/tmp}/chapterflow-native-contract-bundle.XXXXXX.txt")
+trap 'rm -f "$tmp_bundle" "$tmp_strings" "$tmp_source_producers" "$tmp_bundle_producers"' EXIT
+
+generate_backend_bundle() {
+  npm --prefix "$backend_repo" run contract:native:generate
+  if [[ ! -f "$backend_bundle" ]]; then
+    echo "error: backend generator did not write $backend_bundle" >&2
+    exit 65
+  fi
+  if [[ ! -f "$backend_inventory_manifest" ]]; then
+    echo "error: backend iOS source inventory manifest is missing: $backend_inventory_manifest" >&2
+    exit 65
+  fi
+  jq -e . "$backend_bundle" >/dev/null
+  jq -e . "$backend_inventory_manifest" >/dev/null
+}
+
+echo "Generating backend-owned native contract bundle..."
+generate_backend_bundle
+cp "$backend_bundle" "$tmp_bundle"
+first_digest=$(shasum -a 256 "$tmp_bundle" | awk '{print $1}')
+
+echo "Regenerating to prove byte determinism..."
+generate_backend_bundle
+second_digest=$(shasum -a 256 "$backend_bundle" | awk '{print $1}')
+if [[ "$first_digest" != "$second_digest" ]] || ! cmp -s "$tmp_bundle" "$backend_bundle"; then
+  echo "error: native contract generation is not byte deterministic" >&2
   exit 1
 fi
 
-# ── Tier 2: AUTHED (requires CF_CI_TOKEN) ────────────────────────────────────
+inventory_manifest_digest=$(shasum -a 256 "$backend_inventory_manifest" | awk '{print $1}')
+recorded_inventory_digest=$(jq -r '.inventory.iosSourceEvidence.manifestSha256' "$backend_bundle")
+if [[ "$inventory_manifest_digest" != "$recorded_inventory_digest" ]]; then
+  echo "error: bundle provenance does not match the iOS source inventory manifest" >&2
+  exit 1
+fi
 
-if [ -z "${CF_CI_TOKEN:-}" ]; then
-  echo ""
-  echo "ℹ️  CF_CI_TOKEN not set — skipping the AUTHED tier (public tier captured fine)."
-  echo "   Set CF_CI_TOKEN to also capture /book/me/* + chapter/quiz shapes."
+recorded_revision=$(jq -r '.provenance.sourceRevision // ""' "$backend_bundle")
+recorded_phase=$(jq -r '.provenance.sourceRevisionPhase' "$backend_bundle")
+if [[ -n "${CONTRACT_SOURCE_REVISION:-}" ]]; then
+  if [[ "$recorded_revision" != "$CONTRACT_SOURCE_REVISION" || "$recorded_phase" != "merged_backend" ]]; then
+    echo "error: generated provenance does not record CONTRACT_SOURCE_REVISION as merged_backend" >&2
+    exit 1
+  fi
+elif [[ -n "$recorded_revision" || "$recorded_phase" != "uncommitted_backend" ]]; then
+  echo "error: draft generation without CONTRACT_SOURCE_REVISION must remain uncommitted_backend" >&2
+  exit 1
+fi
+
+unique_operations=$(jq -r '.inventory.uniqueOperationCount' "$backend_bundle")
+native_producers=$(jq -r '.inventory.nativeProducerCount' "$backend_bundle")
+matrix_rows=$(jq -r '.inventory.matrixRowCount' "$backend_bundle")
+if [[ "$unique_operations" != "83" || "$matrix_rows" != "29" ]]; then
+  echo "error: expected 83 native operations and the exact 29-row matrix; got $unique_operations/$matrix_rows" >&2
+  exit 1
+fi
+
+# Count every production route producer from current Swift source. Factories are
+# keyed by definition (so the two submitQuiz overloads remain distinct); the
+# test-only getSession factory is explicitly excluded. Direct Endpoint builders
+# and the CoreKit analytics path producers are counted separately.
+factory_count=$(
+  rg -n '^\s*(public\s+)?static func ' \
+    "$repo_root/Packages" \
+    --glob '**/Sources/**/Endpoint*.swift' \
+    --glob '**/Sources/**/BillingEndpoints.swift' \
+    | rg -v 'getSession\(' \
+    | wc -l \
+    | tr -d ' '
+)
+direct_endpoint_count=$(
+  rg -n '\bEndpoint\(' "$repo_root/Packages" \
+    --glob '**/Sources/**/*.swift' \
+    --glob '!**/Endpoint*.swift' \
+    --glob '!**/Endpoints*.swift' \
+    --glob '!**/BillingEndpoints.swift' \
+    | wc -l \
+    | tr -d ' '
+)
+analytics_count=$(
+  rg -n 'static let (track|beacon) = "/book/me/analytics/' \
+    "$repo_root/Packages/CoreKit/Sources/CoreKit/Analytics/AnalyticsClient.swift" \
+    | wc -l \
+    | tr -d ' '
+)
+discovered_producers=$((factory_count + direct_endpoint_count + analytics_count))
+if [[ "$native_producers" != "$discovered_producers" ]]; then
+  echo "error: bundle declares $native_producers native producers; Swift source has $discovered_producers" >&2
+  echo "       factories=$factory_count direct-endpoints=$direct_endpoint_count analytics=$analytics_count" >&2
+  exit 1
+fi
+
+# Compare the exact producer symbol and source path recorded in the bundle
+# against current production Swift. Line numbers remain human evidence tied to
+# the pinned iOS source revision; ignoring them here permits non-contractual line
+# movement while still preventing count-preserving add/remove/rename drift. The two submitQuiz
+# producers share a Swift function name, so their source paths define the
+# stable online/sync variant suffixes used by the bundle.
+{
+  while IFS=: read -r path line source; do
+    relative_path=${path#"$repo_root/"}
+    if [[ "$source" =~ static[[:space:]]+func[[:space:]]+([A-Za-z_][A-Za-z0-9_]*) ]]; then
+      symbol=${BASH_REMATCH[1]}
+    else
+      echo "error: could not parse endpoint factory at $relative_path:$line" >&2
+      exit 1
+    fi
+    [[ "$symbol" == "getSession" ]] && continue
+    if [[ "$symbol" == "submitQuiz" ]]; then
+      case "$relative_path" in
+        Packages/QuizFeature/*) symbol="submitQuiz.online" ;;
+        */Endpoint+Sync.swift) symbol="submitQuiz.sync" ;;
+        *)
+          echo "error: unclassified submitQuiz producer at $relative_path:$line" >&2
+          exit 1
+          ;;
+      esac
+    fi
+    printf '%s@%s\n' "$symbol" "$relative_path"
+  done < <(
+    rg -n -H '^\s*(public\s+)?static func ' \
+      "$repo_root/Packages" \
+      --glob '**/Sources/**/Endpoint*.swift' \
+      --glob '**/Sources/**/BillingEndpoints.swift'
+  )
+
+  while IFS=: read -r path line _; do
+    relative_path=${path#"$repo_root/"}
+    case "$relative_path" in
+      Packages/PaywallFeature/Sources/PaywallFeature/LiveEntitlementRepository.swift)
+        symbol="LiveEntitlementRepository.directEndpoint"
+        ;;
+      Packages/EngagementFeature/Sources/EngagementFeature/Scenarios/ScenarioRepository.swift)
+        symbol="ScenarioRepository.replayDirectEndpoint"
+        ;;
+      *)
+        echo "error: unclassified direct Endpoint producer at $relative_path:$line" >&2
+        exit 1
+        ;;
+    esac
+    printf '%s@%s\n' "$symbol" "$relative_path"
+  done < <(
+    rg -n -H '\bEndpoint\(' "$repo_root/Packages" \
+      --glob '**/Sources/**/*.swift' \
+      --glob '!**/Endpoint*.swift' \
+      --glob '!**/Endpoints*.swift' \
+      --glob '!**/BillingEndpoints.swift'
+  )
+
+  while IFS=: read -r path line source; do
+    relative_path=${path#"$repo_root/"}
+    if [[ "$source" =~ static[[:space:]]+let[[:space:]]+(track|beacon) ]]; then
+      symbol="URLSessionAnalyticsTransport.Path.${BASH_REMATCH[1]}"
+    else
+      echo "error: could not parse analytics route producer at $relative_path:$line" >&2
+      exit 1
+    fi
+    printf '%s@%s\n' "$symbol" "$relative_path"
+  done < <(
+    rg -n -H 'static let (track|beacon) = "/book/me/analytics/' \
+      "$repo_root/Packages/CoreKit/Sources/CoreKit/Analytics/AnalyticsClient.swift"
+  )
+} | LC_ALL=C sort > "$tmp_source_producers"
+
+jq -r '.operations[].nativeRequestFixtures[].producerEvidence[]' \
+  "$backend_bundle" | sed -E 's/:[0-9]+$//' | LC_ALL=C sort > "$tmp_bundle_producers"
+
+if [[ "$(wc -l < "$tmp_source_producers" | tr -d ' ')" != "$native_producers" ]]; then
+  echo "error: exact source producer inventory does not contain $native_producers entries" >&2
+  exit 1
+fi
+if ! cmp -s "$tmp_source_producers" "$tmp_bundle_producers"; then
+  echo "error: bundle producer evidence has drifted from production Swift source" >&2
+  diff -u "$tmp_bundle_producers" "$tmp_source_producers" || true
+  exit 1
+fi
+
+# Scan JSON string values, not field names. The canonical credential placeholder
+# is allowed; credential-shaped values and private data are not.
+jq -r '.. | strings' "$backend_bundle" > "$tmp_strings"
+if rg -n -i \
+  -e '(^|[^A-Za-z0-9])[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}([^A-Za-z0-9]|$)' \
+  -e 'eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}' \
+  -e 'Bearer[[:space:]]+eyJ' \
+  -e '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----' \
+  -e 'AKIA[0-9A-Z]{16}' \
+  -e 'ASIA[0-9A-Z]{16}' \
+  -e 'gh[pousr]_[A-Za-z0-9]{20,}' \
+  -e 'sk-[A-Za-z0-9_-]{20,}' \
+  -e 'AIza[0-9A-Za-z_-]{30,}' \
+  -e 'xox[baprs]-[0-9A-Za-z-]{20,}' \
+  -e 'X-Amz-(Credential|Signature|Security-Token)=' \
+  "$tmp_strings"; then
+  echo "error: generated contract bundle contains a secret- or PII-shaped value" >&2
+  exit 1
+fi
+
+if jq -r '.. | strings | select(test("^https?://"))' "$backend_bundle" \
+  | rg -n -v '^https://(example\.invalid|apps\.apple\.com)(/|$)'; then
+  echo "error: generated contract bundle contains a URL outside the synthetic allowlist" >&2
+  exit 1
+fi
+
+if [[ "$mode" == "check" ]]; then
+  if [[ ! -f "$ios_bundle" ]]; then
+    echo "error: committed iOS bundle is missing: $ios_bundle" >&2
+    exit 1
+  fi
+  if ! cmp -s "$backend_bundle" "$ios_bundle"; then
+    echo "error: committed iOS contract bundle has drifted from backend generation" >&2
+    diff -u "$ios_bundle" "$backend_bundle" || true
+    exit 1
+  fi
+  if [[ ! -f "$ios_inventory_manifest" ]] || ! cmp -s "$backend_inventory_manifest" "$ios_inventory_manifest"; then
+    echo "error: committed iOS source inventory manifest has drifted from backend ownership" >&2
+    if [[ -f "$ios_inventory_manifest" ]]; then
+      diff -u "$ios_inventory_manifest" "$backend_inventory_manifest" || true
+    fi
+    exit 1
+  fi
+  echo "Contract bundle is current ($second_digest; inventory $inventory_manifest_digest)."
   exit 0
 fi
 
-echo ""
-echo "Refreshing AUTHED contract fixtures ..."
-
-fetch "$API_BASE_URL/book/books/$TEST_BOOK_ID/chapters/$TEST_CHAPTER_N" \
-  "$CONTRACT_DIR/prod_chapter.json" --auth
-
-fetch "$API_BASE_URL/book/books/$TEST_BOOK_ID/chapters/$TEST_CHAPTER_N/quiz" \
-  "$CONTRACT_DIR/prod_quiz.json" --auth
-
-fetch "$API_BASE_URL/book/me/entitlements" \
-  "$CONTRACT_DIR/prod_entitlements.json" --auth
-
-fetch "$API_BASE_URL/book/me/progress" \
-  "$CONTRACT_DIR/prod_progress.json" --auth
-
-fetch "$API_BASE_URL/book/me/books/$TEST_BOOK_ID/state" \
-  "$CONTRACT_DIR/prod_book_state.json" --auth
-
-fetch "$API_BASE_URL/book/me/dashboard" \
-  "$CONTRACT_DIR/prod_dashboard.json" --auth
-
-fetch "$API_BASE_URL/book/me/streak" \
-  "$CONTRACT_DIR/prod_streak.json" --auth
-
-fetch "$API_BASE_URL/book/me/badges" \
-  "$CONTRACT_DIR/prod_badges.json" --auth
-
-fetch "$API_BASE_URL/book/me/reviews" \
-  "$CONTRACT_DIR/prod_reviews.json" --auth
-
-fetch "$API_BASE_URL/book/me/notebook" \
-  "$CONTRACT_DIR/prod_notebook.json" --auth
-
-fetch "$API_BASE_URL/book/me/notifications" \
-  "$CONTRACT_DIR/prod_notifications.json" --auth
-
-echo ""
-if [ "$FAILED" -gt 0 ]; then
-  echo "⚠️  Done with $FAILED authed capture(s) skipped (endpoint may not be seeded for the test account)."
-else
-  echo "✅ Fixture refresh complete."
-fi
-echo "   Validate: swift test --package-path Packages/Models --filter 'Real production contract'"
+mkdir -p "$(dirname "$ios_bundle")"
+cp "$backend_bundle" "$ios_bundle"
+cp "$backend_inventory_manifest" "$ios_inventory_manifest"
+echo "Updated $relative_bundle ($second_digest)."
+echo "Updated $relative_inventory_manifest ($inventory_manifest_digest)."
