@@ -2,18 +2,18 @@
   "schemaVersion": "chapterflow-ios-native-inventory-v2",
   "iosRepository": "WillSoltani/Chapterflow-IOS",
   "iosBaseRevision": "92a5c351a42771f546b3d0e575b3b37a8cbfb588",
-  "iosSourceRevision": "3bc162719cebda98744b05d261242bd5868841c6",
+  "iosSourceRevision": "121864285c460fb911dba72ca720a989b97e5d53",
   "iosSourceRevisionPhase": "committed_contract_branch",
   "canonicalization": "UTF-8 records; fixed field order; TAB-separated fields; null matrix row is empty; lexicographically sorted lines joined with LF and a terminal LF",
   "operationKeyCount": 83,
   "operationKeySha256": "b24a9ad2861744ad127ce1aca976c13b621fdb7460fc8cd9b9d5669ec9468174",
   "producerVariantCount": 93,
-  "producerVariantIdSha256": "a24b4f233747aa625ddb6ce18f27a5280dd4befe58c35e4b337709a384a036ac",
-  "producerIdentitySha256": "4d68f6336af886e90236cb86c8cbaba2ef60518a0d1c18376615f145246c8cee",
+  "producerVariantIdSha256": "3225c80badc95a05f437fdd715e2402392f9dd8fecf4fc00facdd1d6011f3987",
+  "producerIdentitySha256": "3d5aee6fc44079b491a81faf9ed4f72de27b96c7ae4a8cee5426b1638ab430ef",
   "matrixRowCount": 29,
   "relationalRecordCount": 93,
-  "relationalRecordSha256": "d8f4fcc3af527f1f9b8726f184b565a8d3cd92ab765b53856fa17940c84b8e4c",
-  "sourceInputTreeSha256": "2eaa0584e8ef4cba66e8742f06ab123e53b18bdeabfe8e8e306db66901835f9f",
+  "relationalRecordSha256": "36ec6c76f550bff39d4cd622fa161bf2a3b282d2c1eb27aac589e382f163e9a3",
+  "sourceInputTreeSha256": "d23621eec27dc7b4f9d35d2c98d744702906d443467d0abad571d6ec57e0f817",
   "sourceInputs": [
     {
       "path": "Packages/AIFeature/Sources/AIFeature/AIFeature.swift",
@@ -2321,11 +2321,11 @@
     },
     {
       "path": "contracts/native-ios/v1/ios-native-contract-inventory-source.json",
-      "sha256": "024b0e9842328fe7256c85de2821b9eaeff43f2a2703b0da623a6d88dd6d3691"
+      "sha256": "4c71bc8bd87330620072205a0fe45294fe67ee9ff0318a2c0e44c17cd18fd6a3"
     },
     {
       "path": "scripts/contracts/generate_ios_native_inventory.py",
-      "sha256": "f68640c0e4b780045308ade95a5378324e6b1391fe6e057e03ece1f95516bd96"
+      "sha256": "83b65deeb5b7c7212f85fcaec8aea8fbf0a31ac2a4815296698d49cee56ce419"
     }
   ],
   "records": [
@@ -2360,11 +2360,11 @@
       "method": "POST",
       "routeTemplate": "/book/me/analytics/beacon",
       "matrixRowId": null,
-      "operationVariantId": "analytics-beacon.post:urlsessionanalyticstransport-path-beacon",
+      "operationVariantId": "analytics-beacon.post:defaultanalyticsclient-path-beacon",
       "producerKind": "analytics_path",
-      "producerSymbol": "URLSessionAnalyticsTransport.Path.beacon",
+      "producerSymbol": "DefaultAnalyticsClient.Path.beacon",
       "producerSourcePath": "Packages/CoreKit/Sources/CoreKit/Analytics/AnalyticsClient.swift",
-      "stableVariantSuffix": "urlsessionanalyticstransport-path-beacon",
+      "stableVariantSuffix": "defaultanalyticsclient-path-beacon",
       "sourceMethodExpression": "request.httpMethod = \"POST\"",
       "sourcePathExpression": "\"/book/me/analytics/beacon\""
     },
@@ -2373,11 +2373,11 @@
       "method": "POST",
       "routeTemplate": "/book/me/analytics/track",
       "matrixRowId": null,
-      "operationVariantId": "analytics-track.post:urlsessionanalyticstransport-path-track",
+      "operationVariantId": "analytics-track.post:defaultanalyticsclient-path-track",
       "producerKind": "analytics_path",
-      "producerSymbol": "URLSessionAnalyticsTransport.Path.track",
+      "producerSymbol": "DefaultAnalyticsClient.Path.track",
       "producerSourcePath": "Packages/CoreKit/Sources/CoreKit/Analytics/AnalyticsClient.swift",
-      "stableVariantSuffix": "urlsessionanalyticstransport-path-track",
+      "stableVariantSuffix": "defaultanalyticsclient-path-track",
       "sourceMethodExpression": "request.httpMethod = \"POST\"",
       "sourcePathExpression": "\"/book/me/analytics/track\""
     },
