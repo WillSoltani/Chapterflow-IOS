@@ -42,6 +42,7 @@
   "schema_version": 1,
   "unmeasured_default_seconds": 60.0,
   "unmeasured_packages": [
+    "AppFeature",
     "SyncEngine"
   ]
 }

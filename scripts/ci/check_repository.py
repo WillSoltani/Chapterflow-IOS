@@ -16,8 +16,14 @@ import plan as ci_plan
 
 
 CONFLICT_MARKER = re.compile(r"^(?:<<<<<<<.*|=======|>>>>>>>.*)$")
-FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
+FENCE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 MARKDOWN_LINK = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
+MARKDOWN_REFERENCE_DEFINITION = re.compile(
+    r"^[ \t]{0,3}\[(?!\^)[^\]\r\n]+\]:[ \t]*"
+    r"(?:\r?\n[ \t]*)?"
+    r"(<[^>\r\n]+>|[^ \t\r\n]+)",
+    re.MULTILINE,
+)
 SECRET_PATTERNS = {
     "private key": re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
     "AWS access key": re.compile(r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"),
@@ -36,7 +42,16 @@ GENERATED_NAMES = {
     "__pycache__",
     "build",
 }
-GENERATED_SUFFIXES = (".pyc", ".pyo", ".xcresult")
+GENERATED_SUFFIXES = (
+    ".app",
+    ".dsym",
+    ".dsym.zip",
+    ".ipa",
+    ".pyc",
+    ".pyo",
+    ".xcarchive",
+    ".xcresult",
+)
 
 
 class CheckFailure(RuntimeError):
@@ -72,11 +87,16 @@ def check_markdown_fences(path: Path, content: str) -> list[str]:
         if not match:
             continue
         token = match.group(1)
+        trailing = match.group(2)
         if active_character is None:
             active_character = token[0]
             active_length = len(token)
             active_line = line_number
-        elif token[0] == active_character and len(token) >= active_length:
+        elif (
+            token[0] == active_character
+            and len(token) >= active_length
+            and not trailing.strip()
+        ):
             active_character = None
             active_length = 0
             active_line = 0
@@ -94,11 +114,18 @@ def _link_target(raw_target: str) -> str:
     return unquote(target).split("#", 1)[0]
 
 
+def markdown_link_targets(content: str) -> Iterable[str]:
+    for match in MARKDOWN_LINK.finditer(content):
+        yield match.group(1)
+    for match in MARKDOWN_REFERENCE_DEFINITION.finditer(content):
+        yield match.group(1)
+
+
 def check_markdown_links(root: Path, relative: str, content: str) -> list[str]:
     failures: list[str] = []
     source = root / relative
-    for match in MARKDOWN_LINK.finditer(content):
-        target = _link_target(match.group(1))
+    for raw_target in markdown_link_targets(content):
+        target = _link_target(raw_target)
         if not target or target.startswith(
             ("#", "http://", "https://", "mailto:", "tel:", "data:")
         ):
@@ -159,8 +186,8 @@ def check_incoming_links_to_deleted(
         content = _text(source)
         if content is None:
             continue
-        for match in MARKDOWN_LINK.finditer(content):
-            target = _link_target(match.group(1))
+        for raw_target in markdown_link_targets(content):
+            target = _link_target(raw_target)
             if not target or target.startswith(
                 ("#", "http://", "https://", "mailto:", "tel:", "data:")
             ):
@@ -194,10 +221,12 @@ def check_added_secrets(diff_text: str) -> list[str]:
 
 def check_generated_artifacts(paths: Iterable[str]) -> list[str]:
     failures: list[str] = []
+    generated_names = {name.casefold() for name in GENERATED_NAMES}
     for relative in sorted(set(paths)):
         parts = PurePosixPath(relative).parts
         if any(
-            part in GENERATED_NAMES or part.endswith(GENERATED_SUFFIXES)
+            part.casefold() in generated_names
+            or part.casefold().endswith(GENERATED_SUFFIXES)
             for part in parts
         ):
             failures.append(f"{relative}: generated artifact must not be committed")

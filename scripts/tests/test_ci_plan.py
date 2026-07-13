@@ -80,17 +80,30 @@ class CIPlanTests(unittest.TestCase):
         )
         self.assertEqual(
             set(result["affected_packages"]),
-            {"AIFeature", "LibraryFeature"},
+            {"AIFeature", "AppFeature", "LibraryFeature"},
         )
         self.assertTrue(result["run_app_build"])
         self.assertFalse(result["run_ui_tests"])
 
     def test_appfeature_change_selects_full_app_and_ui(self) -> None:
-        self.assert_full(
-            self.make_plan(
-                ["Packages/AppFeature/Sources/AppFeature/AppRootView.swift"]
-            )
+        result = self.make_plan(
+            ["Packages/AppFeature/Sources/AppFeature/AppRootView.swift"]
         )
+        self.assert_full(result)
+        self.assertTrue(result["high_risk"])
+        flattened = [
+            package
+            for shard in result["package_matrix"]["include"]
+            for package in shard["packages"]
+        ]
+        self.assertEqual(flattened.count("AppFeature"), 1)
+
+    def test_compile_boundary_script_forces_known_full_validation(self) -> None:
+        result = self.make_plan([plan.COMPILE_BOUNDARY_SCRIPT])
+        self.assert_full(result)
+        self.assertTrue(result["high_risk"])
+        self.assertIn("compile_boundary_gate_change", result["reason_codes"])
+        self.assertNotIn("unknown_path", result["reason_codes"])
 
     def test_package_resolved_change_selects_full_validation(self) -> None:
         self.assert_full(self.make_plan(["Packages/AuthKit/Package.resolved"]))
@@ -196,7 +209,7 @@ class CIPlanTests(unittest.TestCase):
         )
         self.assertEqual(
             set(result["affected_packages"]),
-            {"SettingsFeature", "SyncEngine"},
+            {"AppFeature", "SettingsFeature", "SyncEngine"},
         )
         self.assertFalse(result["run_full_packages"])
         self.assertNotIn("empty_diff", result["reason_codes"])
@@ -210,8 +223,9 @@ class CIPlanTests(unittest.TestCase):
         manifests = {path.parent.name for path in (ROOT / "Packages").glob("*/Package.swift")}
         self.assertEqual(set(self.graph), manifests)
         self.assertEqual(len(self.graph), 19)
-        self.assertEqual(len(self.all_packages), 18)
-        self.assertNotIn("AppFeature", self.all_packages)
+        self.assertEqual(len(self.all_packages), 19)
+        self.assertEqual(set(self.all_packages), set(self.graph))
+        self.assertIn("AppFeature", self.all_packages)
         self.assertIn("SyncEngine", self.all_packages)
 
     def test_semantic_graph_parser_reads_swiftpm_file_system_dependencies(self) -> None:
@@ -257,6 +271,21 @@ class CIPlanTests(unittest.TestCase):
                     round(statistics.median(samples[package]), 1),
                     expected,
                 )
+        self.assertNotIn("AppFeature", durations["p50_seconds"])
+        self.assertEqual(
+            set(durations["unmeasured_packages"]),
+            {"AppFeature", "SyncEngine"},
+        )
+        appfeature_matrix = plan.build_package_matrix(
+            ["AppFeature"],
+            durations["p50_seconds"],
+            durations["affinity_groups"],
+            max_shards=2,
+        )
+        self.assertEqual(
+            appfeature_matrix["include"][0]["estimated_seconds"],
+            durations["unmeasured_default_seconds"],
+        )
 
     def test_matrix_union_is_exact_and_unique(self) -> None:
         result = self.make_plan([".github/workflows/pr-v2.yml"])
@@ -264,6 +293,8 @@ class CIPlanTests(unittest.TestCase):
         flattened = [package for shard in include for package in shard["packages"]]
         self.assertEqual(set(flattened), set(result["affected_packages"]))
         self.assertEqual(len(flattened), len(set(flattened)))
+        self.assertEqual(len(flattened), 19)
+        self.assertEqual(flattened.count("AppFeature"), 1)
         self.assertTrue(all(shard["packages"] for shard in include))
 
     def test_malformed_plan_is_rejected(self) -> None:

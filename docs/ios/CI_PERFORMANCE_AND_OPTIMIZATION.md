@@ -1,14 +1,16 @@
 # ChapterFlow iOS CI Performance and Optimization
 
-Status: WP-CI-01 Stage A advisory candidate
+Status: WP-CI-01 Stage A1 branch candidate for Stage A2
 Baseline cutoff: 2026-07-13 06:52 UTC
-Baseline revision: `92a5c351a42771f546b3d0e575b3b37a8cbfb588`
-Legacy workflow blob: `6df048379550bf869cdf4af37710fc6f6afc50ac`
+Historical baseline revision: `92a5c351a42771f546b3d0e575b3b37a8cbfb588`
+Integration base: `82f6674fd180cb787a4b4c5366dfdd938cb76f5b`
+Historical legacy workflow blob: `6df048379550bf869cdf4af37710fc6f6afc50ac`
+Integration legacy workflow blob: `e3fdd1ef236d78a1f30ad916d2ffef7372a26aa1`
 
 This document records measured legacy behavior, the coverage-preserving CI v2
 candidate, its security model, and the evidence required before a later
 required-check cutover. The legacy `.github/workflows/pr.yml` remains unchanged
-and authoritative during Stage A.
+from the integration base and authoritative throughout Stage A1 and Stage A2.
 
 ## 1. Goals and guardrails
 
@@ -34,7 +36,7 @@ Targets derived from the baseline are:
 
 ### 2.1 Sample and method
 
-The primary sample contains 19 completed runs from the current three-job
+The primary sample contains 19 completed runs from the historical three-job
 workflow/cache topology beginning at `ef39f3dc`:
 
 - 13 succeeded;
@@ -42,7 +44,7 @@ workflow/cache topology beginning at `ef39f3dc`:
 - 3 were cancelled by a superseding run;
 - 8 successful PR runs form the time-to-green percentile population;
 - PR #117 runs are excluded because its branch-local workflow is materially
-  different from current `main`;
+  different from the historical baseline `main` topology;
 - no queried run was a rerun (`run_attempt` was 1 throughout).
 
 Wall time is `updated_at - created_at`. Runner time is the sum of job
@@ -153,13 +155,13 @@ green PR logs.
 | SocialFeature | 13.8s | 19.9s | | | |
 
 `AuthKit` and `SettingsFeature` account for about 68% of summed package p50.
-`AppFeature` and `SyncEngine` have test targets but were omitted by legacy CI;
-`SyncEngine` is represented by a conservative unmeasured 60-second default
-until the candidate produces timings. `AppFeature` cannot run as a macOS host
-suite: its sources currently use iOS-only SwiftUI APIs, and a direct
-`swift test` fails at `DebugMenuView.swift:51` before tests execute. CI v2 keeps
-the legacy exclusion for that host-incompatible suite while making app and UI
-validation mandatory for every AppFeature change.
+`AppFeature` and `SyncEngine` have test targets but were omitted by the
+historical legacy loop. Merged WP-DEV-01 added the narrow macOS host guards;
+`swift test --package-path Packages/AppFeature` now passes 67 tests in 18 Swift
+Testing suites. Neither package has a historical legacy p50, so both use the
+existing conservative unmeasured 60-second planner default until a reviewed
+duration-artifact update is supported by sufficient recorded samples. No
+historical AppFeature p50 is inferred or fabricated.
 
 ### 2.5 Cache evidence and failure
 
@@ -187,8 +189,9 @@ because both omit required invalidation inputs.
 - Cache quota/inventory APIs and admin-only repository settings were
   inaccessible with the invalid local `gh` credential.
 - Runner totals are elapsed job time, not rounded billable minutes.
-- SyncEngine has no legacy duration because legacy CI omitted its owning suite;
-  AppFeature has no runnable macOS-host duration on the current source revision.
+- SyncEngine and AppFeature have no historical legacy duration because the
+  legacy 17-root loop omitted both. Their 60-second weights are conservative
+  defaults, not measured p50 values.
 
 ## 3. Candidate architecture
 
@@ -200,6 +203,7 @@ plan (Linux, fail-closed)
 ├── lint (Linux, pinned SwiftLint)
 ├── package-tests (macOS, measured matrix, max-parallel 2)
 └── app-and-ui (macOS, same runner and DerivedData)
+    ├── WP-DEV-01 non-Debug compile-boundary probe (once when app is selected)
     ├── app-only: xcodebuild build
     └── UI: build-for-testing → test-without-building
 
@@ -212,8 +216,15 @@ app build and no build artifact transfer; one runner and one DerivedData tree
 are used for `build-for-testing` and `test-without-building`.
 
 Every job has a timeout and Step Summary. Failure-only artifacts retain planner
-JSON, lint output, package logs/metrics, sanitized xcodebuild logs, and
-`.xcresult` for five days. Success builds are not uploaded.
+JSON, lint output, package logs/metrics, scoped raw xcodebuild logs, and
+`.xcresult` for five days. The workflow does not claim these raw diagnostics are
+redacted. Success builds are not uploaded.
+
+The App & UI job runs `scripts/verify-wp-dev-01-compile-boundaries.sh` exactly
+once after exact toolchain setup whenever app validation is selected. A normal
+step failure fails the owning job. The aggregate also checks the raw step
+outcome, so a future accidental `continue-on-error` cannot mask the invariant.
+The corresponding legacy-workflow step remains unchanged.
 
 The aggregate job accepts only `success` for required work and only `skipped`
 for explicitly unrequired work. Missing/malformed plans, matrices that omit or
@@ -232,19 +243,21 @@ malformed output selects full scope.
 | Change class | Packages | Lint | App | UI | Reason |
 |---|---|---:|---:|---:|---|
 | Only Markdown under `docs/` or approved root docs | none | no | no | no | Fast checks still run in `plan` |
-| Workflow, local action, or `scripts/ci/**` | all 18 host suites | yes | yes | yes | CI can alter every gate |
-| Project, scheme, test plan, Config, app host, UI tests | all 18 host suites | yes | yes | yes | Shared/high-risk surface |
-| Models, CoreKit, Networking, Persistence, AppFeature, Fixtures, DesignSystem | all 18 host suites | yes | yes | yes | Foundation/shared closure; AppFeature itself is app/UI-only |
-| Any `Package.swift` or `Package.resolved` | all 18 host suites | yes | yes | yes | Build/dependency topology |
+| Workflow, local action, or `scripts/ci/**` | all 19 host roots | yes | yes | yes | CI can alter every gate |
+| `scripts/verify-wp-dev-01-compile-boundaries.sh` | all 19 host roots | yes | yes | yes | Explicit compile-boundary gate |
+| Project, scheme, test plan, Config, app host, UI tests | all 19 host roots | yes | yes | yes | Shared/high-risk surface |
+| Models, CoreKit, Networking, Persistence, AppFeature, Fixtures, DesignSystem | all 19 host roots | yes | yes | yes | Foundation/shared closure |
+| Any `Package.swift` or `Package.resolved` | all 19 host roots | yes | yes | yes | Build/dependency topology |
 | Explicitly allowlisted pure feature logic | owner plus transitive reverse dependents | yes | yes when app-linked | no | Narrow source-backed exception with canary |
 | Other UI-bearing feature source, including controls, appearance, sheets, rows, routes, models, auth, navigation, bootstrap, or coordinators | owner plus reverse dependents | yes | yes | yes | Conservative feature-source default |
 | Embedded extension-only change | none unless another rule applies | by source | yes | no | App embeds the extension |
-| `ci-full`, push main, schedule, merge queue, full/benchmark/clean dispatch | all 18 host suites | yes | yes | yes | Authoritative full mode |
-| Unknown/unclassified | all 18 host suites | yes | yes | yes | Fail-safe default |
+| `ci-full`, push main, schedule, merge queue, full/benchmark/clean dispatch | all 19 host roots | yes | yes | yes | Authoritative full mode |
+| Unknown/unclassified | all 19 host roots | yes | yes | yes | Fail-safe default |
 
 Docs-only still runs planner self-tests, checked dependency-graph consistency,
 `git diff --check`, added-secret patterns, conflict markers, Markdown fence
-balance, local-link existence, and the stable aggregate.
+balance, inline and reference-definition local-link checks, incoming links to
+deleted paths, generated Xcode-product checks, and the stable aggregate.
 
 Manual UI `off` is ignored when source risk or full mode requires UI. Full mode
 cannot be weakened by package or UI input.
@@ -261,22 +274,22 @@ After an intentional manifest edit, regenerate the artifact with
 `python3 scripts/ci/plan.py --print-graph` and replace
 `scripts/ci/package-graph.json`; the macOS semantic check is the final proof.
 
-The graph contains 19 package roots with tests, of which 18 are runnable via
-macOS-host `swift test`. The legacy loop contains 17 and omitted:
+The graph contains 19 package roots with tests, and all 19 are now runnable via
+macOS-host `swift test`. The historical legacy loop contains 17 and omitted:
 
-- `AppFeature`; direct validation confirms its iOS-only SwiftUI source prevents
-  the macOS host suite from compiling before tests execute;
+- `AppFeature`; merged WP-DEV-01 now makes its 67 tests host-runnable;
 - `SyncEngine`, without a workflow explanation.
 
-CI v2 adds SyncEngine, increasing the host suite from 17 to 18 without adding a
-deterministically failing AppFeature command. AppFeature remains covered by the
-mandatory app/UI lane. A feature change tests each runnable owner and transitive
-reverse dependency. For example:
+CI v2 adds both omitted roots, increasing host-package coverage from 17 to 19.
+AppFeature remains covered by mandatory app/UI validation as well as its host
+tests. A feature change tests each runnable owner and transitive reverse
+dependency. For example:
 
-- `AIFeature` selects `AIFeature` and `LibraryFeature`, while the app build
-  covers their AppFeature composition;
-- `SyncEngine` selects `SyncEngine` and `SettingsFeature`, plus the app build;
-- `CoreKit` reaches all 18 runnable host suites and is a mandatory full trigger.
+- `AIFeature` selects `AIFeature`, `LibraryFeature`, and their `AppFeature`
+  reverse dependency, plus the app build;
+- `SyncEngine` selects `SyncEngine`, `SettingsFeature`, and `AppFeature`, plus
+  the app build;
+- `CoreKit` reaches all 19 runnable host roots and is a mandatory full trigger.
 
 All app-linked packages request app validation. Fixtures is the only graph root
 that is preview/test-only at the AppFeature composition layer; it is already a
@@ -294,10 +307,10 @@ Current estimated full shards are:
 | Shard | Packages | Historical estimate |
 |---|---|---:|
 | 1 | AuthKit, SettingsFeature | 447.5s |
-| 2 | remaining 16 runnable suites, including newly covered SyncEngine | 273.7s |
+| 2 | remaining 17 roots, including AppFeature and SyncEngine at 60s defaults | 333.7s |
 
 This intentionally limits duplicate compilation to two scratch directories,
-not 18 independent jobs. Affected selections of six or fewer packages use one shard.
+not 19 independent jobs. Affected selections of six or fewer packages use one shard.
 `workflow_dispatch` can exercise one through four shards for benchmark mode,
 while job concurrency remains capped at two. The checked timing artifact can be
 updated only from recorded run evidence.
@@ -365,9 +378,11 @@ after checkout and is outside every cache path.
 
 ## 8. Benchmark protocol and current results
 
-Stage A compares the unchanged legacy workflow and CI v2 on the same candidate
-PR revision. Required classes are Markdown-only, low-risk feature logic,
-UI/AppFeature, foundation, project/lockfile, and full/manual.
+Stage A1 compares the unchanged legacy workflow and CI v2 on the same candidate
+PR revision. Stage A2 expands that comparison to representative development
+PRs after the advisory workflow exists on `main`. Required classes are
+Markdown-only, low-risk feature logic, UI/AppFeature, foundation,
+project/lockfile, and full/manual.
 
 For each class, record cold and warm runs where possible:
 
@@ -381,20 +396,22 @@ For each class, record cold and warm runs where possible:
 
 Current evidence table:
 
-| Scope | Legacy wall p50 | CI v2 cold | CI v2 warm | Selection equivalence | Status |
+| Scope | Legacy wall p50 | CI v2 branch evidence | CI v2 Stage A2 evidence | Selection equivalence | Status |
 |---|---:|---:|---:|---|---|
-| Docs-only | full workflow; observed failure at 29:08 | blocked pre-cutover | blocked pre-cutover | v2 intentionally removes executable work | Planner-tested; no GitHub sample |
-| Feature logic | 50:59 overall PR p50 | blocked pre-cutover | blocked pre-cutover | owner + reverse deps, app if linked | Planner-tested; no GitHub sample |
-| UI/AppFeature | 50:59 | blocked pre-cutover | blocked pre-cutover | full 18 host suites + app/UI; AppFeature stays app/UI-only | Planner-tested; no isolated GitHub sample |
-| Foundation | 50:59 | blocked pre-cutover | blocked pre-cutover | full 18 host suites + app/UI | Planner-tested; no isolated GitHub sample |
-| Project/lockfile | 50:59 | blocked pre-cutover | blocked pre-cutover | full 18 host suites + app/UI | Planner-tested; no isolated GitHub sample |
-| Full/manual | 50:59 | **34:55** | blocked pre-cutover | full 18 host suites + app/UI | One cold PR sample green |
+| Docs-only | full workflow; observed failure at 29:08 | planner-tested | awaiting advisory-on-main sampling | v2 intentionally removes executable work | No isolated GitHub sample |
+| Feature logic | 50:59 overall PR p50 | planner-tested | awaiting advisory-on-main sampling | owner + reverse deps, app if linked | No isolated GitHub sample |
+| UI/AppFeature | 50:59 | planner-tested | awaiting advisory-on-main sampling | full 19 host roots + app/UI | AppFeature host test independently proven |
+| Foundation | 50:59 | planner-tested | awaiting advisory-on-main sampling | full 19 host roots + app/UI | No isolated GitHub sample |
+| Project/lockfile | 50:59 | planner-tested | awaiting advisory-on-main sampling | full 19 host roots + app/UI | No isolated GitHub sample |
+| Full/manual | 50:59 | **34:55 and 32:08 historical** | awaiting advisory-on-main sampling | current scope is 19 roots + app/UI | Both historical branch samples covered 18 roots |
 
-Advisory run `29233015194` on `ec8df029` is the first cold full-scope
-measurement. It passed in 34:55 wall time: 18 host suites and 2,100 package
-tests, plus 20 UI tests with two existing skips. That is 31.5% below the legacy
-PR p50 of 50:59 and 46 seconds inside the 35:41 single-run threshold. It is not
-a p50, warm-cache result, representative-class series, or cutover approval.
+Advisory run `29233015194` on `ec8df029` is the first historical cold
+full-scope measurement. It passed in 34:55 wall time: 18 host roots and 2,100
+package tests, plus 20 UI tests with two existing skips. That is 31.5% below
+the legacy PR p50 of 50:59 and 46 seconds inside the 35:41 single-run threshold.
+It predates merged WP-DEV-01 and therefore does not contain AppFeature host
+tests or the compile-boundary integration. It is not a p50, warm-cache result,
+representative-class series, or cutover approval.
 
 The unchanged legacy workflow ran on the exact same commit as run
 `29233015113`:
@@ -415,31 +432,57 @@ resolution 4:36, simulator boot 4:15, build-for-testing 16:25, and
 test-without-building 8:04. Package jobs completed independently in 12:38 and
 8:40, so further package sharding would not improve this full path.
 
+### 8.1 Historical pre-integration branch pair
+
+A later exact-head branch pair at `dddef9e5d07b772e481ffbf2e7969dd04d6db856`
+also predates merged WP-DEV-01:
+
+| Historical exact-head result | Legacy `29238245501` | CI v2 `29238245385` | Delta |
+|---|---:|---:|---:|
+| Green wall time | 46:08 | **32:08** | **-14:00 (-30.3%)** |
+| Allocated runner time | 44:49 | 53:55 | +9:06 (+20.3%) |
+| Host roots / package tests | 17 / 2,071 | 18 / 2,100 | +SyncEngine / +29 |
+| UI tests | 20, two skipped | 20, two skipped | equivalent |
+
+The candidate source-cache lookup missed and the PR correctly performed no
+save. This is another cold single sample, not a p50 or warm-cache claim.
+
+### 8.2 Final-head integration comparison
+
+The exact post-rebase candidate SHA, workflow run IDs, durations, package/test
+counts, compile-boundary result, cache state, and runner-time delta will be
+recorded in PR #121's description after both workflows finish. Committing those
+post-push measurements into this file would create a different head and make
+the cited runs historical immediately. This section therefore fixes the
+measurement protocol while the PR description carries the revision-bound
+exact-final-head integration record.
+
 ## 9. Test-selection equivalence canaries
 
 | Canary diff | Expected CI v2 selection |
 |---|---|
 | Markdown under `docs/` | plan safety checks and aggregate only |
-| AIFeature pure audio logic | AIFeature, LibraryFeature; lint; app; no UI |
-| LibraryFeature `BookDetailView` | LibraryFeature; lint; app/UI |
-| CoreKit source | all 18 host suites; lint; app/UI |
-| AppFeature source | all 18 host suites; lint; app/UI; AppFeature app/UI-only |
-| Any Package.resolved | all 18 host suites; lint; app/UI |
-| ChapterFlowUITests-only | all 18 host suites; lint; app/UI |
-| Workflow/planner/graph | all 18 host suites; lint; app/UI |
-| `ci-full` label | all 18 host suites; lint; app/UI |
-| Unknown path or missing merge base | all 18 host suites; lint; app/UI |
+| AIFeature pure audio logic | AIFeature, LibraryFeature, AppFeature; lint; app; no UI |
+| LibraryFeature `BookDetailView` | LibraryFeature, AppFeature; lint; app/UI |
+| CoreKit source | all 19 host roots; lint; app/UI |
+| AppFeature source | all 19 host roots; lint; app/UI |
+| Any Package.resolved | all 19 host roots; lint; app/UI |
+| ChapterFlowUITests-only | all 19 host roots; lint; app/UI |
+| Workflow/planner/graph | all 19 host roots; lint; app/UI |
+| WP-DEV-01 compile-boundary script | all 19 host roots; lint; app/UI |
+| `ci-full` label | all 19 host roots; lint; app/UI |
+| Unknown path or missing merge base | all 19 host roots; lint; app/UI |
 
 Unit tests also cover rename escape, graph drift, matrix union/uniqueness,
 malformed booleans/output, full-mode UI-off rejection, manual package
 validation, push, schedule, merge-group, benchmark, and clean modes.
 
-Before cutover, controlled GitHub canaries must prove deliberate package and UI
+Before Stage B, controlled GitHub canaries must prove deliberate package and UI
 failures fail `CI / Required`, a required-job skip fails, a wrong cache key
 rebuilds cleanly, and a superseding push cancels the older run. Canary commits
 must not remain at the final PR head.
 
-The Stage A canaries produced the following evidence:
+The historical Stage A1 canaries produced the following evidence:
 
 | Canary | Run / revision | Result |
 |---|---|---|
@@ -466,7 +509,8 @@ explicit cost of cold parallel compilation; it is not represented as a runner-
 time saving.
 
 The two-shard cap and AuthKit/Settings affinity constrain that cost. No claim of
-runner-time improvement is made until Stage A data exists. A cutover requires
+runner-time improvement is made until representative Stage A2 data exists. A
+Stage B cutover requires
 the wall-time target plus an explicit recorded runner-time delta; further
 sharding is rejected if queue, setup, duplicate compile, or cache transfer
 outweighs wall-clock benefit.
@@ -475,7 +519,7 @@ outweighs wall-clock benefit.
 
 The candidate workflow defines:
 
-- push to `main`: strict lint, all 18 runnable host suites, unsigned app/UI validation,
+- push to `main`: strict lint, all 19 runnable host roots, unsigned app/UI validation,
   planner self-tests, and trusted source-cache warming;
 - daily schedule at 05:23 UTC: the same complete validation with no compiled
   cache, graph/planner canaries, and cache size/hit reporting;
@@ -514,7 +558,7 @@ attempted.
 
 Recommendations requiring later owner approval:
 
-1. After representative Stage A greens, configure one exact `CI / Required`
+1. After representative Stage A2 greens, configure one exact `CI / Required`
    context and remove the dynamic legacy contexts only after an overlap period.
 2. Keep default workflow permissions read-only and require explicit job-level
    grants for future mutations.
@@ -527,49 +571,58 @@ Recommendations requiring later owner approval:
 
 ## 13. Required-check migration plan
 
-Stage A, implemented here:
+### Stage A1 — branch candidate
 
-1. Leave `.github/workflows/pr.yml` unchanged.
-2. Run `CI v2 — Advisory` beside it.
-3. Compare exact revision, selection, results, wall time, runner time, cache, and
-   failure behavior.
-4. Keep the draft PR unmerged.
+1. CI v2 runs on PR #121.
+2. Legacy CI remains unchanged and authoritative.
+3. Candidate behavior, selection equivalence, and failure canaries are
+   evaluated.
+4. No repository-setting change occurs.
 
-Stage B requires a separate owner authorization:
+### Stage A2 — advisory workflow on main
 
-1. Rebase on current green `main` and rerun all planner/canary evidence.
-2. Run legacy and candidate together for a limited overlap.
-3. Configure only `CI / Required` in the reviewed ruleset/protection rule.
-4. Add merge queue only if account support and policy are confirmed.
-5. Retire legacy CI only after representative docs, feature, UI, foundation,
-   and full runs meet targets without coverage drift.
+1. PR #121 may merge after independent review.
+2. Legacy CI remains unchanged and authoritative.
+3. CI v2 runs beside legacy on real development PRs.
+4. Trusted main, scheduled, and authorized manual runs may seed the source
+   cache.
+5. No required-check or branch-protection change occurs.
+
+### Stage B — authoritative cutover
+
+1. A separate owner-authorized PR and repository-setting action are required.
+2. `CI / Required` becomes the protected PR context.
+3. Legacy PR execution is retired or converted to a manual/full fallback only
+   after equivalence is accepted.
+4. Full validation remains on main, schedule, clean dispatch, and milestone
+   gates.
+5. Merge queue is added only if account support and policy are confirmed.
 
 ## 14. Rollback
 
-Before Stage B, rollback is deletion or disablement of the advisory
-`pr-v2.yml`; legacy CI never stopped.
-
-After a separately authorized cutover, rollback is one reviewed commit that
-restores the last known-good authoritative workflow, followed by restoration of
-the former exact required-check settings. Cache schema keys are additive; no
-cache deletion is needed for correctness. Never weaken or waive tests during
-rollback.
+During Stage A1, rollback is abandoning the branch candidate; legacy CI is
+unchanged. During Stage A2, rollback is deletion or disablement of advisory
+`pr-v2.yml`; legacy CI never stopped. After a separately authorized Stage B
+cutover, rollback is one reviewed commit that restores the last known-good
+authoritative workflow, followed by restoration of the former exact
+required-check settings. Cache schema keys are additive; no cache deletion is
+needed for correctness. Never weaken or waive tests during rollback.
 
 ## 15. Known limitations and open evidence
 
-- Only one cold full-scope candidate sample is currently measured. It is not a
+- Two cold pre-WP-DEV full-scope candidate samples are recorded. Neither is a
   p50, and representative docs/feature/UI/foundation/project classes remain
-  planner evidence rather than live GitHub timing evidence during Stage A.
+  planner evidence rather than live Stage A2 timing evidence.
 - New default-branch cache keys cannot be seeded for sibling PRs until the
   candidate exists on `main`. Manual branch dispatch can measure cold/warm
   transfer but not prove cross-PR default-branch reuse. GitHub also requires a
-  manually dispatched workflow to exist on the default branch; during Stage A,
-  full/manual dry runs therefore require an equivalent temporary push-triggered
-  canary or remain blocked until an approved default-branch cutover.
-- SyncEngine expands runnable host-package coverage from 17 to 18. AppFeature's
-  current macOS-host compile failure prevents its suite from executing; app/UI
-  validation is mandatory and no legacy test was removed. A future source fix
-  should add AppFeature to the host matrix after direct proof.
+  manually dispatched workflow to exist on the default branch; during Stage
+  A1, full/manual dry runs therefore require an equivalent temporary
+  push-triggered canary or await the approved Stage A2 advisory merge.
+- AppFeature and SyncEngine expand runnable host-package coverage from 17 to
+  19. Both use conservative 60-second weights until a reviewed duration-artifact
+  update is supported by sufficient recorded samples. AppFeature changes
+  continue to require app/UI validation, and no legacy test was removed.
 - Current UI tests contain two conditional skips and the named read/quiz/unlock
   flow does not yet exercise those product actions. WP-CI-01 preserves the
   current target and does not edit PR #119-owned test/bootstrap surfaces.

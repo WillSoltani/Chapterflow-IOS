@@ -57,6 +57,8 @@ FULL_EXACT_PATHS = {
     "Secrets.example.xcconfig",
 }
 
+COMPILE_BOUNDARY_SCRIPT = "scripts/verify-wp-dev-01-compile-boundaries.sh"
+
 UI_RISK_PACKAGES = {
     "AIFeature",
     "AuthKit",
@@ -98,14 +100,6 @@ UI_SAFE_SOURCE_PREFIXES = {
         "Packages/AIFeature/Sources/AIFeature/Audio/",
     ),
 }
-
-# AppFeature declares tests but its current sources use iOS-only SwiftUI APIs
-# (for example navigationBarTitleDisplayMode in DebugMenuView), so macOS
-# `swift test` fails before tests execute. App build + deterministic UI remains
-# mandatory for AppFeature changes; the 17 legacy host suites plus SyncEngine
-# form the coverage-preserving host-test set.
-HOST_SWIFT_TEST_EXCLUSIONS = {"AppFeature"}
-
 
 class PlanError(RuntimeError):
     """A deterministic planning or validation failure."""
@@ -265,7 +259,6 @@ def testable_packages(root: Path, graph: dict[str, list[str]]) -> list[str]:
     packages = [
         package
         for package in graph
-        if package not in HOST_SWIFT_TEST_EXCLUSIONS
         if any((root / "Packages" / package / "Tests").rglob("*.swift"))
     ]
     if not packages:
@@ -406,6 +399,8 @@ def package_for_path(path: str, graph: dict[str, list[str]]) -> str | None:
 
 
 def path_forces_full(path: str, package: str | None) -> str | None:
+    if path == COMPILE_BOUNDARY_SCRIPT:
+        return "compile_boundary_gate_change"
     if path in FULL_EXACT_PATHS or PurePosixPath(path).name == "AGENTS.md":
         return "execution_policy_or_shared_config"
     if path.startswith(FULL_PREFIXES):

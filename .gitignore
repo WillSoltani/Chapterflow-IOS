@@ -10,7 +10,10 @@ xcuserdata/
 *.xccheckout
 *.moved-aside
 *.hmap
+*.app
 *.ipa
+*.xcarchive
+*.xcresult
 *.dSYM.zip
 *.dSYM
 

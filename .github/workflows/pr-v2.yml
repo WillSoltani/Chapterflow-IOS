@@ -399,6 +399,7 @@ jobs:
       build_for_testing_seconds: ${{ steps.build-for-testing.outputs.duration }}
       cache_bytes: ${{ steps.cache-size.outputs.bytes }}
       cache_hit: ${{ steps.source-cache.outputs.cache-hit }}
+      compile_boundary_result: ${{ steps.compile-boundaries.outcome }}
       resolve_seconds: ${{ steps.resolve.outputs.duration }}
       setup_seconds: ${{ steps.setup.outputs.setup-seconds }}
       simulator_seconds: ${{ steps.simulator.outputs.duration }}
@@ -427,6 +428,14 @@ jobs:
             ${{ runner.os }}-${{ steps.setup.outputs.arch }}-${{ env.CACHE_SCHEMA }}-${{ steps.setup.outputs.toolchain-key }}-${{ hashFiles('**/Package.swift', '**/Package.resolved') }}
           restore-keys: |
             ${{ runner.os }}-${{ steps.setup.outputs.arch }}-${{ env.CACHE_SCHEMA }}-${{ steps.setup.outputs.toolchain-key }}-
+
+      - name: Verify WP-DEV-01 non-Debug compile boundaries
+        id: compile-boundaries
+        if: ${{ needs.plan.outputs.run_app_build == 'true' }}
+        shell: bash
+        env:
+          COREKIT_RELEASE_SCRATCH_PATH: ${{ runner.temp }}/spm-corekit-release
+        run: scripts/verify-wp-dev-01-compile-boundaries.sh
 
       - name: Verify semantic local-package graph
         id: graph
@@ -617,6 +626,7 @@ jobs:
           CACHE_SIZE_OUTCOME: ${{ steps.cache-size.outcome }}
           CACHE_HIT: ${{ steps.source-cache.outputs.cache-hit || 'disabled-or-miss' }}
           CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
+          COMPILE_BOUNDARY_OUTCOME: ${{ steps.compile-boundaries.outcome }}
           GRAPH_OUTCOME: ${{ steps.graph.outcome }}
           RESOLVE_OUTCOME: ${{ steps.resolve.outcome }}
           SETUP_OUTCOME: ${{ steps.setup.outcome }}
@@ -636,6 +646,8 @@ jobs:
             failure_category=toolchain-or-setup
           elif [[ "$SOURCE_CACHE_OUTCOME" == failure ]]; then
             failure_category=cache-or-infrastructure
+          elif [[ "$COMPILE_BOUNDARY_OUTCOME" == failure ]]; then
+            failure_category=compile-boundary
           elif [[ "$GRAPH_OUTCOME" == failure ]]; then
             failure_category=package-graph
           elif [[ "$RESOLVE_OUTCOME" == failure ]]; then
@@ -654,6 +666,7 @@ jobs:
           {
             echo "### App and UI"
             echo "- Planned app / UI: ${{ needs.plan.outputs.run_app_build }} / ${{ needs.plan.outputs.run_ui_tests }}"
+            echo "- WP-DEV-01 compile boundaries: ${COMPILE_BOUNDARY_OUTCOME}"
             echo "- Source cache: ${CACHE_HIT}"
             echo "- Source cache size: ${{ steps.cache-size.outputs.human || 'unreported' }} (${{ steps.cache-size.outputs.bytes || '0' }} bytes)"
             echo "- Setup duration: ${{ steps.setup.outputs.setup-seconds || 'unreported' }}s"
@@ -694,6 +707,7 @@ jobs:
         id: verify
         env:
           APP_RESULT: ${{ needs.app-and-ui.result }}
+          COMPILE_BOUNDARY_RESULT: ${{ needs.app-and-ui.outputs.compile_boundary_result }}
           LINT_RESULT: ${{ needs.lint.result }}
           PACKAGE_RESULT: ${{ needs.package-tests.result }}
           PLAN_JSON: ${{ needs.plan.outputs.plan_json }}
@@ -723,6 +737,12 @@ jobs:
               errors.append("unsupported plan schema")
           if plan.get("run_ui_tests") and not plan.get("run_app_build"):
               errors.append("UI was requested without app validation")
+          compile_boundary_result = os.environ.get("COMPILE_BOUNDARY_RESULT")
+          if plan.get("run_app_build") and compile_boundary_result != "success":
+              errors.append(
+                  "compile-boundaries: expected success, "
+                  f"observed {compile_boundary_result!r}"
+              )
 
           affected = plan.get("affected_packages")
           matrix = plan.get("package_matrix")
@@ -762,6 +782,11 @@ jobs:
 
           print("Plan reasons:", ", ".join(plan.get("reason_codes", [])))
           print("Packages:", ", ".join(affected) if affected else "none")
+          print(
+              "compile-boundaries:",
+              compile_boundary_result or "not-run",
+              f"(required={bool(plan.get('run_app_build'))})",
+          )
           for job in ("lint", "package-tests", "app-and-ui"):
               print(f"{job}: {actual[job]} (required={expected[job]})")
           if errors:
@@ -779,6 +804,7 @@ jobs:
           BUILD_FOR_TESTING_SECONDS: ${{ needs.app-and-ui.outputs.build_for_testing_seconds }}
           CACHE_BYTES: ${{ needs.app-and-ui.outputs.cache_bytes }}
           CACHE_HIT: ${{ needs.app-and-ui.outputs.cache_hit }}
+          COMPILE_BOUNDARY_RESULT: ${{ needs.app-and-ui.outputs.compile_boundary_result }}
           LINT_INSTALL_SECONDS: ${{ needs.lint.outputs.install_seconds }}
           LINT_RESULT: ${{ needs.lint.result }}
           LINT_SECONDS: ${{ needs.lint.outputs.lint_seconds }}
@@ -820,6 +846,11 @@ jobs:
                   "- Outcomes: plan={}; lint={}; packages={}; app/UI={}\n".format(
                       shown("PLAN_RESULT", "missing"), shown("LINT_RESULT", "missing"),
                       shown("PACKAGE_RESULT", "missing"), shown("APP_RESULT", "missing")
+                  )
+              )
+              summary.write(
+                  "- WP-DEV-01 compile boundaries: {}\n".format(
+                      shown("COMPILE_BOUNDARY_RESULT")
                   )
               )
               summary.write(f"- Plan duration: {shown('PLAN_DURATION_SECONDS')}s\n")

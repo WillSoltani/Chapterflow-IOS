@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -16,6 +17,37 @@ import run_package_shard  # noqa: E402
 
 
 class RepositoryCheckTests(unittest.TestCase):
+    def initialize_git_repository(self, root: Path) -> str:
+        subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+        subprocess.run(
+            ["git", "config", "user.email", "ci-tests@example.invalid"],
+            cwd=root,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "CI Tests"],
+            cwd=root,
+            check=True,
+        )
+        (root / "README.md").write_text("# Fixture repository\n", encoding="utf-8")
+        return self.commit_all(root, "baseline")
+
+    def commit_all(self, root: Path, message: str) -> str:
+        subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+        subprocess.run(["git", "commit", "-qm", message], cwd=root, check=True)
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=root,
+            check=True,
+            text=True,
+            stdout=subprocess.PIPE,
+        ).stdout.strip()
+
+    def run_real_git_checks(self, root: Path, base: str, head: str) -> None:
+        diff = check_repository.ci_plan.resolve_git_diff(root, base, head)
+        self.assertFalse(diff.failed)
+        check_repository.run_checks(root, diff.paths, diff.merge_base, head)
+
     def test_markdown_fences(self) -> None:
         self.assertEqual(
             check_repository.check_markdown_fences(
@@ -27,6 +59,30 @@ class RepositoryCheckTests(unittest.TestCase):
             check_repository.check_markdown_fences(
                 Path("bad.md"), "```swift\nlet value = 1\n"
             )
+        )
+        self.assertTrue(
+            check_repository.check_markdown_fences(
+                Path("bad-close.md"),
+                "```swift\nlet value = 1\n```not-a-valid-close\n",
+            )
+        )
+        self.assertTrue(
+            check_repository.check_markdown_fences(
+                Path("bad-tilde-close.md"),
+                "~~~swift\nlet value = 1\n~~~not-a-valid-close\n",
+            )
+        )
+        self.assertTrue(
+            check_repository.check_markdown_fences(
+                Path("nested-list.md"),
+                "- item\n\n    ```swift\n    let value = 1\n",
+            )
+        )
+        self.assertEqual(
+            check_repository.check_markdown_fences(
+                Path("long-close.md"), "```swift\nlet value = 1\n````\n"
+            ),
+            [],
         )
 
     def test_local_markdown_links(self) -> None:
@@ -46,9 +102,31 @@ class RepositoryCheckTests(unittest.TestCase):
                     root, "docs/source.md", "[missing](../missing.md)"
                 )
             )
+            self.assertEqual(
+                check_repository.check_markdown_links(
+                    root,
+                    "docs/source.md",
+                    "[target][id]\n\n[id]: <../target.md> \"Target\"\n",
+                ),
+                [],
+            )
+            self.assertTrue(
+                check_repository.check_markdown_links(
+                    root,
+                    "docs/source.md",
+                    "[missing][id]\n\n[id]: ../missing.md\n",
+                )
+            )
+            self.assertTrue(
+                check_repository.check_markdown_links(
+                    root,
+                    "docs/source.md",
+                    "[missing][id]\n\n[id]:\n  ../missing.md\n",
+                )
+            )
 
             (root / "docs/source.md").write_text(
-                "[target](../target.md)", encoding="utf-8"
+                "[target][id]\n\n[id]:\n  ../target.md\n", encoding="utf-8"
             )
             incoming = check_repository.check_incoming_links_to_deleted(
                 root,
@@ -116,9 +194,14 @@ class RepositoryCheckTests(unittest.TestCase):
                 "scripts/ci/__pycache__/plan.cpython-313.pyc",
                 "DerivedData/build.log",
                 "results/Test.xcresult/Info.plist",
+                "artifacts/ChapterFlow.ipa",
+                "artifacts/ChapterFlow.xcarchive/Info.plist",
+                "artifacts/ChapterFlow.app.dSYM/Contents/Info.plist",
+                "artifacts/ChapterFlow.dSYM.zip",
+                "artifacts/ChapterFlow.app/Info.plist",
             ]
         )
-        self.assertEqual(len(failures), 3)
+        self.assertEqual(len(failures), 8)
         self.assertEqual(
             check_repository.check_generated_artifacts(["scripts/ci/plan.py"]),
             [],
@@ -146,6 +229,71 @@ class RepositoryCheckTests(unittest.TestCase):
                 ),
                 2,
             )
+
+    def test_real_git_reference_link_regressions_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            base = self.initialize_git_repository(root)
+            (root / "docs").mkdir()
+            (root / "docs/source.md").write_text(
+                "[missing][id]\n\n[id]:\n  ../missing.md\n",
+                encoding="utf-8",
+            )
+            head = self.commit_all(root, "add broken reference link")
+            with self.assertRaises(check_repository.CheckFailure):
+                self.run_real_git_checks(root, base, head)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self.initialize_git_repository(root)
+            (root / "docs").mkdir()
+            (root / "target.md").write_text("target\n", encoding="utf-8")
+            (root / "docs/source.md").write_text(
+                "[target][id]\n\n[id]:\n  ../target.md\n",
+                encoding="utf-8",
+            )
+            base = self.commit_all(root, "add reference target")
+            (root / "target.md").unlink()
+            head = self.commit_all(root, "delete reference target")
+            with self.assertRaises(check_repository.CheckFailure):
+                self.run_real_git_checks(root, base, head)
+
+    def test_real_git_malformed_fence_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            base = self.initialize_git_repository(root)
+            (root / "bad.md").write_text(
+                "```swift\nlet value = 1\n```not-a-valid-close\n",
+                encoding="utf-8",
+            )
+            head = self.commit_all(root, "add malformed fence")
+            with self.assertRaises(check_repository.CheckFailure):
+                self.run_real_git_checks(root, base, head)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            base = self.initialize_git_repository(root)
+            (root / "nested-list.md").write_text(
+                "- item\n\n    ```swift\n    let value = 1\n",
+                encoding="utf-8",
+            )
+            head = self.commit_all(root, "add unclosed nested-list fence")
+            with self.assertRaises(check_repository.CheckFailure):
+                self.run_real_git_checks(root, base, head)
+
+    def test_real_git_xcode_artifacts_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            base = self.initialize_git_repository(root)
+            artifacts = root / "artifacts"
+            (artifacts / "ChapterFlow.xcarchive").mkdir(parents=True)
+            (artifacts / "ChapterFlow.ipa").write_bytes(b"ipa")
+            (artifacts / "ChapterFlow.xcarchive/Info.plist").write_text(
+                "archive\n", encoding="utf-8"
+            )
+            head = self.commit_all(root, "add generated Xcode artifacts")
+            with self.assertRaises(check_repository.CheckFailure):
+                self.run_real_git_checks(root, base, head)
 
 
 if __name__ == "__main__":
