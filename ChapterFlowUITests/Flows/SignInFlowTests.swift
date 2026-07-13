@@ -194,7 +194,9 @@ final class SignInFlowTests: CFUITestCase {
         let identifiedElements = normalDebugApp.descendants(matching: .any)
         XCTAssertTrue(identifiedElements["invalid-config-heading"].exists)
         XCTAssertTrue(identifiedElements["invalid-config-guidance"].exists)
-        XCTAssertTrue(identifiedElements["invalid-config-support-code"].exists)
+        let supportCode = identifiedElements["invalid-config-support-code"]
+        XCTAssertTrue(supportCode.exists)
+        XCTAssertEqual(supportCode.label, "Support code: CF-DEV-CFG-001")
         XCTAssertFalse(normalDebugApp.tabBars.firstMatch.exists)
 
         let login = normalDebugApp.buttons.matching(

@@ -20,20 +20,21 @@ public struct AppConfigurationDiagnosticRecord: Equatable, Sendable {
     public let buildConfiguration: AppBuildConfiguration
     public let issues: [AppConfigurationIssue]
     public let liveServicesConstructed: Bool
-    public let supportCode: String
+
+    public var supportCode: String {
+        Self.supportCode
+    }
 
     public init(
         status: Status,
         buildConfiguration: AppBuildConfiguration,
         issues: [AppConfigurationIssue],
-        liveServicesConstructed: Bool,
-        supportCode: String = Self.supportCode
+        liveServicesConstructed: Bool
     ) {
         self.status = status
         self.buildConfiguration = buildConfiguration
         self.issues = issues
         self.liveServicesConstructed = liveServicesConstructed
-        self.supportCode = supportCode
     }
 }
 

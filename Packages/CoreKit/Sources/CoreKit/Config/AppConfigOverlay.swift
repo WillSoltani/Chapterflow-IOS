@@ -1,3 +1,4 @@
+#if DEBUG
 public extension AppConfig {
     /// Applies the explicit hermetic UI-test service overlay.
     ///
@@ -18,3 +19,4 @@ public extension AppConfig {
         )
     }
 }
+#endif

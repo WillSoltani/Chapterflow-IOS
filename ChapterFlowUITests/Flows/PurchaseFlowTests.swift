@@ -3,8 +3,11 @@ import XCTest
 /// XCUITests for the purchase / subscription flow.
 ///
 /// The stub server returns a FREE-tier entitlement so the app presents
-/// upgrade entry points in the UI. These checks cover app survival and
-/// navigation only; they do not prove StoreKit product loading or purchase.
+/// an upgrade entry point in Settings. These checks cover the fixture-backed
+/// shell, exact Settings navigation, and presentation of the paywall shell.
+/// They do not prove StoreKit product loading, localized pricing, purchase
+/// initiation or completion, backend verification, entitlement activation,
+/// or restore success.
 ///
 /// The AppConfig-to-StoreKitConfig propagation seam is covered separately by
 /// deterministic PaywallFeature unit tests. No purchase is attempted here.
@@ -30,36 +33,16 @@ final class PurchaseFlowTests: CFUITestCase {
     func testSettingsTabIsReachable() {
         robot.waitForTabBar()
         robot.goToSettings()
-
-        // Settings screen should load within the tab shell.
-        let settingsContent = app.navigationBars.firstMatch
-        _ = settingsContent.waitForExistence(timeout: 15)
-        XCTAssert(app.exists, "App should remain alive after navigating to Settings")
     }
 
-    func testUpgradeEntryPointExistsForFreeUsers() {
+    func testFreeUserSettingsShowsUpgradeEntry() {
         robot.waitForTabBar()
         robot.goToSettings()
 
-        // Settings exposes a Pro / upgrade row for free users.
-        let upgradeRow = app.cells.matching(
-            NSPredicate(
-                format: "label CONTAINS[c] 'pro' OR label CONTAINS[c] 'upgrade' OR label CONTAINS[c] 'subscribe'"
-            )
-        ).firstMatch
-        let buttonMatch = app.buttons.matching(
-            NSPredicate(
-                format: "label CONTAINS[c] 'pro' OR label CONTAINS[c] 'upgrade' OR label CONTAINS[c] 'plan'"
-            )
-        ).firstMatch
-
-        let upgradeVisible = upgradeRow.waitForExistence(timeout: 10)
-            || buttonMatch.waitForExistence(timeout: 5)
-
-        // If neither is visible the settings UI may not surface Pro yet.
-        // Assert app is still alive and no crash occurred.
-        XCTAssert(app.exists, "App must not crash while a free user browses Settings")
-        _ = upgradeVisible // Informational; layout may vary.
+        XCTAssertTrue(
+            app.buttons["settings-upgrade-to-pro"].waitForExistence(timeout: 10),
+            "The deterministic free-tier Settings screen should expose its upgrade action"
+        )
     }
 
     // MARK: - StoreKit-adjacent survival
@@ -70,29 +53,24 @@ final class PurchaseFlowTests: CFUITestCase {
         XCTAssert(app.exists, "App must remain alive in the StoreKit-adjacent lane")
     }
 
-    func testAppSurvivesUpgradeNavigationAttempt() {
+    func testSettingsUpgradePresentsPaywallShell() {
         robot.waitForTabBar()
-
-        // Try to trigger the paywall via the Settings upgrade path.
         robot.goToSettings()
 
-        let proButton = app.buttons.matching(
-            NSPredicate(
-                format: "label CONTAINS[c] 'pro' OR label CONTAINS[c] 'upgrade'"
-            )
-        ).firstMatch
-        if proButton.waitForExistence(timeout: 8) {
-            proButton.tap()
+        let upgradeButton = app.buttons["settings-upgrade-to-pro"]
+        XCTAssertTrue(
+            upgradeButton.waitForExistence(timeout: 10),
+            "The deterministic free-tier Settings screen should expose its upgrade action"
+        )
+        upgradeButton.tap()
 
-            // Pricing visibility is informational only. This test does not prove
-            // that StoreKit returned products or that a purchase can complete.
-            let pricingText = app.staticTexts.matching(
-                NSPredicate(
-                    format: "label CONTAINS[c] 'month' OR label CONTAINS[c] 'annual' OR label CONTAINS[c] 'pro'"
-                )
-            ).firstMatch
-            _ = pricingText.waitForExistence(timeout: 10)
-        }
-        XCTAssert(app.exists, "App must survive paywall navigation")
+        XCTAssertTrue(
+            app.staticTexts["ChapterFlow Pro"].waitForExistence(timeout: 10),
+            "The Settings upgrade action should present the Settings-context paywall shell"
+        )
+        XCTAssertTrue(
+            app.buttons["Dismiss"].exists,
+            "The presented paywall shell should expose its dismiss action"
+        )
     }
 }

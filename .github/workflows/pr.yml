@@ -157,6 +157,12 @@ jobs:
           echo ""
           echo "✅ All packages passed"
 
+      - name: Verify WP-DEV-01 non-Debug compile boundaries
+        shell: bash
+        env:
+          COREKIT_RELEASE_SCRATCH_PATH: ${{ github.workspace }}/.spm-build
+        run: scripts/verify-wp-dev-01-compile-boundaries.sh
+
   # ── 3. XCUITest flows (stub server, deterministic) ───────────────────────────
   # Runs the three critical UI flows (sign-in, read→quiz→unlock, purchase) against
   # a URLProtocol stub server fed by Fixtures. SmokeLane tests auto-skip unless

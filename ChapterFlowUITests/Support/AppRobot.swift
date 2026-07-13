@@ -25,8 +25,24 @@ struct AppRobot {
     }
 
     @discardableResult
-    func goToSettings() -> Self {
-        tap(tab: "setting")
+    func goToSettings(file: StaticString = #file, line: UInt = #line) -> Self {
+        let settingsTab = app.tabBars.buttons["Settings"]
+        let settingsTabExists = settingsTab.waitForExistence(timeout: 10)
+        XCTAssertTrue(
+            settingsTabExists,
+            "Settings tab should exist before navigation",
+            file: file,
+            line: line
+        )
+        guard settingsTabExists else { return self }
+
+        settingsTab.tap()
+        XCTAssertTrue(
+            app.navigationBars["Settings"].waitForExistence(timeout: 15),
+            "Settings navigation destination should be visible after tapping its tab",
+            file: file,
+            line: line
+        )
         return self
     }
 
@@ -49,8 +65,17 @@ struct AppRobot {
     }
 
     @discardableResult
-    func waitForTabBar(timeout: TimeInterval = 20) -> Self {
-        _ = app.tabBars.firstMatch.waitForExistence(timeout: timeout)
+    func waitForTabBar(
+        timeout: TimeInterval = 20,
+        file: StaticString = #file,
+        line: UInt = #line
+    ) -> Self {
+        XCTAssertTrue(
+            app.tabBars.firstMatch.waitForExistence(timeout: timeout),
+            "Tab bar should be visible",
+            file: file,
+            line: line
+        )
         return self
     }
 

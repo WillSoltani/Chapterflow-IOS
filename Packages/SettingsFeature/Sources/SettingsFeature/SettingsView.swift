@@ -291,6 +291,7 @@ public struct SettingsView: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("settings-upgrade-to-pro")
         .accessibilityLabel("Upgrade to ChapterFlow Pro")
         .accessibilityHint("Opens the subscription upgrade screen")
     }

@@ -112,10 +112,15 @@ struct AppConfigValidationTests {
             ("https://api.chapterflow.test", Optional<AppConfigurationIssueCategory>.none),
             ("http://localhost:8080", Optional<AppConfigurationIssueCategory>.none),
             ("http://127.0.0.1:8080", Optional<AppConfigurationIssueCategory>.none),
+            ("http://[::1]:8080", Optional<AppConfigurationIssueCategory>.none),
+            ("https://[::1]:8080", Optional<AppConfigurationIssueCategory>.none),
             ("http://api.chapterflow.test", .some(.insecureTransport)),
+            ("http://[2001:db8::1]:8080", .some(.malformed)),
+            ("http://[::1:8080", .some(.malformed)),
             ("ftp://api.chapterflow.test", .some(.malformed)),
             ("https://user:password@api.chapterflow.test", .some(.malformed)),
             ("https://api.chapterflow.test?token=private", .some(.malformed)),
+            ("https://api.chapterflow.test#private", .some(.malformed)),
         ]
     )
     func apiURLRules(value: String, expected: AppConfigurationIssueCategory?) {
@@ -196,12 +201,18 @@ struct AppConfigValidationTests {
         )
         let result = config.validate()
         let reflected = String(reflecting: result)
+        let privateValues = [
+            privateURL,
+            privatePool,
+            privateClient,
+            privateDomain,
+            "credential",
+            "do-not-log",
+        ]
 
-        #expect(!reflected.contains(privateURL))
-        #expect(!reflected.contains(privatePool))
-        #expect(!reflected.contains(privateClient))
-        #expect(!reflected.contains(privateDomain))
-        #expect(!reflected.contains("credential"))
+        for privateValue in privateValues {
+            #expect(!reflected.contains(privateValue))
+        }
         #expect(config.configurationIssues.map(\.code) == [
             "configuration.api_base_url.malformed",
             "configuration.cognito_domain.region_mismatch",
@@ -213,27 +224,45 @@ struct AppConfigValidationTests {
             issues: config.configurationIssues,
             liveServicesConstructed: false
         )
-        #expect(!String(reflecting: record).contains(privateDomain))
+        let reflectedRecord = String(reflecting: record)
+        for privateValue in privateValues {
+            #expect(!reflectedRecord.contains(privateValue))
+        }
     }
 
-    @Test("diagnostic records expose only safe categories and readiness")
+    @Test("diagnostic records store only safe categories and readiness")
     func diagnosticRecordIsRedacted() {
-        let record = AppConfigurationDiagnosticRecord(
+        let invalidRecord = AppConfigurationDiagnosticRecord(
             status: .invalid,
             buildConfiguration: .debug,
             issues: [issue(.cognitoClientID, .placeholder)],
             liveServicesConstructed: false
         )
-        let labels = Set(Mirror(reflecting: record).children.compactMap(\.label))
-        let reflected = String(reflecting: record)
+        let validRecord = AppConfigurationDiagnosticRecord(
+            status: .valid,
+            buildConfiguration: .nonDebug,
+            issues: [],
+            liveServicesConstructed: true
+        )
+        let labels = Set(Mirror(reflecting: invalidRecord).children.compactMap(\.label))
+        let reflected = String(reflecting: invalidRecord)
 
         #expect(labels == [
             "status", "buildConfiguration", "issues",
-            "liveServicesConstructed", "supportCode",
+            "liveServicesConstructed",
         ])
-        #expect(record.supportCode == "CF-DEV-CFG-001")
+        #expect(invalidRecord.supportCode == "CF-DEV-CFG-001")
+        #expect(validRecord.supportCode == "CF-DEV-CFG-001")
         #expect(!reflected.contains("https://"))
         #expect(!reflected.contains("PrivatePoolIdentifier"))
+    }
+
+    @Test(
+        "issue categories cannot carry private associated values",
+        arguments: AppConfigurationIssueCategory.allCases
+    )
+    func issueCategoriesHaveNoAssociatedValues(_ category: AppConfigurationIssueCategory) {
+        #expect(Mirror(reflecting: category).children.isEmpty)
     }
 
     private var requiredInfoKeys: [String] {

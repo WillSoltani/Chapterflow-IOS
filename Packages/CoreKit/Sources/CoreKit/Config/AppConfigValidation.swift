@@ -206,7 +206,13 @@ private enum AppConfigValidator {
 
     private static func isLoopbackHost(_ host: String) -> Bool {
         let candidate = host.lowercased()
-        return candidate == "localhost" || candidate == "127.0.0.1" || candidate == "::1"
+        // URLComponents currently preserves brackets around an IPv6 literal in
+        // `host`. Normalize only the exact loopback spelling; arbitrary bracketed
+        // hosts and nonloopback IPv6 literals must remain invalid.
+        let normalizedCandidate = candidate == "[::1]" ? "::1" : candidate
+        return normalizedCandidate == "localhost" ||
+            normalizedCandidate == "127.0.0.1" ||
+            normalizedCandidate == "::1"
     }
 
     private static func isValidHostname(_ value: String) -> Bool {
