@@ -14,9 +14,12 @@ Usage: scripts/refresh-fixtures.sh [--check]
 Environment:
   CHAPTERFLOW_BACKEND_REPO  Path to a ChapterFlow backend checkout.
                             Default: sibling directory ../ChapterFlow
-  CONTRACT_SOURCE_REVISION Exact backend HEAD to record after the backend
-                            contract change is merged. Omit only while the
-                            coordinated backend change is still uncommitted.
+  CONTRACT_SOURCE_REVISION Exact backend HEAD used to generate the iOS bundle.
+                            Omit only while the backend change is uncommitted.
+  CONTRACT_SOURCE_REVISION_PHASE
+                            committed_backend_branch while the companion PR is
+                            open, or merged_backend after that revision reaches
+                            backend main. Required with CONTRACT_SOURCE_REVISION.
 
 Options:
   --check  Regenerate and fail if the committed iOS bundle differs.
@@ -99,13 +102,39 @@ fi
 
 recorded_revision=$(jq -r '.provenance.sourceRevision // ""' "$backend_bundle")
 recorded_phase=$(jq -r '.provenance.sourceRevisionPhase' "$backend_bundle")
-if [[ -n "${CONTRACT_SOURCE_REVISION:-}" ]]; then
-  if [[ "$recorded_revision" != "$CONTRACT_SOURCE_REVISION" || "$recorded_phase" != "merged_backend" ]]; then
-    echo "error: generated provenance does not record CONTRACT_SOURCE_REVISION as merged_backend" >&2
+requested_revision=${CONTRACT_SOURCE_REVISION:-}
+requested_phase=${CONTRACT_SOURCE_REVISION_PHASE:-}
+if [[ -n "$requested_revision" || -n "$requested_phase" ]]; then
+  if [[ -z "$requested_revision" || -z "$requested_phase" ]]; then
+    echo "error: CONTRACT_SOURCE_REVISION and CONTRACT_SOURCE_REVISION_PHASE must be provided together" >&2
+    exit 1
+  fi
+  if [[ ! "$requested_revision" =~ ^[0-9a-f]{40}$ ]]; then
+    echo "error: CONTRACT_SOURCE_REVISION must be a full lowercase Git SHA" >&2
+    exit 1
+  fi
+  case "$requested_phase" in
+    committed_backend_branch|merged_backend) ;;
+    *)
+      echo "error: unsupported CONTRACT_SOURCE_REVISION_PHASE: $requested_phase" >&2
+      exit 1
+      ;;
+  esac
+  backend_head=$(git -C "$backend_repo" rev-parse HEAD)
+  if [[ "$backend_head" != "$requested_revision" ]]; then
+    echo "error: backend HEAD $backend_head does not match CONTRACT_SOURCE_REVISION $requested_revision" >&2
+    exit 1
+  fi
+  if [[ "$recorded_revision" != "$requested_revision" || "$recorded_phase" != "$requested_phase" ]]; then
+    echo "error: generated provenance does not record the requested revision and phase" >&2
     exit 1
   fi
 elif [[ -n "$recorded_revision" || "$recorded_phase" != "uncommitted_backend" ]]; then
   echo "error: draft generation without CONTRACT_SOURCE_REVISION must remain uncommitted_backend" >&2
+  exit 1
+fi
+if [[ "$mode" == "check" && -z "$requested_revision" ]]; then
+  echo "error: --check requires committed backend revision provenance" >&2
   exit 1
 fi
 

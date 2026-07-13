@@ -8,6 +8,8 @@ on:
       - "Packages/Networking/**"
       - "Packages/**/Sources/**/*.swift"
       - "scripts/refresh-fixtures.sh"
+      - "scripts/verify-backend-contract-provenance.sh"
+      - "scripts/test-backend-contract-provenance.sh"
       - ".github/workflows/contract-drift.yml"
   schedule:
     - cron: "0 2 * * 0"
@@ -27,39 +29,60 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Require cross-repository read credential
-        env:
-          CONTRACT_REPO_TOKEN: ${{ secrets.CONTRACT_REPO_TOKEN }}
-        run: |
-          if [ -z "$CONTRACT_REPO_TOKEN" ]; then
-            echo "::error::CONTRACT_REPO_TOKEN is required to read WillSoltani/ChapterFlow."
-            exit 1
-          fi
-
       - name: Check out iOS
         uses: actions/checkout@v4
         with:
           path: ios
+          persist-credentials: false
 
-      - name: Check out backend source of truth
+      - name: Resolve pinned backend contract source
+        id: backend_source
+        working-directory: ios
+        run: |
+          bundle=contracts/native-ios/v1/contract-bundle.json
+          repository=$(jq -r '.provenance.backendRepository // ""' "$bundle")
+          revision=$(jq -r '.provenance.sourceRevision // ""' "$bundle")
+          phase=$(jq -r '.provenance.sourceRevisionPhase // ""' "$bundle")
+          if [ "$repository" != "WillSoltani/ChapterFlow" ]; then
+            echo "::error::Unexpected backend contract repository: $repository"
+            exit 1
+          fi
+          if [[ ! "$revision" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::The iOS contract bundle must pin an exact 40-character backend sourceRevision."
+            exit 1
+          fi
+          case "$phase" in
+            committed_backend_branch|merged_backend) ;;
+            *)
+              echo "::error::Unsupported committed contract phase: $phase"
+              exit 1
+              ;;
+          esac
+          echo "sha=$revision" >> "$GITHUB_OUTPUT"
+          echo "phase=$phase" >> "$GITHUB_OUTPUT"
+
+      - name: Check out pinned public backend source
         uses: actions/checkout@v4
         with:
           repository: WillSoltani/ChapterFlow
-          ref: main
-          token: ${{ secrets.CONTRACT_REPO_TOKEN }}
+          ref: ${{ steps.backend_source.outputs.sha }}
           path: backend
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: Record exact backend contract revision
-        id: backend_revision
-        working-directory: backend
+      - name: Verify backend revision and integration phase
+        working-directory: ios
+        env:
+          CHAPTERFLOW_BACKEND_REPO: ${{ github.workspace }}/backend
+          CONTRACT_SOURCE_REVISION: ${{ steps.backend_source.outputs.sha }}
+          CONTRACT_SOURCE_REVISION_PHASE: ${{ steps.backend_source.outputs.phase }}
         run: |
-          contract_revision=$(git log -1 --format=%H -- contracts/native-ios/v1/contract-bundle.json)
-          if [ -z "$contract_revision" ]; then
-            echo "::error::No committed backend contract bundle revision was found."
-            exit 1
-          fi
-          echo "sha=$contract_revision" >> "$GITHUB_OUTPUT"
+          git -C "$CHAPTERFLOW_BACKEND_REPO" fetch --no-tags origin main:refs/remotes/origin/main
+          bash scripts/verify-backend-contract-provenance.sh
+
+      - name: Exercise merge and squash-merge provenance canaries
+        working-directory: ios
+        run: bash scripts/test-backend-contract-provenance.sh
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -80,7 +103,8 @@ jobs:
         working-directory: ios
         env:
           CHAPTERFLOW_BACKEND_REPO: ${{ github.workspace }}/backend
-          CONTRACT_SOURCE_REVISION: ${{ steps.backend_revision.outputs.sha }}
+          CONTRACT_SOURCE_REVISION: ${{ steps.backend_source.outputs.sha }}
+          CONTRACT_SOURCE_REVISION_PHASE: ${{ steps.backend_source.outputs.phase }}
         run: bash scripts/refresh-fixtures.sh --check
 
       - name: Consume canonical and compatible fixtures in Models
@@ -107,14 +131,14 @@ jobs:
 
       - name: Contract summary
         if: always()
-        working-directory: ios
+        env:
+          PINNED_BACKEND_REVISION: ${{ steps.backend_source.outputs.sha }}
+          PINNED_BACKEND_PHASE: ${{ steps.backend_source.outputs.phase }}
         run: |
           echo "### Native contract drift" >> "$GITHUB_STEP_SUMMARY"
           echo "- Source: backend-generated synthetic bundle" >> "$GITHUB_STEP_SUMMARY"
           echo "- Live production routes called: no" >> "$GITHUB_STEP_SUMMARY"
           echo "- Expected inventory: 83 operations / 93 native producers / 29 matrix rows" >> "$GITHUB_STEP_SUMMARY"
-          if [ -f contracts/native-ios/v1/contract-bundle.json ]; then
-            echo "- Behavior source: $(jq -r '.provenance.behaviorSourceRevision' contracts/native-ios/v1/contract-bundle.json)" >> "$GITHUB_STEP_SUMMARY"
-            echo "- Coverage: $(jq -r '[.operations[].coverage] | group_by(.) | map({(.[0]): length}) | add' contracts/native-ios/v1/contract-bundle.json)" >> "$GITHUB_STEP_SUMMARY"
-            echo "- Native proof: $(jq -r '.inventory.iosSourceEvidence | "request factories \(.exactFactoryTestedProducerCount)/93; success consumers \(.bundleSuccessDecoderTestedOperationCount)/60"' contracts/native-ios/v1/contract-bundle.json)" >> "$GITHUB_STEP_SUMMARY"
-          fi
+          echo "- Pinned source: ${PINNED_BACKEND_REVISION:-unavailable} (${PINNED_BACKEND_PHASE:-unavailable})" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Coverage: 0 full / 60 partial / 23 blocked" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Native proof: request factories 6/93; success consumers 24/60" >> "$GITHUB_STEP_SUMMARY"

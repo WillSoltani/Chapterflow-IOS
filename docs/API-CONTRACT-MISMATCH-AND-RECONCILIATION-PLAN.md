@@ -49,41 +49,48 @@ idempotency semantics, source hashes, canonical synthetic success/errors where p
 blocked backend evidence where not proven. A blocked operation retains its native request
 fixture but carries no invented backend success fixture.
 
-The iOS inventory manifest names `92a5c351…` only as its clean base. Its corrected PATCH/GET
-operation digest is explicitly `uncommitted_contract_branch` with no containing iOS revision;
-the refresh script separately validates every current producer symbol and source path. This avoids
-attributing branch-only endpoint corrections to the base commit.
+The iOS inventory manifest names `92a5c351…` as its clean base and pins the corrected PATCH/GET
+operation digest to committed contract revision `bb7ca300…`. The refresh script separately
+validates every current producer symbol and source path. Workflow- or script-only follow-up commits
+do not change that producer inventory.
 
 ### Provenance semantics
 
-During coordinated draft-PR work, `provenance.sourceRevision` is `null` and
-`sourceRevisionPhase` is `uncommitted_backend`. `behaviorSourceRevision` identifies the inspected
-route/serializer base, while `generatorTreeDigest` fences the uncommitted generator, registry,
-and type sources. This must not be described as the backend PR's final revision. Before the iOS
-change can merge, regenerate after the backend change merges and populate the final full backend
-SHA with `sourceRevisionPhase: "merged_backend"`. `deployedRevision` remains `null` until a
-deployment is independently verified.
+The backend repository's checked-in bundle remains `sourceRevision: null` with
+`sourceRevisionPhase: "uncommitted_backend"`, because a committed file cannot contain the SHA of
+its own commit. The iOS copy is generated as an explicit provenance overlay: it pins the exact
+companion backend commit with `sourceRevisionPhase: "committed_backend_branch"`. CI requires that
+revision not to be on backend `main`. Once it reaches `main`, the branch-phase check turns red and
+the iOS bundle must be regenerated with `sourceRevisionPhase: "merged_backend"` before merge.
+`behaviorSourceRevision` still identifies the inspected route/serializer base, while
+`generatorTreeDigest` fences the generator, registry, and type sources. `deployedRevision` remains
+`null` until a deployment is independently verified.
 
 ### Deterministic refresh and CI
 
 From the iOS checkout:
 
 ```sh
-CHAPTERFLOW_BACKEND_REPO=/path/to/ChapterFlow bash scripts/refresh-fixtures.sh
-CHAPTERFLOW_BACKEND_REPO=/path/to/ChapterFlow bash scripts/refresh-fixtures.sh --check
-# Required after the backend PR merges:
 CONTRACT_SOURCE_REVISION=$(git -C /path/to/ChapterFlow rev-parse HEAD) \
+  CONTRACT_SOURCE_REVISION_PHASE=committed_backend_branch \
   CHAPTERFLOW_BACKEND_REPO=/path/to/ChapterFlow bash scripts/refresh-fixtures.sh
+# Repeat with --check for deterministic verification.
+# After the backend revision reaches main, use CONTRACT_SOURCE_REVISION_PHASE=merged_backend.
 ```
 
 The script runs `npm run contract:native:generate` twice, requires byte-identical output, verifies
 the exact 83/93/29 inventory and every producer symbol/source location against production Swift,
 scans JSON values for secret/PII shapes, and either copies or compares the bundle.
-`.github/workflows/contract-drift.yml` checks out both repositories, records the exact merged
-backend revision that last changed the contract bundle in `CONTRACT_SOURCE_REVISION`, runs backend
-exporter/source-fence tests, regenerates
-without network API captures, and runs the Models and Networking consumers. This intentionally
-keeps the iOS check red after the backend merge until the bundle is refreshed with that final SHA.
+`.github/workflows/contract-drift.yml` checks out iOS first, reads the exact backend revision and
+phase from its bundle, then checks out that public backend commit with full history and no PAT. It
+proves the commit is the exact contract-changing revision and enforces branch-versus-main
+integration. Because backend PRs may be squash-merged, integration detection accepts either commit
+ancestry or the exact bundle blob appearing anywhere in `main`'s contract history; a regression
+canary exercises both merge forms. `merged_backend` remains stricter and must pin an exact commit
+reachable from `main`. The workflow then runs backend exporter/source-fence tests, regenerates
+without network API captures, and runs the Models and Networking consumers. A branch-phase bundle
+intentionally turns red once its contract reaches backend `main`, until the bundle is refreshed as
+`merged_backend`.
 Any production Swift change under `Packages/**/Sources` triggers the workflow, and factory discovery
 scans endpoint-definition files across every package rather than a fixed feature allowlist. It is
 separate from `pr.yml`.

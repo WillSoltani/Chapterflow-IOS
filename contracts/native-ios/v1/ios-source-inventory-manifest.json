@@ -2,8 +2,8 @@
   "schemaVersion": "chapterflow-ios-native-inventory-v1",
   "iosRepository": "WillSoltani/Chapterflow-IOS",
   "iosBaseRevision": "92a5c351a42771f546b3d0e575b3b37a8cbfb588",
-  "iosSourceRevision": null,
-  "iosSourceRevisionPhase": "uncommitted_contract_branch",
+  "iosSourceRevision": "bb7ca30041dd095dc36144611bea127f0b53099d",
+  "iosSourceRevisionPhase": "committed_contract_branch",
   "canonicalization": "UTF-8 sorted lines joined with LF and a terminal LF",
   "operationKeyCount": 83,
   "operationKeySha256": "b24a9ad2861744ad127ce1aca976c13b621fdb7460fc8cd9b9d5669ec9468174",
@@ -13,8 +13,8 @@
   "bundleSuccessDecoderTestedOperationCount": 24,
   "backendRuntimeFactoryValidationPerformed": false,
   "evidence": [
-    "The operation and producer digests were collected in the isolated WP-CONTRACT-01 worktree based on iOS revision 92a5c351a42771f546b3d0e575b3b37a8cbfb588 and include the source-proven PATCH/GET corrections in this uncommitted contract branch.",
-    "No committed iOS source revision is claimed for the corrected inventory; scripts/refresh-fixtures.sh independently checks every current producer symbol and source path.",
+    "The operation and producer digests were collected in the isolated WP-CONTRACT-01 worktree and are pinned to committed iOS contract revision bb7ca30041dd095dc36144611bea127f0b53099d, which includes the source-proven PATCH/GET corrections.",
+    "The committed iOS source revision contains the inventoried endpoint producers; subsequent workflow- or script-only repair commits do not change the producer inventory.",
     "The backend generator validates its hand-registered operations and producer variant IDs against this independent manifest, but it does not inspect or instantiate Swift endpoint factories.",
     "Exact factory and call-site membership remains an iOS-consumer validation responsibility; only six native producers currently have exact factory tests.",
     "Only 24 of the 60 partial operations currently feed the bundle success payload through the production iOS model decoder and a cache round-trip."

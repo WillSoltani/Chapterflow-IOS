@@ -77,13 +77,13 @@ struct NativeContractBundleTests {
         let bundle = try NativeContractBundleFixture.load()
         let manifest = try IOSSourceInventoryManifest.load()
         let evidence = bundle.inventory.iosSourceEvidence
-
+        let inventoryRevision = "bb7ca30041dd095dc36144611bea127f0b53099d"
         #expect(evidence.manifestPath == "contracts/native-ios/v1/ios-source-inventory-manifest.json")
         #expect(evidence.iosBaseRevision == manifest.iosBaseRevision)
-        #expect(evidence.iosSourceRevision == nil)
-        #expect(evidence.iosSourceRevisionPhase == "uncommitted_contract_branch")
-        #expect(manifest.iosSourceRevision == nil)
-        #expect(manifest.iosSourceRevisionPhase == "uncommitted_contract_branch")
+        #expect(evidence.iosSourceRevision == inventoryRevision)
+        #expect(evidence.iosSourceRevisionPhase == "committed_contract_branch")
+        #expect(manifest.iosSourceRevision == inventoryRevision)
+        #expect(manifest.iosSourceRevisionPhase == "committed_contract_branch")
         #expect(evidence.operationKeySha256 == manifest.operationKeySha256)
         #expect(evidence.producerVariantIdSha256 == manifest.producerVariantIdSha256)
         #expect(evidence.exactFactoryTestedProducerCount == 6)
@@ -98,7 +98,6 @@ struct NativeContractBundleTests {
     func blockedOperationsRetainEvidence() throws {
         let bundle = try NativeContractBundleFixture.load()
         let blocked = bundle.operations.filter { $0.coverage == "blocked" }
-
         #expect(!blocked.isEmpty)
         for operation in blocked {
             #expect(!operation.nativeRequestFixtures.isEmpty)
@@ -106,7 +105,6 @@ struct NativeContractBundleTests {
             #expect(operation.fixtures == nil)
             #expect(operation.backend == nil)
         }
-
         let missingRoutes = blocked.filter { $0.blocker?.kind == "missing_route" }
         #expect(missingRoutes.count == 8)
         #expect(missingRoutes.allSatisfy { $0.blocker?.expectedRouteSource?.isEmpty == false })
@@ -196,10 +194,16 @@ private func validateMetadata(_ bundle: NativeContractBundleFixture) throws {
         ISO8601DateFormatter().date(from: bundle.provenance.generatedAt) != nil,
         "generated timestamp"
     )
-    if bundle.provenance.sourceRevisionPhase == "uncommitted_backend" {
-        try requireContract(bundle.provenance.sourceRevision == nil, "uncommitted source revision")
-    } else {
-        try requireContract(bundle.provenance.sourceRevision?.count == 40, "merged source revision")
+    switch bundle.provenance.sourceRevisionPhase {
+    case "uncommitted_backend":
+        throw NativeContractValidationError.invalid("iOS bundle must pin a committed backend revision")
+    case "committed_backend_branch", "merged_backend":
+        guard let sourceRevision = bundle.provenance.sourceRevision else {
+            throw NativeContractValidationError.invalid("committed source revision")
+        }
+        try requireContract(isLowercaseGitSHA(sourceRevision), "committed source revision format")
+    default:
+        throw NativeContractValidationError.invalid("source revision phase")
     }
 }
 
@@ -232,9 +236,10 @@ private func validateInventory(_ bundle: NativeContractBundleFixture) throws {
         "iOS inventory base revision"
     )
     try requireContract(
-        bundle.inventory.iosSourceEvidence.iosSourceRevision == nil
+        bundle.inventory.iosSourceEvidence.iosSourceRevision
+            == "bb7ca30041dd095dc36144611bea127f0b53099d"
             && bundle.inventory.iosSourceEvidence.iosSourceRevisionPhase
-                == "uncommitted_contract_branch",
+                == "committed_contract_branch",
         "iOS inventory branch provenance"
     )
     try requireContract(
@@ -319,6 +324,9 @@ private func validate(_ operation: NativeContractBundleFixture.Operation) throws
 
 private func requireContract(_ condition: @autoclosure () -> Bool, _ message: String) throws {
     guard condition() else { throw NativeContractValidationError.invalid(message) }
+}
+private func isLowercaseGitSHA(_ value: String) -> Bool {
+    value.range(of: #"^[0-9a-f]{40}$"#, options: .regularExpression) != nil
 }
 
 private func requireValue<Value>(_ value: Value?, _ message: String) throws -> Value {
