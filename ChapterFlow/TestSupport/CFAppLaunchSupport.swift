@@ -1,22 +1,32 @@
 #if DEBUG
+import CoreKit
 import Foundation
 
 /// Entry point for XCUITest environment overrides applied at app launch.
 ///
 /// Called from ``ChapterFlowApp.init()`` before any SwiftUI scene is constructed.
-/// Two env-var flags drive the stub infrastructure:
+/// Four env-var flags drive the hermetic infrastructure:
 ///
 /// - `CF_STUB_SERVER=1` → registers ``CFStubURLProtocol`` so every URLSession
 ///   request in the app process is served by fixture-backed stubs.
 /// - `CF_UITEST_BYPASS_AUTH=1` → seeds the Keychain with a pre-built test JWT
 ///   so the app presents as signed-in without performing a real Cognito handshake.
+/// - `CF_HERMETIC_TEST_CONFIGURATION=1` together with `CF_STUB_SERVER=1` →
+///   selects a typed, non-production API/Cognito configuration.
+/// - `CF_INVALID_TEST_CONFIGURATION=1` → selects committed-equivalent
+///   placeholders so the fail-closed root can be exercised independently of a
+///   developer's ignored `Secrets.xcconfig`.
 ///
-/// Both flags are harmless when absent; this file is stripped from release builds.
+/// All flags are harmless when absent; this file is stripped from release builds.
 enum CFAppLaunchSupport {
+    private static let hermeticConfigurationKey = "CF_HERMETIC_TEST_CONFIGURATION"
+    private static let invalidConfigurationKey = "CF_INVALID_TEST_CONFIGURATION"
+    private static let stubServerKey = "CF_STUB_SERVER"
+
     static func applyUITestOverrides() {
         let env = ProcessInfo.processInfo.environment
 
-        if env["CF_STUB_SERVER"] == "1" {
+        if env[stubServerKey] == "1" {
             // URLProtocol.registerClass adds CFStubURLProtocol to the shared
             // configuration, intercepting all requests on URLSession.shared and
             // any session created from the default configuration (including Amplify).
@@ -36,6 +46,35 @@ enum CFAppLaunchSupport {
             UserDefaults(suiteName: "group.com.chapterflow")?
                 .set(true, forKey: "pref.onboardingCompleted")
         }
+    }
+
+    /// Returns a safe synthetic configuration only for the explicit hermetic
+    /// XCUITest path. Requiring both flags prevents a normal Debug launch—or a
+    /// smoke test using auth bypass alone—from activating it accidentally.
+    static func resolveConfiguration(default defaultConfig: AppConfig) -> AppConfig {
+        let env = ProcessInfo.processInfo.environment
+        if env[invalidConfigurationKey] == "1" {
+            return AppConfig(
+                apiBaseURL: "https://api.chapterflow.example.com",
+                cognitoRegion: "us-east-1",
+                cognitoUserPoolID: "us-east-1_XXXXXXXXX",
+                cognitoClientID: "XXXXXXXXXXXXXXXXXXXXXXXXXX",
+                cognitoDomain: "auth.your-domain.auth.us-east-1.amazoncognito.com"
+            )
+        }
+
+        guard env[stubServerKey] == "1",
+              env[hermeticConfigurationKey] == "1" else {
+            return defaultConfig
+        }
+
+        return AppConfig(
+            apiBaseURL: "https://api.chapterflow.test",
+            cognitoRegion: "us-east-1",
+            cognitoUserPoolID: "us-east-1_ChapterFlowUITest",
+            cognitoClientID: "chapterflowuitestclient12345",
+            cognitoDomain: "auth.chapterflow.test"
+        )
     }
 }
 #endif

@@ -9,6 +9,10 @@ enum TestEnv {
     static let stubServer  = "CF_STUB_SERVER"
     /// Set to "1" to seed the Keychain with a test JWT (bypasses real Cognito auth).
     static let bypassAuth  = "CF_UITEST_BYPASS_AUTH"
+    /// Set with the stub server to select the explicit synthetic API/Cognito config.
+    static let hermeticConfiguration = "CF_HERMETIC_TEST_CONFIGURATION"
+    /// Set to exercise the invalid-configuration root using safe placeholders.
+    static let invalidConfiguration = "CF_INVALID_TEST_CONFIGURATION"
     /// Set to "1" to enable the optional smoke lane (hits real prod API, non-blocking).
     static let realAPI     = "CF_REAL_API"
     /// A real id_token for the smoke lane (injected via CI secrets).
@@ -44,6 +48,7 @@ class CFUITestCase: XCTestCase {
         continueAfterFailure = false
         app = XCUIApplication()
         app.launchEnvironment[TestEnv.stubServer] = "1"
+        app.launchEnvironment[TestEnv.hermeticConfiguration] = "1"
         if needsAuth {
             app.launchEnvironment[TestEnv.bypassAuth] = "1"
         }
