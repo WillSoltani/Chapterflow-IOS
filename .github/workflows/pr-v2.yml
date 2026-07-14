@@ -1,11 +1,11 @@
-name: CI v2 — Advisory
+name: CI — Required
 
-# Stage A candidate. The legacy pr.yml remains the merge authority until a
-# separately authorized branch-protection cutover.
+# Authoritative pull-request validation. Full validation also remains available
+# on main, schedule, merge group, and manual dispatch events.
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened, labeled, unlabeled, ready_for_review]
+    types: [opened, synchronize, reopened]
   push:
     branches: [main]
   merge_group:
@@ -77,6 +77,7 @@ jobs:
       plan_json: ${{ steps.planner.outputs.plan_json }}
       reason_codes: ${{ steps.planner.outputs.reason_codes }}
       run_app_build: ${{ steps.planner.outputs.run_app_build }}
+      run_contract_semantics: ${{ steps.planner.outputs.run_contract_semantics }}
       run_full_packages: ${{ steps.planner.outputs.run_full_packages }}
       run_lint: ${{ steps.planner.outputs.run_lint }}
       run_package_tests: ${{ steps.planner.outputs.run_package_tests }}
@@ -87,7 +88,7 @@ jobs:
         id: job-start
         run: echo "started=$(date +%s)" >> "$GITHUB_OUTPUT"
 
-      - name: Checkout exact candidate revision
+      - name: Checkout exact revision
         id: checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -175,6 +176,7 @@ jobs:
               summary.write("### CI plan\n")
               summary.write(f"- Mode/event: `{plan['mode']}` / `{plan['event']}`\n")
               summary.write(f"- Docs only: `{plan['docs_only']}`\n")
+              summary.write(f"- Native contract semantics: `{plan['run_contract_semantics']}`\n")
               summary.write(f"- Full packages: `{plan['run_full_packages']}`\n")
               summary.write(f"- App build / UI: `{plan['run_app_build']}` / `{plan['run_ui_tests']}`\n")
               summary.write(f"- Packages ({len(plan['affected_packages'])}): " +
@@ -194,6 +196,117 @@ jobs:
           if-no-files-found: ignore
           retention-days: 5
 
+  contract-semantics:
+    name: Native Contract Semantics
+    needs: plan
+    if: ${{ needs.plan.outputs.run_contract_semantics == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      duration_seconds: ${{ steps.verify.outputs.duration-seconds }}
+      proof: ${{ steps.verify.outputs.proof }}
+
+    steps:
+      - name: Checkout exact revision
+        id: checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify current-worktree native contract semantics
+        id: verify
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+          PYTHONHASHSEED: "0"
+        shell: bash
+        run: |
+          set -euo pipefail
+          started="$(date +%s)"
+          output="$(python3 scripts/contracts/verify_ios_incremental_contract_drift.py --layer worktree)"
+          printf '%s\n' "$output"
+          CONTRACT_OUTPUT="$output" python3 - "$GITHUB_OUTPUT" <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import sys
+
+          expected_line = (
+              "Current iOS contract semantics passed "
+              "(83 operations / 93 producers / 29 matrix rows / 93 relations)."
+          )
+          if os.environ.get("CONTRACT_OUTPUT") != expected_line:
+              raise SystemExit("native contract verifier produced malformed proof output")
+
+          manifest = json.loads(Path(
+              "contracts/native-ios/v1/ios-source-inventory-manifest.json"
+          ).read_text(encoding="utf-8"))
+          counts = {
+              "operations": manifest.get("operationKeyCount"),
+              "producers": manifest.get("producerVariantCount"),
+              "matrix_rows": manifest.get("matrixRowCount"),
+              "relations": manifest.get("relationalRecordCount"),
+          }
+          expected_counts = {
+              "operations": 83,
+              "producers": 93,
+              "matrix_rows": 29,
+              "relations": 93,
+          }
+          if counts != expected_counts:
+              raise SystemExit(
+                  f"native contract inventory counts drifted: {counts!r}"
+              )
+
+          verifier_path = Path(
+              "scripts/contracts/verify_ios_incremental_contract_drift.py"
+          )
+          policy = json.loads(Path(
+              "contracts/native-ios/v1/incremental-drift-policy.json"
+          ).read_text(encoding="utf-8"))
+          verifier_digest = hashlib.sha256(verifier_path.read_bytes()).hexdigest()
+          if (
+              policy.get("verifierPath") != verifier_path.as_posix()
+              or policy.get("verifierSha256") != verifier_digest
+          ):
+              raise SystemExit("native contract verifier policy digest is invalid")
+
+          proof = {
+              "schema_version": 1,
+              **expected_counts,
+              "policy_digest_valid": True,
+          }
+          with open(sys.argv[1], "a", encoding="utf-8") as output_file:
+              output_file.write(
+                  "proof=" + json.dumps(proof, separators=(",", ":"), sort_keys=True) + "\n"
+              )
+          PY
+          echo "duration-seconds=$(( $(date +%s) - started ))" >> "$GITHUB_OUTPUT"
+
+      - name: Summarize native contract semantics
+        if: ${{ always() }}
+        env:
+          CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
+          DURATION_SECONDS: ${{ steps.verify.outputs.duration-seconds }}
+          PROOF: ${{ steps.verify.outputs.proof }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+        shell: bash
+        run: |
+          failure_category=none
+          if [[ "$CHECKOUT_OUTCOME" == failure ]]; then
+            failure_category=checkout
+          elif [[ "$VERIFY_OUTCOME" == failure ]]; then
+            failure_category=contract-semantics-or-policy
+          fi
+          {
+            echo "### Native contract semantics"
+            echo "- Result: ${VERIFY_OUTCOME}"
+            echo "- Proof: ${PROOF:-missing}"
+            echo "- Duration: ${DURATION_SECONDS:-unreported}s"
+            echo "- Failure category: ${failure_category}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   lint:
     name: Lint
     needs: plan
@@ -205,7 +318,7 @@ jobs:
       lint_seconds: ${{ steps.lint.outputs.duration }}
 
     steps:
-      - name: Checkout exact candidate revision
+      - name: Checkout exact revision
         id: checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -288,7 +401,7 @@ jobs:
       matrix: ${{ fromJSON(needs.plan.outputs.package_matrix) }}
 
     steps:
-      - name: Checkout exact candidate revision
+      - name: Checkout exact revision
         id: checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -406,7 +519,7 @@ jobs:
       ui_test_seconds: ${{ steps.ui-tests.outputs.duration }}
 
     steps:
-      - name: Checkout exact candidate revision
+      - name: Checkout exact revision
         id: checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -696,8 +809,8 @@ jobs:
           retention-days: 5
 
   required:
-    name: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && 'CI / Required' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'affected' && 'CI Advisory / Required' || 'CI Full / Required') }}
-    needs: [plan, lint, package-tests, app-and-ui]
+    name: ${{ (github.event_name == 'pull_request' || github.event_name == 'merge_group') && 'CI / Required' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'affected' && 'CI Affected / Required' || 'CI Full / Required') }}
+    needs: [plan, contract-semantics, lint, package-tests, app-and-ui]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -708,6 +821,8 @@ jobs:
         env:
           APP_RESULT: ${{ needs.app-and-ui.result }}
           COMPILE_BOUNDARY_RESULT: ${{ needs.app-and-ui.outputs.compile_boundary_result }}
+          CONTRACT_PROOF: ${{ needs.contract-semantics.outputs.proof }}
+          CONTRACT_RESULT: ${{ needs.contract-semantics.result }}
           LINT_RESULT: ${{ needs.lint.result }}
           PACKAGE_RESULT: ${{ needs.package-tests.result }}
           PLAN_JSON: ${{ needs.plan.outputs.plan_json }}
@@ -728,12 +843,12 @@ jobs:
 
           boolean_fields = (
               "docs_only", "run_lint", "run_app_build", "run_ui_tests",
-              "run_full_packages", "high_risk",
+              "run_full_packages", "run_contract_semantics", "high_risk",
           )
           for field in boolean_fields:
               if not isinstance(plan.get(field), bool):
                   errors.append(f"plan field {field} is not boolean")
-          if plan.get("schema_version") != 1:
+          if plan.get("schema_version") != 2:
               errors.append("unsupported plan schema")
           if plan.get("run_ui_tests") and not plan.get("run_app_build"):
               errors.append("UI was requested without app validation")
@@ -764,11 +879,13 @@ jobs:
               errors.append("matrix union does not exactly match affected packages")
 
           expected = {
+              "contract-semantics": bool(plan.get("run_contract_semantics")),
               "lint": bool(plan.get("run_lint")),
               "package-tests": bool(affected),
               "app-and-ui": bool(plan.get("run_app_build") or plan.get("run_ui_tests")),
           }
           actual = {
+              "contract-semantics": os.environ.get("CONTRACT_RESULT"),
               "lint": os.environ.get("LINT_RESULT"),
               "package-tests": os.environ.get("PACKAGE_RESULT"),
               "app-and-ui": os.environ.get("APP_RESULT"),
@@ -780,6 +897,29 @@ jobs:
                       f"{job}: expected {wanted}, observed {actual[job]!r}"
                   )
 
+          proof_raw = os.environ.get("CONTRACT_PROOF", "")
+          if expected["contract-semantics"]:
+              expected_proof = {
+                  "schema_version": 1,
+                  "operations": 83,
+                  "producers": 93,
+                  "matrix_rows": 29,
+                  "relations": 93,
+                  "policy_digest_valid": True,
+              }
+              try:
+                  proof = json.loads(proof_raw)
+              except Exception as error:
+                  errors.append(f"contract-semantics: malformed proof output: {error}")
+              else:
+                  if proof != expected_proof:
+                      errors.append(
+                          "contract-semantics: proof output does not match 83/93/29/93 "
+                          "with a valid policy digest"
+                      )
+          elif proof_raw:
+              errors.append("contract-semantics: unplanned job emitted proof output")
+
           print("Plan reasons:", ", ".join(plan.get("reason_codes", [])))
           print("Packages:", ", ".join(affected) if affected else "none")
           print(
@@ -787,7 +927,7 @@ jobs:
               compile_boundary_result or "not-run",
               f"(required={bool(plan.get('run_app_build'))})",
           )
-          for job in ("lint", "package-tests", "app-and-ui"):
+          for job in ("contract-semantics", "lint", "package-tests", "app-and-ui"):
               print(f"{job}: {actual[job]} (required={expected[job]})")
           if errors:
               for error in errors:
@@ -805,6 +945,9 @@ jobs:
           CACHE_BYTES: ${{ needs.app-and-ui.outputs.cache_bytes }}
           CACHE_HIT: ${{ needs.app-and-ui.outputs.cache_hit }}
           COMPILE_BOUNDARY_RESULT: ${{ needs.app-and-ui.outputs.compile_boundary_result }}
+          CONTRACT_DURATION_SECONDS: ${{ needs.contract-semantics.outputs.duration_seconds }}
+          CONTRACT_PROOF: ${{ needs.contract-semantics.outputs.proof }}
+          CONTRACT_RESULT: ${{ needs.contract-semantics.result }}
           LINT_INSTALL_SECONDS: ${{ needs.lint.outputs.install_seconds }}
           LINT_RESULT: ${{ needs.lint.result }}
           LINT_SECONDS: ${{ needs.lint.outputs.lint_seconds }}
@@ -843,9 +986,15 @@ jobs:
               summary.write("- Reasons: " +
                             ", ".join(plan.get("reason_codes", [])) + "\n")
               summary.write(
-                  "- Outcomes: plan={}; lint={}; packages={}; app/UI={}\n".format(
-                      shown("PLAN_RESULT", "missing"), shown("LINT_RESULT", "missing"),
-                      shown("PACKAGE_RESULT", "missing"), shown("APP_RESULT", "missing")
+                  "- Outcomes: plan={}; contract={}; lint={}; packages={}; app/UI={}\n".format(
+                      shown("PLAN_RESULT", "missing"), shown("CONTRACT_RESULT", "missing"),
+                      shown("LINT_RESULT", "missing"), shown("PACKAGE_RESULT", "missing"),
+                      shown("APP_RESULT", "missing")
+                  )
+              )
+              summary.write(
+                  "- Native contract proof / duration: {} / {}s\n".format(
+                      shown("CONTRACT_PROOF"), shown("CONTRACT_DURATION_SECONDS")
                   )
               )
               summary.write(

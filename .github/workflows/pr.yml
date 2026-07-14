@@ -1,14 +1,10 @@
-name: PR — Build, Test & Lint
+name: Legacy CI — Manual Fallback
 
-# Runs on every PR targeting main and on direct pushes to main.
-# Configure "build-and-test" and "lint" as required status checks
-# in Settings → Branches → Branch protection rules for `main`.
+# This workflow is not automatic or required. CI — Required is authoritative;
+# this lane exists only for temporary emergency comparison or rollback.
 
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

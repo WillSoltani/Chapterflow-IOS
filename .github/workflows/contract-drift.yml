@@ -4,22 +4,14 @@ on:
   pull_request:
     paths:
       - "contracts/native-ios/**"
-      - "Packages/Models/**"
-      - "Packages/Networking/**"
-      - "Packages/SocialFeature/**"
-      - "Packages/**/Sources/**/*.swift"
-      - "ChapterFlow/**/*.swift"
-      - "ChapterflowWidgets/**/*.swift"
-      - "NotificationService/**/*.swift"
-      - "NotificationContent/**/*.swift"
-      - "ShareExtension/**/*.swift"
-      - "ActionExtension/**/*.swift"
-      - "SharedExtensionKit/**/*.swift"
       - "scripts/refresh-fixtures.sh"
       - "scripts/verify-backend-contract-provenance.sh"
       - "scripts/test-backend-contract-provenance.sh"
       - "scripts/contracts/**"
       - ".github/workflows/contract-drift.yml"
+      - "Packages/Models/Tests/**/*Contract*.swift"
+      - "Packages/Networking/Tests/**/*Contract*.swift"
+      - "Packages/SocialFeature/Tests/**/*Contract*.swift"
   schedule:
     - cron: "0 2 * * 0"
   workflow_dispatch:
