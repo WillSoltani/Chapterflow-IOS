@@ -53,6 +53,7 @@ class CIPlanTests(unittest.TestCase):
 
     def assert_full(self, result: dict[str, object]) -> None:
         self.assertTrue(result["run_full_packages"])
+        self.assertTrue(result["run_contract_semantics"])
         self.assertTrue(result["run_app_build"])
         self.assertTrue(result["run_ui_tests"])
         self.assertTrue(result["run_lint"])
@@ -61,6 +62,7 @@ class CIPlanTests(unittest.TestCase):
     def test_markdown_only_selects_lightweight_validation(self) -> None:
         result = self.make_plan(["docs/ios/CI_PERFORMANCE_AND_OPTIMIZATION.md"])
         self.assertTrue(result["docs_only"])
+        self.assertFalse(result["run_contract_semantics"])
         self.assertFalse(result["run_lint"])
         self.assertFalse(result["run_app_build"])
         self.assertFalse(result["run_ui_tests"])
@@ -68,6 +70,38 @@ class CIPlanTests(unittest.TestCase):
 
     def test_workflow_change_selects_full_validation(self) -> None:
         self.assert_full(self.make_plan([".github/workflows/pr-v2.yml"]))
+
+    def test_every_production_swift_root_selects_contract_semantics(self) -> None:
+        paths = (
+            "Packages/AIFeature/Sources/AIFeature/Audio/AudioPlayer.swift",
+            "ChapterFlow/ChapterFlowApp.swift",
+            "ChapterflowWidgets/ChapterflowWidgetsBundle.swift",
+            "NotificationService/NotificationServiceExtension.swift",
+            "NotificationContent/NotificationViewController.swift",
+            "ShareExtension/ShareView.swift",
+            "ActionExtension/ActionView.swift",
+            "SharedExtensionKit/ExtensionOutboxWriter.swift",
+        )
+        for path in paths:
+            with self.subTest(path=path):
+                self.assertTrue(self.make_plan([path])["run_contract_semantics"])
+
+    def test_nonproduction_swift_test_does_not_select_contract_semantics(self) -> None:
+        result = self.make_plan(
+            ["Packages/AIFeature/Tests/AIFeatureTests/AudioPlayerTests.swift"]
+        )
+        self.assertFalse(result["run_contract_semantics"])
+
+    def test_contract_policy_and_verifier_select_fast_and_full_proof(self) -> None:
+        for path in sorted(plan.CONTRACT_SEMANTICS_EXACT_PATHS):
+            with self.subTest(path=path):
+                result = self.make_plan([path])
+                self.assert_full(result)
+                self.assertTrue(result["run_contract_semantics"])
+                self.assertIn(
+                    "contract_semantics_policy_or_verifier", result["reason_codes"]
+                )
+                self.assertNotIn("unknown_path", result["reason_codes"])
 
     def test_corekit_change_selects_every_package_app_and_ui(self) -> None:
         self.assert_full(
@@ -305,6 +339,14 @@ class CIPlanTests(unittest.TestCase):
             plan.validate_plan(malformed, self.all_packages)
         malformed = copy.deepcopy(result)
         malformed["run_ui_tests"] = "true"
+        with self.assertRaises(plan.PlanError):
+            plan.validate_plan(malformed, self.all_packages)
+        malformed = copy.deepcopy(result)
+        del malformed["run_contract_semantics"]
+        with self.assertRaises(plan.PlanError):
+            plan.validate_plan(malformed, self.all_packages)
+        malformed = copy.deepcopy(result)
+        malformed["run_contract_semantics"] = "true"
         with self.assertRaises(plan.PlanError):
             plan.validate_plan(malformed, self.all_packages)
 

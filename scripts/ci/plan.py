@@ -19,7 +19,7 @@ from pathlib import Path, PurePosixPath
 from typing import Iterable, Sequence
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 GRAPH_SCHEMA_VERSION = 2
 
 FOUNDATION_PACKAGES = {
@@ -50,6 +50,11 @@ APP_EXTENSION_PREFIXES = (
     "ShareExtension/",
     "SharedExtensionKit/",
 )
+
+CONTRACT_SEMANTICS_EXACT_PATHS = {
+    "contracts/native-ios/v1/incremental-drift-policy.json",
+    "scripts/contracts/verify_ios_incremental_contract_drift.py",
+}
 
 FULL_EXACT_PATHS = {
     "AGENTS.md",
@@ -401,6 +406,8 @@ def package_for_path(path: str, graph: dict[str, list[str]]) -> str | None:
 def path_forces_full(path: str, package: str | None) -> str | None:
     if path == COMPILE_BOUNDARY_SCRIPT:
         return "compile_boundary_gate_change"
+    if path in CONTRACT_SEMANTICS_EXACT_PATHS:
+        return "contract_semantics_policy_or_verifier"
     if path in FULL_EXACT_PATHS or PurePosixPath(path).name == "AGENTS.md":
         return "execution_policy_or_shared_config"
     if path.startswith(FULL_PREFIXES):
@@ -437,6 +444,16 @@ def package_path_needs_ui(path: str, package: str) -> bool:
         return True
     safe_prefixes = UI_SAFE_SOURCE_PREFIXES.get(package, ())
     return not any(path.startswith(prefix) for prefix in safe_prefixes)
+
+
+def path_needs_contract_semantics(path: str) -> bool:
+    if path in CONTRACT_SEMANTICS_EXACT_PATHS:
+        return True
+    if not path.endswith(".swift"):
+        return False
+    if path.startswith("Packages/") and "/Sources/" in path:
+        return True
+    return path.startswith(("ChapterFlow/", *APP_EXTENSION_PREFIXES))
 
 
 def _add_reason(reasons: list[str], reason: str) -> None:
@@ -542,6 +559,11 @@ def create_plan(
     selected.intersection_update(full_packages)
 
     run_full_packages = force_full
+    run_contract_semantics = force_full or any(
+        path_needs_contract_semantics(path) for path in normalised
+    )
+    if run_contract_semantics:
+        _add_reason(reasons, "contract_semantics")
     run_lint = force_full or any(path.endswith(".swift") for path in normalised)
     app_linked_packages = set(graph) - {"Fixtures"}
     run_app_build = force_full or app_extension_change or bool(
@@ -575,6 +597,7 @@ def create_plan(
         "mode": mode,
         "changed_files": normalised,
         "docs_only": docs_only and not force_full,
+        "run_contract_semantics": run_contract_semantics,
         "run_lint": run_lint,
         "run_app_build": run_app_build,
         "run_ui_tests": run_ui_tests,
@@ -593,6 +616,7 @@ def validate_plan(plan: dict[str, object], allowed_packages: Sequence[str]) -> N
         raise PlanError("invalid plan schema")
     boolean_fields = (
         "docs_only",
+        "run_contract_semantics",
         "run_lint",
         "run_app_build",
         "run_ui_tests",
@@ -640,6 +664,7 @@ def validate_plan(plan: dict[str, object], allowed_packages: Sequence[str]) -> N
 def write_github_outputs(path: Path, plan: dict[str, object]) -> None:
     output_values = {
         "docs_only": str(plan["docs_only"]).lower(),
+        "run_contract_semantics": str(plan["run_contract_semantics"]).lower(),
         "run_lint": str(plan["run_lint"]).lower(),
         "run_app_build": str(plan["run_app_build"]).lower(),
         "run_ui_tests": str(plan["run_ui_tests"]).lower(),

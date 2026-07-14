@@ -104,12 +104,40 @@ class IOSIncrementalContractDriftCanaries(unittest.TestCase):
             )
         )
 
-    def test_contract_workflow_watches_every_production_swift_root(self) -> None:
+    def test_contract_workflow_is_narrow_after_fast_semantic_split(self) -> None:
         workflow = (
             REPO_ROOT / ".github/workflows/contract-drift.yml"
         ).read_text(encoding="utf-8")
-        for root in drift.CURRENT_PRODUCTION_SWIFT_ROOTS[1:]:
-            self.assertIn(f'      - "{root}/**/*.swift"', workflow)
+        required_paths = {
+            "contracts/native-ios/**",
+            "scripts/contracts/**",
+            "scripts/refresh-fixtures.sh",
+            "scripts/verify-backend-contract-provenance.sh",
+            "scripts/test-backend-contract-provenance.sh",
+            ".github/workflows/contract-drift.yml",
+            "Packages/Models/Tests/**/*Contract*.swift",
+            "Packages/Networking/Tests/**/*Contract*.swift",
+            "Packages/SocialFeature/Tests/**/*Contract*.swift",
+        }
+        for path in required_paths:
+            self.assertIn(f'      - "{path}"', workflow)
+
+        broad_paths = {
+            "Packages/Models/**",
+            "Packages/Networking/**",
+            "Packages/SocialFeature/**",
+            "Packages/**/Sources/**/*.swift",
+            *(f"{root}/**/*.swift" for root in drift.CURRENT_PRODUCTION_SWIFT_ROOTS[1:]),
+        }
+        for path in broad_paths:
+            self.assertNotIn(f'      - "{path}"', workflow)
+        for package in ("Models", "Networking", "SocialFeature"):
+            contract_tests = list(
+                (REPO_ROOT / "Packages" / package / "Tests").rglob("*Contract*.swift")
+            )
+            self.assertTrue(contract_tests, f"no contract tests found for {package}")
+        self.assertIn("  schedule:", workflow)
+        self.assertIn("  workflow_dispatch:", workflow)
 
     def test_design_system_implementation_change_passes(self) -> None:
         path = "Packages/DesignSystem/Sources/DesignSystem/Spacing+CF.swift"
