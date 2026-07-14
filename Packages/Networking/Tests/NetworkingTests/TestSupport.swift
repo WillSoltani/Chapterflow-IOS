@@ -139,7 +139,10 @@ enum TestFactory {
     static func clientWithObserver(
         observer: any APIClientObserver,
         token: String? = "initial-token",
-        maxRetries: Int = 0
+        maxRetries: Int = 0,
+        observationNow: @escaping @Sendable () -> ContinuousClock.Instant = {
+            ContinuousClock().now
+        }
     ) -> (APIClient, FakeTokenProvider) {
         let provider = FakeTokenProvider(token: token)
         let client = APIClient(
@@ -148,7 +151,8 @@ enum TestFactory {
             session: session(),
             observer: observer,
             maxRetries: maxRetries,
-            retryBaseDelay: .zero
+            retryBaseDelay: .zero,
+            observationNow: observationNow
         )
         return (client, provider)
     }
@@ -171,28 +175,31 @@ enum TestFactory {
 
 /// Records all ``APIClientObserver`` callbacks without side effects.
 final class SpyAPIClientObserver: APIClientObserver, @unchecked Sendable {
-    struct CompletedCall: Sendable {
-        let method: String
-        let path: String
-        let status: Int
-        let requestId: String?
-    }
-
     private let lock = NSLock()
-    private var _completed: [CompletedCall] = []
-    private var _failed: Int = 0
+    private var _events: [APIRequestObservation] = []
 
-    var completed: [CompletedCall] { lock.withLock { _completed } }
-    var failedCount: Int { lock.withLock { _failed } }
+    var events: [APIRequestObservation] { lock.withLock { _events } }
 
-    func requestCompleted(method: String, path: String, status: Int, requestId: String?) {
-        lock.withLock {
-            _completed.append(.init(method: method, path: path, status: status, requestId: requestId))
-        }
+    func record(_ event: APIRequestObservation) {
+        lock.withLock { _events.append(event) }
+    }
+}
+
+/// Deterministic monotonic time source for per-attempt duration assertions.
+final class SteppingObservationClock: @unchecked Sendable {
+    private let lock = NSLock()
+    private let step: Duration
+    private var instant = ContinuousClock().now
+
+    init(step: Duration = .milliseconds(25)) {
+        self.step = step
     }
 
-    func requestFailed(method: String, path: String, error: any Error) {
-        lock.withLock { _failed += 1 }
+    func now() -> ContinuousClock.Instant {
+        lock.withLock {
+            defer { instant = instant.advanced(by: step) }
+            return instant
+        }
     }
 }
 
@@ -208,4 +215,8 @@ struct BooksResponse: Decodable, Sendable, Equatable {
 
 struct ChapterResponse: Decodable, Sendable, Equatable {
     let chapter: String
+}
+
+extension Array {
+    var only: Element? { count == 1 ? self[0] : nil }
 }

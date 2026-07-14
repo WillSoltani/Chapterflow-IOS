@@ -45,8 +45,8 @@ public extension APIClientProtocol {
 /// - Resilience: one automatic token refresh + retry on `401 unauthenticated`;
 ///   exponential backoff (up to `maxRetries`) on `.verifierUnavailable` and
 ///   transient `URLError`s; surface `Retry-After` on `429`.
-/// - Observability: calls `observer` after every HTTP exchange with method, path,
-///   status, and the server `requestId` (never bodies or tokens).
+/// - Observability: emits one typed, privacy-safe event for every actual network
+///   attempt, after its outcome is known (never bodies, tokens, queries, or errors).
 ///
 /// It is an `actor` so its (small) mutable configuration and the refresh/retry
 /// bookkeeping are isolated; the heavy lifting is a `URLSession` call.
@@ -55,9 +55,10 @@ public actor APIClient: APIClientProtocol {
     private let session: URLSession
     private let tokenProvider: TokenProviding
     private let logger: RequestLogging?
-    private let observer: (any APIClientObserver)?
+    private let observer: any APIClientObserver
     private let maxRetries: Int
     private let retryBaseDelay: Duration
+    private let observationNow: @Sendable () -> ContinuousClock.Instant
 
     /// Designated initializer.
     /// - Parameters:
@@ -68,6 +69,7 @@ public actor APIClient: APIClientProtocol {
     ///   - observer: optional observer for breadcrumbs / tracing (no PII).
     ///   - maxRetries: max backoff retries for transient failures.
     ///   - retryBaseDelay: base delay for exponential backoff (tests pass `.zero`).
+    ///   - observationNow: monotonic time source for deterministic attempt timing.
     public init(
         baseURL: URL,
         tokenProvider: TokenProviding,
@@ -75,15 +77,19 @@ public actor APIClient: APIClientProtocol {
         logger: RequestLogging? = nil,
         observer: (any APIClientObserver)? = nil,
         maxRetries: Int = 3,
-        retryBaseDelay: Duration = .milliseconds(300)
+        retryBaseDelay: Duration = .milliseconds(300),
+        observationNow: @escaping @Sendable () -> ContinuousClock.Instant = {
+            ContinuousClock().now
+        }
     ) {
         self.baseURL = baseURL
         self.tokenProvider = tokenProvider
         self.session = session
         self.logger = logger
-        self.observer = observer
+        self.observer = observer ?? NoopAPIClientObserver()
         self.maxRetries = maxRetries
         self.retryBaseDelay = retryBaseDelay
+        self.observationNow = observationNow
     }
 
     /// Convenience initializer reading the base URL from `AppConfig`.
@@ -94,7 +100,10 @@ public actor APIClient: APIClientProtocol {
         logger: RequestLogging? = nil,
         observer: (any APIClientObserver)? = nil,
         maxRetries: Int = 3,
-        retryBaseDelay: Duration = .milliseconds(300)
+        retryBaseDelay: Duration = .milliseconds(300),
+        observationNow: @escaping @Sendable () -> ContinuousClock.Instant = {
+            ContinuousClock().now
+        }
     ) {
         // An unparsable base URL yields requests that fail as `.offline`, which
         // is the correct user-facing outcome for a misconfigured build.
@@ -106,7 +115,8 @@ public actor APIClient: APIClientProtocol {
             logger: logger,
             observer: observer,
             maxRetries: maxRetries,
-            retryBaseDelay: retryBaseDelay
+            retryBaseDelay: retryBaseDelay,
+            observationNow: observationNow
         )
     }
 
@@ -124,11 +134,81 @@ public actor APIClient: APIClientProtocol {
 
     public func sendData(_ endpoint: Endpoint) async throws -> Data {
         let request = try await makeRequest(for: endpoint)
-        let (data, response) = try await session.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw AppError.offline }
-        guard (200..<300).contains(http.statusCode) else {
-            throw ErrorMapper.map(status: http.statusCode, data: data, retryAfter: Self.retryAfter(from: http))
+        let attempt = 1
+        let started = observationNow()
+
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: request)
+        } catch is CancellationError {
+            recordObservation(
+                request: request,
+                attempt: attempt,
+                started: started,
+                outcome: .cancellation
+            )
+            throw CancellationError()
+        } catch let urlError as URLError {
+            if urlError.code == .cancelled {
+                recordObservation(
+                    request: request,
+                    attempt: attempt,
+                    started: started,
+                    outcome: .cancellation
+                )
+                throw CancellationError()
+            }
+            recordObservation(
+                request: request,
+                attempt: attempt,
+                started: started,
+                outcome: .networkFailure
+            )
+            // Preserve sendData's existing transport error behavior.
+            throw urlError
+        } catch {
+            recordObservation(
+                request: request,
+                attempt: attempt,
+                started: started,
+                outcome: .networkFailure
+            )
+            throw error
         }
+
+        guard let http = response as? HTTPURLResponse else {
+            recordObservation(
+                request: request,
+                attempt: attempt,
+                started: started,
+                outcome: .networkFailure
+            )
+            throw AppError.offline
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let error = ErrorMapper.map(
+                status: http.statusCode,
+                data: data,
+                retryAfter: Self.retryAfter(from: http)
+            )
+            recordObservation(
+                request: request,
+                attempt: attempt,
+                started: started,
+                outcome: .httpFailure,
+                statusCode: http.statusCode,
+                requestId: extractRequestId(from: data)
+            )
+            throw error
+        }
+        recordObservation(
+            request: request,
+            attempt: attempt,
+            started: started,
+            outcome: .success,
+            statusCode: http.statusCode
+        )
         return data
     }
 
@@ -137,98 +217,273 @@ public actor APIClient: APIClientProtocol {
     /// Runs the full retry/refresh loop and returns the decoded value plus the
     /// final `HTTPURLResponse` (for callers that want response headers).
     private func performRequest<T: Decodable & Sendable>(_ endpoint: Endpoint) async throws -> (T, HTTPURLResponse) {
-        var backoffAttempt = 0
-        var didRefreshToken = false
-        var didStepUp = false
+        var retryState = APIClientRetryState()
+        var attempt = 0
 
         while true {
             try Task.checkCancellation()
             let request = try await makeRequest(for: endpoint)
             logger?.logRequest(request)
+            attempt += 1
+            let started = observationNow()
 
-            do {
-                let (data, response) = try await session.data(for: request)
-                guard let http = response as? HTTPURLResponse else {
-                    throw AppError.offline
-                }
-                logger?.logResponse(http, data: data, for: request)
-
+            switch try await performTransportAttempt(
+                request,
+                attempt: attempt,
+                started: started,
+                backoffAttempt: retryState.backoffAttempt
+            ) {
+            case let .retry(nextBackoffAttempt):
+                retryState.backoffAttempt = nextBackoffAttempt
+            case let .response(data, http):
                 if (200..<300).contains(http.statusCode) {
-                    notifyCompleted(request: request, status: http.statusCode, requestId: nil)
-                    let decoded: T = try decode(data)
-                    return (decoded, http)
+                    return try decodeSuccessfulResponse(
+                        data,
+                        response: http,
+                        request: request,
+                        attempt: attempt,
+                        started: started
+                    )
                 }
-
-                let error = ErrorMapper.map(
-                    status: http.statusCode,
-                    data: data,
-                    retryAfter: Self.retryAfter(from: http)
+                let failedAttempt = APIClientFailedHTTPAttempt(
+                    request: request,
+                    number: attempt,
+                    elapsed: elapsedSince(started),
+                    statusCode: http.statusCode,
+                    requestId: extractRequestId(from: data)
                 )
-                // Extract requestId from the error envelope before retrying,
-                // so the breadcrumb can be joined to the backend log entry.
-                let requestId = extractRequestId(from: data)
-                notifyCompleted(request: request, status: http.statusCode, requestId: requestId)
-
-                // One-time refresh + retry when the token was rejected.
-                if case .unauthenticated = error, endpoint.requiresAuth, !didRefreshToken {
-                    didRefreshToken = true
-                    try await tokenProvider.refresh()
-                    continue
-                }
-
-                // One-time step-up reauth: suspend until the user confirms
-                // identity, then retry the original request transparently.
-                if case .reauthRequired = error, endpoint.requiresAuth, !didStepUp {
-                    didStepUp = true
-                    try await tokenProvider.stepUp()
-                    continue
-                }
-
-                // Backoff on a transient auth-verifier outage.
-                if case .verifierUnavailable = error, backoffAttempt < maxRetries {
-                    backoffAttempt += 1
-                    try await backoff(backoffAttempt)
-                    continue
-                }
-
-                // All verifier retries exhausted — notify the session manager so
-                // it can transition to a non-destructive "reconnecting" state.
-                if case .verifierUnavailable = error {
-                    await tokenProvider.reportSessionError(error)
-                }
-
-                throw error
-            } catch let urlError as URLError {
-                logger?.logFailure(urlError, for: request)
-                notifyFailed(request: request, error: urlError)
-                if urlError.code == .cancelled {
-                    throw CancellationError()
-                }
-                if Self.isTransient(urlError), backoffAttempt < maxRetries {
-                    backoffAttempt += 1
-                    try await backoff(backoffAttempt)
-                    continue
-                }
-                throw AppError.offline
+                retryState = try await retryStateAfterHTTPFailure(
+                    endpoint: endpoint,
+                    data: data,
+                    response: http,
+                    failedAttempt: failedAttempt,
+                    currentState: retryState
+                )
             }
         }
     }
 
-    // MARK: - Observer hooks
+    private func performTransportAttempt(
+        _ request: URLRequest,
+        attempt: Int,
+        started: ContinuousClock.Instant,
+        backoffAttempt: Int
+    ) async throws -> APIClientTransportAttemptResult {
+        let result: (Data, URLResponse)
+        do {
+            result = try await session.data(for: request)
+        } catch is CancellationError {
+            recordObservation(request: request, attempt: attempt, started: started, outcome: .cancellation)
+            throw CancellationError()
+        } catch let urlError as URLError {
+            return try await handleTransportError(
+                urlError,
+                request: request,
+                attempt: attempt,
+                started: started,
+                backoffAttempt: backoffAttempt
+            )
+        } catch {
+            recordObservation(request: request, attempt: attempt, started: started, outcome: .networkFailure)
+            throw error
+        }
 
-    private func notifyCompleted(request: URLRequest, status: Int, requestId: String?) {
-        guard let observer else { return }
-        let method = request.httpMethod ?? ""
-        // Use path only — no query string that might carry PII.
-        let path = request.url?.path ?? ""
-        observer.requestCompleted(method: method, path: path, status: status, requestId: requestId)
+        guard let http = result.1 as? HTTPURLResponse else {
+            recordObservation(request: request, attempt: attempt, started: started, outcome: .networkFailure)
+            throw AppError.offline
+        }
+        logger?.logResponse(http, data: result.0, for: request)
+        return .response(result.0, http)
     }
 
-    private func notifyFailed(request: URLRequest, error: any Error) {
-        guard let observer else { return }
-        let method = request.httpMethod ?? ""
-        let path = request.url?.path ?? ""
-        observer.requestFailed(method: method, path: path, error: error)
+    private func handleTransportError(
+        _ urlError: URLError,
+        request: URLRequest,
+        attempt: Int,
+        started: ContinuousClock.Instant,
+        backoffAttempt: Int
+    ) async throws -> APIClientTransportAttemptResult {
+        logger?.logFailure(urlError, for: request)
+        if urlError.code == .cancelled {
+            recordObservation(request: request, attempt: attempt, started: started, outcome: .cancellation)
+            throw CancellationError()
+        }
+
+        let elapsed = elapsedSince(started)
+        guard Self.isTransient(urlError), backoffAttempt < maxRetries else {
+            recordObservation(request: request, attempt: attempt, elapsed: elapsed, outcome: .networkFailure)
+            throw AppError.offline
+        }
+
+        let nextBackoffAttempt = backoffAttempt + 1
+        do {
+            try await backoff(nextBackoffAttempt)
+        } catch {
+            recordObservation(request: request, attempt: attempt, elapsed: elapsed, outcome: .networkFailure)
+            throw error
+        }
+        recordObservation(
+            request: request,
+            attempt: attempt,
+            elapsed: elapsed,
+            outcome: .networkFailure,
+            retryDisposition: .willRetry
+        )
+        return .retry(nextBackoffAttempt: nextBackoffAttempt)
+    }
+
+    private func decodeSuccessfulResponse<T: Decodable & Sendable>(
+        _ data: Data,
+        response: HTTPURLResponse,
+        request: URLRequest,
+        attempt: Int,
+        started: ContinuousClock.Instant
+    ) throws -> (T, HTTPURLResponse) {
+        do {
+            let decoded: T = try decode(data)
+            recordObservation(
+                request: request,
+                attempt: attempt,
+                started: started,
+                outcome: .success,
+                statusCode: response.statusCode
+            )
+            return (decoded, response)
+        } catch {
+            recordObservation(
+                request: request,
+                attempt: attempt,
+                started: started,
+                outcome: .decodingFailure,
+                statusCode: response.statusCode
+            )
+            throw error
+        }
+    }
+
+    private func retryStateAfterHTTPFailure(
+        endpoint: Endpoint,
+        data: Data,
+        response: HTTPURLResponse,
+        failedAttempt: APIClientFailedHTTPAttempt,
+        currentState: APIClientRetryState
+    ) async throws -> APIClientRetryState {
+        let mappedError = ErrorMapper.map(
+            status: response.statusCode,
+            data: data,
+            retryAfter: Self.retryAfter(from: response)
+        )
+        if case .unauthenticated = mappedError,
+           endpoint.requiresAuth,
+           !currentState.didRefreshToken {
+            var nextState = currentState
+            nextState.didRefreshToken = true
+            try await prepareRetry(.refreshToken, failedAttempt: failedAttempt)
+            return nextState
+        }
+        if case .reauthRequired = mappedError,
+           endpoint.requiresAuth,
+           !currentState.didStepUp {
+            var nextState = currentState
+            nextState.didStepUp = true
+            try await prepareRetry(.stepUp, failedAttempt: failedAttempt)
+            return nextState
+        }
+        if case .verifierUnavailable = mappedError,
+           currentState.backoffAttempt < maxRetries {
+            var nextState = currentState
+            nextState.backoffAttempt += 1
+            try await prepareRetry(.backoff(nextState.backoffAttempt), failedAttempt: failedAttempt)
+            return nextState
+        }
+
+        if case .verifierUnavailable = mappedError {
+            await tokenProvider.reportSessionError(mappedError)
+        }
+        recordHTTPFailure(failedAttempt)
+        throw mappedError
+    }
+
+    private func prepareRetry(
+        _ preparation: APIClientRetryPreparation,
+        failedAttempt: APIClientFailedHTTPAttempt
+    ) async throws {
+        do {
+            switch preparation {
+            case .refreshToken:
+                try await tokenProvider.refresh()
+            case .stepUp:
+                try await tokenProvider.stepUp()
+            case let .backoff(attempt):
+                try await backoff(attempt)
+            }
+        } catch {
+            recordHTTPFailure(failedAttempt)
+            throw error
+        }
+        recordHTTPFailure(failedAttempt, retryDisposition: .willRetry)
+    }
+
+    private func recordHTTPFailure(
+        _ failedAttempt: APIClientFailedHTTPAttempt,
+        retryDisposition: APIRequestObservation.RetryDisposition = .final
+    ) {
+        recordObservation(
+            request: failedAttempt.request,
+            attempt: failedAttempt.number,
+            elapsed: failedAttempt.elapsed,
+            outcome: .httpFailure,
+            statusCode: failedAttempt.statusCode,
+            requestId: failedAttempt.requestId,
+            retryDisposition: retryDisposition
+        )
+    }
+
+    // MARK: - Observer hooks
+
+    private func elapsedSince(_ started: ContinuousClock.Instant) -> Duration {
+        started.duration(to: observationNow())
+    }
+
+    private func recordObservation(
+        request: URLRequest,
+        attempt: Int,
+        started: ContinuousClock.Instant,
+        outcome: APIRequestObservation.Outcome,
+        statusCode: Int? = nil,
+        requestId: String? = nil,
+        retryDisposition: APIRequestObservation.RetryDisposition = .final
+    ) {
+        recordObservation(
+            request: request,
+            attempt: attempt,
+            elapsed: elapsedSince(started),
+            outcome: outcome,
+            statusCode: statusCode,
+            requestId: requestId,
+            retryDisposition: retryDisposition
+        )
+    }
+
+    private func recordObservation(
+        request: URLRequest,
+        attempt: Int,
+        elapsed: Duration,
+        outcome: APIRequestObservation.Outcome,
+        statusCode: Int? = nil,
+        requestId: String? = nil,
+        retryDisposition: APIRequestObservation.RetryDisposition = .final
+    ) {
+        observer.record(APIRequestObservation(
+            method: APIRequestObservation.Method(request.httpMethod),
+            route: request.url?.path ?? APIRouteSanitizer.unknownRoute,
+            attempt: attempt,
+            elapsed: elapsed,
+            outcome: outcome,
+            statusCode: statusCode,
+            requestId: requestId,
+            retryDisposition: retryDisposition
+        ))
     }
 
     private func extractRequestId(from data: Data) -> String? {
