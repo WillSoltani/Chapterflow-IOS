@@ -643,3 +643,97 @@ fixed in this finalization. No deployed-backend compatibility, production reques
 real-API, StoreKit, signing, TestFlight, App Store, deployment, release, or migration claim is made.
 PR #120 remains draft and must not be merged as part of this task. PR #117, backend PR #401,
 branch protection, CI architecture, release state, and unrelated user work remain untouched.
+
+---
+
+## WP-CONTRACT-01 closeout and WP-CONTRACT-01F blocked local implementation — 2026-07-14
+
+The draft-state statement above is retained as historical evidence from the finalization run. PR
+#120 subsequently merged through real merge commit
+`72d4a1a90a6f360479dfccfda5cafd7f193af7b5`, with parents
+`16d9b17c2743f40656ac9617af13eece51e1afc4` and
+`04781abf338928003682e1fa2754e50490c5db25`. The merge commit and PR head share tree
+`c6319d52967d3e2fa97e12b4c7aecb7b6c58deb0`. WP-CONTRACT-01 is therefore closed as a real
+merge, not a squash, rebase, or branch-head inference.
+
+Its evidence remains unchanged: 83 operations, 93 producers, 29 matrix rows, 93 relations, 0 full,
+60 partial, 23 blocked, 6/93 exact request-factory proofs, and 24/60 production success-decoder or
+cache proofs. The committed manifest still pins source snapshot
+`8fec3a3a2ae21af87a799334949491fd90d9af72` and remains byte-identical to the backend copy from
+merged backend source `6a792cf2572f585e56ce5dbb181307955c1896a8`. Neither source merge is deployment evidence.
+
+WP-CONTRACT-01F changes only the ongoing iOS drift gate. Its local implementation preserves exact
+historical Git-object reproduction and backend identity while comparing the current worktree by
+all-source producer and request semantics, so unrelated Swift bytes no longer force a
+cross-repository repin. It does not change production Swift, backend runtime source, the historical
+generator or source mapping, the generated manifest, bundle, or backend manifest copy, coverage,
+blocker ownership, CI v2 architecture, release state, or frozen PR #117.
+
+The focused P1 red was exact and pre-fix: a generic
+`typealias Factory<T> = @Sendable () -> T` with stored `Factory<Endpoint>` was accepted
+(`AssertionError: DriftError not raised`; one test in 58.653 seconds). The remediation added a
+bounded deterministic masked-source type parser and recursive alias resolver with positional
+substitution, chains, scope/visibility/shadowing, and fail-closed cycle, arity, depth, node, token,
+ambiguity, and incomplete-proof diagnostics. Producer discovery now independently scans
+file/type-scope callables, computed properties, and stored initializer normal-result/escape flow,
+including direct factory references and Endpoint-bearing return carriers.
+
+The pre-review implementation passed 132/132 incremental canaries; the unchanged historical
+generator/scanner passed 66/66. Two authorized remediation passes expanded the current incremental
+suite to 153 tests and made all original and pass-1/pass-2 P1 reproductions behave as intended.
+Targeted final-pass tests and the unmodified production tree remained green at 83 operations, 93
+producers, 29 matrix rows, and 93 relations. That is not a completion claim: the final independent
+review found one unresolved P2 false positive after the second and final remediation pass.
+
+The remaining valid Swift form binds `let make = Endpoints.getBooks` locally and returns
+`send(make()) -> Response`. The local factory is nonescaping and direct-call-only, but the current
+return-expression heuristic rejects the enclosing `debug() -> Response` as an unexpected Endpoint
+producer. The equivalent direct `send(Endpoints.getBooks())` passes. Because the remediation ceiling
+is exhausted, the full final 153-test run was stopped, WP-CONTRACT-01F is **NOT MERGE READY**, and no
+commit, push, draft PR, or GitHub workflow run was created.
+
+### Superseding owner-authorized WP-CONTRACT-01F correction — 2026-07-14
+
+The blocked checkpoint above remains historical evidence. The owner subsequently authorized one
+final architecture correction and superseded the prior two-pass ceiling. The corrected boundary no
+longer treats a function-local alias such as `let make = Endpoints.getBooks` as an independent
+producer. A use is direct-call-only when the alias is the immediate syntactic callee, even inside a
+nested call or ancestor return expression. Bare return/argument/assignment/storage,
+collection/tuple placement, captured closure use, and unsupported ambiguity remain fail-closed
+escapes. Enclosing declared/resolved Endpoint-carrying callables and file/type-scope generic stored
+aliases remain producer candidates.
+
+The exact async `return try await send(make())` sample typechecked, then reproduced the pre-fix
+unexpected-producer rejection (`1 test in 21.542 seconds`). After replacing the return-text
+heuristic with a bounded use-role classifier, that canary passed (`1 test in 22.935 seconds`; 23.08
+seconds wall time). Five pure role tests complete in 0.001 seconds and cover immediate invocation,
+parentheses, nesting, repetition, branches, bare values, arguments, outward storage, collections,
+tuples, closure capture and ambiguous call-role syntax. A separate concrete local Endpoint value
+keeps its existing result-flow proof instead of being treated as a function value.
+
+The final locked verifier SHA-256 is
+`20fac4a9dc26736612e5a96b1de84e57c58d7aa1d4a45435f1c5749fdfb59c58` under policy schema v2.
+Final local results are:
+
+- incremental drift: **162/162 passed in 2,680.016 seconds**;
+- historical generator/scanner: **66/66 passed in 50.254 seconds**;
+- production semantics: **83 operations / 93 producers / 29 matrix rows / 93 relations**, plus 584
+  exact historical Git-object inputs, in 26.11 seconds;
+- backend provenance canaries: pass;
+- exact merged-backend `refresh-fixtures.sh --check`: pass against clean
+  `6a792cf2572f585e56ce5dbb181307955c1896a8`; **53/53** backend tests passed and both generated
+  overlays matched;
+- Python compile, policy lock and stale-digest rejection, shellcheck, Bash syntax, actionlint,
+  changed-YAML parse, strict SwiftLint (0 violations in 742 files), diff and conflict guards: pass.
+
+The single fresh read-only scope-frozen reviewer returned **CLEAR** with no valid P0/P1/P2 finding.
+Its novel exhaustive enum-switch consumer used both `builder()` and `(builder)()` and passed full
+semantic comparison. Its bare `return builder` escape was rejected, the generic file/type-scope
+producer remained blocked, mapped method drift remained blocked, the stale policy digest remained
+blocked, and workflow triggers and unconditional checks remained fail-closed.
+
+No production Swift, backend source, historical manifest, generated bundle, backend manifest copy,
+source mapping, historical generator/test, schema, migration, secret, deployment, release, App
+Store, TestFlight, branch-protection, PR #117 or unrelated-user state changed. This status record is
+prepared before publication and therefore makes no draft-PR or exact-head GitHub conclusion; those
+checks remain mandatory for the final merge verdict. WP-CONTRACT-01F remains unmerged.

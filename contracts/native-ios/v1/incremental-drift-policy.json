@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "chapterflow-ios-incremental-drift-policy-v2",
+  "verifierPath": "scripts/contracts/verify_ios_incremental_contract_drift.py",
+  "verifierSha256": "20fac4a9dc26736612e5a96b1de84e57c58d7aa1d4a45435f1c5749fdfb59c58",
+  "classification": {
+    "contractOriginatingProducer": "file-or-type stored value or declaration result carrying Endpoint, direct Endpoint or native wire construction, or mapped analytics transport",
+    "localDirectInvocation": "immediate syntactic callee use consumes a mapped producer and is not an independent producer",
+    "functionValueEscape": "bare argument, return, assignment, storage, collection, tuple, or captured closure use leaves the proven local direct-call boundary",
+    "unsupportedOrAmbiguous": "fail-closed"
+  },
+  "verificationBoundary": {
+    "covers": "native wire-contract origin, provenance, and mapped semantic drift",
+    "doesNotClaim": "general Swift type-system or application call-graph correctness"
+  }
+}
