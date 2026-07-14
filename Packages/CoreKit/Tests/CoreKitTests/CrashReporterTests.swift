@@ -109,59 +109,126 @@ struct CrashReporterFactoryTests {
 @Suite("CrashBreadcrumbAPIObserver")
 struct CrashBreadcrumbAPIObserverTests {
 
-    @Test("requestCompleted adds a network breadcrumb without PII")
-    func requestCompletedBreadcrumb() {
+    @Test("typed success observation adds only allowlisted breadcrumb fields")
+    func successBreadcrumb() {
         var captured: CrashBreadcrumb?
         let spy = SpyCrashReporter { crumb in captured = crumb }
         let obs = CrashBreadcrumbAPIObserver(reporter: spy)
 
-        obs.requestCompleted(
-            method: "GET",
-            path: "/book/books/b1",
-            status: 200,
-            requestId: "req-abc"
-        )
+        obs.record(APIRequestObservation(
+            method: .get,
+            route: "/book/books/private-book-id",
+            attempt: 2,
+            elapsed: .milliseconds(720),
+            outcome: .success,
+            statusCode: 200,
+            requestId: "req-observe1234567890",
+            retryDisposition: .final
+        ))
 
         let crumb = try! #require(captured)
         #expect(crumb.category == "network")
-        #expect(crumb.message.contains("GET"))
-        #expect(crumb.message.contains("/book/books/b1"))
-        #expect(crumb.message.contains("200"))
-        #expect(crumb.metadata["requestId"] == "req-abc")
+        #expect(crumb.level == .info)
+        #expect(crumb.message == "GET /book/books/:id success")
+        #expect(crumb.metadata == [
+            "attempt": "2",
+            "duration": "500ms_to_1s",
+            "method": "GET",
+            "outcome": "success",
+            "requestId": "req-observe1234567890",
+            "retry": "final",
+            "route": "/book/books/:id",
+            "status": "200",
+        ])
+        #expect(crumb.metadata["requestId"] == "req-observe1234567890")
+        #expect(!crumb.message.contains("private-book-id"))
     }
 
-    @Test("requestCompleted with 5xx produces an error-level breadcrumb")
+    @Test("HTTP 5xx produces an error-level breadcrumb")
     func serverErrorLevel() {
         var captured: CrashBreadcrumb?
         let spy = SpyCrashReporter { crumb in captured = crumb }
         let obs = CrashBreadcrumbAPIObserver(reporter: spy)
-        obs.requestCompleted(method: "POST", path: "/book/me", status: 500, requestId: nil)
+        obs.record(APIRequestObservation(
+            method: .post,
+            route: "/book/me",
+            attempt: 1,
+            elapsed: .milliseconds(20),
+            outcome: .httpFailure,
+            statusCode: 500,
+            requestId: nil,
+            retryDisposition: .final
+        ))
         #expect(captured?.level == .error)
     }
 
-    @Test("requestFailed adds an error-level network breadcrumb")
-    func requestFailedBreadcrumb() {
+    @Test("cancellation is never an error-level breadcrumb")
+    func cancellationLevel() {
         var captured: CrashBreadcrumb?
         let spy = SpyCrashReporter { crumb in captured = crumb }
         let obs = CrashBreadcrumbAPIObserver(reporter: spy)
-        obs.requestFailed(method: "GET", path: "/book/me", error: URLError(.timedOut))
-        #expect(captured?.level == .error)
+        obs.record(APIRequestObservation(
+            method: .get,
+            route: "/book/me/export",
+            attempt: 1,
+            elapsed: .milliseconds(5),
+            outcome: .cancellation,
+            statusCode: nil,
+            requestId: nil,
+            retryDisposition: .final
+        ))
+        #expect(captured?.level == .info)
         #expect(captured?.category == "network")
+        #expect(captured?.metadata["outcome"] == "cancellation")
     }
 
-    @Test("breadcrumb message never contains a Bearer token")
-    func noBearerTokenInBreadcrumb() {
+    @Test("breadcrumb reflection cannot contain URL, query, token, body, identifier, or raw error")
+    func breadcrumbPrivacyBoundary() {
         var captured: CrashBreadcrumb?
         let spy = SpyCrashReporter { crumb in captured = crumb }
         let obs = CrashBreadcrumbAPIObserver(reporter: spy)
-        // Even if someone accidentally passes a token in path (defensive test)
-        obs.requestCompleted(
-            method: "GET",
-            path: "/book/Bearer eyJabc.def.ghi",
-            status: 200,
-            requestId: nil
-        )
-        #expect(!(captured?.message.contains("eyJabc.def.ghi") ?? true))
+        let forbiddenValues = [
+            "private-book-id",
+            "private-query",
+            "Bearer private-token",
+            "private-body",
+            "alice@example.com",
+            "URLError",
+            "timedOut",
+        ]
+
+        obs.record(APIRequestObservation(
+            method: .get,
+            route: "/book/books/private-book-id?query=private-query#Bearer%20private-token",
+            attempt: 1,
+            elapsed: .milliseconds(10),
+            outcome: .networkFailure,
+            statusCode: nil,
+            requestId: "alice@example.com/private-body/URLError/timedOut",
+            retryDisposition: .final
+        ))
+
+        let crumb = try! #require(captured)
+        let reflected = String(reflecting: crumb)
+        for value in forbiddenValues {
+            #expect(!reflected.contains(value))
+        }
+        #expect(crumb.message == "GET /book/books/:id network_failure")
+    }
+
+    @Test("no-op observer accepts typed events without side effects")
+    func noopObserver() {
+        let observer: any APIClientObserver = NoopAPIClientObserver()
+        observer.record(APIRequestObservation(
+            method: .delete,
+            route: "/book/me/notebook/private-entry",
+            attempt: 1,
+            elapsed: .zero,
+            outcome: .success,
+            statusCode: 204,
+            requestId: nil,
+            retryDisposition: .final
+        ))
     }
 }
 

@@ -1,35 +1,15 @@
 import Foundation
 
-// MARK: - Protocol
-
-/// A hook the `APIClient` (in Networking) calls after every HTTP exchange.
+/// A synchronous, nonthrowing hook called once for every actual API attempt.
 ///
-/// Defined in CoreKit so Networking can reference it without creating a
-/// circular dependency. Implementations receive only safe, non-PII fields:
-/// method, path (no query string), status, and the optional server requestId
-/// from error envelopes. Request/response bodies and auth tokens are never
-/// exposed.
+/// The only input is a closed, privacy-safe value. Implementations must remain
+/// bounded and must not perform JSON encoding, disk or network I/O, or create
+/// unbounded tasks. Observation is never allowed to change request behavior.
 public protocol APIClientObserver: Sendable {
-    /// Called after every completed HTTP exchange — whether the status was
-    /// 2xx or an error. For retried requests, called after *each* attempt.
-    ///
-    /// - Parameters:
-    ///   - method: HTTP verb (e.g. `"GET"`, `"POST"`).
-    ///   - path: Request path only (e.g. `"/book/books/b1"`), never including
-    ///     a query string or fragment that could carry PII.
-    ///   - status: HTTP status code.
-    ///   - requestId: The server's `requestId` from the error envelope, if any.
-    func requestCompleted(method: String, path: String, status: Int, requestId: String?)
-
-    /// Called when a request fails with a network-layer error (no HTTP response).
-    func requestFailed(method: String, path: String, error: any Error)
+    func record(_ event: APIRequestObservation)
 }
 
-// MARK: - Crash breadcrumb adapter
-
-/// Bridges ``APIClientObserver`` into crash-report breadcrumbs via a
-/// ``CrashReporter``. Wire this up at the composition root when creating
-/// `APIClient`.
+/// Bridges typed API observations into privacy-safe crash breadcrumbs.
 public struct CrashBreadcrumbAPIObserver: APIClientObserver {
     private let reporter: any CrashReporter
 
@@ -37,40 +17,64 @@ public struct CrashBreadcrumbAPIObserver: APIClientObserver {
         self.reporter = reporter
     }
 
-    public func requestCompleted(method: String, path: String, status: Int, requestId: String?) {
-        var meta: [String: String] = [
-            "method": method,
-            "status": String(status),
+    public func record(_ event: APIRequestObservation) {
+        var metadata: [String: String] = [
+            "attempt": String(event.attempt),
+            "duration": Self.durationBucket(event.elapsed),
+            "method": event.method.rawValue,
+            "outcome": event.outcome.rawValue,
+            "retry": event.retryDisposition.rawValue,
+            "route": event.route,
         ]
-        if let requestId { meta["requestId"] = requestId }
-
-        let level: CrashBreadcrumb.Level = status >= 500 ? .error
-            : status >= 400 ? .warning
-            : .info
+        if let statusCode = event.statusCode {
+            metadata["status"] = String(statusCode)
+        }
+        if let requestId = event.requestId {
+            metadata["requestId"] = requestId
+        }
 
         reporter.addBreadcrumb(CrashBreadcrumb(
             category: "network",
-            message: "\(method) \(path) → \(status)",
-            level: level,
-            metadata: meta
+            message: "\(event.method.rawValue) \(event.route) \(event.outcome.rawValue)",
+            level: Self.level(for: event),
+            metadata: metadata
         ))
     }
 
-    public func requestFailed(method: String, path: String, error: any Error) {
-        reporter.addBreadcrumb(CrashBreadcrumb(
-            category: "network",
-            message: "\(method) \(path) → \(type(of: error))",
-            level: .error,
-            metadata: ["method": method]
-        ))
+    private static func level(for event: APIRequestObservation) -> CrashBreadcrumb.Level {
+        switch event.outcome {
+        case .success, .cancellation:
+            .info
+        case .httpFailure:
+            if let statusCode = event.statusCode, statusCode >= 500 {
+                .error
+            } else {
+                .warning
+            }
+        case .networkFailure, .decodingFailure:
+            event.retryDisposition == .willRetry ? .warning : .error
+        }
+    }
+
+    private static func durationBucket(_ elapsed: Duration) -> String {
+        if elapsed < .milliseconds(100) {
+            "under_100ms"
+        } else if elapsed < .milliseconds(500) {
+            "100ms_to_500ms"
+        } else if elapsed < .seconds(1) {
+            "500ms_to_1s"
+        } else if elapsed < .seconds(3) {
+            "1s_to_3s"
+        } else if elapsed < .seconds(10) {
+            "3s_to_10s"
+        } else {
+            "10s_or_more"
+        }
     }
 }
 
-// MARK: - Noop
-
-/// A no-op ``APIClientObserver`` for tests and previews.
+/// A no-op observer for previews, tests, and composition deferred to WP-OBS-01B.
 public struct NoopAPIClientObserver: APIClientObserver {
     public init() {}
-    public func requestCompleted(method: String, path: String, status: Int, requestId: String?) {}
-    public func requestFailed(method: String, path: String, error: any Error) {}
+    public func record(_ event: APIRequestObservation) {}
 }

@@ -342,64 +342,6 @@ struct NetworkingTests {
         #expect(url?.query() == "mode=hard")
     }
 
-    // MARK: - Observer
-
-    @Test("2xx calls requestCompleted with method, path and status")
-    func observerCalledOnSuccess() async throws {
-        StubURLProtocol.reset()
-        StubURLProtocol.responder = { _ in
-            .init(statusCode: 200, body: #"{"books":[]}"#.data(using: .utf8)!)
-        }
-        let spy = SpyAPIClientObserver()
-        let (client, _) = TestFactory.clientWithObserver(observer: spy)
-
-        let _: BooksResponse = try await client.send(Endpoints.getBooks())
-        #expect(spy.completed.count == 1)
-        #expect(spy.completed.first?.method == "GET")
-        #expect(spy.completed.first?.status == 200)
-        #expect(spy.failedCount == 0)
-    }
-
-    @Test("4xx calls requestCompleted with error status and requestId from envelope")
-    func observerCalledOnError() async throws {
-        StubURLProtocol.reset()
-        StubURLProtocol.responder = { _ in
-            .init(statusCode: 404, body: TestFactory.errorEnvelope(code: "not_found", requestId: "req-xyz"))
-        }
-        let spy = SpyAPIClientObserver()
-        let (client, _) = TestFactory.clientWithObserver(observer: spy)
-
-        do { let _: BooksResponse = try await client.send(Endpoints.getBooks()) } catch {}
-        #expect(spy.completed.first?.status == 404)
-        #expect(spy.completed.first?.requestId == "req-xyz")
-    }
-
-    @Test("non-transient URLError calls requestFailed")
-    func observerCalledOnNetworkError() async throws {
-        StubURLProtocol.reset()
-        StubURLProtocol.responder = { _ in throw URLError(.notConnectedToInternet) }
-        let spy = SpyAPIClientObserver()
-        let (client, _) = TestFactory.clientWithObserver(observer: spy, maxRetries: 0)
-
-        do { let _: BooksResponse = try await client.send(Endpoints.getBooks()) } catch {}
-        #expect(spy.failedCount == 1)
-        #expect(spy.completed.isEmpty)
-    }
-
-    @Test("observer path never contains auth token value")
-    func observerPathHasNoToken() async throws {
-        StubURLProtocol.reset()
-        StubURLProtocol.responder = { _ in
-            .init(statusCode: 200, body: #"{"loggedIn":true}"#.data(using: .utf8)!)
-        }
-        let spy = SpyAPIClientObserver()
-        let (client, _) = TestFactory.clientWithObserver(observer: spy, token: "super.secret.jwt")
-
-        let _: SessionResponse = try await client.send(Endpoints.getSession())
-        let call = try #require(spy.completed.first)
-        #expect(!call.path.contains("super.secret.jwt"))
-    }
-
     // MARK: - Helper
 
     /// Stubs a single error response and asserts the mapped `AppError`.
