@@ -77,14 +77,25 @@ No schema migration needed: the index already exists; only the query predicates 
 
 **Architectural evidence.** Deterministic tests hold storage suspended while asserting the first frame exists and graph count remains zero; duplicate starts and retry taps retain one active attempt; a superseded loader that ignores cancellation cannot publish stale results. The unsigned generic Simulator build passes with both Simulator architectures.
 
-**Measurement status.** This is an architecture and correctness result, not a new device-performance measurement. The historical 80–150 ms fresh-install store-open estimate above is not reused as an after number. `WP-BOOT-01B` owns cold/warm signposts, reference-device Instruments captures, migration fixtures, protected-data/corruption taxonomy, and any budget adjustment.
+**Measurement status.** This is an architecture and correctness result, not a new device-performance measurement. The historical 80–150 ms fresh-install store-open estimate above is not reused as an after number. `WP-BOOT-01B` owns privacy-safe launch signposts, migration fixtures, protected-data recovery, the closed storage-failure taxonomy, and the remaining physical-device measurements.
 
-## Known remaining launch work (deferred to `WP-BOOT-01B`)
+### 6. Closed storage recovery and launch evidence — `WP-BOOT-01B`
 
-- Record process start, first frame, storage open/migration, required-session readiness, and ready-state timings with privacy-safe signposts.
-- Measure cold and warm launch on the reference device and a representative older supported device.
-- Exercise existing-store migration fixtures, protected-data unavailable, disk-full, migration failure, and corruption without adding a silent reset.
-- Decide whether safe public browsing can be separated from account-private durable storage; `WP-BOOT-01A` intentionally fails closed for every currently promised durable feature.
+**Problem.** `WP-BOOT-01A` intentionally failed closed, but every persistence failure reached the same retry surface. A device whose protected data was temporarily unavailable could therefore invite a useless manual retry, while a persistent-store failure and a required-file-store failure could not be distinguished without retaining raw errors. Historical migration coverage also created only the current schema instead of proving each supported predecessor.
+
+**Fix.** Bootstrap now exposes a value-free, closed storage taxonomy: protected data unavailable, persistent-store open or migration failure, required file-store failure, and conservative unavailable. Each category has a fixed support code. Protected-data unavailability renders a distinct non-retry surface and automatically resumes the existing generation exactly once after UIKit reports protected data available. Persistent-store and required-file-store failures remain explicit and retryable. Production still has no automatic deletion, reset, in-memory store, alternate directory, or silent fallback.
+
+**Migration evidence.** Deterministic fixtures create an exact store for each declared historical schema V1 through V7, seed a durable record, and reopen it through the unchanged production V8 migration plan. The matrix asserts exact coverage of all declared schemas and all seven migration stages, verifies the seeded value survives, and verifies a current-model record remains writable.
+
+**Instrumentation evidence.** Fixed-name `OSSignposter` events cover bootstrap start, first launch view availability, protected-data wait/resume, persistence start/end, required-session start/end, ready, and each fixed failure category. They contain no paths, raw errors, identifiers, configuration values, or dynamic metadata. The injected recorder proves the valid deterministic phase order and proves instrumentation failure cannot block launch. An unsigned iPhone 17 Pro Simulator launch captured fixed `BootstrapStarted`, `InvalidConfigurationFailed`, and `FirstLaunchViewAvailable` events from the placeholder-configuration path.
+
+**Measurement status.** The simulator capture proves signpost availability and privacy shape; it is not a cold- or warm-launch performance result. No signed physical-device capture was run, so the 1.5-second reference-device budget remains unmeasured and unchanged.
+
+## Known remaining launch work after `WP-BOOT-01B`
+
+- Measure cold and warm launch on the reference device and a representative older supported device using the fixed signposts; adjust budgets only from those captures.
+- Add deterministic classifications for disk-full and corruption only when the storage stack exposes stable, privacy-safe signals that do not depend on parsing SDK text. Unknown failures currently map conservatively to unavailable.
+- Decide whether safe public browsing can be separated from account-private durable storage; bootstrap intentionally fails closed for every currently promised durable feature.
 
 ---
 

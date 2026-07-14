@@ -29,6 +29,55 @@ struct BootstrapPreparingView: View {
     }
 }
 
+struct ProtectedDataWaitingView: View {
+    let supportCode: String
+
+    var body: some View {
+        ZStack {
+            Color.cfGroupedBackground.ignoresSafeArea()
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: .cfSpacing20) {
+                    Image(systemName: "lock.shield")
+                        .font(.largeTitle)
+                        .foregroundStyle(Color.cfAccent)
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: .cfSpacing12) {
+                        Text("Unlock to Continue")
+                            .font(.cfTitle1)
+                            .foregroundStyle(Color.cfLabel)
+                            .accessibilityAddTraits(.isHeader)
+
+                        Text("ChapterFlow is waiting for iOS to make your protected local data available. Startup will continue automatically.")
+                            .font(.cfBody)
+                            .foregroundStyle(Color.cfSecondaryLabel)
+
+                        Text("No local data was reset or deleted.")
+                            .font(.cfBody)
+                            .foregroundStyle(Color.cfSecondaryLabel)
+                    }
+
+                    ProgressView()
+                        .controlSize(.large)
+                        .accessibilityLabel("Waiting for protected data")
+
+                    Text("Support code: \(supportCode)")
+                        .font(.cfFootnote.monospaced())
+                        .foregroundStyle(Color.cfSecondaryLabel)
+                        .textSelection(.enabled)
+                        .accessibilityIdentifier("bootstrap-support-code")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, .cfSpacing20)
+                .padding(.vertical, .cfSpacing32)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityIdentifier("bootstrap-protected-data-waiting")
+    }
+}
+
 struct BootstrapFailureView: View {
     enum Kind {
         case storage

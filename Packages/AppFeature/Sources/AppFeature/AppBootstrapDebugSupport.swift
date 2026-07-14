@@ -7,6 +7,7 @@ import Persistence
 public enum AppBootstrapDebugMode: Sendable {
     case live
     case suspendStorage
+    case waitForProtectedData
     case failStorageOnce
     case failSessionConfiguration
 }
@@ -20,20 +21,29 @@ public extension AppBootstrapCoordinator {
         let hermeticLoader = DefaultAppPersistenceLoader.hermeticTestStorage()
         let loader: any AppPersistenceLoading
         let graphFactory: any AppGraphFactory
+        let protectedDataAvailability: any ProtectedDataAvailabilityProviding
 
         switch debugMode {
         case .live:
             loader = hermeticLoader
             graphFactory = LiveAppGraphFactory()
+            protectedDataAvailability = DebugAvailableProtectedDataProvider()
         case .suspendStorage:
             loader = DebugSuspendingPersistenceLoader()
             graphFactory = LiveAppGraphFactory()
+            protectedDataAvailability = DebugAvailableProtectedDataProvider()
+        case .waitForProtectedData:
+            loader = hermeticLoader
+            graphFactory = LiveAppGraphFactory()
+            protectedDataAvailability = DebugDelayedProtectedDataProvider()
         case .failStorageOnce:
             loader = DebugFailOncePersistenceLoader(live: hermeticLoader)
             graphFactory = LiveAppGraphFactory()
+            protectedDataAvailability = DebugAvailableProtectedDataProvider()
         case .failSessionConfiguration:
             loader = hermeticLoader
             graphFactory = DebugFailingSessionGraphFactory()
+            protectedDataAvailability = DebugAvailableProtectedDataProvider()
         }
 
         self.init(
@@ -41,7 +51,8 @@ public extension AppBootstrapCoordinator {
             buildConfiguration: buildConfiguration,
             diagnostics: NoopAppConfigurationDiagnosticsRecorder(),
             persistenceLoader: loader,
-            graphFactory: graphFactory
+            graphFactory: graphFactory,
+            protectedDataAvailability: protectedDataAvailability
         )
     }
 }
@@ -66,9 +77,30 @@ private actor DebugFailOncePersistenceLoader: AppPersistenceLoading {
     func load() async throws -> AppPersistenceResources {
         if !hasFailed {
             hasFailed = true
-            throw DebugBootstrapError()
+            throw AppPersistenceLoadFailure.persistentStoreOpenOrMigration
         }
         return try await live.load()
+    }
+}
+
+@MainActor
+private final class DebugAvailableProtectedDataProvider: ProtectedDataAvailabilityProviding {
+    var isAvailable: Bool { true }
+
+    func waitUntilAvailable() async {}
+}
+
+@MainActor
+private final class DebugDelayedProtectedDataProvider: ProtectedDataAvailabilityProviding {
+    private(set) var isAvailable = false
+
+    func waitUntilAvailable() async {
+        // Long enough for XCUITest to observe the waiting surface after process
+        // launch and accessibility-session setup; still bounded well inside its
+        // recovery assertion timeout.
+        try? await Task.sleep(for: .seconds(8))
+        guard !Task.isCancelled else { return }
+        isAvailable = true
     }
 }
 

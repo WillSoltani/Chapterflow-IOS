@@ -4,16 +4,6 @@ import DesignSystem
 import Persistence
 import SwiftUI
 
-/// A privacy-safe storage bootstrap failure. The raw error is intentionally not
-/// retained, reflected into UI state, logged, or exposed to accessibility APIs.
-public struct AppBootstrapStorageFailure: Equatable, Sendable {
-    public static let supportCode = "CF-BOOT-STORAGE-001"
-
-    public init() {}
-
-    public var supportCode: String { Self.supportCode }
-}
-
 /// A privacy-safe required-session bootstrap failure.
 public struct AppBootstrapSessionFailure: Equatable, Sendable {
     public static let supportCode = "CF-BOOT-SESSION-001"
@@ -28,6 +18,7 @@ public struct AppBootstrapSessionFailure: Equatable, Sendable {
 @MainActor
 public enum AppBootstrapState {
     case preparing
+    case waitingForProtectedData(AppBootstrapStorageFailure)
     case ready(config: ValidatedAppConfig, model: AppModel)
     case invalidConfiguration(AppConfigurationDiagnosticRecord)
     case storageUnavailable(AppBootstrapStorageFailure)
@@ -76,9 +67,13 @@ public final class AppBootstrapCoordinator {
     private let diagnostics: any AppConfigurationDiagnosticsRecording
     private let persistenceLoader: any AppPersistenceLoading
     private let graphFactory: any AppGraphFactory
+    private let protectedDataAvailability: any ProtectedDataAvailabilityProviding
+    private let phaseRecorder: any AppBootstrapPhaseRecording
     private let validatedConfig: ValidatedAppConfig?
     private var attempt: Task<Void, Never>?
+    private var protectedDataWait: Task<Void, Never>?
     private var attemptGeneration: UInt = 0
+    private var didRecordFirstLaunchView = false
 
     public convenience init(
         config: AppConfig,
@@ -89,7 +84,9 @@ public final class AppBootstrapCoordinator {
             buildConfiguration: buildConfiguration,
             diagnostics: NoopAppConfigurationDiagnosticsRecorder(),
             persistenceLoader: DefaultAppPersistenceLoader(),
-            graphFactory: LiveAppGraphFactory()
+            graphFactory: LiveAppGraphFactory(),
+            protectedDataAvailability: SystemProtectedDataAvailabilityProvider(),
+            phaseRecorder: SignpostAppBootstrapPhaseRecorder()
         )
     }
 
@@ -98,12 +95,17 @@ public final class AppBootstrapCoordinator {
         buildConfiguration: AppBuildConfiguration,
         diagnostics: any AppConfigurationDiagnosticsRecording,
         persistenceLoader: any AppPersistenceLoading,
-        graphFactory: any AppGraphFactory
+        graphFactory: any AppGraphFactory,
+        protectedDataAvailability: any ProtectedDataAvailabilityProviding = SystemProtectedDataAvailabilityProvider(),
+        phaseRecorder: any AppBootstrapPhaseRecording = NoopAppBootstrapPhaseRecorder()
     ) {
         self.buildConfiguration = buildConfiguration
         self.diagnostics = diagnostics
         self.persistenceLoader = persistenceLoader
         self.graphFactory = graphFactory
+        self.protectedDataAvailability = protectedDataAvailability
+        self.phaseRecorder = phaseRecorder
+        _ = try? phaseRecorder.record(.bootstrapStarted)
 
         switch config.validate() {
         case .valid(let validated):
@@ -121,6 +123,23 @@ public final class AppBootstrapCoordinator {
             _ = try? diagnostics.record(record)
             state = .invalidConfiguration(record)
         }
+
+        if case .invalidConfiguration = state {
+            recordPhase(.invalidConfigurationFailed)
+        }
+    }
+
+    isolated deinit {
+        attempt?.cancel()
+        protectedDataWait?.cancel()
+    }
+
+    /// Records the first available launch surface once, independently of which
+    /// closed bootstrap state owns that frame.
+    func markFirstLaunchViewAvailable() {
+        guard !didRecordFirstLaunchView else { return }
+        didRecordFirstLaunchView = true
+        recordPhase(.firstLaunchViewAvailable)
     }
 
     /// Starts the initial attempt. Repeated starts while preparing, ready, or in
@@ -134,20 +153,29 @@ public final class AppBootstrapCoordinator {
     /// preparing synchronously so repeated taps cannot overlap attempts.
     public func retry() {
         switch state {
-        case .storageUnavailable, .sessionConfigurationFailed:
+        case .storageUnavailable(let failure) where failure.isRetryMeaningful:
             state = .preparing
             beginAttempt()
-        case .preparing, .ready, .invalidConfiguration:
+        case .sessionConfigurationFailed:
+            state = .preparing
+            beginAttempt()
+        case .preparing, .waitingForProtectedData, .ready,
+             .invalidConfiguration, .storageUnavailable:
             break
         }
     }
 
     /// Cancels the owned attempt when the launch root leaves the hierarchy.
     public func cancel() {
-        guard attempt != nil else { return }
+        guard attempt != nil || protectedDataWait != nil else { return }
         attemptGeneration &+= 1
         attempt?.cancel()
+        protectedDataWait?.cancel()
         attempt = nil
+        protectedDataWait = nil
+        if case .waitingForProtectedData = state {
+            state = .preparing
+        }
     }
 
     /// Awaitable test/view-lifetime hook for the currently owned attempt.
@@ -167,12 +195,22 @@ public final class AppBootstrapCoordinator {
         guard let validatedConfig else { return }
         if replacingCurrent {
             attempt?.cancel()
+            protectedDataWait?.cancel()
+            attempt = nil
+            protectedDataWait = nil
         } else {
-            guard attempt == nil else { return }
+            guard attempt == nil, protectedDataWait == nil else { return }
         }
 
         attemptGeneration &+= 1
         let generation = attemptGeneration
+        guard protectedDataAvailability.isAvailable else {
+            waitForProtectedData(generation: generation)
+            return
+        }
+
+        state = .preparing
+        recordPhase(.persistenceOpenStarted)
         let loader = persistenceLoader
         attempt = Task { @MainActor [weak self, loader] in
             do {
@@ -183,10 +221,16 @@ public final class AppBootstrapCoordinator {
                     config: validatedConfig,
                     generation: generation
                 )
+            } catch let failure as AppPersistenceLoadFailure {
+                self?.finishStorageFailure(failure, generation: generation)
             } catch is CancellationError {
-                self?.finishCancellation(generation: generation)
+                if Task.isCancelled {
+                    self?.finishCancellation(generation: generation)
+                } else {
+                    self?.finishStorageFailure(nil, generation: generation)
+                }
             } catch {
-                self?.finishStorageFailure(generation: generation)
+                self?.finishStorageFailure(nil, generation: generation)
             }
         }
     }
@@ -197,6 +241,8 @@ public final class AppBootstrapCoordinator {
         generation: UInt
     ) {
         guard generation == attemptGeneration else { return }
+        recordPhase(.persistenceOpenCompleted)
+        recordPhase(.requiredSessionSetupStarted)
 
         do {
             let model = try graphFactory.makeConfiguredGraph(
@@ -210,23 +256,79 @@ public final class AppBootstrapCoordinator {
                 liveServicesConstructed: true
             )
             _ = try? diagnostics.record(record)
+            recordPhase(.requiredSessionSetupCompleted)
             attempt = nil
             state = .ready(config: config, model: model)
+            recordPhase(.readyPublished)
         } catch {
             attempt = nil
             state = .sessionConfigurationFailed(AppBootstrapSessionFailure())
+            recordPhase(.requiredSessionSetupFailed)
         }
     }
 
-    private func finishStorageFailure(generation: UInt) {
+    private func finishStorageFailure(
+        _ failure: AppPersistenceLoadFailure?,
+        generation: UInt
+    ) {
         guard generation == attemptGeneration else { return }
+
+        if !protectedDataAvailability.isAvailable {
+            attempt = nil
+            waitForProtectedData(generation: generation)
+            return
+        }
+
+        let category: AppBootstrapStorageFailureCategory
+        let phase: AppBootstrapPhase
+        switch failure {
+        case .persistentStoreOpenOrMigration:
+            category = .persistentStoreOpenOrMigration
+            phase = .persistentStoreOpenOrMigrationFailed
+        case .requiredFileStore:
+            category = .requiredFileStore
+            phase = .requiredFileStoreFailed
+        case nil:
+            category = .unavailable
+            phase = .storageUnavailableFailed
+        }
         attempt = nil
-        state = .storageUnavailable(AppBootstrapStorageFailure())
+        state = .storageUnavailable(AppBootstrapStorageFailure(category: category))
+        recordPhase(phase)
     }
 
     private func finishCancellation(generation: UInt) {
         guard generation == attemptGeneration else { return }
         attempt = nil
+    }
+
+    private func waitForProtectedData(generation: UInt) {
+        guard generation == attemptGeneration, protectedDataWait == nil else { return }
+        state = .waitingForProtectedData(
+            AppBootstrapStorageFailure(category: .protectedDataUnavailable)
+        )
+        recordPhase(.protectedDataWaiting)
+
+        let availability = protectedDataAvailability
+        protectedDataWait = Task { @MainActor [weak self, availability] in
+            await availability.waitUntilAvailable()
+            guard !Task.isCancelled else { return }
+            self?.protectedDataBecameAvailable(generation: generation)
+        }
+    }
+
+    private func protectedDataBecameAvailable(generation: UInt) {
+        guard generation == attemptGeneration,
+              case .waitingForProtectedData = state,
+              protectedDataAvailability.isAvailable else { return }
+        protectedDataWait = nil
+        state = .preparing
+        recordPhase(.protectedDataBecameAvailable)
+        beginAttempt()
+    }
+
+    private func recordPhase(_ phase: AppBootstrapPhase) {
+        _ = try? phaseRecorder.record(phase)
     }
 }
 
@@ -240,36 +342,42 @@ public struct ConfiguredAppRootView: View {
     }
 
     public var body: some View {
-        switch bootstrap.state {
-        case .preparing:
-            BootstrapPreparingView()
-                .task {
-                    bootstrap.start()
-                    await bootstrap.waitForCurrentAttempt()
-                }
-                .onDisappear { bootstrap.cancel() }
+        ZStack {
+            switch bootstrap.state {
+            case .preparing:
+                BootstrapPreparingView()
 
-        case .ready(let validated, let model):
-            AppRootView(model: model)
-                .environment(\.appConfig, validated.value)
+            case .waitingForProtectedData(let failure):
+                ProtectedDataWaitingView(supportCode: failure.supportCode.rawValue)
 
-        case .invalidConfiguration(let diagnostic):
-            InvalidDevelopmentConfigurationView(diagnostic: diagnostic)
+            case .ready(let validated, let model):
+                AppRootView(model: model)
+                    .environment(\.appConfig, validated.value)
 
-        case .storageUnavailable(let failure):
-            BootstrapFailureView(
-                kind: .storage,
-                supportCode: failure.supportCode,
-                onRetry: bootstrap.retry
-            )
+            case .invalidConfiguration(let diagnostic):
+                InvalidDevelopmentConfigurationView(diagnostic: diagnostic)
 
-        case .sessionConfigurationFailed(let failure):
-            BootstrapFailureView(
-                kind: .session,
-                supportCode: failure.supportCode,
-                onRetry: bootstrap.retry
-            )
+            case .storageUnavailable(let failure):
+                BootstrapFailureView(
+                    kind: .storage,
+                    supportCode: failure.supportCode.rawValue,
+                    onRetry: bootstrap.retry
+                )
+
+            case .sessionConfigurationFailed(let failure):
+                BootstrapFailureView(
+                    kind: .session,
+                    supportCode: failure.supportCode,
+                    onRetry: bootstrap.retry
+                )
+            }
         }
+        .task {
+            bootstrap.markFirstLaunchViewAvailable()
+            bootstrap.start()
+            await bootstrap.waitForCurrentAttempt()
+        }
+        .onDisappear { bootstrap.cancel() }
     }
 }
 

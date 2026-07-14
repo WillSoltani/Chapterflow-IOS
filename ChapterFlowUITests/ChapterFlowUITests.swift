@@ -15,6 +15,8 @@ enum TestEnv {
     static let invalidConfiguration = "CF_INVALID_TEST_CONFIGURATION"
     /// Holds required storage open so the lightweight first frame is observable.
     static let suspendBootstrapStorage = "CF_BOOTSTRAP_SUSPEND_STORAGE"
+    /// Delays protected-data availability, then resumes bootstrap automatically.
+    static let waitForProtectedData = "CF_BOOTSTRAP_WAIT_PROTECTED_DATA"
     /// Makes the first storage attempt fail; retry uses the live hermetic path.
     static let failBootstrapStorageOnce = "CF_BOOTSTRAP_FAIL_STORAGE_ONCE"
     /// Fails required session setup after storage succeeds.
@@ -53,7 +55,7 @@ final class BootstrapStorageRecoveryUITests: CFUITestCase {
             app.descendants(matching: .any)["bootstrap-storage-unavailable"],
             message: "Required storage failure should have a dedicated surface"
         )
-        XCTAssertTrue(app.staticTexts["Support code: CF-BOOT-STORAGE-001"].exists)
+        XCTAssertTrue(app.staticTexts["Support code: CF-BOOT-STORAGE-STORE-001"].exists)
         XCTAssertFalse(app.tabBars.firstMatch.exists)
 
         let retry = app.buttons["bootstrap-retry"]
@@ -62,6 +64,26 @@ final class BootstrapStorageRecoveryUITests: CFUITestCase {
 
         assertShellLoaded()
         XCTAssertFalse(app.descendants(matching: .any)["bootstrap-storage-unavailable"].exists)
+    }
+}
+
+final class BootstrapProtectedDataRecoveryUITests: CFUITestCase {
+    override var extraLaunchEnvironment: [String: String] {
+        [TestEnv.waitForProtectedData: "1"]
+    }
+
+    func testProtectedDataWaitRecoversWithoutManualRetry() {
+        assertExists(
+            app.descendants(matching: .any)["bootstrap-protected-data-waiting"],
+            message: "Protected data should use a distinct waiting surface"
+        )
+        XCTAssertFalse(app.buttons["bootstrap-retry"].exists)
+        XCTAssertFalse(app.tabBars.firstMatch.exists)
+
+        assertShellLoaded()
+        XCTAssertFalse(
+            app.descendants(matching: .any)["bootstrap-protected-data-waiting"].exists
+        )
     }
 }
 

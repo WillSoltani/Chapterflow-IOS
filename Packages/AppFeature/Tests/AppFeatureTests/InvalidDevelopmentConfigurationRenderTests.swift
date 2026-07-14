@@ -11,12 +11,29 @@ struct InvalidConfigRenderTests {
         assertRenders(BootstrapPreparingView())
     }
 
+    @Test("protected-data waiting renders at AX5 without a recovery action")
+    func protectedDataWaitingAX5() {
+        assertRenders(
+            ProtectedDataWaitingView(
+                supportCode: AppBootstrapStorageSupportCode
+                    .protectedDataUnavailable.rawValue
+            )
+                .preferredColorScheme(.dark)
+                .environment(\.dynamicTypeSize, .accessibility5)
+                .transaction {
+                    $0.animation = nil
+                    $0.disablesAnimations = true
+                }
+        )
+    }
+
     @Test("storage recovery renders in light appearance")
     func storageRecoveryLight() {
         assertRenders(
             BootstrapFailureView(
                 kind: .storage,
-                supportCode: AppBootstrapStorageFailure.supportCode,
+                supportCode: AppBootstrapStorageSupportCode
+                    .persistentStoreOpenOrMigration.rawValue,
                 onRetry: {}
             )
         )
@@ -39,7 +56,7 @@ struct InvalidConfigRenderTests {
         assertRenders(
             BootstrapFailureView(
                 kind: .storage,
-                supportCode: AppBootstrapStorageFailure.supportCode,
+                supportCode: AppBootstrapStorageSupportCode.requiredFileStore.rawValue,
                 onRetry: {}
             )
             .environment(\.dynamicTypeSize, .accessibility5)

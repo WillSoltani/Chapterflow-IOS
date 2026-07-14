@@ -1,5 +1,14 @@
 import Foundation
 
+/// Value-free classification of failures at the required persistence bootstrap
+/// boundaries. Raw SwiftData and filesystem errors never cross this API.
+public enum AppPersistenceLoadFailure: Error, Equatable, Sendable {
+    /// The current SwiftData store could not be opened or migrated.
+    case persistentStoreOpenOrMigration
+    /// The required download file store could not be opened at its configured root.
+    case requiredFileStore
+}
+
 /// Required durable resources for the live application graph.
 ///
 /// The composition root receives this value only after both SwiftData and the
@@ -26,15 +35,33 @@ public protocol AppPersistenceLoading: Sendable {
 public struct DefaultAppPersistenceLoader: AppPersistenceLoading {
     private let storage: StorageMode
     private let downloadRoot: URL?
+    private let persistenceFactory: @Sendable (StorageMode) throws -> PersistenceController
+    private let fileStoreFactory: @Sendable (URL?) throws -> FileStore
 
     public init() {
         storage = .appGroup
         downloadRoot = nil
+        persistenceFactory = Self.makePersistenceController
+        fileStoreFactory = Self.makeFileStore
     }
 
     init(storage: StorageMode, downloadRoot: URL?) {
         self.storage = storage
         self.downloadRoot = downloadRoot
+        persistenceFactory = Self.makePersistenceController
+        fileStoreFactory = Self.makeFileStore
+    }
+
+    init(
+        storage: StorageMode,
+        downloadRoot: URL?,
+        persistenceFactory: @escaping @Sendable (StorageMode) throws -> PersistenceController,
+        fileStoreFactory: @escaping @Sendable (URL?) throws -> FileStore
+    ) {
+        self.storage = storage
+        self.downloadRoot = downloadRoot
+        self.persistenceFactory = persistenceFactory
+        self.fileStoreFactory = fileStoreFactory
     }
 
     // This method is intentionally async without internal suspension: @concurrent
@@ -43,17 +70,45 @@ public struct DefaultAppPersistenceLoader: AppPersistenceLoading {
     // swiftlint:disable:next async_without_await
     @concurrent
     public func load() async throws -> AppPersistenceResources {
-        let controller = try PersistenceController.makeDefault(storage: storage)
-        let fileStore: FileStore
-        if let downloadRoot {
-            fileStore = try FileStore(root: downloadRoot)
-        } else {
-            fileStore = try FileStore.applicationSupport(subdirectory: "Downloads")
+        let controller: PersistenceController
+        do {
+            controller = try persistenceFactory(storage)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw AppPersistenceLoadFailure.persistentStoreOpenOrMigration
         }
+
+        try Task.checkCancellation()
+
+        let fileStore: FileStore
+        do {
+            fileStore = try fileStoreFactory(downloadRoot)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            throw AppPersistenceLoadFailure.requiredFileStore
+        }
+
+        try Task.checkCancellation()
+
         return AppPersistenceResources(
             controller: controller,
             downloadFileStore: fileStore
         )
+    }
+
+    private static func makePersistenceController(
+        storage: StorageMode
+    ) throws -> PersistenceController {
+        try PersistenceController.makeDefault(storage: storage)
+    }
+
+    private static func makeFileStore(downloadRoot: URL?) throws -> FileStore {
+        if let downloadRoot {
+            return try FileStore(root: downloadRoot)
+        }
+        return try FileStore.applicationSupport(subdirectory: "Downloads")
     }
 }
 
