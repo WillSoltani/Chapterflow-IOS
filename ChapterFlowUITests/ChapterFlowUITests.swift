@@ -13,10 +13,93 @@ enum TestEnv {
     static let hermeticConfiguration = "CF_HERMETIC_TEST_CONFIGURATION"
     /// Set to exercise the invalid-configuration root using safe placeholders.
     static let invalidConfiguration = "CF_INVALID_TEST_CONFIGURATION"
+    /// Holds required storage open so the lightweight first frame is observable.
+    static let suspendBootstrapStorage = "CF_BOOTSTRAP_SUSPEND_STORAGE"
+    /// Makes the first storage attempt fail; retry uses the live hermetic path.
+    static let failBootstrapStorageOnce = "CF_BOOTSTRAP_FAIL_STORAGE_ONCE"
+    /// Fails required session setup after storage succeeds.
+    static let failBootstrapSession = "CF_BOOTSTRAP_FAIL_SESSION"
     /// Set to "1" to enable the optional smoke lane (hits real prod API, non-blocking).
     static let realAPI     = "CF_REAL_API"
     /// A real id_token for the smoke lane (injected via CI secrets).
     static let apiToken    = "CF_API_TOKEN"
+}
+
+// MARK: - Bootstrap state machine
+
+final class BootstrapPreparingUITests: CFUITestCase {
+    override var needsAuth: Bool { false }
+    override var extraLaunchEnvironment: [String: String] {
+        [TestEnv.suspendBootstrapStorage: "1"]
+    }
+
+    func testFirstFrameAppearsBeforeRequiredStorageCompletes() {
+        assertExists(
+            app.descendants(matching: .any)["bootstrap-preparing"],
+            message: "Preparing surface should be the first actionable frame"
+        )
+        XCTAssertFalse(app.tabBars.firstMatch.exists)
+        XCTAssertFalse(app.buttons["Sign In"].exists)
+    }
+}
+
+final class BootstrapStorageRecoveryUITests: CFUITestCase {
+    override var extraLaunchEnvironment: [String: String] {
+        [TestEnv.failBootstrapStorageOnce: "1"]
+    }
+
+    func testStorageFailureRetriesToTheSingleLiveShell() {
+        assertExists(
+            app.descendants(matching: .any)["bootstrap-storage-unavailable"],
+            message: "Required storage failure should have a dedicated surface"
+        )
+        XCTAssertTrue(app.staticTexts["Support code: CF-BOOT-STORAGE-001"].exists)
+        XCTAssertFalse(app.tabBars.firstMatch.exists)
+
+        let retry = app.buttons["bootstrap-retry"]
+        assertExists(retry)
+        retry.tap()
+
+        assertShellLoaded()
+        XCTAssertFalse(app.descendants(matching: .any)["bootstrap-storage-unavailable"].exists)
+    }
+}
+
+final class BootstrapSessionFailureUITests: CFUITestCase {
+    override var needsAuth: Bool { false }
+    override var extraLaunchEnvironment: [String: String] {
+        [TestEnv.failBootstrapSession: "1"]
+    }
+
+    func testRequiredSessionFailureNeverPublishesAuthOrTabShell() {
+        assertExists(
+            app.descendants(matching: .any)["bootstrap-session-configuration-failed"],
+            message: "Required session failure should have a dedicated surface"
+        )
+        XCTAssertTrue(app.staticTexts["Support code: CF-BOOT-SESSION-001"].exists)
+        XCTAssertTrue(app.buttons["bootstrap-retry"].exists)
+        XCTAssertFalse(app.tabBars.firstMatch.exists)
+        XCTAssertFalse(app.buttons["Sign In"].exists)
+    }
+}
+
+final class BootstrapPrecedenceUITests: CFUITestCase {
+    override var needsAuth: Bool { false }
+    override var extraLaunchEnvironment: [String: String] {
+        [
+            TestEnv.invalidConfiguration: "1",
+            TestEnv.failBootstrapStorageOnce: "1",
+        ]
+    }
+
+    func testInvalidConfigurationPrecedesStorageInjection() {
+        assertExists(
+            app.descendants(matching: .any)["invalid-development-configuration"],
+            message: "Invalid configuration must fail before storage starts"
+        )
+        XCTAssertFalse(app.descendants(matching: .any)["bootstrap-storage-unavailable"].exists)
+        XCTAssertFalse(app.buttons["bootstrap-retry"].exists)
+    }
 }
 
 // MARK: - Base test class

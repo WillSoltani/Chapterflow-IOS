@@ -16,9 +16,8 @@ struct ChapterFlowApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     #endif
 
-    /// Configuration validation and live-graph creation are resolved exactly
-    /// once, before SwiftUI can construct the root view.
-    private let bootstrap: AppBootstrap
+    /// Retains the single observable bootstrap coordinator for the process.
+    @State private var bootstrap: AppBootstrapCoordinator
 
     init() {
         #if DEBUG
@@ -28,12 +27,15 @@ struct ChapterFlowApp: App {
         let config = CFAppLaunchSupport.resolveConfiguration(
             default: AppConfig.fromInfoPlist()
         )
-        bootstrap = AppBootstrap(config: config, buildConfiguration: .debug)
+        _bootstrap = State(initialValue: CFAppLaunchSupport.makeBootstrap(
+            config: config,
+            buildConfiguration: .debug
+        ))
         #else
-        bootstrap = AppBootstrap(
+        _bootstrap = State(initialValue: AppBootstrapCoordinator(
             config: AppConfig.fromInfoPlist(),
             buildConfiguration: .nonDebug
-        )
+        ))
         #endif
     }
 

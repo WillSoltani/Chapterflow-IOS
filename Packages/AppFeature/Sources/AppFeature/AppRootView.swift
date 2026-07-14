@@ -52,17 +52,7 @@ public struct AppRootView: View {
             #endif
             .environment(model.reachability)
             .task {
-                try? model.configure()
-                model.wirePushRouting()
-                Task { await model.appConfigService.refresh() } // fails open on error
-                model.analytics.track(.appOpen)
-                // Defer non-critical work so the first interactive frame lands quickly.
-                // analytics.flush() is a network call — fire and forget, don't await.
-                // IntentDonationManager reads the App Intents catalog — background-safe.
-                Task(priority: .utility) {
-                    IntentDonationManager.update()
-                }
-                Task { await model.analytics.flush() }
+                model.startRootServices()
             }
             .onOpenURL { url in model.handle(url: url) }
             .onChange(of: scenePhase) { _, phase in
@@ -521,7 +511,7 @@ public struct AppRootView: View {
 
 #Preview("Invalid development configuration") {
     ConfiguredAppRootView(
-        bootstrap: AppBootstrap(
+        bootstrap: AppBootstrapCoordinator(
             config: AppConfig(
                 apiBaseURL: "",
                 cognitoRegion: "",

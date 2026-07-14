@@ -15,12 +15,10 @@ extension AppModel {
 
     static func makeDownloadManager(
         container: ModelContainer,
+        fileStore: FileStore,
         apiClient: any APIClientProtocol
-    ) -> DownloadManager? {
-        let fileStore = (try? FileStore.applicationSupport(subdirectory: "Downloads"))
-            ?? (try? FileStore.applicationSupport())
-        guard let fileStore else { return nil }
-        return DownloadManager(
+    ) -> DownloadManager {
+        DownloadManager(
             container: container,
             fileStore: fileStore,
             apiClient: apiClient,
@@ -33,21 +31,21 @@ extension AppModel {
     #if os(iOS)
     static func makeCoordinator(
         box: UserIdBox,
-        engine: SyncEngine?,
-        dlManager: DownloadManager?,
-        entSvc: EntitlementService
+        engine: SyncEngine,
+        downloadManager: DownloadManager,
+        entitlementService: EntitlementService
     ) -> BackgroundSyncCoordinator {
         BackgroundSyncCoordinator(
-            onAppRefreshWork: { @Sendable [box, engine, entSvc] in
+            onAppRefreshWork: { @Sendable [box, engine, entitlementService] in
                 guard let uid = box.userId else { return }
-                await engine?.drainAndWait(userId: uid)
-                await entSvc.refresh()
+                await engine.drainAndWait(userId: uid)
+                await entitlementService.refresh()
             },
-            onProcessingWork: { @Sendable [box, dlManager] in
-                guard let uid = box.userId, let manager = dlManager else { return }
-                await manager.resumeInterruptedDownloads(userId: uid)
+            onProcessingWork: { @Sendable [box, downloadManager] in
+                guard let uid = box.userId else { return }
+                await downloadManager.resumeInterruptedDownloads(userId: uid)
                 if !Task.isCancelled {
-                    await manager.prefetchNextChapters(userId: uid)
+                    await downloadManager.prefetchNextChapters(userId: uid)
                 }
             }
         )
