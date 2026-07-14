@@ -24,6 +24,7 @@ enum CFAppLaunchSupport {
     private static let invalidConfigurationKey = "CF_INVALID_TEST_CONFIGURATION"
     private static let stubServerKey = "CF_STUB_SERVER"
     private static let suspendStorageKey = "CF_BOOTSTRAP_SUSPEND_STORAGE"
+    private static let waitForProtectedDataKey = "CF_BOOTSTRAP_WAIT_PROTECTED_DATA"
     private static let failStorageOnceKey = "CF_BOOTSTRAP_FAIL_STORAGE_ONCE"
     private static let failSessionKey = "CF_BOOTSTRAP_FAIL_SESSION"
 
@@ -107,6 +108,8 @@ enum CFAppLaunchSupport {
         let mode: AppBootstrapDebugMode
         if env[suspendStorageKey] == "1" {
             mode = .suspendStorage
+        } else if env[waitForProtectedDataKey] == "1" {
+            mode = .waitForProtectedData
         } else if env[failStorageOnceKey] == "1" {
             mode = .failStorageOnce
         } else if env[failSessionKey] == "1" {

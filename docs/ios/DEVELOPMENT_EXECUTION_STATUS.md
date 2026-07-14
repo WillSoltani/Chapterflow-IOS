@@ -864,3 +864,111 @@ This pre-publication record makes no exact-head GitHub CI or merge claim. Those 
 the draft PR, terminal required checks on its exact head, the ready-state transition, squash merge,
 and post-merge main CI. No backend, release, App Store, TestFlight, signing, deployment, PR #117, or
 unrelated user state changed during the rebase and local revalidation.
+
+---
+
+## WP-BOOT-01B storage recovery, migration confidence, and launch evidence — 2026-07-14
+
+**Phase:** local implementation and pre-publication evidence
+
+**Branch/worktree:** `codex/wp-boot-01b-storage-recovery` at
+`/private/tmp/Chapterflow-IOS-wp-boot-01b`
+
+**Exact base:** `6bfa34160f1511e89f7ed2c182830bf8a60d4373`, merged WP-OBS-01A on current
+`origin/main` at task start
+
+### Outcome and recovery contract
+
+WP-BOOT-01B preserves the deterministic asynchronous bootstrap from WP-BOOT-01A and closes its
+remaining storage-recovery ambiguity. Raw persistence errors are discarded at their owning
+boundaries and bootstrap publishes only this value-free taxonomy:
+
+| Category | Fixed support code | User behavior | Automatic mutation |
+|---|---|---|---|
+| protected data unavailable | `CF-BOOT-STORAGE-PROTECTED-001` | wait surface; no retry control | resume the same bootstrap generation once after protected data becomes available |
+| persistent-store open or migration | `CF-BOOT-STORAGE-STORE-001` | explicit retry surface | none |
+| required file store | `CF-BOOT-STORAGE-FILES-001` | explicit retry surface | none |
+| conservative unavailable | `CF-BOOT-STORAGE-UNAVAILABLE-001` | explicit retry surface | none |
+
+The protected-data path registers once for UIKit's protected-data-available notification and then
+rechecks availability to close the registration race. Cancellation removes the observer. One
+coordinator owns both the storage task and wait task; generation checks prevent stale callbacks,
+repeated notifications, coordinator deallocation, or cancellation from publishing a second graph.
+A lock transition during persistence loading returns to the protected-data wait state instead of
+being mislabeled as corruption or migration failure.
+
+Production has no automatic store deletion, reset, in-memory fallback, alternate directory, or
+silent recovery. The legacy destructive recovery helper is Debug-only test infrastructure and raw
+errors, paths, store names, identifiers, configuration values, and private data do not enter
+published state, support codes, or signpost metadata.
+
+### Migration and instrumentation evidence
+
+The production V8 schema and seven-stage migration plan are unchanged. Tests now construct one
+exact SwiftData store for every declared historical schema V1 through V7, seed a durable
+`CachedKeyValue`, and reopen each store through `PersistenceController.makeDefault` and the
+unchanged production migration plan. The matrix asserts exact V1-through-V8 schema coverage,
+exactly seven adjacent stages, preservation of the seeded record, and current-model
+`CachedAskThread` writability after every migration.
+
+Fixed-name `OSSignposter` events cover bootstrap start, first launch view availability,
+protected-data wait/resume, persistence start/end, required-session start/end, ready, and the four
+fixed storage-failure outcomes. Events carry no dynamic metadata. The injected test recorder proves
+the valid phase order and proves recorder failure cannot block launch. The unsigned Simulator
+placeholder-configuration path emitted fixed `BootstrapStarted`, `InvalidConfigurationFailed`, and
+`FirstLaunchViewAvailable` events with empty metadata.
+
+### Validation and one review-remediation cycle
+
+- Persistence package: **PASS**, 103 tests in 31 suites, including all seven exact historical-store
+  migrations and both persistence-stage failure classifications.
+- AppFeature package, final post-review run: **PASS**, 84 tests in 18 suites. Coverage includes the
+  closed taxonomy, unexpected loader cancellation, one-shot protected-data recovery, a mid-load
+  lock transition, stale-callback rejection, coordinator deallocation, privacy-safe support codes,
+  deterministic phase order, and non-blocking instrumentation failure.
+- CoreKit package: **PASS**, 156 tests in 28 suites.
+- Focused bootstrap XCUITests, initial run: **FAIL**, 4/5 passed. The new protected-data wait surface
+  recovered before XCUITest completed accessibility setup because its Debug-only availability
+  transition was two seconds.
+- Focused remediation: extend only that deterministic Debug transition to eight seconds; no
+  production behavior or timeout changed.
+- Targeted protected-data XCUITest after remediation: **PASS**, 1/1, 0 failed, 0 skipped, on iPhone
+  17 Pro Simulator with iOS 26.5. It proved the distinct wait surface, absence of retry/product UI,
+  and automatic transition to ready.
+- Unsigned Debug iOS Simulator build: **PASS**. Five pre-existing warnings remain; no warning was
+  hidden or weakened.
+- WP-DEV-01 non-Debug compile boundaries: **PASS**; Debug bootstrap injection remains unavailable in
+  non-Debug compilation.
+- Strict SwiftLint: **PASS**, 0 violations and 0 serious violations in 753 Swift files.
+- Incremental contract semantics: **PASS**, 83 operations / 93 producers / 29 matrix rows / 93
+  relations; no contract repin is required.
+- Privacy-safe signpost query on the unsigned Simulator: **PASS** for the exercised invalid-
+  configuration path. The abandoned local `xctrace` attempt produced no usable capture and is not
+  treated as evidence.
+- Final `git diff --check` and exact-head publication checks remain required after this documentation
+  update.
+
+The single fresh fixed-checklist reviewer found four actionable lifecycle/evidence issues: a
+transparent root lifecycle boundary, observer cancellation on coordinator deallocation, bootstrap
+start recorded after configuration validation, and a non-scrollable AX5 wait surface. One bounded
+remediation cycle moved lifecycle ownership to a stable root, added deterministic deallocation
+coverage, corrected phase ordering, and made the wait surface scrollable. The same reviewer then
+returned **CLEAR**, including the novel deallocation mutation, with no remaining P0/P1/P2 finding.
+
+### Boundaries, accessibility, and rollback
+
+Protected-data and storage recovery surfaces use semantic system styles, heading traits, logical
+reading order, fixed support codes, flexible layout, and a scroll container for AX5 Dynamic Type.
+Render coverage includes Dark Mode, AX5, and reduced animation. VoiceOver was not exercised on a
+physical device.
+
+No signed-device, cold/warm reference-device, or older-device performance capture was run, so the
+1.5-second launch budget is not claimed. Live authentication, deployed-backend integration, and
+production configuration were not tested. The worktree's ignored `Secrets.xcconfig` contains only
+example placeholders for compile parity.
+
+No schema, migration stage, API, backend, authentication, navigation, entitlement, CI, release,
+App Store, TestFlight, deployment, PR #117, or unrelated user state changed. Rollback is a normal
+revert of the WP-BOOT-01B commit; existing V8 data and its production migration path are unchanged.
+This pre-publication record makes no pull-request, exact-head GitHub CI, merge, or post-merge-main
+claim.

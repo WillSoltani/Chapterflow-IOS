@@ -36,8 +36,38 @@ struct AppPersistenceBootstrapTests {
         do {
             _ = try await loader.load()
             Issue.record("Loader silently substituted another download directory")
-        } catch {
+        } catch let failure as AppPersistenceLoadFailure {
+            #expect(failure == .requiredFileStore)
             #expect(!FileManager.default.fileExists(atPath: impossibleRoot.path))
+        } catch {
+            Issue.record("Download failure escaped the closed bootstrap taxonomy")
+        }
+    }
+
+    @Test("persistent store open failure uses the value-free store category")
+    func persistentStoreFailureIsClassified() async {
+        let downloadRoot = FileManager.default.temporaryDirectory
+            .appending(path: "cf-bootstrap-unused-downloads-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: downloadRoot) }
+        let loader = DefaultAppPersistenceLoader(
+            storage: .inMemory,
+            downloadRoot: downloadRoot,
+            persistenceFactory: { _ in throw ControlledPersistenceOpenError() },
+            fileStoreFactory: { root in
+                guard let root else { throw ControlledPersistenceOpenError() }
+                return try FileStore(root: root)
+            }
+        )
+
+        do {
+            _ = try await loader.load()
+            Issue.record("Invalid store location unexpectedly opened")
+        } catch let failure as AppPersistenceLoadFailure {
+            #expect(failure == .persistentStoreOpenOrMigration)
+            #expect(String(reflecting: failure) == "Persistence.AppPersistenceLoadFailure.persistentStoreOpenOrMigration")
+            #expect(!FileManager.default.fileExists(atPath: downloadRoot.path))
+        } catch {
+            Issue.record("Store failure escaped the closed bootstrap taxonomy")
         }
     }
 
@@ -54,3 +84,5 @@ struct AppPersistenceBootstrapTests {
     }
     #endif
 }
+
+private struct ControlledPersistenceOpenError: Error {}

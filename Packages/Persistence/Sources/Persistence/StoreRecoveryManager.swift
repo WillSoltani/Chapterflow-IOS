@@ -1,5 +1,5 @@
+#if DEBUG
 import Foundation
-import os
 import SwiftData
 
 // MARK: - StoreRecoveryOutcome
@@ -31,12 +31,13 @@ public struct StoreOpenResult: Sendable {
 
 // MARK: - StoreRecoveryManager
 
-/// Opens the SwiftData persistent store with automatic corruption recovery.
+/// Debug-only corruption-recovery harness retained for deterministic migration
+/// tests. The live app bootstrap never invokes this destructive path.
 ///
 /// ## Normal path
-/// Call ``openWithRecovery(storage:)`` at app startup in place of
-/// `PersistenceController.makeDefault()`. On a healthy open the store is returned
-/// with ``StoreRecoveryOutcome/healthy``.
+/// Tests may call ``openWithRecovery(storage:)`` to exercise a healthy open or a
+/// controlled rebuild. Production uses `PersistenceController.makeDefault()` and
+/// surfaces a value-free failure without deleting or resetting local data.
 ///
 /// ## Recovery path
 /// If the store fails to open (corrupted SQLite file, incompatible migration):
@@ -58,9 +59,6 @@ public struct StoreOpenResult: Sendable {
 /// - **Fail-safe**: if the outbox itself is unrecoverable, the manager creates an
 ///   empty outbox rather than risking duplicate mutations for already-synced writes.
 public enum StoreRecoveryManager {
-
-    private static let logger = Logger(subsystem: "com.chapterflow", category: "StoreRecovery")
-
     // MARK: - Public API
 
     /// Opens the store at `storage` with the full V8 schema and migration plan.
@@ -81,10 +79,8 @@ public enum StoreRecoveryManager {
                 storage: storage,
                 migrationPlan: PersistenceMigrationPlan.self
             )
-            logger.debug("Store opened successfully")
             return StoreOpenResult(controller: controller, outcome: .healthy)
         } catch {
-            logger.error("Store open failed (\(error)); attempting recovery")
             switch storage {
             case .inMemory:
                 // In-memory stores are ephemeral; there is nothing to recover.
@@ -96,9 +92,9 @@ public enum StoreRecoveryManager {
                     throw PersistenceError.appGroupUnavailable
                 }
                 let url = dir.appending(path: "ChapterFlow.store")
-                return try recoverStore(at: url, originalError: error)
+                return try recoverStore(at: url)
             case .privateStore(let url):
-                return try recoverStore(at: url, originalError: error)
+                return try recoverStore(at: url)
             }
         }
     }
@@ -109,24 +105,21 @@ public enum StoreRecoveryManager {
     ///
     /// Exposed as `internal` (not `private`) so unit tests can call it directly
     /// without requiring App Group container access.
-    static func recoverStore(at url: URL, originalError: Error) throws -> StoreOpenResult {
+    static func recoverStore(at url: URL) throws -> StoreOpenResult {
         // Step 1: Salvage the PendingMutation outbox before deleting the store.
         // The outbox holds queued writes that are not yet server-acknowledged.
         let salvaged = salvageOutbox(at: url)
-        logger.info("Outbox salvage: recovered \(salvaged.count) mutation(s)")
 
         // Step 2: Delete the corrupted store files.
         // Cache models (books, chapters, progress, etc.) are server-authoritative and
         // rebuildable via a sync after recovery — dropping them here is safe.
         deleteStoreFiles(at: url)
-        logger.info("Deleted corrupted store at '\(url.lastPathComponent)'")
 
         // Step 3: Create a fresh V7 store (no migration plan — writing from scratch).
         let controller = try PersistenceController(
             models: PersistenceSchemaV8.models,
             storage: .privateStore(url)
         )
-        logger.info("Fresh store created at '\(url.lastPathComponent)'")
 
         // Step 4: Re-insert salvaged outbox mutations into the fresh store.
         if !salvaged.isEmpty {
@@ -135,7 +128,6 @@ public enum StoreRecoveryManager {
                 context.insert(mutation.toPendingMutation())
             }
             try context.save()
-            logger.info("Re-inserted \(salvaged.count) salvaged mutation(s)")
         }
 
         let outcome: StoreRecoveryOutcome = salvaged.isEmpty
@@ -203,7 +195,6 @@ public enum StoreRecoveryManager {
                 )
             }
         } catch {
-            logger.warning("Outbox salvage failed: \(error)")
             return []
         }
     }
@@ -215,8 +206,10 @@ public enum StoreRecoveryManager {
             do {
                 try FileManager.default.removeItem(atPath: path)
             } catch {
-                logger.warning("Failed to delete '\(path)': \(error)")
+                // The subsequent open remains authoritative and will throw if a
+                // sidecar could not be removed. No raw path or error is logged.
             }
         }
     }
 }
+#endif

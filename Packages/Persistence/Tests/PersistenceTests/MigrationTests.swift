@@ -3,6 +3,30 @@ import SwiftData
 import Testing
 @testable import Persistence
 
+enum HistoricalSchemaFixture: Int, CaseIterable, Sendable, CustomStringConvertible {
+    case v1 = 1
+    case v2
+    case v3
+    case v4
+    case v5
+    case v6
+    case v7
+
+    var versionedSchema: any VersionedSchema.Type {
+        switch self {
+        case .v1: PersistenceSchemaV1.self
+        case .v2: PersistenceSchemaV2.self
+        case .v3: PersistenceSchemaV3.self
+        case .v4: PersistenceSchemaV4.self
+        case .v5: PersistenceSchemaV5.self
+        case .v6: PersistenceSchemaV6.self
+        case .v7: PersistenceSchemaV7.self
+        }
+    }
+
+    var description: String { "V\(rawValue)" }
+}
+
 // MARK: - Schema Migration Tests
 
 /// Tests for the SwiftData schema migration plan and corruption-recovery fallback.
@@ -42,6 +66,69 @@ struct SchemaMigrationTests {
     func planShape() {
         #expect(PersistenceMigrationPlan.schemas.count == 8)
         #expect(PersistenceMigrationPlan.stages.count == 7)
+    }
+
+    @Test("historical fixture matrix exactly covers every declared schema and stage")
+    func historicalMatrixMatchesPlan() {
+        let representedVersions = HistoricalSchemaFixture.allCases.map {
+            $0.versionedSchema.versionIdentifier
+        } + [PersistenceSchemaV8.versionIdentifier]
+        let declaredVersions = PersistenceMigrationPlan.schemas.map {
+            $0.versionIdentifier
+        }
+
+        #expect(representedVersions == declaredVersions)
+        #expect(HistoricalSchemaFixture.allCases.count == PersistenceMigrationPlan.stages.count)
+    }
+
+    @Test(
+        "every declared historical schema migrates through the production path",
+        arguments: HistoricalSchemaFixture.allCases
+    )
+    func everyHistoricalSchemaMigratesThroughProductionPath(
+        _ fixture: HistoricalSchemaFixture
+    ) throws {
+        let url = tempStoreURL()
+        defer { cleanup(url) }
+        let key = "migration-matrix-v\(fixture.rawValue)"
+
+        do {
+            let historicalSchema = Schema(versionedSchema: fixture.versionedSchema)
+            let historicalConfiguration = ModelConfiguration(
+                schema: historicalSchema,
+                url: url
+            )
+            let historicalContainer = try ModelContainer(
+                for: historicalSchema,
+                configurations: historicalConfiguration
+            )
+            let historicalContext = ModelContext(historicalContainer)
+            historicalContext.insert(CachedKeyValue(key: key, value: "preserved"))
+            try historicalContext.save()
+        }
+
+        let currentController = try PersistenceController.makeDefault(
+            storage: .privateStore(url)
+        )
+        #expect(currentController.container.migrationPlan != nil)
+        let currentContext = ModelContext(currentController.container)
+        let preserved = try currentContext.fetch(
+            FetchDescriptor<CachedKeyValue>(
+                predicate: #Predicate { $0.key == key }
+            )
+        )
+        #expect(preserved.count == 1)
+        #expect(preserved.first?.value == "preserved")
+
+        currentContext.insert(CachedAskThread(
+            threadId: "matrix:\(fixture.rawValue)",
+            userId: "fixture-user",
+            bookId: "fixture-book-\(fixture.rawValue)",
+            messagesJSON: "[]",
+            messageCount: 0
+        ))
+        try currentContext.save()
+        #expect(try currentContext.fetchCount(FetchDescriptor<CachedAskThread>()) == 1)
     }
 
     // MARK: - V1 → V2 lightweight migration with seeded data
@@ -103,10 +190,7 @@ struct SchemaMigrationTests {
 
         try Data("NOT A VALID SQLITE DATABASE FILE".utf8).write(to: url)
 
-        let result = try StoreRecoveryManager.recoverStore(
-            at: url,
-            originalError: PersistenceError.notFound
-        )
+        let result = try StoreRecoveryManager.recoverStore(at: url)
 
         #expect(result.outcome == .recoveredCacheRebuiltOutboxLost)
 
@@ -152,10 +236,7 @@ struct SchemaMigrationTests {
         }
 
         // Step 2 — trigger recovery (simulates the V7 schema open having failed).
-        let result = try StoreRecoveryManager.recoverStore(
-            at: url,
-            originalError: PersistenceError.notFound
-        )
+        let result = try StoreRecoveryManager.recoverStore(at: url)
 
         // Outcome reflects that both mutations were salvaged.
         #expect(result.outcome == .recoveredCacheRebuilt(salvaged: 2))
@@ -223,10 +304,7 @@ struct SchemaMigrationTests {
             try ctx.save()
         }
 
-        let result = try StoreRecoveryManager.recoverStore(
-            at: url,
-            originalError: PersistenceError.notFound
-        )
+        let result = try StoreRecoveryManager.recoverStore(at: url)
         #expect(result.outcome == .recoveredCacheRebuilt(salvaged: 1))
 
         let ctx = ModelContext(result.controller.container)
