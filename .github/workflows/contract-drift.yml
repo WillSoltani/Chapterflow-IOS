@@ -1,89 +1,172 @@
-name: Contract Drift — Real-Contract & RF2 Tests
-
-# Catches API schema drift before it reaches users. Runs weekly + on demand.
-#
-# Strategy (two tiers — the PUBLIC tier can NEVER silently skip):
-#   1. PUBLIC tier (no token needed): re-capture the public endpoints
-#      (catalog, search index, book detail) from production and run the
-#      real-contract decode tests against the fresh captures. This is the tier
-#      that would have caught the 2026-07-10 catalog mismatch
-#      (docs/API-CONTRACT-MISMATCH-AND-RECONCILIATION-PLAN.md).
-#   2. AUTHED tier: only when CF_CI_TOKEN (a valid Cognito id_token for the CI
-#      test account) is configured — additionally captures /book/me/* +
-#      chapter/quiz shapes. Absent token = loud warning, but the public tier
-#      still gates the run.
-#
-# Any decoding failure = breaking drift = workflow FAILS.
-#
-# Companion script: scripts/refresh-fixtures.sh (public tier runs tokenless).
-# Note: PRs also run the same decode tests against the COMMITTED prod_* captures
-# via the normal package test suite in pr.yml — no network needed there. This
-# workflow is what keeps those captures honest against the live API.
+name: Contract Drift — Backend-Owned Native Contract
 
 on:
+  pull_request:
+    paths:
+      - "contracts/native-ios/**"
+      - "Packages/Models/**"
+      - "Packages/Networking/**"
+      - "Packages/SocialFeature/**"
+      - "Packages/**/Sources/**/*.swift"
+      - "scripts/refresh-fixtures.sh"
+      - "scripts/verify-backend-contract-provenance.sh"
+      - "scripts/test-backend-contract-provenance.sh"
+      - "scripts/contracts/**"
+      - ".github/workflows/contract-drift.yml"
   schedule:
-    - cron: '0 2 * * 0'   # Every Sunday at 02:00 UTC
-  workflow_dispatch:        # Manual trigger for on-demand drift checks
+    - cron: "0 2 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-contract-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  drift:
-    name: Refresh Captures & Run Contract Tests
+  verify-native-contract:
+    name: Generate, compare, and consume backend contract
     runs-on: macos-15
+    timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Check for CI token (authed tier)
-        id: token_check
-        env:
-          CF_CI_TOKEN: ${{ secrets.CF_CI_TOKEN }}
-        run: |
-          if [ -z "$CF_CI_TOKEN" ]; then
-            echo "⚠️  CF_CI_TOKEN not set — AUTHED tier will be skipped."
-            echo "  The PUBLIC tier still runs and gates this workflow."
-            echo "  To enable full coverage: add CF_CI_TOKEN to repository secrets."
-            echo "authed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "authed=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Cache SPM repositories
-        uses: actions/cache@v4
+      - name: Check out iOS
+        uses: actions/checkout@v4
         with:
-          path: ~/Library/Caches/org.swift.swiftpm/repositories
-          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
-          restore-keys: |
-            ${{ runner.os }}-spm-
+          path: ios
+          fetch-depth: 0
+          persist-credentials: false
 
-      # Re-capture live production responses into the contract fixtures.
-      # Public tier always runs (no token); authed tier when the secret exists.
-      # The script FAILS if any public capture fails — no silent skips.
-      - name: Refresh contract captures from production
-        env:
-          CF_CI_TOKEN: ${{ secrets.CF_CI_TOKEN }}
-          API_BASE_URL: ${{ secrets.CF_API_BASE_URL }}
+      - name: Resolve pinned backend contract source
+        id: backend_source
+        working-directory: ios
         run: |
-          chmod +x scripts/refresh-fixtures.sh
-          bash scripts/refresh-fixtures.sh
-
-      # Decode the FRESH captures with the shipped Codable models. Any failure
-      # means production emitted JSON the app cannot tolerate — breaking drift.
-      - name: Real-contract decode tests (fresh captures)
-        run: swift test --package-path Packages/Models --parallel --filter "ContractTests"
-
-      - name: RF2 evolution tests — Models
-        run: swift test --package-path Packages/Models --parallel --filter "Evolution"
-
-      - name: Fixtures package decode tests
-        run: swift test --package-path Packages/Fixtures --parallel
-
-      - name: Summary
-        if: always()
-        run: |
-          echo "### Contract-Drift Result" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Public tier: captured + decode-tested against production" >> "$GITHUB_STEP_SUMMARY"
-          if [ "${{ steps.token_check.outputs.authed }}" = "true" ]; then
-            echo "- Authed tier: captured + tested (CF_CI_TOKEN present)" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "- Authed tier: ⚠️ SKIPPED (CF_CI_TOKEN not configured)" >> "$GITHUB_STEP_SUMMARY"
+          bundle=contracts/native-ios/v1/contract-bundle.json
+          repository=$(jq -r '.provenance.backendRepository // ""' "$bundle")
+          revision=$(jq -r '.provenance.sourceRevision // ""' "$bundle")
+          phase=$(jq -r '.provenance.sourceRevisionPhase // ""' "$bundle")
+          if [ "$repository" != "WillSoltani/ChapterFlow" ]; then
+            echo "::error::Unexpected backend contract repository: $repository"
+            exit 1
           fi
+          if [[ ! "$revision" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::The iOS contract bundle must pin an exact 40-character backend sourceRevision."
+            exit 1
+          fi
+          case "$phase" in
+            committed_backend_branch|merged_backend) ;;
+            *)
+              echo "::error::Unsupported committed contract phase: $phase"
+              exit 1
+              ;;
+          esac
+          echo "sha=$revision" >> "$GITHUB_OUTPUT"
+          echo "phase=$phase" >> "$GITHUB_OUTPUT"
+
+      - name: Check out pinned public backend source
+        uses: actions/checkout@v4
+        with:
+          repository: WillSoltani/ChapterFlow
+          ref: ${{ steps.backend_source.outputs.sha }}
+          path: backend
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify backend revision and integration phase
+        working-directory: ios
+        env:
+          CHAPTERFLOW_BACKEND_REPO: ${{ github.workspace }}/backend
+          CONTRACT_SOURCE_REVISION: ${{ steps.backend_source.outputs.sha }}
+          CONTRACT_SOURCE_REVISION_PHASE: ${{ steps.backend_source.outputs.phase }}
+          CONTRACT_TRUSTED_MAIN_REF: refs/remotes/origin/main
+        run: |
+          git -C "$CHAPTERFLOW_BACKEND_REPO" fetch --no-tags origin main:refs/remotes/origin/main
+          bash scripts/verify-backend-contract-provenance.sh
+
+      - name: Exercise merge and squash-merge provenance canaries
+        working-directory: ios
+        run: bash scripts/test-backend-contract-provenance.sh
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.20.0
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci --include=optional
+
+      - name: Verify backend exporter and serializer fences
+        working-directory: backend
+        run: npm run contract:native:check
+
+      - name: Install contract drift source scanner
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+        run: brew install ripgrep
+
+      - name: Verify iOS-owned relational inventory canaries
+        working-directory: ios
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 scripts/contracts/test_generate_ios_native_inventory.py
+
+      - name: Regenerate twice and compare the committed iOS bundle
+        working-directory: ios
+        env:
+          CHAPTERFLOW_BACKEND_REPO: ${{ github.workspace }}/backend
+          CONTRACT_SOURCE_REVISION: ${{ steps.backend_source.outputs.sha }}
+          CONTRACT_SOURCE_REVISION_PHASE: ${{ steps.backend_source.outputs.phase }}
+          CONTRACT_TRUSTED_MAIN_REF: refs/remotes/origin/main
+        run: bash scripts/refresh-fixtures.sh --check
+
+      - name: Consume canonical and compatible fixtures in Models
+        working-directory: ios
+        env:
+          CLANG_MODULE_CACHE_PATH: ${{ runner.temp }}/chapterflow-contract/clang
+          SWIFTPM_MODULECACHE_OVERRIDE: ${{ runner.temp }}/chapterflow-contract/swiftpm
+        run: |
+          swift test \
+            --package-path Packages/Models \
+            --scratch-path "${RUNNER_TEMP}/chapterflow-contract/models" \
+            --parallel
+
+      - name: Verify endpoint requests, errors, inventory, and drift canary
+        working-directory: ios
+        env:
+          CLANG_MODULE_CACHE_PATH: ${{ runner.temp }}/chapterflow-contract/clang
+          SWIFTPM_MODULECACHE_OVERRIDE: ${{ runner.temp }}/chapterflow-contract/swiftpm
+        run: |
+          swift test \
+            --package-path Packages/Networking \
+            --scratch-path "${RUNNER_TEMP}/chapterflow-contract/networking" \
+            --parallel
+
+      - name: Verify production social authority consumer
+        working-directory: ios
+        env:
+          CLANG_MODULE_CACHE_PATH: ${{ runner.temp }}/chapterflow-contract/clang
+          SWIFTPM_MODULECACHE_OVERRIDE: ${{ runner.temp }}/chapterflow-contract/swiftpm
+        run: |
+          swift test \
+            --package-path Packages/SocialFeature \
+            --scratch-path "${RUNNER_TEMP}/chapterflow-contract/social" \
+            --parallel
+
+      - name: Contract summary
+        if: always()
+        env:
+          PINNED_BACKEND_REVISION: ${{ steps.backend_source.outputs.sha }}
+          PINNED_BACKEND_PHASE: ${{ steps.backend_source.outputs.phase }}
+        run: |
+          echo "### Native contract drift" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Source: backend-generated synthetic bundle" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Live production routes called: no" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Expected inventory: 83 operations / 93 native producers / 29 matrix rows" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Pinned source: ${PINNED_BACKEND_REVISION:-unavailable} (${PINNED_BACKEND_PHASE:-unavailable})" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Coverage: 0 full / 60 partial / 23 blocked" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Native proof: request factories 6/93; success consumers 24/60" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Authority proof: 51 structural fixtures; 4 production consumers; 1 blocked/unproven" >> "$GITHUB_STEP_SUMMARY"

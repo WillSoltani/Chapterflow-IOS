@@ -87,7 +87,7 @@ public enum Endpoints {
 
     /// `GET /book/books/{bookId}` → book detail + manifest.
     public static func getBook(id: String) -> Endpoint {
-        Endpoint(method: .get, path: "/book/books/\(id)", requiresAuth: true)
+        Endpoint(method: .get, path: "/book/books/\(id)", requiresAuth: false)
     }
 
     /// `GET /book/books/{bookId}/chapters/{n}` → `{ chapter, progress }`.
@@ -268,14 +268,13 @@ public enum Endpoints {
         )
     }
 
-    /// `POST /book/me/tier` → `{ tier: { ... } }` — compute and return the user's current tier state.
+    /// `GET /book/me/tier` → `{ tier: { ... } }` — compute and return the user's current tier state.
     ///
     /// The server evaluates the user's metrics (loops completed, average quiz score,
     /// categories explored) and returns the full tier breakdown. The response includes
     /// `recentlyPromoted: true` when the user just advanced a tier.
     public static func postTier() throws -> Endpoint {
-        struct Body: Encodable {}
-        return try Endpoint(method: .post, path: "/book/me/tier", body: Body())
+        Endpoint(method: .get, path: "/book/me/tier", requiresAuth: true)
     }
 
     // MARK: - Social
@@ -452,6 +451,7 @@ public enum Endpoints {
         Endpoint(
             method: .get,
             path: "/book/books/\(bookId)/chapters/\(chapterNumber)/audio",
+            query: [URLQueryItem(name: "mode", value: "plan")],
             requiresAuth: true
         )
     }

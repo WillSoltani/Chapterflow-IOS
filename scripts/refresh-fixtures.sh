@@ -1,144 +1,218 @@
 #!/usr/bin/env bash
-# scripts/refresh-fixtures.sh
-#
-# Captures VERBATIM JSON from the live ChapterFlow API into the real-contract
-# fixture directory consumed by RealContractTests (Packages/Models). These
-# captures are the ground truth for the client ↔ server contract:
-# docs/API-CONTRACT-MISMATCH-AND-RECONCILIATION-PLAN.md.
-#
-# Two tiers:
-#   PUBLIC  — needs NO token; always captured. Covers the browse surface
-#             (catalog, search index, book detail).
-#   AUTHED  — captured only when CF_CI_TOKEN is set (a valid Cognito id_token
-#             for the CI test account). Covers /book/me/* and chapter/quiz.
-#
-# Environment:
-#   API_BASE_URL  — API base (default: production https://app.chapterflow.ca/app/api,
-#                   falling back to Secrets.xcconfig when present).
-#   CF_CI_TOKEN   — optional; enables the authed tier.
-#   CF_TEST_BOOK_ID / CF_TEST_CHAPTER_N — authed-tier book/chapter (defaults below).
-#
-# Run locally:
-#   bash scripts/refresh-fixtures.sh                       # public tier only
-#   CF_CI_TOKEN=<token> bash scripts/refresh-fixtures.sh   # both tiers
-#
-# NOTE: this script deliberately does NOT touch the curated preview fixtures in
-# Packages/Fixtures/Sources/Fixtures/Resources — those are small, hand-picked
-# sample sets for #Previews. Contract truth lives in the prod_* captures.
+# Verifies the iOS-owned native inventory and refreshes the backend-owned
+# synthetic contract overlay without mutating either repository's source
+# authority. No deployed service is called and no credential is accepted.
 
 set -euo pipefail
 
-# ── Configuration ─────────────────────────────────────────────────────────────
-
-if [ -z "${API_BASE_URL:-}" ] && [ -f Secrets.xcconfig ]; then
-  raw=$(grep '^API_BASE_URL' Secrets.xcconfig | cut -d'=' -f2 | tr -d ' ' || true)
-  # xcconfig escapes // as $()/; undo that.
-  API_BASE_URL="${raw/\$()\/\//\/\/}"
-fi
-API_BASE_URL="${API_BASE_URL:-https://app.chapterflow.ca/app/api}"
-API_BASE_URL="${API_BASE_URL%/}"
-
-CONTRACT_DIR="Packages/Models/Tests/ModelsTests/Resources"
-
-# A published book that exists in the production catalog.
-PUBLIC_BOOK_ID="${CF_PUBLIC_BOOK_ID:-seven-powers}"
-# Authed-tier fixtures come from the CI test account's started book.
-TEST_BOOK_ID="${CF_TEST_BOOK_ID:-atomic-habits}"
-TEST_CHAPTER_N="${CF_TEST_CHAPTER_N:-1}"
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-FAILED=0
-
-fetch() { # fetch <url> <dest> [--auth]
-  local url="$1" dest="$2" auth="${3:-}"
-  local -a headers=(-H "Accept: application/json")
-  if [ "$auth" = "--auth" ]; then
-    headers+=(-H "Authorization: Bearer $CF_CI_TOKEN")
-  fi
-  echo "  → GET $url"
-  http_code=$(curl -sS -m 30 -w "%{http_code}" "${headers[@]}" \
-    -o "$dest.tmp" "$url" || echo "000")
-
-  if [ "$http_code" -ge 200 ] 2>/dev/null && [ "$http_code" -lt 300 ] 2>/dev/null; then
-    # Pretty-print JSON for diff-friendliness; keep raw bytes if not JSON.
-    python3 -m json.tool "$dest.tmp" > "$dest" 2>/dev/null || mv "$dest.tmp" "$dest"
-    rm -f "$dest.tmp"
-    echo "     ✓ saved $dest (HTTP $http_code)"
-  else
-    echo "     ⚠ skipped — HTTP $http_code"
-    rm -f "$dest.tmp"
-    FAILED=$((FAILED + 1))
-  fi
+usage() {
+  printf '%s\n' \
+    'Usage: scripts/refresh-fixtures.sh [--check]' \
+    '' \
+    'Required environment:' \
+    '  CHAPTERFLOW_BACKEND_REPO       Exact local backend checkout.' \
+    '  CONTRACT_SOURCE_REVISION      Full backend commit SHA.' \
+    '  CONTRACT_SOURCE_REVISION_PHASE' \
+    '                                committed_backend_branch or merged_backend.' \
+    '  CONTRACT_TRUSTED_MAIN_REF     Explicit trusted ref, normally' \
+    '                                refs/remotes/origin/main.' \
+    '' \
+    'The iOS-owned manifest is verified in place and is never copied from the backend.'
 }
 
-# ── Tier 1: PUBLIC (no token required) ───────────────────────────────────────
+mode="refresh"
+case "${1:-}" in
+  "") ;;
+  --check) mode="check" ;;
+  -h|--help) usage; exit 0 ;;
+  *) usage >&2; exit 64 ;;
+esac
 
-echo "Refreshing PUBLIC contract fixtures from $API_BASE_URL ..."
+repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+backend_repo=${CHAPTERFLOW_BACKEND_REPO:-"$(dirname "$repo_root")/ChapterFlow"}
+relative_bundle="contracts/native-ios/v1/contract-bundle.json"
+relative_inventory_manifest="contracts/native-ios/v1/ios-source-inventory-manifest.json"
+relative_inventory_mapping="contracts/native-ios/v1/ios-native-contract-inventory-source.json"
+relative_inventory_generator="scripts/contracts/generate_ios_native_inventory.py"
+backend_inventory_manifest="$backend_repo/$relative_inventory_manifest"
+ios_bundle="$repo_root/$relative_bundle"
+ios_inventory_manifest="$repo_root/$relative_inventory_manifest"
 
-fetch "$API_BASE_URL/book/books" \
-  "$CONTRACT_DIR/prod_catalog.json"
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || {
+    echo "error: required command not found: $1" >&2
+    exit 69
+  }
+}
 
-fetch "$API_BASE_URL/book/search-index" \
-  "$CONTRACT_DIR/prod_search_index.json"
+for command in cmp git jq npm python3 rg shasum; do
+  require_command "$command"
+done
 
-fetch "$API_BASE_URL/book/books/$PUBLIC_BOOK_ID" \
-  "$CONTRACT_DIR/prod_book_detail.json"
+if [[ ! -f "$backend_repo/package.json" ]]; then
+  echo "error: backend checkout not found at $backend_repo" >&2
+  exit 66
+fi
+if [[ ! -f "$ios_inventory_manifest" ]]; then
+  echo "error: committed iOS inventory manifest is missing: $ios_inventory_manifest" >&2
+  exit 66
+fi
+if [[ ! -f "$backend_inventory_manifest" ]]; then
+  echo "error: backend copy of the iOS inventory manifest is missing: $backend_inventory_manifest" >&2
+  exit 66
+fi
 
-if [ "$FAILED" -gt 0 ]; then
-  echo "❌ $FAILED public capture(s) failed — aborting (the API should always serve these)." >&2
+source_revision=${CONTRACT_SOURCE_REVISION:-}
+source_phase=${CONTRACT_SOURCE_REVISION_PHASE:-}
+trusted_main_ref=${CONTRACT_TRUSTED_MAIN_REF:-}
+if [[ -z "$source_revision" || -z "$source_phase" || -z "$trusted_main_ref" ]]; then
+  echo "error: CONTRACT_SOURCE_REVISION, CONTRACT_SOURCE_REVISION_PHASE, and CONTRACT_TRUSTED_MAIN_REF are required" >&2
+  exit 64
+fi
+if [[ ! "$source_revision" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "error: CONTRACT_SOURCE_REVISION must be a full lowercase Git SHA" >&2
+  exit 64
+fi
+case "$source_phase" in
+  committed_backend_branch|merged_backend) ;;
+  *)
+    echo "error: unsupported CONTRACT_SOURCE_REVISION_PHASE: $source_phase" >&2
+    exit 64
+    ;;
+esac
+if [[ ! "$trusted_main_ref" =~ ^refs/(heads|remotes)/[A-Za-z0-9._/-]+$ ]]; then
+  echo "error: CONTRACT_TRUSTED_MAIN_REF must be an explicit refs/heads/... or refs/remotes/... ref" >&2
+  exit 64
+fi
+
+ios_inventory_revision=$(jq -r '.iosSourceRevision // ""' "$ios_inventory_manifest")
+if [[ ! "$ios_inventory_revision" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "error: iOS inventory must pin a committed 40-character iosSourceRevision" >&2
   exit 1
 fi
 
-# ── Tier 2: AUTHED (requires CF_CI_TOKEN) ────────────────────────────────────
+echo "Verifying the iOS-owned relational inventory from its pinned Git object..."
+PYTHONDONTWRITEBYTECODE=1 python3 "$repo_root/$relative_inventory_generator" \
+  --repo-root "$repo_root" \
+  --mapping "$relative_inventory_mapping" \
+  --source-revision "$ios_inventory_revision" \
+  --output "$ios_inventory_manifest" \
+  --check
 
-if [ -z "${CF_CI_TOKEN:-}" ]; then
-  echo ""
-  echo "ℹ️  CF_CI_TOKEN not set — skipping the AUTHED tier (public tier captured fine)."
-  echo "   Set CF_CI_TOKEN to also capture /book/me/* + chapter/quiz shapes."
+if ! cmp -s "$ios_inventory_manifest" "$backend_inventory_manifest"; then
+  echo "error: backend must consume a byte-identical copy of the iOS-owned inventory manifest" >&2
+  diff -u "$backend_inventory_manifest" "$ios_inventory_manifest" || true
+  exit 1
+fi
+inventory_digest=$(shasum -a 256 "$ios_inventory_manifest" | awk '{print $1}')
+
+backend_head=$(git -C "$backend_repo" rev-parse --verify HEAD)
+if [[ "$backend_head" != "$source_revision" ]]; then
+  echo "error: backend HEAD $backend_head does not match CONTRACT_SOURCE_REVISION $source_revision" >&2
+  exit 1
+fi
+
+CHAPTERFLOW_BACKEND_REPO="$backend_repo" \
+  CONTRACT_SOURCE_REVISION="$source_revision" \
+  CONTRACT_SOURCE_REVISION_PHASE="$source_phase" \
+  CONTRACT_TRUSTED_MAIN_REF="$trusted_main_ref" \
+  bash "$repo_root/scripts/verify-backend-contract-provenance.sh"
+
+echo "Verifying the backend's self-reference-safe canonical artifact..."
+CONTRACT_SOURCE_REVISION='' \
+  CONTRACT_SOURCE_REVISION_PHASE='' \
+  CONTRACT_TRUSTED_MAIN_REF='' \
+  npm --prefix "$backend_repo" run contract:native:check
+
+tmp_first=$(mktemp "${TMPDIR:-/tmp}/chapterflow-native-contract-overlay.XXXXXX")
+tmp_second=$(mktemp "${TMPDIR:-/tmp}/chapterflow-native-contract-overlay.XXXXXX")
+tmp_strings=$(mktemp "${TMPDIR:-/tmp}/chapterflow-native-contract-strings.XXXXXX")
+trap 'rm -f "$tmp_first" "$tmp_second" "$tmp_strings"' EXIT
+
+generate_overlay() {
+  local output=$1
+  CONTRACT_SOURCE_REVISION="$source_revision" \
+    CONTRACT_SOURCE_REVISION_PHASE="$source_phase" \
+    CONTRACT_TRUSTED_MAIN_REF="$trusted_main_ref" \
+    npm --prefix "$backend_repo" run contract:native:generate -- --output "$output"
+}
+
+echo "Generating the committed backend overlay twice from exact fenced bytes..."
+generate_overlay "$tmp_first"
+generate_overlay "$tmp_second"
+if ! cmp -s "$tmp_first" "$tmp_second"; then
+  echo "error: committed native contract overlay is not byte deterministic" >&2
+  diff -u "$tmp_first" "$tmp_second" || true
+  exit 1
+fi
+jq -e . "$tmp_first" >/dev/null
+overlay_digest=$(shasum -a 256 "$tmp_first" | awk '{print $1}')
+
+recorded_revision=$(jq -r '.provenance.sourceRevision // ""' "$tmp_first")
+recorded_phase=$(jq -r '.provenance.sourceRevisionPhase // ""' "$tmp_first")
+recorded_main_ref=$(jq -r '.provenance.committedInputTree.trustedMainRef // ""' "$tmp_first")
+recorded_manifest_digest=$(jq -r '.inventory.iosSourceEvidence.manifestSha256 // ""' "$tmp_first")
+if [[ "$recorded_revision" != "$source_revision" || "$recorded_phase" != "$source_phase" ]]; then
+  echo "error: generated overlay does not record the requested backend revision and phase" >&2
+  exit 1
+fi
+if [[ "$recorded_main_ref" != "$trusted_main_ref" ]]; then
+  echo "error: generated overlay does not record the explicit trusted-main ref" >&2
+  exit 1
+fi
+if [[ "$recorded_manifest_digest" != "$inventory_digest" ]]; then
+  echo "error: generated overlay is not bound to the iOS-owned inventory manifest bytes" >&2
+  exit 1
+fi
+
+unique_operations=$(jq -r '.inventory.uniqueOperationCount' "$tmp_first")
+native_producers=$(jq -r '.inventory.nativeProducerCount' "$tmp_first")
+matrix_rows=$(jq -r '.inventory.matrixRowCount' "$tmp_first")
+relation_count=$(jq -r '.inventory.iosSourceEvidence.relationalRecordCount // 0' "$tmp_first")
+if [[ "$unique_operations" != "83" || "$native_producers" != "93" || \
+      "$matrix_rows" != "29" || "$relation_count" != "93" ]]; then
+  echo "error: expected exact 83/93/29 inventory with 93 relational records; got $unique_operations/$native_producers/$matrix_rows/$relation_count" >&2
+  exit 1
+fi
+
+# Scan JSON values, not keys. Synthetic placeholders and the public App Store
+# URL are allowed; credential-shaped or private values are not.
+jq -r '.. | strings' "$tmp_first" "$ios_inventory_manifest" > "$tmp_strings"
+if rg -n -i \
+  -e '(^|[^A-Za-z0-9])[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}([^A-Za-z0-9]|$)' \
+  -e 'eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}' \
+  -e 'Bearer[[:space:]]+eyJ' \
+  -e '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----' \
+  -e 'AKIA[0-9A-Z]{16}' \
+  -e 'ASIA[0-9A-Z]{16}' \
+  -e 'gh[pousr]_[A-Za-z0-9]{20,}' \
+  -e 'sk-[A-Za-z0-9_-]{20,}' \
+  -e 'AIza[0-9A-Za-z_-]{30,}' \
+  -e 'xox[baprs]-[0-9A-Za-z-]{20,}' \
+  -e 'X-Amz-(Credential|Signature|Security-Token)=' \
+  "$tmp_strings"; then
+  echo "error: generated contract evidence contains a secret- or PII-shaped value" >&2
+  exit 1
+fi
+if jq -r '.. | strings | select(test("^https?://"))' "$tmp_first" \
+  | rg -n -v '^https://(example\.invalid|apps\.apple\.com)(/|$)'; then
+  echo "error: generated contract bundle contains a URL outside the synthetic allowlist" >&2
+  exit 1
+fi
+
+if [[ "$mode" == "check" ]]; then
+  if [[ ! -f "$ios_bundle" ]] || ! cmp -s "$tmp_first" "$ios_bundle"; then
+    echo "error: committed iOS contract overlay has drifted from exact backend generation" >&2
+    if [[ -f "$ios_bundle" ]]; then
+      diff -u "$ios_bundle" "$tmp_first" || true
+    fi
+    exit 1
+  fi
+  echo "Contract evidence is current (overlay $overlay_digest; inventory $inventory_digest)."
   exit 0
 fi
 
-echo ""
-echo "Refreshing AUTHED contract fixtures ..."
-
-fetch "$API_BASE_URL/book/books/$TEST_BOOK_ID/chapters/$TEST_CHAPTER_N" \
-  "$CONTRACT_DIR/prod_chapter.json" --auth
-
-fetch "$API_BASE_URL/book/books/$TEST_BOOK_ID/chapters/$TEST_CHAPTER_N/quiz" \
-  "$CONTRACT_DIR/prod_quiz.json" --auth
-
-fetch "$API_BASE_URL/book/me/entitlements" \
-  "$CONTRACT_DIR/prod_entitlements.json" --auth
-
-fetch "$API_BASE_URL/book/me/progress" \
-  "$CONTRACT_DIR/prod_progress.json" --auth
-
-fetch "$API_BASE_URL/book/me/books/$TEST_BOOK_ID/state" \
-  "$CONTRACT_DIR/prod_book_state.json" --auth
-
-fetch "$API_BASE_URL/book/me/dashboard" \
-  "$CONTRACT_DIR/prod_dashboard.json" --auth
-
-fetch "$API_BASE_URL/book/me/streak" \
-  "$CONTRACT_DIR/prod_streak.json" --auth
-
-fetch "$API_BASE_URL/book/me/badges" \
-  "$CONTRACT_DIR/prod_badges.json" --auth
-
-fetch "$API_BASE_URL/book/me/reviews" \
-  "$CONTRACT_DIR/prod_reviews.json" --auth
-
-fetch "$API_BASE_URL/book/me/notebook" \
-  "$CONTRACT_DIR/prod_notebook.json" --auth
-
-fetch "$API_BASE_URL/book/me/notifications" \
-  "$CONTRACT_DIR/prod_notifications.json" --auth
-
-echo ""
-if [ "$FAILED" -gt 0 ]; then
-  echo "⚠️  Done with $FAILED authed capture(s) skipped (endpoint may not be seeded for the test account)."
-else
-  echo "✅ Fixture refresh complete."
-fi
-echo "   Validate: swift test --package-path Packages/Models --filter 'Real production contract'"
+mkdir -p "$(dirname "$ios_bundle")"
+cp "$tmp_first" "$ios_bundle"
+echo "Updated $relative_bundle ($overlay_digest)."
+echo "Preserved iOS-owned $relative_inventory_manifest ($inventory_digest)."

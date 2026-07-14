@@ -11,7 +11,7 @@ public extension Endpoints {
     /// Re-fetches the book manifest to get the current chapter list.
     /// Called once per `downloadBook` to seed the download plan.
     static func getManifestForDownload(bookId: String) -> Endpoint {
-        Endpoint(method: .get, path: "/book/books/\(bookId)", requiresAuth: true)
+        Endpoint(method: .get, path: "/book/books/\(bookId)", requiresAuth: false)
     }
 
     /// Fetches full chapter content (all depth variants + tones) for offline storage.
@@ -43,6 +43,7 @@ public extension Endpoints {
         Endpoint(
             method: .get,
             path: "/book/books/\(bookId)/chapters/\(chapterNumber)/audio",
+            query: [URLQueryItem(name: "mode", value: "plan")],
             requiresAuth: true
         )
     }

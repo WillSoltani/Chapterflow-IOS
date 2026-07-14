@@ -1,0 +1,3781 @@
+{
+  "schemaVersion": "chapterflow-ios-native-inventory-v2",
+  "iosRepository": "WillSoltani/Chapterflow-IOS",
+  "iosBaseRevision": "92a5c351a42771f546b3d0e575b3b37a8cbfb588",
+  "iosSourceRevision": "8fec3a3a2ae21af87a799334949491fd90d9af72",
+  "iosSourceRevisionPhase": "committed_contract_branch",
+  "canonicalization": "UTF-8 records; fixed field order; TAB-separated fields; null matrix row is empty; lexicographically sorted lines joined with LF and a terminal LF",
+  "operationKeyCount": 83,
+  "operationKeySha256": "b24a9ad2861744ad127ce1aca976c13b621fdb7460fc8cd9b9d5669ec9468174",
+  "producerVariantCount": 93,
+  "producerVariantIdSha256": "6c52d6b0f465d50f0e68d5a98cca273f90c8611c3b962f1d8f7d36d1f292ba20",
+  "producerIdentitySha256": "9f1c75e50035022d7b46da7be173fec2f265a58110f77504c9e7d247bd8ea453",
+  "matrixRowCount": 29,
+  "relationalRecordCount": 93,
+  "relationalRecordSha256": "03103dcada4b7ae3ed2763372dda873aa504a75c18ae4553e91cc71f17007a78",
+  "sourceInputTreeSha256": "9f1b7285c945cee0f457535066fd7be664b7d28973ffb71b13ac67889c97377e",
+  "sourceInputs": [
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/AIFeature.swift",
+      "sha256": "b3870cfb4bf9e6bb9f997784c417b5adc634030513c21f75047fe090cea16588"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Audio/AudioPlayer.swift",
+      "sha256": "4992f629c317e984341817afa652f33650a883805eae93c386fbef26038be496"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Audio/AudioPlayerModel.swift",
+      "sha256": "b5d9e57f82711dadce6fda5ff4647c22f01742199aedd038d392f816e8cda9b3"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Audio/AudioRepository.swift",
+      "sha256": "1c48d046c4a6d488ab546008933c4cb0d3e0ad1c65d2cb9d8514d6f60f7ce2f8"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Audio/AudioTimeline.swift",
+      "sha256": "07d94906b532115197059a6608ff28d5702b7f521813a125397dfacf4113c557"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Audio/FakeAudioRepository.swift",
+      "sha256": "ea404ebffdde132403ffdd2b75ce0a977e3dc1f7d20ebd361ae976b348199c56"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Audio/LiveAudioRepository.swift",
+      "sha256": "0ee89d8a2cb25b462d15112ea90a4a1144c4075583bc93a9d858307f77d20a9d"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Graph/ConceptGraphModel.swift",
+      "sha256": "46eef77bc214b5f2e7a5ca2698f107d4bfdd0f6bfabfd55cd78821daef00388a"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Graph/GraphAnalyzer.swift",
+      "sha256": "8340777ad8a1fd5ffef5ea3105b2ad5bfcacd9eb41b91d00d65baf8a0bc062b7"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Graph/GraphLayout.swift",
+      "sha256": "5ae34e76f9dad111a7209afc5722561980ab4c4c06257356713107027a826185"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Model/AskTheBookModel.swift",
+      "sha256": "f36ac899953ffebc548a92faec50147d85ec23ead55c3764307cb6ab25c72dc9"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Models/AskMessage.swift",
+      "sha256": "58b319739128ad9a4f4a4ff32365378e65ac159e8fec8b2860cd7496f0c01178"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Models/BookAskResponse.swift",
+      "sha256": "2d3ab321b3d474b2d7dec3111a8bfefa092eed2569e330eec5442ff2c340d54c"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Models/StoredAskMessage.swift",
+      "sha256": "f7b85830fb8c5bbf79cb1744c8398f67025819c3df1df42e3f38f852ca284336"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/OnDevice/FakeOnDeviceAIService.swift",
+      "sha256": "fc526ae499a8c3583b825655151855fb0e99cce0bd69f0060fc06289c9bffeda"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/OnDevice/OnDeviceAIAvailability.swift",
+      "sha256": "38bb384fbc382fa1645ec84c475255a4d3aa03138fa1766cb62680ebd781a7e3"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/OnDevice/OnDeviceAIService.swift",
+      "sha256": "25aab5c6b455fa90d14fa76a072e65195079ed1c66e7c202b90857d9044f6ca6"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/OnDevice/OnDeviceFeatureFlag.swift",
+      "sha256": "902f61e159c95ccdfc45ad4a628dbd24630c523088cdb2d08b5fdd6e9d145e9c"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Repository/AIRepository.swift",
+      "sha256": "aa09228d3c3f1de7284d81445cfd9b46a2249928894b6f2cba825eddcf821e6a"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Repository/FakeAIRepository.swift",
+      "sha256": "75411ff74265f969feaba6a1c95b994b28d9821dcb6e93eefa07ab8e85e14e49"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Repository/LiveAIRepository.swift",
+      "sha256": "72c9ff41c20b3b801ac3bfcff3e496c73bb2d41ba4f10c54e7df2cdd26c72036"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Store/AskThreadStore.swift",
+      "sha256": "ab351cd2b3cf8a0d9bf68b71fad5250e49fb1882cf69177a0cf11c2f5a228797"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Views/AskHistoryBrowser.swift",
+      "sha256": "1d6a7d8dd147ac4e7b7100fad5083838347dbb153faceb73ea713c1270c9a40f"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Views/AskTheBookSheet.swift",
+      "sha256": "f975b8a361531da3204ea38dd9f8280e9982096ed26f2c691a63853d54560319"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Views/Audio/AudioArtworkView.swift",
+      "sha256": "e77640776f69cb7087458490374f16dad0fdfb607e291a0580b1941de3839aed"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Views/Audio/MiniPlayerBar.swift",
+      "sha256": "b28164349b3d400d46f33ec8a199472c49dd74f0203b4797bfa98fe08d5fbf92"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Views/Audio/NowPlayingView.swift",
+      "sha256": "905ae41bb40ae80b39a6b01b1db26fec6e560a3aaa0fa4646191a0c940388136"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Views/Audio/SleepTimerSheet.swift",
+      "sha256": "c3e993364aaefd55a94a6fa9c2627839431decb5c3b1d9dc5234324693a62b0e"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Views/Audio/SpeedPickerView.swift",
+      "sha256": "bf6716d4cfa6a66cdd05d31298db964bea755136e54131d051c96599e2ffdc1a"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Views/Components/AskAnswerText.swift",
+      "sha256": "23ca6bd5cbbb1ed0bf07b23b3a0f8face2260ca754d6b7a016cddeccf878d9bf"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Views/Components/AskInputBar.swift",
+      "sha256": "c43ddb83b3d0946c8b9d3ae0854015cf7f5a0225dd8397e609261c27e6124248"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Views/Components/AskMessageView.swift",
+      "sha256": "815cf8322fa8d7a55831e652a88d6a265525d788b544e7c789f19fead6f48c05"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Views/Components/CitationChipView.swift",
+      "sha256": "04b316e6c0bdaa1a285d91d66f192a7ae3c6a66cce23d95fafb965a81cf11b30"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Views/ConceptGraph/ConceptDetailSheet.swift",
+      "sha256": "e2e9f55d68385150311577a6c7304da75da5930398d71502117ad0e51df9cefd"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Views/ConceptGraph/ConceptEdgeLayer.swift",
+      "sha256": "9f60ddd9471cf9ad905e00f43583c48fc9404861bd0a053349500e30b50818b4"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Views/ConceptGraph/ConceptGraphView.swift",
+      "sha256": "70ceb5c2602e9089fa5dcdbb7b805ea8e86340075eb097881a040a2cbf9d9fca"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Views/ConceptGraph/ConceptNodeView.swift",
+      "sha256": "369225283f3c3949f33e1742c8dca94f9b51ec1acc35f5c343367d8a35904b6b"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Views/OnDevice/ChapterSummarySheet.swift",
+      "sha256": "81ed408cbae076239454edf5b7814ff9742ff129f64b8824c6de048f13ae5820"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Views/OnDevice/HighlightExplainerSheet.swift",
+      "sha256": "04026f4e026668354d845d8c76b1a55b694cdd0d456f7329198d9f08717885cd"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Views/OnDevice/OnDevicePrivacyNote.swift",
+      "sha256": "45f20ddf390db7aaffe0e6fe9b0004b58928bdd80cfc497f03034bb499992172"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Views/OnDevice/SmartHighlightBanner.swift",
+      "sha256": "3293058cea245ae04a313efc181c2e4379494ded1b07d5d77a32838991cb18d7"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Views/OnDevice/SmartHighlightModel.swift",
+      "sha256": "58e086ed885a83057bdfc46dd56731d7cea45866b19bf198ef0d03437cf6ac64"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/AppConfigGateView.swift",
+      "sha256": "7b443bd13d84abfd7941965d22de31435a14fc93b2d7a02d1f3bceea5294b3f8"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/AppConfigService.swift",
+      "sha256": "e5e61f2ad11edf7c05fe24c71d3bbd0584211d43d166eba1f3a30b8b6a80c06c"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/AppDelegate.swift",
+      "sha256": "4a746b80a7ba5d3a6c8b5bd397641f1adc196879a7378512e4f8a969d191a7ef"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/AppFeature.swift",
+      "sha256": "4d0b873e1e6f0cb631a5efe1109c0be074933c44ed9eec257db009c3e93b63e7"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/AppModel+AudioControl.swift",
+      "sha256": "e39e14d8ae67c4cda088ec0f6fc378bf80a8300a3edd505541604944a7933ee6"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/AppModel+BGSync.swift",
+      "sha256": "1baae055a40e076958d8ff5fddde822b51bd9b7ed96bc89c240b70a3649611d4"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/AppModel+Extensions.swift",
+      "sha256": "5e3304325524fcae7d8d2d463e9331695e58729062a06b1e348aff0daf1fc513"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/AppModel+Handoff.swift",
+      "sha256": "a82cfde20c7020aab6df407a6e14cfa07e52cc0bb8dcbf1e2e47287b1d13a054"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/AppModel+P86.swift",
+      "sha256": "8af87d12382a2879b692f82bad24970c1cbebccdb02b837c841df6dc7f11e979"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/AppModel+P89.swift",
+      "sha256": "a19737061c782e1134409c6a0a2e602523192b2ca6e0b19372a81316cc55be5d"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/AppModel.swift",
+      "sha256": "12a2fe8f7933c83d14e382a5b53db2f01b7a241b1cb69b2fb93e20b141471f9b"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/AppRootView+Banners.swift",
+      "sha256": "8e9142cfaab63851c083063b30a7c6b966eec070f044599b2f9c05151cba8077"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/AppRootView+TabContent.swift",
+      "sha256": "f5160d5c090007d62c3c3591454c0b24981383fc6dd5a913226d5e7c7eccb77d"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/AppRootView+WhatsNew.swift",
+      "sha256": "3a80e89dba6c36488ec7fbb7f56a99be8ef4053c41627f80527c8ab362f86e6a"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/AppRootView.swift",
+      "sha256": "fe263d53467ddc5f4a8ceb73d8c4aa5260632a05ac8c7583af10a11db7840405"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/AppTab.swift",
+      "sha256": "e4d36f695cccd06d6ee894cddc8ea10882cb9dbc082aeba46638ae872cafbda7"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/ConfiguredAppRootView.swift",
+      "sha256": "683c0480be84382a5941994551aff47d21d7016a285c2d70a2b8be15e5882027"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/DebugMenuView.swift",
+      "sha256": "c2e6a5415d4c6fe230c5d2bb0208587a9da3d833483a0db7868c256a35c32bb3"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/GuestBrowse/AuthGateIntent.swift",
+      "sha256": "674a115d0c770e5ff05a418184f595dc98c72b77f8c5264aa59c4468aa4456c2"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/GuestBrowse/AuthGateSheet.swift",
+      "sha256": "6a06f6d09bc32edba900e2cd930f4b46266dbda252e1b235ae39f451aa6f90e6"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/GuestBrowse/GuestTabEmptyView.swift",
+      "sha256": "1aea5d1d634637306843bf5c2fbc5046fc5436432b625895a1238458d031bf60"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/Intents/ChapterFlowShortcutsProvider.swift",
+      "sha256": "9f0046dafc784745efb15aef5093bef6580cf0ef19e0ee0613b5b35816afd053"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/Intents/IntentActionStore.swift",
+      "sha256": "469516f3328316f60b49f73dcb3f4464c4e78bf3b9211ad177509bb0efc0a962"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/Intents/IntentKeys.swift",
+      "sha256": "ba62d476738eebc7a615d5e55bd555028b4c6402975fb0cc20ae3a7e86a3b0c0"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/Intents/LogDailyReadingIntent.swift",
+      "sha256": "ce364ffdec44634e4482fe6dd2c711aa9e3c81cd791ac9ffa41bc20cdbf4dff7"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/Intents/ReadingFocusFilterIntent.swift",
+      "sha256": "ad48958366d353b87ba54ed6318e18c6a693d7fb9bdd4f425b455baaffac598d"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/Intents/StartAudioNarrationIntent.swift",
+      "sha256": "972c337c633f27ac26021954c54cb2732430152949d0e820576b682ad90e421a"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/Intents/StartDailyReadingIntent.swift",
+      "sha256": "394399eae0cd2573a9ec62e0405c00cc54eb887ed66917b022282c779affdff5"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/Intents/StartReviewIntent.swift",
+      "sha256": "a0a4de7cda0947312055ba1a00bcb63d08e038b0a6fffe0a12e1957e0f6a8bec"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/QuickActions/QuickActionBridge.swift",
+      "sha256": "276b10ff9ce76766a9c6c8c116cb9bea9cddf9467c6ff7c6993a8217c6c4b4d9"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/ReadingFlowView.swift",
+      "sha256": "6d7480743999352bd2674ef867242b1b0dcc426ff5e0ee9516848fef2b0e2647"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/ReviewPromptWiring.swift",
+      "sha256": "200e4737b3bbbf949421e7036606f1aac263e1b99bbb8f3784e15612dc49cfe3"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/UserIdBox.swift",
+      "sha256": "4ef79c9633e2da87e7fa70db77d8ab094c0f2e04df5e2299ee40ee5753a4d52e"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/AmplifyConfigurator.swift",
+      "sha256": "36d2b87a4c4e6aba5d42bc639982c4a7507daad60b6de2c2112b9ea54f39ad10"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/AppLockManager.swift",
+      "sha256": "01a131dd886b935d07a89d1f65111cbeab31712302e477db558053b49163a0ad"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/AppLockView.swift",
+      "sha256": "3177213092a89d179b2d1aca6d5899503d302d25416501cc98f1af00c72cfa54"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/AuthComponents.swift",
+      "sha256": "1cb44d0c5debda86c902d7692d36b7af559771dd877e82aa3dfeb2eb58d35b62"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/AuthFlowModel.swift",
+      "sha256": "d9e10fbd4f407cba1e4648bb71e1ab2e2f92641d2098d246bfe5baa3b7db7aff"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/AuthFlowView.swift",
+      "sha256": "467cb9623989a6621ea2950d5ca143219299e3f1e63855c2be822a024e54c8bc"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/AuthKit.swift",
+      "sha256": "364cb2a17a81716424583405898b904a0c866063bc72e7f21061e0f70cf478a3"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/AuthService.swift",
+      "sha256": "6fecf74eb6afa139def76fa975b1f1e4e0772bf036c1b47cb93b27206d86877b"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/AuthState.swift",
+      "sha256": "9f9cc621d0eba006029b23ec0e29bd916c711959e7b1d9bea6d267d909f7702e"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/AuthTokenProvider.swift",
+      "sha256": "909912ceb7be67e1fc85172a45c35e88c2473b8440dcdefb98514e1d5cf36d67"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/ForgotPasswordView.swift",
+      "sha256": "28e38b59fb264931160bfc8472086f027b8804a7512a74941664550b5fa11d61"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/LogInView.swift",
+      "sha256": "86c65a1bcb6a768ef7ca37d064d0757a7e4dd5044d36e8caace292bf7405389e"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/PreviewAuthService.swift",
+      "sha256": "7f119b6501a0a7a33e7ce76d6509c788f34a330424122c6d737ab53d426b63de"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/ReauthView.swift",
+      "sha256": "151b1ba8e55d820c387ca93996c13a9ea52369a406aabdce0d90becb221a8945"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/SessionManager+BGTask.swift",
+      "sha256": "34fb1764e9f9bd246fc9ee96e78f84f666ff53b9fa382ba63b0d172a1d47bbde"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/SessionManager.swift",
+      "sha256": "8d109ff0ca4690dc273dd2122ddeb79101237a90d7e70b8f2bc931861029d477"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/SignUpView.swift",
+      "sha256": "9697939637b55bd84ca23256b6bdd9618209bc91d1399cb9818782d567a52b18"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/TokenRefreshing.swift",
+      "sha256": "e135e87dfd013b143459a9608484ababde899bbbd072de8434fdd8b3c9df4ff8"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/UserProfile.swift",
+      "sha256": "3bd396981bc717c3b0f29351bf2ddbe9e4f78419c38afc951a577b1d43496a1c"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/UserSummary.swift",
+      "sha256": "36baf085a87e4d9c8a5689011fad018553ddc099a88d9747ecebcd4031e4545a"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/VerifyEmailView.swift",
+      "sha256": "e81689ec79b898b5fd020d3c3f493b70a047cc2a50135e02eacb7b31b27ca43d"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/WelcomeView.swift",
+      "sha256": "78224ab81e7287ac6ebda649c41e1da206fa8d22f98a2298781942e49160d210"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Analytics/AnalyticsClient.swift",
+      "sha256": "e0844cc61ce3444b30ad94d15f88e6657ca641918803c15cecaf2ccecc3613ec"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Analytics/AnalyticsEvent.swift",
+      "sha256": "cd5474fcf2a9d7eeaf66e49a0dcbbb3fa5901248a00f681f38c108f231c8aeb5"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Analytics/DiskQueue.swift",
+      "sha256": "1822dd760e147c47a22c183d43e06a5f1b531e185fffb1c00a44827113e15063"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/AppConfig.swift",
+      "sha256": "84626fbff364f2be7884098f8b4db3a93f902bc3cacd6c02d987d0d525fbb2db"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/AppError.swift",
+      "sha256": "6e3722ccb384d6a8c027edb7498cdb23856a18e5fc94179ecb52a27c61169091"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/BackgroundSync/BackgroundSyncCoordinator.swift",
+      "sha256": "41ca1ee81ee4a0a3364b0474db14c6f71778c2f1f6862304acc6f19265e4b4e7"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Config/AppConfigEnvironment.swift",
+      "sha256": "7c9706a084c63194d24d02c5141c074f38c4aea5e3eea75abca12250b2045b66"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Config/AppConfigOverlay.swift",
+      "sha256": "2cc0938d75fb44080af782c24df0ba0c675e6c4f6ad2c80459570afd8f028cac"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Config/AppConfigValidation.swift",
+      "sha256": "820f26b10b3dc6ac0f20adea37a7e194c0bd0b83ffe58d736b8bcb8f4e7f1e26"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Config/AppConfigurationTypes.swift",
+      "sha256": "13c930cef864d98be8b432a728a767123926793397e7c76f0dc3338a765a4866"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Config/ConfigurationValueInspection.swift",
+      "sha256": "02e8987a73a2379dc393b858d95d39814bbb896f1da6d28a42356a53e80c3a99"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Config/FeatureFlags.swift",
+      "sha256": "e8920347fcd67bf35093af6ad197b6c063e74baed6021db3b022d00c4b125598"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Config/IOSConfig.swift",
+      "sha256": "53357b4fc195a1d6c883004792399b1bd56f52fd775da90989ff3ad762ca0f0a"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/CoreKit.swift",
+      "sha256": "94cd017ea6b38db8ca09e9b16a1429ab81c5839f88a98f7903346ac5b2602113"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Crash/CrashReporter.swift",
+      "sha256": "988d0aefdcabaed0dc52a5b1fe738031ac5cc000fdcf812e1227fa32b641fa8a"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Crash/MetricKitCrashSubscriber.swift",
+      "sha256": "709f7256b5ad8fd7122fbaad8660d310f1589e2c88fdd9c54f6ac12a963a7ab4"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Crash/SentryCrashReporter.swift",
+      "sha256": "a55940d5c49dd353ef4450aa8721c2ee4fa95aa9a436ded677f2dd56cca9341e"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Logging/AppLog.swift",
+      "sha256": "3b79e07d7c02d96c2dcb46f1b11fa203bc27b57d98a3ab42c4b067ce4050ff5a"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Observability/APIClientObserver.swift",
+      "sha256": "b95652b88377d94b602f9a1f73febab83027a783f12d90ba216c161063fbe301"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Observability/AppConfigurationDiagnostics.swift",
+      "sha256": "a86fdd524e7178b590ec777eb1cb1a5e7f975a3d57de0dfccfa44efcef4474c5"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Reachability/ReachabilityService.swift",
+      "sha256": "2a60286e004f3959c2b9a9df02ba9e484125edc1afcf3ed7825b6c67805f0ffd"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Review/ReviewPromptController.swift",
+      "sha256": "de9815986b7c562851ef0f2f3ec28c2aa354a5becb61cf684cd0d4d4ffebe47f"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Review/ReviewPromptMoment.swift",
+      "sha256": "7f82750084b9912ae05a6e0177da77993bbb6a03e1af1e4325cebbe2ec26a7b8"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Review/ReviewPromptPolicy.swift",
+      "sha256": "c6f5e3a63aa40d125ea3d89e5779f412f8a909b5813322d425e3a1982aed6752"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Review/ReviewPromptPolicyInspector.swift",
+      "sha256": "dbad7649596c3de7e08d986a91a116e6b513fc37388af6aa9a4d30d55bac8183"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Review/ReviewPromptVersionStore.swift",
+      "sha256": "d6d9487ced5a6b1c2ce8c28c018e7a4a9587f26eb52bd3b4ba4f24aa1583b4a7"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Routing/DeepLink.swift",
+      "sha256": "2fea9d3d201e429bb45ece95ec4cd3109eaa18904be9f263058e28072fd88aab"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Routing/HandoffActivityType.swift",
+      "sha256": "48151d4629d3aa5ac7c07d0efd9d156d946deb6c7de3aa4a31afa8a21d86345c"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Routing/Router.swift",
+      "sha256": "c11ea258605c578376b3a32ba0b65196af9a43c2936cadf09f2654391686da95"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Utilities/AsyncRetry.swift",
+      "sha256": "707448342611c5616bc4714f6e269198db9cf3b957cc467ce8f785319715810f"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Utilities/Debouncer.swift",
+      "sha256": "47d5e9eb4bbea81185733c79b31d84f7580554c88d5a55e9c1d4eb5c38d07fc1"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Utilities/RelativeDate.swift",
+      "sha256": "033698ec55c763473f5bf602b0b5327cf087b093da6822a183f360f092421921"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Utilities/ResultAsync.swift",
+      "sha256": "6a6ba8db368a35760295c063d7d5022372d8e6e0571438d038ad3dc82d562966"
+    },
+    {
+      "path": "Packages/DesignSystem/Sources/DesignSystem/Color+CF.swift",
+      "sha256": "bdb37bc4acdc77d5d7e901d6b36f72cbae4c3e93c3394605e6b83667c7a61b1a"
+    },
+    {
+      "path": "Packages/DesignSystem/Sources/DesignSystem/Color+Hex.swift",
+      "sha256": "602a06b24e62bceaac404c0feedf3b633d717e9eaf8a82278f061990087f376b"
+    },
+    {
+      "path": "Packages/DesignSystem/Sources/DesignSystem/Components/CFCard.swift",
+      "sha256": "04c291ef6ccdadae68ff9dcc2f5e45417d9bb24b0c41df999fc10d644932ece2"
+    },
+    {
+      "path": "Packages/DesignSystem/Sources/DesignSystem/Components/CFConfetti.swift",
+      "sha256": "9521eb0a74f8351f74be808e691ee8ee00f39b44a1c1d83041f0d9d69c0d1d48"
+    },
+    {
+      "path": "Packages/DesignSystem/Sources/DesignSystem/Components/CFEmptyState.swift",
+      "sha256": "ad63dc8b1ed7f7ad95e633eea9dc1b035d0e8fc7f7d47d0fee6be6d6984767c0"
+    },
+    {
+      "path": "Packages/DesignSystem/Sources/DesignSystem/Components/CFProgressRing.swift",
+      "sha256": "346b4346fcfb30e06c0367f0ff5c47be59ff281dc9b8223acbe4457f73ef41ce"
+    },
+    {
+      "path": "Packages/DesignSystem/Sources/DesignSystem/Components/CFSkeleton.swift",
+      "sha256": "4a1d8f83a943a74aa102b0ea6773d3501f1ebd38c0745c8b34673a3db0b05f4d"
+    },
+    {
+      "path": "Packages/DesignSystem/Sources/DesignSystem/Components/CFToast.swift",
+      "sha256": "c9e0160721146eedb4f06e863c697020ce38bd9bd184a3fbae5a50694cc54539"
+    },
+    {
+      "path": "Packages/DesignSystem/Sources/DesignSystem/Components/CacheMissView.swift",
+      "sha256": "1947995e2084aeaf506277edce35a9c7844079b3a50ba6490547b98d71e88253"
+    },
+    {
+      "path": "Packages/DesignSystem/Sources/DesignSystem/Components/OfflineAffordances.swift",
+      "sha256": "b5c616060933fc05692d7cf4c4ef45c4d3e151c5f091fffe1c40884e08470ca6"
+    },
+    {
+      "path": "Packages/DesignSystem/Sources/DesignSystem/Components/OfflineBannerView.swift",
+      "sha256": "61089be2b6f7ae58b52f6f421b46f2da84bf90ef94c975208f3152bda9b001cb"
+    },
+    {
+      "path": "Packages/DesignSystem/Sources/DesignSystem/DesignSystem.swift",
+      "sha256": "0f4112495dab07317d5351139e8fce1f741f4b13d569e9936cac470599e5a03c"
+    },
+    {
+      "path": "Packages/DesignSystem/Sources/DesignSystem/Font+CF.swift",
+      "sha256": "309c3438405747707c24678e8ad1fe2eedc8ff08d069dd00dfa9eb0449c53cde"
+    },
+    {
+      "path": "Packages/DesignSystem/Sources/DesignSystem/Gallery/DesignSystemGallery.swift",
+      "sha256": "f5cb1db6d682d1fe50609ab2c76752cecfc14757da8cb9b8268d1d2b6491aa37"
+    },
+    {
+      "path": "Packages/DesignSystem/Sources/DesignSystem/Localization/PseudoLocalization.swift",
+      "sha256": "6fde3b8a844c77d35f1d961cf137d839eaf30da69c4e13a16f8cf5ade3ca83d3"
+    },
+    {
+      "path": "Packages/DesignSystem/Sources/DesignSystem/Spacing+CF.swift",
+      "sha256": "73ad2944ddb97dfcbf10a3627b126297bf46575607ad5255c3e092e8ebd2680f"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Badges/AchievementTrack.swift",
+      "sha256": "abdb469a95a98b89ec52afc65019c4971a8c9e6743a1ebaaa7a95a53f6ea4715"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Badges/BadgeDetailSheet.swift",
+      "sha256": "cc4bba767565efdf53fcbbb9f4dd0e380199513079bf39a29705378c7e9bbfb6"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Badges/BadgeGridCell.swift",
+      "sha256": "df2f5fc28446de4c9171de789c592a45e54a403c6250b525c629135d6a4eb268"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Badges/BadgesModel.swift",
+      "sha256": "3a32781a21aff255694488bb190b6538713c5e1440fbaf6c3d00c4b0b8bcf561"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Badges/BadgesView.swift",
+      "sha256": "ad16f94fa660388055c3b37b8c05a8adbb9c42fb730e9f5bf99a6a6a17cb92b8"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Celebration/CelebrationCardView.swift",
+      "sha256": "c72bd24cac20a2eb5ba0f8f7cb48f849a9aed7aaa2cc4d33f9a5fcdb11885748"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Celebration/CelebrationEvent.swift",
+      "sha256": "70b28d758d19ba873e8a199108fde911ac64fd0178b304f998a860ef75f0fe6f"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Celebration/CelebrationPresenter.swift",
+      "sha256": "d00a3b85276417b6a3ddfec0113617cb8c1300cada447d0efe414102816d055c"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Celebration/CelebrationPreview.swift",
+      "sha256": "41b0d7ba1023afb159fdf3351c88595ab814f432a6be635c62e74a777e177a99"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Celebration/CelebrationView.swift",
+      "sha256": "7bbed06ec65088f633b6565d4a5cf9b0a6947f08a0761fe47c72477fd763ceb0"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Commitments/CommitmentReflectionView.swift",
+      "sha256": "dd8dedc7260b8585eb2840568a7e0f97a526cc282bd04d5743f602adbf73c242"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Commitments/CommitmentRepository.swift",
+      "sha256": "01de40fb0d7ceca9c9797cb85f04d663d83e0872cba13ec1f9b97f681ee924d1"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Commitments/CommitmentsModel.swift",
+      "sha256": "1ee648898112c39adbb3b4dc54001126cd52c7dddc93e2acfc5d3e10141df606"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Commitments/CommitmentsPreviewSupport.swift",
+      "sha256": "70bc966b7b8bbd9c01dcdc9fe5c807854aabcd6480b06f494c167682c2e7f2e5"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Commitments/CommitmentsView.swift",
+      "sha256": "5a08b5544439148ae7711a77592a622a784ddac3b234c3b29fdcafdfaec5bbe2"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Commitments/CreateCommitmentView.swift",
+      "sha256": "70b019fff9105ddb686445c9dce0d62781c8c327c00fdc1a7f2ca3e78cafdba4"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/DailyGoal/DailyGoalModel.swift",
+      "sha256": "5408b6cef8d832d2a0767878073d54745028508246a4e15a4cb6ed3028be0e14"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/DailyGoal/DailyGoalState.swift",
+      "sha256": "63759581efdddb65ae356ebb6b9df9d8ad4be22f1d67f00bcfb8735bc0462a16"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/DailyGoal/DailyGoalView.swift",
+      "sha256": "b2cfa5e7efb50fce764503de4f4a277242070de01a82bf204e616ef38d07fb5f"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Dashboard/Charts/CategoryCoverageChart.swift",
+      "sha256": "5d8b919e1752e4aa3a78446788a2baf9e3aa6c0101e65e6719c95fdabac71b6d"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Dashboard/Charts/ChaptersProgressChart.swift",
+      "sha256": "aa023bbc3ad9601ac47a9e4ebd77688528cd8c0cb98884ccfeee4d33b84a0ba1"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Dashboard/Charts/ReadingTimeTrendChart.swift",
+      "sha256": "ca8e197db091776df05206d9f3fb892eed6f19c731bd0e6ae334be63152545c0"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Dashboard/Charts/WeeklyGoalChart.swift",
+      "sha256": "0178027a890e9b690591eacf5c3a9ba38342075bdc571692acd5650cf02c120a"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Dashboard/Components/StatCardView.swift",
+      "sha256": "2fd3b997d2dc0b758060d66f78faa4e61f6ca40505cd6a5cbc6cb7ec59c9b372"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Dashboard/DashboardModel.swift",
+      "sha256": "dcf958696057e39490a56cb0cfbe54663d6112db4d1da72f32cfa2fc6ee5fdd7"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Dashboard/DashboardSkeletonView.swift",
+      "sha256": "f82ac375ae2b6bbbb51a5fde58115d874d88201c6ceaffe5b7579ca91fb51bdd"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Dashboard/DashboardView.swift",
+      "sha256": "a50e80cf01cad54269459c291262dccdcf80d2113fff02a8b14986748af9454d"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/EngagementFeature.swift",
+      "sha256": "dca5fe5df5933e0d6f9b3d3bffd2a6677540f3d3469febbf9caa57b5f2f6e0b9"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/FlowPoints/FlowPointsModel.swift",
+      "sha256": "dd144131a01c8ba07999f285f9f4d16a8e1ca1999f3f607538bc00da2c4c5ffe"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/FlowPoints/FlowPointsView.swift",
+      "sha256": "5dcd4100c5564d5afd18a42f177b5775d2fc46edac6bdc58f89c464eca255570"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/FlowPoints/RedeemConfirmationSheet.swift",
+      "sha256": "c9fbc4da93f783602b0536cc5cc72579eba741ef603af0f6c6b6577ed4db2f03"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/FlowPoints/ShopItemCardView.swift",
+      "sha256": "6a1173bb58a1c9bc5bc3f3a2f10d2aa74f652e038790078f55b8563e89659859"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Journeys/JourneyBookRowView.swift",
+      "sha256": "c2fc180120c22c94e0f4cfb7c5f3f5695de83290d0631e81e3e146e778bc8629"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Journeys/JourneyDetailModel.swift",
+      "sha256": "46c8f416dd1ffff246b442f0d6af89a57fd4a698884be2b4e89ab8b27cc0c529"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Journeys/JourneyDetailView.swift",
+      "sha256": "978260ae421aa98a301dd790d42ce74b1c669b61651ac42cfb281ba2f555ffb6"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Journeys/JourneysListView.swift",
+      "sha256": "db89b41709449c8c2f748528d56a63cc8a71051f8308b08117639bd4ac519dc1"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Journeys/JourneysModel.swift",
+      "sha256": "7515189ec71c81b9c8fd86e021d3ed25d8420019066ea29d7ff9fda939b4d834"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Journeys/JourneysRepository.swift",
+      "sha256": "95ff49ce9c2242dc3553df23c0eb7a42757809cdea3db3eb1931477208a73333"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Notebook/NotebookEntryDetailSheet.swift",
+      "sha256": "ea713f26cb88c941834e73e3ff5310652ae9834c5cad17f34cc2dd2e0e8bd3e0"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Notebook/NotebookEntryRowView.swift",
+      "sha256": "0506d4d3c7428479ea11f3ae37091cde554cb9ae415e1a156553c6346b49d62f"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Notebook/NotebookHubView.swift",
+      "sha256": "bfefd7b9b12cc9ccdf2ed388cfb484e53ba2414388eee7571a2fffd471a85765"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Notebook/NotebookModel.swift",
+      "sha256": "231108cc06b1168b189aac4b891a01d4c1d31f65e9c6ea145e7a98b242860108"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Notebook/NotebookPreviewSupport.swift",
+      "sha256": "155f5925ff190222ded61038ecc056a0ed4cf50e36708383b47d11fb50c13b91"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Notebook/NotebookRepository.swift",
+      "sha256": "9a015846bc5773b054f26f093644073b1c0e2617a1adca3fcb6bca5047f40642"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Notebook/SavedBooksModel.swift",
+      "sha256": "757958a046abdd5e7f805deeeec174a4b0bd0d2d333ee934c3f9be890fd70a9f"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Notebook/SavedShelfView.swift",
+      "sha256": "09cb3edd561d899c26ec1b0bc03b9e0007aeab6f10bcb3b73edfa9394155bef3"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Preview/PreviewSupport.swift",
+      "sha256": "9039c0c38319493cdc9b19970ab18a181bc0f900838c330344dc04eaad26b366"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Preview/PreviewSupportSeasonalEvent.swift",
+      "sha256": "da36b377f2db5e78f29070ffb38823d4c3145a32d794e613bfdbc9b059c74a2e"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Repository/EngagementRepository.swift",
+      "sha256": "98101f7b6f619495aa8955c0a3d2b90a383ddf6a51373530c98ed7a79053a544"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Reviews/ReviewNotificationScheduler.swift",
+      "sha256": "fefaab2a589ee1a62759c5bc3304f58dee0bd080dc308c7fc17f99925082eaf7"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Reviews/ReviewSessionView.swift",
+      "sha256": "d77d0928c4372adfbd8ee0456deb65574e7df581af022b042422e69826560b2a"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Reviews/ReviewsModel.swift",
+      "sha256": "4812fbc518a32ea65ff134aa62405c148fdafdd563d53d6a87f8d87c9e05f60d"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Reviews/ReviewsRepository.swift",
+      "sha256": "2e0431cb8efc0ee8a2793e60b2adcf266d556ac1126f470f4e242f8d37610835"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Reviews/ReviewsView.swift",
+      "sha256": "6763cf4a6bd12cda11bfb02b35c7849422df329f7377f46845db2b3779c3a7f8"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Scenarios/ComposeScenarioView.swift",
+      "sha256": "6441b31d5f31a3ebf5cb5a02ac7a1a607b9643f266007d6f73b84280e72192aa"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Scenarios/ScenarioDetailView.swift",
+      "sha256": "d59740b4a77489e395fa9055594890ae083b4f80e5d8c976d3c4e7a1e9b7a796"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Scenarios/ScenarioPreviews.swift",
+      "sha256": "3127b4286c2a9f58e4069c1db58a02cf5bcf1360b1610cf063f61fb531bd5254"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Scenarios/ScenarioRepository.swift",
+      "sha256": "fb85220a4be67aeca6c9f3e43f1b42894ffe92223bfb74059258abfe6bbcb42c"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Scenarios/ScenarioRow.swift",
+      "sha256": "118b1886277544d27f11f1e952bd9cd65ed24651314c3ac7300302a8a74bde01"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Scenarios/ScenarioStatusBadge.swift",
+      "sha256": "d28068b1db8697531aae64c03929412d7b3062eae37b644e8f1a9e13be18a16e"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Scenarios/ScenariosModel.swift",
+      "sha256": "5b2b6dd32d596f3dd1478e9a089a188f63423d5da23948f250001866c512b13b"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Scenarios/ScenariosView.swift",
+      "sha256": "47835ada1ddb53afae71deb6dee9b379e3c1221f7827355f79ac825a2865e87a"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/SeasonalEvent/SeasonalEventModel.swift",
+      "sha256": "0b20ae0185ad9fb41cb98a425bae52d6e3badbb295d27b55fe878c95e1a62651"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/SeasonalEvent/SeasonalEventRepository.swift",
+      "sha256": "951c93a9f1cbed1b7ab4208848a126bfd150dbc5014341d347f7a95db1483191"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/SeasonalEvent/SeasonalEventView.swift",
+      "sha256": "e9537cd8ead3834caabfb4ccba3940f7e50151baf12e3c3882b8c4c27a5dbda4"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/SharedState/SharedStateDiagnosticsView.swift",
+      "sha256": "1562c9a4b5b31e1cf710c3bffd3ce62ae8a4f1ee1ff65adc7cb69357f2f9c1e1"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Snapshot/DashboardSnapshot.swift",
+      "sha256": "6f10053326a8b2ce9f89887b3bb44feccebebd123a46b945809defa70af44dab"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Streak/StreakModel.swift",
+      "sha256": "c3c3e1e35a43c92f30107af5d8f9f42005fc02dc74d7abcb27f12b454b707f99"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Streak/StreakView.swift",
+      "sha256": "5b7ce8e07f4f8a3b6d34e1f36d01c0ef2d78b6d6ef83aa3db1a3c68a3ef08863"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Tier/TierExplainerView.swift",
+      "sha256": "75c745d60124eb1a53619d05fb2d0d9bd89418226c983e2f32acdcd6c1f932c6"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Tier/TierModel.swift",
+      "sha256": "fb50558271d538fccba6b3afb2630da92db7585ff9177b90123a97f171fdb2b2"
+    },
+    {
+      "path": "Packages/EngagementFeature/Sources/EngagementFeature/Tier/TierView.swift",
+      "sha256": "49f8255e272af54099ced52f8e7b801c735aa6e37b4b9358f1e191f922f5e6a3"
+    },
+    {
+      "path": "Packages/Fixtures/Sources/Fixtures/AudioFixtures.swift",
+      "sha256": "39420c0603ce53d6bc42a353cc930de591ed4bad665a10541e2b6417c5da1203"
+    },
+    {
+      "path": "Packages/Fixtures/Sources/Fixtures/CatalogFixtures.swift",
+      "sha256": "9069640b1722775dea0ae322c84339bd559567addd088cdfb01b0c55f5e8a5fe"
+    },
+    {
+      "path": "Packages/Fixtures/Sources/Fixtures/ChapterFixtures.swift",
+      "sha256": "0ae2336a525ade7f507948eb084f2159e2073395b40efb4e9575ed4e7762d9bd"
+    },
+    {
+      "path": "Packages/Fixtures/Sources/Fixtures/EngagementFixtures.swift",
+      "sha256": "aef3196cbe1a96315f4fcc5beb54f3a920df1245d036f6280b989ef07c5eec94"
+    },
+    {
+      "path": "Packages/Fixtures/Sources/Fixtures/EntitlementFixtures.swift",
+      "sha256": "dd6f95caecc68090325db481e88529130724ba88013bdfbc4c5d0533f9775200"
+    },
+    {
+      "path": "Packages/Fixtures/Sources/Fixtures/Fixtures.swift",
+      "sha256": "2335e7730849c2d991ab6513fd9ed78df3de8c432ee6f40c03c2cae385bcadb8"
+    },
+    {
+      "path": "Packages/Fixtures/Sources/Fixtures/LibraryFixtures.swift",
+      "sha256": "0b602c4f835e646a21fac9eda10d78537b9962c56c894b66cbda26fb633c5853"
+    },
+    {
+      "path": "Packages/Fixtures/Sources/Fixtures/NotificationFixtures.swift",
+      "sha256": "42808b6e584dddda0e1e65e2dc22c81616a89a4ece2088e1e3f6134927f08991"
+    },
+    {
+      "path": "Packages/Fixtures/Sources/Fixtures/PreviewDependencies.swift",
+      "sha256": "9e2f6e2d1e9bbe4033d91d7231c410cb8085b1489e43201c756311ee924960a1"
+    },
+    {
+      "path": "Packages/Fixtures/Sources/Fixtures/ProgressFixtures.swift",
+      "sha256": "f3fa1a0170234be69d303c315d2ddd40240d42190ff9d573c6a7d7e6a21e3980"
+    },
+    {
+      "path": "Packages/Fixtures/Sources/Fixtures/QuizFixtures.swift",
+      "sha256": "ceac37959ff268fa14841895829fc348cd974c829632377e18830ce5fcee2c07"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Download/BackgroundStore+Downloads.swift",
+      "sha256": "361c5b76f0c28c4cbb1c80aab9414abba321d9142638b22ba0a43466bab2c591"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Download/BackgroundStore+Prefetch.swift",
+      "sha256": "1dcc4792a786b4c450762a9ce62946d124173242cfa79ef92ce624cd6294eb60"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Download/DownloadManager+BackgroundPrefetch.swift",
+      "sha256": "139aad0e4ebcd4ff5b7663cd53800316528accfba024cfcf9e6078f27a5ad41e"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Download/DownloadManager.swift",
+      "sha256": "5983c60a7e6995506bb6563fb218e9731025ed46869d656d8847a7232b165f8a"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Download/DownloadProgress.swift",
+      "sha256": "4b106061fcf520f1c6d2cf0f6f313b437ee3a9acbda5ef078b8bf6b63b7da101"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/LibraryFeature.swift",
+      "sha256": "6a5419e716d8fcaeee97aea2b37f024b93ecdd5c8658cf85a19bd44a657becee"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Model/BookDetailModel.swift",
+      "sha256": "e57deb2bc6d75af1932dfcc0de54e4e29417a8d0fd052d519803e1665bdda3e9"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Model/BookPreferencesModel.swift",
+      "sha256": "f3466acf4a6772ee0b95f532cff5395153322f53f1ce49fa385a761f37206276"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Model/DiscoverModel.swift",
+      "sha256": "2d4d8d61216d0d4556cf52d7088a25b78f7282322cf0dc3310b095e5a7435579"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Model/HomeModel.swift",
+      "sha256": "68a1d079346c1d18da801a28a0f6be540df2da81194cfde60fa8d685d106269a"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Model/LibraryModel.swift",
+      "sha256": "bef393ac498792580a7dd97604effb4318b384bb1cc86cb6756e531b2a743d55"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Model/SearchModel.swift",
+      "sha256": "51a57281378c5704ee613118fbf1f8c76f9b8d36296c0c33b774599f9d4538ed"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Repository/BookDetailRepository.swift",
+      "sha256": "4b6b03b9f00941e2673d40b6df9df68c4e6c33502a20a2c8b232d22393552b2b"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Repository/BookPreferencesRepository.swift",
+      "sha256": "37352877d2743708054e88ba4c23b79fe9b85ab2d9c62a41646ddede74839d1e"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Repository/FakeBookDetailRepository.swift",
+      "sha256": "9ed40dd0e7679967257f7820e24a9ecd1f5eb8939cfc00b092b09cbd47566b51"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Repository/FakeBookPreferencesRepository.swift",
+      "sha256": "1065f45508f7ca5329ba3714c06d3951bdf3bfb7672d929512fadaa2bf02b976"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Repository/FakeLibraryRepository.swift",
+      "sha256": "43f78c772f5dd5759cac0c5fd562aa7493cabf0beeb783b5883eef2d888ef027"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Repository/LibraryRepository.swift",
+      "sha256": "0bc2a560fe0143d830c131aa617c87c64c9d3a352494a1d51052ad94c06ef7d2"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Repository/LiveBookDetailRepository.swift",
+      "sha256": "abfd52666b2672092eff0c932d963a7a4f65099e6ff6a9176d3ee5e221473c5b"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Repository/LiveBookPreferencesRepository.swift",
+      "sha256": "4e6d1efcd45632188576bce2b7f745d5bb64813aea54679a0c01db2cd190b03f"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Repository/LiveLibraryRepository.swift",
+      "sha256": "24edb4f8232f3e5b6ab53394400db5f041e917bbca5aae82cb23d9c8ef031d56"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Routes/LibraryRoute.swift",
+      "sha256": "465b8c9dbfa0a42f2be6bf421585f769ee726b8daa4ff19ace405c95808c9a31"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Spotlight/SpotlightIndexer.swift",
+      "sha256": "ada4b7956e7354a10d8485b7450d936eae348796cf2ca9fc6fca0d1dd3e1910d"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Spotlight/SpotlightPreviewView.swift",
+      "sha256": "abf00bf2c6b493051c08bb88d69caac46605fc34915143201a16254b0e80d2d3"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/BookDetailPlaceholderView.swift",
+      "sha256": "d9f95a2c3e61b37022e3a27916ffdcbd64b58d2abd24d126d4bacda5a1c31da2"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/BookDetailView.swift",
+      "sha256": "083e74ef3361c63027b81ce992cf6e0715d4f2a39889f58a640f1c179f7ffb37"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/BookPreferencesSheet.swift",
+      "sha256": "d7f2bc9b2bf65b3c17b92953182aebb21fac45bf6c74bf6823ece058aa74d39d"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/CategoryDetailView.swift",
+      "sha256": "1aba6890e4bf9976a501faf069bd8d166734e8ae5e6cbb0c42637c27dbcdf807"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/Components/BookCardView.swift",
+      "sha256": "bda831f97f9011aad697e9b54227cf4c10b225efebe818067307b62323fee887"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/Components/BookCoverView.swift",
+      "sha256": "aa6be04782a286fee38e8da567c00e73aa40c738382b8cc6156ab4bb73623c5d"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/Components/BookDownloadButton.swift",
+      "sha256": "11c2fe38b0b1f0cbd04cd5f4aa746135d758a984633f344597013d4871f329bd"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/Components/BookShelfView.swift",
+      "sha256": "ab4c8e36deee307c17ac7ef17b82e8667516f877c7c9db591d9bba1899d7f450"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/Components/ChapterRowView.swift",
+      "sha256": "e562db44618c1fa57c8fa279ba6c998b4eebfe16b1a876ff637f83331d18a1ac"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/Components/ContinueReadingCard.swift",
+      "sha256": "06ee5ac38988d77b36e462c88956db104e7a18bc4ccb4d41880d92071f76670a"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/Components/ProgressRingView.swift",
+      "sha256": "2e46918146d33ab8a3c21a22b26edf26f1f053e0b23ba1e9d7b3b51d26f65a53"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/Components/ShelfCoverCard.swift",
+      "sha256": "ca735dd93b06e8d054210d20f8fd85ab668c259511a43ace801ec237e6cae655"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/Components/SkeletonView.swift",
+      "sha256": "0e50eb0e00248c69a267b775c88369ba78642e013660d1e431a85210b3a9986b"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/DiscoverView.swift",
+      "sha256": "69a4aa3875b794815d9c8450d72ba966f0fa11df72b54af2cc03e4e19b5bc653"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/GlobalSearchView.swift",
+      "sha256": "5a9c971f56ceb76b0c6f116671dc7260d83eefdf497cc2c413ba44ddb6edfa80"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/HomeView.swift",
+      "sha256": "ecdd7248413430d8ac50bb0564a807752c9e779850bc21acb7084f6c82b5b098"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/LibraryView.swift",
+      "sha256": "61c81f3a561cd90558f991ff2e1c159582097ab067f86ff09cbf7775829d08bc"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/PreviewData.swift",
+      "sha256": "85674c71d1e5333a54d7c0f79a7a289de98638e031f04e2f757141b1e9dbfd5f"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Audio/AudioNarrationPlan.swift",
+      "sha256": "a9ca5919fc14e09bc14f6cd5deb11d69112535fbe40734402f72597bf6977eef"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Auth/UserProfile.swift",
+      "sha256": "de85b8c1afffbb037327ea1e26f28d300d572b038512552387741754007eb4ef"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Catalog/BookCatalogItem.swift",
+      "sha256": "8ef4b41486422605641da1bc7a20636c5a1d86801dae616d0836e6ccd9baf3d7"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Catalog/BookManifest.swift",
+      "sha256": "18f2dbd56d3e2fe492c34c3bbb96136050b739fe2af8b343edfdb9a58044ea21"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Common/JSONDecoder+Models.swift",
+      "sha256": "85053cd8eaeb306c489e88b6c17c5772894b9708a109dd6c258bf9e53a5796c8"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Common/LossyDecodable.swift",
+      "sha256": "a036aaf6f3af5787aa46dfc906e4db652e5e712e97e655b6e2303e4f17006f2f"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Common/TolerantDecoding.swift",
+      "sha256": "c01510e31eae4e1c32284b20906dffd810d6b32ff8ea4200cc9cdb2a10c24bfe"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Common/ToneKey.swift",
+      "sha256": "c4c80becef567af33a0067811bbb2b909e0b8aed6fa338e3e459f53ff24d27e6"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Common/ToneKeyed.swift",
+      "sha256": "63d4d2a1c31a194aee1370a1818e056009be7afeef3549cf65d48eeef64713cb"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Common/UnionTypes.swift",
+      "sha256": "7125b2e34921d101cd3b2dad90d7e957ac9dee9cc49e9e98c7a6436968865b5a"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Common/VariantFamily.swift",
+      "sha256": "e6210a557007a6f3f3076254018b56f0ee80a9821b225e58a98fa0a813c203ee"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Common/VariantKey.swift",
+      "sha256": "012757666251952ae445f32470efe382f597f9ab560c86b59f2bf0b7e26a603f"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Content/Chapter.swift",
+      "sha256": "a607b31623addcc6231e6c53b36d7dd18db8debabae6b3406bf0acc002f19a62"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Content/ChapterVariantContent.swift",
+      "sha256": "4951f02a0d5b2cf2216ecc14dd7f30087b726e1f291986a81e521031368d8f78"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Content/ConceptGraph.swift",
+      "sha256": "acf61152f86078bad98c5407826a5100cbd82141290df987806b5d364e8f6e48"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Content/Example.swift",
+      "sha256": "b84ae056809d86546105f4db00a4a47300e604d34b472c3d068e1fa7cd483cb2"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Content/ImplementationPlan.swift",
+      "sha256": "8087ced29332a529e579fc1eedd8481b3556225b8c94ea6c7b9ec17741e64dd0"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Content/ReviewCard.swift",
+      "sha256": "21b262256587115b47eb2c6d39d78e57550204492b4292128af0515688ca4b0b"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Content/V21ChapterExtras.swift",
+      "sha256": "533d1d1483f79f229e5b262b7047354a2a74516cbe4bd06c7c91d79ffd01f05d"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Engagement/BadgeItem.swift",
+      "sha256": "587ff0bd84b1ad02d7964359990ab882229a04ac62b64804818d351c8ddeb599"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Engagement/Commitment.swift",
+      "sha256": "30642da456610e02f461377bb1af949f7f315c021a156e2d87cd9e84d4a15546"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Engagement/Dashboard.swift",
+      "sha256": "39341ea006e5184cb289c814b0d33b25dad129c5313e7fea91b9a67378655da2"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Engagement/EquippedCosmetics.swift",
+      "sha256": "83d24e5f7db091330a829c2184d799975c0ae382fb1016a5bee09cb4d522673c"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Engagement/FSRSScheduler.swift",
+      "sha256": "aab473c4b0adf45209bfa0177423fd53582d84c88be4106fb7ca2e6593315d08"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Engagement/FlowLedgerEntry.swift",
+      "sha256": "2eb8ed88c751811b8c0a37f09c8dd64ce6410ffa39185d969775aaa33473c847"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Engagement/FlowPointsState.swift",
+      "sha256": "f13778498bcafd22edff5e3b0712cae70a529f29de0c03e2bc20ecb865bb2e16"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Engagement/FsrsCard.swift",
+      "sha256": "7e02654803c14d7cb8ec8b51827831f604f7d8e1b4b59ac95ba5e3dd6ae7d32c"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Engagement/Journey.swift",
+      "sha256": "228ab22dff57416fe7dcfa8875cf80a8e0791d5f63be231b015c6d0436385022"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Engagement/NotebookEntry.swift",
+      "sha256": "f8d1e4d2a8ed7bcd51d79e9c3bb4d56dd5ca13c350903e1837aa58578f4a79c2"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Engagement/Scenario.swift",
+      "sha256": "a5774fb3c7f578770d080240f5afdabf1b446ade920488d48545aca76e8c8631"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Engagement/SeasonalEvent.swift",
+      "sha256": "672f4fa621898989d2c8fee1c73c7f11b3a5bbb477afc3c412e600eca354b8ce"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Engagement/ShopItem.swift",
+      "sha256": "353d35dd1f1dc0fd58fe4446372f1a01e9af465edfa20c37b8ece3f2c684e091"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Engagement/StreakState.swift",
+      "sha256": "447d516b2c3c42d165b9a337c7fa5d1e03a3715bc6145582224fea06d7653932"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Engagement/TierKey.swift",
+      "sha256": "8c2198b636d0f1df4a17c1a85a005501af918b5ac6adbc02fb6a2c3c4cd12a62"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Engagement/TierState.swift",
+      "sha256": "cbcdb11401ecca5896fcaf71c51825f7b4fc5409a5f3322e756c09c611e68ee2"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Entitlement/Entitlement.swift",
+      "sha256": "f657665e2d54b6781fcbdca0481a4a981810164b85c1141e573d88910b565d60"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Entitlement/Paywall.swift",
+      "sha256": "f3c53a56b66e1564b046b94d245d18030bbf09258a533699d21de2d8b8973a6b"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Evaluator/EntitlementEvaluator.swift",
+      "sha256": "e58de06d31e799ad88abab8148a61734c7f2402c9f6bea3ee3a97344e8470478"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Models.swift",
+      "sha256": "89df3027b240a0a545bd1331157664128b656ddeb164ed4be68c96692e9ecb43"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Notification/AppNotification.swift",
+      "sha256": "f35468bce437144820ab53cdda765fb5a05773be8c82ed75057e2fd6649d7706"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Progress/BookProgress.swift",
+      "sha256": "65cfb914e8f1583607175b3e68585f02721ade89a62380a2c57e964411be3f2e"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Progress/BookUserBookState.swift",
+      "sha256": "da4d7c931298bab815638befad745cad401ff379ce90285c825a99dd4d496928"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Quiz/QuizAttemptResult.swift",
+      "sha256": "679cae3e8efc959a2286ceee6dca3a0e6ee2aa3be9eef7b12219e327ff0ba5f0"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Quiz/QuizClientSession.swift",
+      "sha256": "d348635f41db45cd1860d497952f0138fc8903d64037a33a0538fd2692365a28"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Recommendation/DepthRecommendation.swift",
+      "sha256": "8bc2e8654a5597feb7fe1c05e2ef09119698a3834554ae469bcd44da6e7875fb"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Resolver/ChapterContentResolver.swift",
+      "sha256": "613afc0b68a54144aff23dd5502e639ebb45bbb21be923a049ac85b15260f09e"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Resolver/ResolvedChapter.swift",
+      "sha256": "44b41af63c20875e922277184bc8f81311e6ab58861ee4fde758ead322757657"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Responses.swift",
+      "sha256": "e48027292b0ae2b323c99803d3fb322a9b103b1aff000cbb9ec96148d667d778"
+    },
+    {
+      "path": "Packages/Models/Sources/Models/Search/SearchIndex.swift",
+      "sha256": "8dc54811c7eb13351786afa4eefa739213e08764117efb6eea16aceddcf06ea6"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/APIClient.swift",
+      "sha256": "33cb58181ce8c40121e1a36f8b6e8aceda7f6f9ced6d3851aab8c7ed33e1d535"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/AppConfigGate.swift",
+      "sha256": "c293aa6b866a12df4c4be77b77b16bbe945040e4b8bc6df602f507b0ffc3a3bb"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/AskConversationTurn.swift",
+      "sha256": "12e3a9d508423819feab8be3dc98a63407b2d885394490a9d68ded8c2d8e8ca0"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/Endpoint+Account.swift",
+      "sha256": "fac158ab0b7d221c21608526d61ed2949594aab469bd5d317119b5a964899d2d"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/Endpoint+Config.swift",
+      "sha256": "f52625e0cf910e19b7661bfa897a7f71915b0919d0550aa0c09f12e073208521"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/Endpoint+Devices.swift",
+      "sha256": "dd318694eb8303da386861ca111494dcf02bbf6b1720711029c46c1c221b1c0d"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/Endpoint+Downloads.swift",
+      "sha256": "8de70a407d55e39dcd69557534459565eeec34a9c77e06f7c2d870226fde7e3d"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/Endpoint+Notifications.swift",
+      "sha256": "97e7b1f0a7d2624b4b9043367f5a672c0aa68bb6286ac984446808fe516ac856"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/Endpoint+Onboarding.swift",
+      "sha256": "16dbb0b383165e6e1398982df076f2142a2d23abaca08ed24b21336d6910f019"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/Endpoint+Referrals.swift",
+      "sha256": "95147cc2b84511b88a2a3ca8b6ff4dc1fb58c79179683afa29653d0dab8e321d"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/Endpoint+Reflections.swift",
+      "sha256": "b1e74006e82dd9093e322bf8785b37b3b2d9e8daa862e6d2976c7d0a1a0b8380"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/Endpoint+Safety.swift",
+      "sha256": "fc5e6fbea470d5ccc323ffdcad2051a166f67e75e7a17744f404bd150c15aba1"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/Endpoint+ShareEvents.swift",
+      "sha256": "9ce5c095389f477d1e8b287dcf0f4958767d0a1efac9d1c4bc325a9905a4a7bd"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/Endpoint+Sync.swift",
+      "sha256": "92ffd1829604f4dd1249747a816f090639571e0091326b99ab7e11f9965851fd"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "sha256": "5b897aba7dd1bbd4502f5d85150a58197bd829181bf37bd7c887d0c04824a9c5"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/Endpoints+Scenarios.swift",
+      "sha256": "7edf4acf5da49cf35b953209a4b24ac72bc705bbe8dfb273503299511b2b74f8"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/ErrorEnvelope.swift",
+      "sha256": "f3b07a07ee25ccd348d638f43d60401946346281184ba1380e536bebe84bb410"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/JSONCoding.swift",
+      "sha256": "331faf9c94d88f3567100865239446055d0e634e24415466c7289dfd53a8d3fb"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/MockAPIClient.swift",
+      "sha256": "19670ff2e41799480cee41f29bd1f4b414183f06b2883de48c9376f85c452b48"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/Networking.swift",
+      "sha256": "0e6c0b0d182ab2ae40ef6f1760fa9513a86dd744c93c980cdbd687b5ae3bae77"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/NotebookEntryRequest.swift",
+      "sha256": "44e63adf151f00a4fdfd7a3a2944d11b1a23ef0a24708bb47ba966fe420a702c"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/RequestLogger.swift",
+      "sha256": "9d68f8f611f60b390d6be8553198953e75e18b1174747b328f5ad03835a5b214"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/TokenProviding.swift",
+      "sha256": "08c17380f3aff9dfc3092e438e8b339db3c8bb5809e2626db47f7e945ff9b48a"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/APNSRegistrationBridge.swift",
+      "sha256": "3508cab272da1be82181a317cc9f6b46d60ef3271a613d36779a69d4ae984aef"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/APNSRegistrationManager.swift",
+      "sha256": "8917fc2b8844fc5b8bcbffd3cd1075712ec21063f2c04c9d36a663034f397cf3"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/DeviceRegistrationRepository.swift",
+      "sha256": "3ee97da0c1e87d55ca3b877430053a94bb7f7d3e1d9f87dcc96ae12227729665"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/LocalNotificationScheduler.swift",
+      "sha256": "85c5301df9b3707221b5ebdb4a7a77849c16a9880cf0414e015ac1b75cb05569"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/LocalSchedulerStatusView.swift",
+      "sha256": "89d457e06e15eac7ab9e0e1c85a8e2c6339f267f87824982625c5623e7e7909c"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationAuthorizer.swift",
+      "sha256": "7e647ec8b5219e8741f44272bf2306e3f898dfc4332bd5d296df90da4f468012"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationAuthorizerProtocol.swift",
+      "sha256": "8a4a1578965dcf3cf86ece8d678b8b58d9e2750ed32e926b76951fc01e716fe2"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationCoordinator.swift",
+      "sha256": "386d4e9dd1310a80644712e9174f997348f37dc5d0d21df5b765054412b44833"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationDailyCapTracker.swift",
+      "sha256": "f1ce6204e0224b841ffdb155eed6e5113156988082f01031493152fcba30cab3"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationDeniedView.swift",
+      "sha256": "cae869921acb38bc62016a2275bf3fcb10ae8296c2abb0452ca0efb1ea1df44f"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationInboxModel.swift",
+      "sha256": "56bca505ebdcf7dc7c576705bb684b4facf36d4b5a9c53479158daf3c4686a01"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationInboxRepository.swift",
+      "sha256": "273b6460735a238648b64fdd87ec5926e88c9af3fb1b9d07836475b99a53d40e"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationInboxView.swift",
+      "sha256": "54c79584d94bf14a1c6b2a0a574574b1c4f4d83b6dc98bf6b7ab853375e5a236"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationPermissionStatus.swift",
+      "sha256": "5c5a1d9b2a4627b1998fd6384fd45a585460d4a600873d05ec4394e1b851ef57"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationPreferences.swift",
+      "sha256": "47ad4127b953748d5fd3c35ac38746fa3758ebbdff0bf5dff4404ee0abccd61e"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationPreferencesRepository.swift",
+      "sha256": "a52aee2454d24d308f2c18766ee02e477bf03cd84c4acfc19410ba425fb4c658"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationPrimingCoordinator.swift",
+      "sha256": "22f07a5227ffb95738c2c4022a4b9cfdb0bfbe0170ecf43f8cb80c10e7da88b7"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationPrimingView.swift",
+      "sha256": "2e1fe5d05a8ad53cef2b8ac8bce5b149aa838d8618dfe771bc41cc12e592c053"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationRowView.swift",
+      "sha256": "c9ed31fa042a09657f9c57ae4513eb6d1e669306836b0f6eacaf07890367fb07"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationSchedulingCenter.swift",
+      "sha256": "f0052e0b804a56bacefd980b24b283db3c6ffcdb7653038cfd5e1c96e779d19d"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationSettingsModel.swift",
+      "sha256": "9c4c35710822ccae2a95ab8a9d69928a430dbef8be808ca7e796057ab2b51eff"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationSettingsView.swift",
+      "sha256": "333183e9bf81774905f220800a74657c838869448181ec3e3766b9a5caa39923"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationsFeature.swift",
+      "sha256": "0137db0625197a285e80fea617372f8e539c661d30577cce1f23517502d7a0a1"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationsPreviewSupport.swift",
+      "sha256": "92d33d7d08b7a3136981ed6f1a895075997a2514cfbe7014af198ffa44e733ad"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/PushCategoryRegistrar.swift",
+      "sha256": "cd476799c7924447e73f20b46d3e582021953371d9f8c6075f5f7a553fa49a13"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/PushNotificationHandler.swift",
+      "sha256": "4ad8afef1cd65581bd0394a128b849ebc86befbad97f4dee39400bdcfc241895"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/PushNotificationType.swift",
+      "sha256": "d14fdba4d2b0d343aacd7812669d68b6e4930b2925419251d75888571036b3d3"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/PushStatusView.swift",
+      "sha256": "ba041da74d1808596a1840c6d9fc4c09019071690e9113d57e81a703055e6fe8"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/RecentlyNotifiedLedger.swift",
+      "sha256": "f405bdd8b6de50e56926285a0133646cde9f8b5282e0384dd5e6c3ac7345d60d"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/RichNotificationCore/AttachmentPreparation.swift",
+      "sha256": "5de5f9282b6196bd19ff0c13001939403f19fd915247363d54e53f01834388af"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/RichNotificationCore/PushPayload.swift",
+      "sha256": "24badf33d9ee1d3dda36645a04ccc7ea298d6393656a3514f720b322246c83e6"
+    },
+    {
+      "path": "Packages/NotificationsFeature/Sources/RichNotificationCore/PushPayloadParser.swift",
+      "sha256": "949ef7f7448c4fe1542fdd9e43728faf877c476d235b3ed687b39ce68596b578"
+    },
+    {
+      "path": "Packages/OnboardingFeature/Sources/OnboardingFeature/DailyGoalStepView.swift",
+      "sha256": "029defc242d040700d70e14f8c0f25858dfc169fe4db0a208ee5aeb7808ef345"
+    },
+    {
+      "path": "Packages/OnboardingFeature/Sources/OnboardingFeature/InterestsStepView.swift",
+      "sha256": "8369cb23e103a19c5726317193b63ef6bfd8831c8a43f81b52c1d3e7e0b9b021"
+    },
+    {
+      "path": "Packages/OnboardingFeature/Sources/OnboardingFeature/NotificationsStepView.swift",
+      "sha256": "149daaed05f822aba21f35dc6a5401a2c253cab9b689e888e92088c6306dc8d4"
+    },
+    {
+      "path": "Packages/OnboardingFeature/Sources/OnboardingFeature/OnboardingFeature.swift",
+      "sha256": "749a41ed8538bfde3483708ed558555942e6a091b48d44848e32619bc0fe2cc7"
+    },
+    {
+      "path": "Packages/OnboardingFeature/Sources/OnboardingFeature/OnboardingFlowView.swift",
+      "sha256": "9ce860bb8d02f7b37e59531e8792dfa8f46673bef9fe08f6c4a2353af2df020a"
+    },
+    {
+      "path": "Packages/OnboardingFeature/Sources/OnboardingFeature/OnboardingModel.swift",
+      "sha256": "1fc06d9050c53b5526f31937a05b35332ee6280a8473b936f4d55b1b18f2b479"
+    },
+    {
+      "path": "Packages/OnboardingFeature/Sources/OnboardingFeature/OnboardingModels.swift",
+      "sha256": "2e8329736636ca3abc7eb02ad80d46a0b2a15f25f34067f1d99128c62f5027da"
+    },
+    {
+      "path": "Packages/OnboardingFeature/Sources/OnboardingFeature/OnboardingRepository.swift",
+      "sha256": "41a3d11b33ef61ba7ea425524e07dfddac2e49adad8b97c89914cb74f3f91c3d"
+    },
+    {
+      "path": "Packages/OnboardingFeature/Sources/OnboardingFeature/ReadingPrefsStepView.swift",
+      "sha256": "986865cac025001fbceb2b94dae09d295ae30705f50d976b70da96134a1bdd1f"
+    },
+    {
+      "path": "Packages/OnboardingFeature/Sources/OnboardingFeature/WelcomeStepView.swift",
+      "sha256": "3ae1f1e792433da2471c984b7e109da8ee89e8b84dc3ec69fb612f33af0ce079"
+    },
+    {
+      "path": "Packages/PaywallFeature/Sources/PaywallFeature/BillingEndpoints.swift",
+      "sha256": "9ddd67430830fa1c2bcc125dea890cc089c2df3c9780f391b2907106dac64cb2"
+    },
+    {
+      "path": "Packages/PaywallFeature/Sources/PaywallFeature/EntitlementReconciler.swift",
+      "sha256": "5f7fbec5c621937af78d20c82464fc935d858424eb8a587a437bb8b55bd051e2"
+    },
+    {
+      "path": "Packages/PaywallFeature/Sources/PaywallFeature/EntitlementRepository.swift",
+      "sha256": "01c1742b2789d227dc6e93d32a110066016ca08863998888f1114954cf011d0c"
+    },
+    {
+      "path": "Packages/PaywallFeature/Sources/PaywallFeature/EntitlementService.swift",
+      "sha256": "52ca9493f4d68ddcf5e477cf9f5d3bfb468b407e5958be41645e48cb81191aed"
+    },
+    {
+      "path": "Packages/PaywallFeature/Sources/PaywallFeature/EntitlementServicePreview.swift",
+      "sha256": "80988dd7ed9db6ce3bc7d770e46eed59daaed788eee094d5d2608ac1d9a64476"
+    },
+    {
+      "path": "Packages/PaywallFeature/Sources/PaywallFeature/LiveEntitlementRepository.swift",
+      "sha256": "d5f321658878901c4dfc217dd4c15328b2d4cfba7722a40761a87c290d1814a6"
+    },
+    {
+      "path": "Packages/PaywallFeature/Sources/PaywallFeature/LockReason.swift",
+      "sha256": "d90101666ed42880453d1e5addc687c00740423196dad9f7c8f15870868ef6f8"
+    },
+    {
+      "path": "Packages/PaywallFeature/Sources/PaywallFeature/PaywallContext.swift",
+      "sha256": "2aecc6e8591d9c1ffed2de0fef2bcfed773affdde7bb5018e4659aa156fd73cc"
+    },
+    {
+      "path": "Packages/PaywallFeature/Sources/PaywallFeature/PaywallFeature.swift",
+      "sha256": "6dfdc63141282f787c9388fca6a70cfc1241a45f13becc7ee030eff4451c2b50"
+    },
+    {
+      "path": "Packages/PaywallFeature/Sources/PaywallFeature/PaywallModel.swift",
+      "sha256": "1736fce11737e39a5b026dadfb220152ccd1e9c6fa0a059a65feab1595db4af2"
+    },
+    {
+      "path": "Packages/PaywallFeature/Sources/PaywallFeature/PaywallView+Previews.swift",
+      "sha256": "9555a9e9c11445e84496721286ada0a664d15ab66951a365183b6fad5b0c1cd6"
+    },
+    {
+      "path": "Packages/PaywallFeature/Sources/PaywallFeature/PaywallView.swift",
+      "sha256": "37b8a4c10ec39eee372a970cb6b9bd5e1883e2be768fd9e12a0da57f95d3ed5f"
+    },
+    {
+      "path": "Packages/PaywallFeature/Sources/PaywallFeature/ProSourceKind.swift",
+      "sha256": "e11c21c82f541a66f6676df9ccf7616a610fc28deba52458cef4448f4919f5e9"
+    },
+    {
+      "path": "Packages/PaywallFeature/Sources/PaywallFeature/StoreKitConfig.swift",
+      "sha256": "e1f39f223512ad06687fc7f187e62e530a0cc2a33aeabb87210464f8f2a161ce"
+    },
+    {
+      "path": "Packages/PaywallFeature/Sources/PaywallFeature/StoreKitService.swift",
+      "sha256": "b08aaa3b7f4786b455e80960a9d10e741d9a4a8004a42987bb8d23d1cc8b1adf"
+    },
+    {
+      "path": "Packages/PaywallFeature/Sources/PaywallFeature/SubscriptionManagementModel.swift",
+      "sha256": "34111f7e252cc17cd9b61afa415e92a33493eb8ec983579145c446461d2881ed"
+    },
+    {
+      "path": "Packages/PaywallFeature/Sources/PaywallFeature/SubscriptionManagementView+Previews.swift",
+      "sha256": "9546e6c85505f48a377c47667b6e84b9af0bee1c12da1d4acbd06b144f0d8b1a"
+    },
+    {
+      "path": "Packages/PaywallFeature/Sources/PaywallFeature/SubscriptionManagementView.swift",
+      "sha256": "548329843de406fddc203b649977de224c60e216ad57fa1a7434c25db708a406"
+    },
+    {
+      "path": "Packages/PaywallFeature/Sources/PaywallFeature/SubscriptionStatus.swift",
+      "sha256": "6a3935563932722c862421c4a0268df1688f56c61e8aa69a1f7c7686b23b346b"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/AppGroupContinueRecord.swift",
+      "sha256": "f20d9fbdaed62077b1fc674c917487f57ed5cb6f142f50dfaab01c7b3267406e"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/AppGroupSnapshotContainer.swift",
+      "sha256": "978f225e75f51bdc0bdc14de100a7f5b613a467d9eb98d907aeee9385441cd88"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/AppPreferences.swift",
+      "sha256": "63e053dcdbe5294dcf628b2c673b55c82f74653952d4c6bf8aa824d3381d978c"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/BookReadingPreferences.swift",
+      "sha256": "e2f67796f1a932da30744da7d461ceeea7c30674e97c561e4bab05c80e5e61af"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/DailyGoalStore.swift",
+      "sha256": "833085c4066891f83a6b1173a10ad71779d77f2dfab4ff29c47fd148736fc0d1"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/DownloadInfoProviding.swift",
+      "sha256": "43eb1fd45150ab742472baa1cabe373627d4f5a07b8eef63da895ae5c024710a"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/ExtensionOutbox.swift",
+      "sha256": "98091e51a78e7cb5b911681120092f68af9d1ba01ec94590f4dbd3c73f99b418"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/FileStore.swift",
+      "sha256": "82fa76e8fc3ba25deb019fc265687e2f80b59b5dfd9f3b0064b80edd98a51241"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/KeyValueStore.swift",
+      "sha256": "f0d08aa3776d5eab50d2481754e73b15d3168d1361c6b380ea098f71165ed4de"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/Keychain.swift",
+      "sha256": "4e94dfe55621c3d1e15259ed01ee19fe7bcf5d52447aace51b65b6a0378bba19"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/LocalAnnotation.swift",
+      "sha256": "90ba81edca69c26a68433a9b1a9dedbed963d02f0b59a4e47cb55c39046da693"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/Offline/CachedAskThread.swift",
+      "sha256": "c31c36f845258c3b892a5afd880fe8edc3adcdbdb1cf62c19a93239cc0122fd1"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/Offline/CachedBook.swift",
+      "sha256": "5a5d87b957992881695db08062036fedcfd9201ea78ca238847e4f67d4ff0167"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/Offline/CachedBookDownload.swift",
+      "sha256": "9f2662434a9a4620a2bb4d02574d53ec660fd2ec8af463db97da978ec150677e"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/Offline/CachedBookState.swift",
+      "sha256": "b0674510dbb43965424ca54841d96acd2d3d37da76dac0d6113894c1fc4f1ff0"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/Offline/CachedChapter.swift",
+      "sha256": "18e6ea2722fcfe67ea6544a57e5810b3472fbf526f92af72213342491e68b294"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/Offline/CachedDownloadedSegment.swift",
+      "sha256": "5aed35529b6bfdda6c95105734c741fcb6c448b06498fcafcde3cc634ae641a5"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/Offline/CachedHighlight.swift",
+      "sha256": "b80c05810bb358cfd497b15e06d996b0096436cd5061d07c37d3c14a39fcbe6e"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/Offline/CachedManifest.swift",
+      "sha256": "86d00aa197908439823587137ef269d429d1110137472f4983e7ed2948461a86"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/Offline/CachedNotebookEntry.swift",
+      "sha256": "6712cf6c8d93b8b49a88ab30c57cc767f196aa60858965d91e6564645b5b39d7"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/Offline/CachedProgress.swift",
+      "sha256": "9c3090201ddf133f855e119340dca835d7d6d851642c21bebda6fd8385694851"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/Offline/CachedQuizState.swift",
+      "sha256": "470f02ed7a79193201eebf02c4eb8807b71bcead0443e11f938505b5bac44da8"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/Offline/CachedReviewCard.swift",
+      "sha256": "2474cc4eb35fa50223547a0230114e5807b1c4e7d9dbf90f96594a29ae7b8ff6"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/Offline/PendingMutation.swift",
+      "sha256": "868730144d7eae5ba15c451bc6bce38757cd5676b9925b40cd5aaf767c588aea"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/Offline/UserDataWipe.swift",
+      "sha256": "d74fb7304ef15a5dcd911878579fd27f1be06a8f8d2857842af6fe70cd3b03c8"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/PendingCommitmentUpload.swift",
+      "sha256": "96cb7b5eefdd911bab3213ebab260c35a8baeae0462375567214c584b090424e"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/PendingExtensionItem.swift",
+      "sha256": "c9e3a4ebe760e94f2a71554b0fd3828e5ac50dea4c2349a94647eddf397f92f1"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/PendingReviewGrade.swift",
+      "sha256": "07acb2c8cd0dea6f2200ca63b406dbefc4c4c64663c6a75657f1854c88e75dc9"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/PendingScenarioUpload.swift",
+      "sha256": "88e7d836d92aa02b535d161f5e00035ae69f84ef81d0b66038c2ce1367f2f855"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/Persistence.swift",
+      "sha256": "102a43b0ca0c552cfa53497c064c4bb6e29abfb7acf0e9246d619bcaf6fb96c3"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/SharedAppStateSnapshot.swift",
+      "sha256": "9ee22efb1ab77c3d565318fd0fd3c0b84a3e4ecc815fc708ae62fe3322ad3bfd"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/SharedStateReader.swift",
+      "sha256": "75fef20f745382e151402849957a302a57f4b48fa1dffcb8907544465d31a8ad"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/SharedStateWriter.swift",
+      "sha256": "49f383a27a843e6f79bcbd94a73ba491fbc6c4a5dfb7f7f247e5bdc8639786ce"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/StoreRecoveryManager.swift",
+      "sha256": "32bdc8906fb1c3f20933fe4564227f17a3c597e16219b1f43d080ef0f6d86f5d"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/SwiftDataStack.swift",
+      "sha256": "40be5c12d8db0e58391551321a8b11f080341a7ddc61e5bc6bab47025d99826d"
+    },
+    {
+      "path": "Packages/Persistence/Sources/Persistence/TokenStore.swift",
+      "sha256": "894e7c44d734a59d029a0096b7a7e2ffe051735bc272c07a9f8b87b90a0d3f4e"
+    },
+    {
+      "path": "Packages/QuizFeature/Sources/QuizFeature/Endpoints+Quiz.swift",
+      "sha256": "a329b19168c0daa9f0f619c487a103e0e68f6c63de90cd3fcbccd96a03da0136"
+    },
+    {
+      "path": "Packages/QuizFeature/Sources/QuizFeature/Model/QuizModel.swift",
+      "sha256": "aaa0d37f8ba90e6e4d87ffe2f571f85b4a5eb053ce6af28eb02d2e58d2869792"
+    },
+    {
+      "path": "Packages/QuizFeature/Sources/QuizFeature/Model/QuizSubmissionError.swift",
+      "sha256": "5b07385fa16d78b90b68841a58f6de38fab7ee848f346bbc5cfe39bd3694223c"
+    },
+    {
+      "path": "Packages/QuizFeature/Sources/QuizFeature/QuizFeature.swift",
+      "sha256": "dd84894fedec38c22c67d79386bc4ecb420a7db51f3f10b87fc83afaae2144d0"
+    },
+    {
+      "path": "Packages/QuizFeature/Sources/QuizFeature/QuizTypes.swift",
+      "sha256": "253530485d6df11036aa48dafc2ea88eed110ba87cb862d07abd3b823fb4a70d"
+    },
+    {
+      "path": "Packages/QuizFeature/Sources/QuizFeature/Repository/FakeQuizRepository.swift",
+      "sha256": "f2926c8f3b0656d4251495f0776a36262ea3d8761d8bd8f0b03aa17a119e5689"
+    },
+    {
+      "path": "Packages/QuizFeature/Sources/QuizFeature/Repository/LiveQuizRepository.swift",
+      "sha256": "8ff6ac00d22b1835b112866500d8f4c9af128ed529b06addb0fa6f5276105158"
+    },
+    {
+      "path": "Packages/QuizFeature/Sources/QuizFeature/Repository/QuizRepository.swift",
+      "sha256": "09364ec073cb67950a052082609c9e8ab2c2d8645de3b5789c87801d8cd88cbe"
+    },
+    {
+      "path": "Packages/QuizFeature/Sources/QuizFeature/Views/Components/QuizChoiceButton.swift",
+      "sha256": "188d7ef86081491af26acb5b27c8f6c04bcad672cd9795aeca5c6c9aa9e3d30f"
+    },
+    {
+      "path": "Packages/QuizFeature/Sources/QuizFeature/Views/Components/QuizQuestionCard.swift",
+      "sha256": "9ec86368c2cc5996facb5da38d94732838cd534ca0f8f521b554276820dfee4e"
+    },
+    {
+      "path": "Packages/QuizFeature/Sources/QuizFeature/Views/PreviewData.swift",
+      "sha256": "5b554e32058d37b4bc242d7ed8b34fb4a47970d8800a4ea186efaa3704833715"
+    },
+    {
+      "path": "Packages/QuizFeature/Sources/QuizFeature/Views/QuizResultView.swift",
+      "sha256": "2313e1726f4ac5d31b99b130082c8412a1996e069607565da348fbf162d04dc5"
+    },
+    {
+      "path": "Packages/QuizFeature/Sources/QuizFeature/Views/QuizView.swift",
+      "sha256": "1874ab0511c936c122580f1bfe5393702a16831faa0c10ee76525c1548d07abc"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Annotation/AnnotationAnchor.swift",
+      "sha256": "1883a8289a63749b21547fa9700dd6e26dbc780fc9058e46fd81c9438f572b7d"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Annotation/AnnotationModel.swift",
+      "sha256": "baac95d92a7316ba89131c00ad689b78073b4e1820f1f878b974f268301e0b49"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Annotation/HighlightColor.swift",
+      "sha256": "cf1e078b34ff588bb047bacd50ecda773841a819438b604e19a7290991baa27c"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Appearance/ReaderBodyText.swift",
+      "sha256": "cd7c06bab06fc78ad99b2086d6210bfde51aa8ea041056a7903958a27d3cf1f7"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Appearance/ReadingAppearance.swift",
+      "sha256": "42355427205ddc5ec393431479cd827999fc8ad46c48c97cc77e39917b3195c9"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Appearance/ReadingAppearancePanel.swift",
+      "sha256": "7928aa1cb5c2e37b5cfa84153978f7fc55a00a0d0b4382f8715f9f6aa193213e"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Appearance/ReadingThemeGallery.swift",
+      "sha256": "a3629c9db8d1e1633284ebe7ccbc79c45c482bdfe55e427afa5ef083e71e87aa"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Appearance/ReadingThemeTokens.swift",
+      "sha256": "67bdb586c7e0f2aef8e445e0ad2a185a97b50092cbffb7aeec2ab6811ceb3029"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Controls/ReaderControlSurface+Previews.swift",
+      "sha256": "c66abef3e9b2eeaf0ef972913cf3df63f6cdf760d41c6340ecacda6c541b5de2"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Controls/ReaderControlSurface.swift",
+      "sha256": "a5dbd0a76c1e966b1d88db2e645993f64efbe45e8c36989e849a7646dc9e1746"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Controls/ReaderControlsModel.swift",
+      "sha256": "412e9a28ac862698da7a8d09bb5eefb8c550117228600f8e676dad23f8b186d4"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Controls/ReaderPaginatedView.swift",
+      "sha256": "c33e818e5994dba44ee7fc2f4ee8e3c4884a528481112b39495a5903f3505829"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Controls/ReaderToolbar.swift",
+      "sha256": "e350752b0c1683fc70d4de466967d42aad326f7d1e52d2bfa8ad634612592961"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Controls/ReadingMode.swift",
+      "sha256": "b5fce6e4b0978ce13b888adc64764eb687e7fdad48388ef5177fc15d283ab4e7"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Models/ReaderBlock.swift",
+      "sha256": "93071c4f26e9ca5bafbc2e7cfaad3f130281601daebea2f5f01d626fa935fb39"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Models/ReaderContentBuilder.swift",
+      "sha256": "09178cf0a2a74464221c82bdf125f9d8fd6cb3d2afd67d280148230245b0daf8"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Models/ReaderModel.swift",
+      "sha256": "20b9ba9d1816400ec1ce3ec7b26f56eabbb32ac7c1a7f73ddb6aa850486f82c4"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Navigation/ChapterNavModel.swift",
+      "sha256": "5600176b2834435c260b7f541f436b8552ea3198870c1308d3502a8eff27f5ea"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Navigation/ChapterScrubberView.swift",
+      "sha256": "d0d774bfaafa78890c47a0adbed704143870b56afe0dc5b7f96b8bb325af0987"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Navigation/TableOfContentsView.swift",
+      "sha256": "6e0c913dbd1c58f38a8a471aefe738489f7065f7be13f32b7e9aeea398e42f1a"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Preview/PreviewFixtures.swift",
+      "sha256": "d1ce771f58ef1d15be8dcc675932d54a8235df4207b0e2684d215e5e6edcc544"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/ReaderFeature.swift",
+      "sha256": "df4bfb8f5077323511f52c998f3ae2176f9cdd50e5be688703b1a19fef0972e5"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Rendering/AttributedString+Markdown.swift",
+      "sha256": "8f7aa5deab608ef4bc942feeb57663e0640ec85eb9f60f914c75f9533a3d3838"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Repository/AnnotationRepository.swift",
+      "sha256": "ea507cd0b9297707e364bf5f3187e6654e3cd32a0daa6e32237d45cc0ff716e4"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Repository/FakeAnnotationRepository.swift",
+      "sha256": "d5f92e6eb72cb5941aba828cfd82ab3fa64b019ea8067d17f28e8dd3727d2ff8"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Repository/FakeReaderRepository.swift",
+      "sha256": "87ab30cbb5a51cde0b30ab7f14015fec9b06eaa594bf5a6f866d4f976537f025"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Repository/LiveAnnotationRepository.swift",
+      "sha256": "7bbc124222486843d463f67173ceb84c75dd437f113438439e386581295073b3"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Repository/LiveReaderRepository.swift",
+      "sha256": "b40aaf0b82fead387e4ee912c743249f70c1ac89e332330caa5e9491cc5c7c26"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Repository/ReaderRepository.swift",
+      "sha256": "cb369a8c47bde1685db3068ae524352d5575b4cb6b824317293f36c3d7149cee"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Annotation/AnnotatedBlock.swift",
+      "sha256": "e2203f0331e8c028e78e62b25da03427b3a1a3dafeec5f807f85b61234730f13"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Annotation/AnnotationsListView.swift",
+      "sha256": "a0422ed23a6947494a7ef592d3069ce6f08452ff431a72b8a5365860fd3bb192"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Annotation/BlockAnnotationBadge.swift",
+      "sha256": "e5b32249bf50ef227fa4e0d0524fee2bca024e9d79c07b63eafe7de6bcdfe126"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Annotation/NoteEditorView.swift",
+      "sha256": "7e64029a9529b8902f84ad64ac887b77e605854b3ed25b7dd52d4bed8054d12b"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Blocks/BulletBlockView.swift",
+      "sha256": "80642722cc766d779762acb8612bc5e4e042ba4be05b642aec13d2a4354020a8"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Blocks/CalloutBlockView.swift",
+      "sha256": "bf65c4256236212a026e7d16df854ebedb6584e157fd8c20a2a94cc80c47073e"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Blocks/ExampleBlockView.swift",
+      "sha256": "b6746b5cb77b82638916aaf92484f41efe079a9c31c264bab2b00bed79f48351"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Blocks/HeadingBlockView.swift",
+      "sha256": "aeb8839cca2bf4bb787e77e044e182c16e2befdee7fbf992709df1caf5c1bffd"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Blocks/ImplementationPlanItemView.swift",
+      "sha256": "0ad628281771944bcf2e3b8a097ee455cdd010881865d7fcebfa99e9f30b2fe9"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Blocks/KeyTakeawayBlockView.swift",
+      "sha256": "a5a10afddd931d60992739d052ce5f88e697880a086907e93d8cbf77798d6121"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Blocks/ParagraphBlockView.swift",
+      "sha256": "a83dea1ed8d901a355bfdf0c6a6aa2dcac5c2a6613c08aa3e0156c8b5067e697"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Blocks/PullQuoteBlockView.swift",
+      "sha256": "e9582843e63a7105ad46fd1c2fca17bafa4bfc07121234919d6c393c29a603aa"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Blocks/RecapBlockView.swift",
+      "sha256": "4c8dea7382511262af3aec4db3bc5e8a53f5891f87bb954b57ea56b88d357d1e"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Blocks/V21/BehaviorLoopView.swift",
+      "sha256": "426cfd1d268f5f9b73966464fd32c9fe17bf850fe94904f0c003ed3758c49599"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Blocks/V21/CounterIntuitionView.swift",
+      "sha256": "897f51a3a85afc686f3ddd6bf6f55e2ed50249a51d439291052b411c802db15d"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Blocks/V21/FailureRecoveryView.swift",
+      "sha256": "05c10ff6401d76e7a43a44d49fc0db498be850a120de7f00a47ac45cf41df1fb"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Blocks/V21/HookBannerView.swift",
+      "sha256": "c68ea61a9857c134cf1adee445b8b986661a730d9a32f4f8218dfd985ee8124e"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Blocks/V21/TransferPromptView.swift",
+      "sha256": "2f2ab40ae63bcb3051e7a0649eed90f0019826e54f9e1ebb196bec5471f75c54"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Blocks/V21/TryThisNowView.swift",
+      "sha256": "6d8e6bb7fac655e382505b2f8ad3b11a601143012eb5937aa8e24ba91c343a99"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Blocks/V21/V21BlockPreviews.swift",
+      "sha256": "c8e7f921d9f17863c839fc9850c08b28825c9792030f370515ebebc4f99d87ce"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Blocks/V21/V21KeyTakeawayView.swift",
+      "sha256": "0f8b3b7635e8c2dc3b0f62cb3c8463a4ae28e84c7a676efe1c680f9a35080af9"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/ChapterCompletionBadgesView.swift",
+      "sha256": "5928c4c4577371e960629697fdd93014e8e2ecdf7400efb4879b190db2215921"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/ChapterEndCTA.swift",
+      "sha256": "64d6650de1a74d2602ecc3aa10fdd89e9c78cd30cacd9eab61bb9040e396927b"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/LoopCompletionOverlay.swift",
+      "sha256": "8c136f4fd0023c1a8b94f2324410bb6411e5b263eaf613f668a84391289c7117"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/ReaderBlockListView.swift",
+      "sha256": "47cd59144e0108a7fcf6a2baed86bfd8ba48b7820dd6e6f54973fd4d0c37f8f6"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/ReaderContentView+Previews.swift",
+      "sha256": "fe2919931428527aa321598f57901b62464e034d06661090b3ed9b866192118c"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/ReaderContentView.swift",
+      "sha256": "e9c4ea7a55a1f8daeeb07af2ce31c2ea87ec9906511cb541a759efba014fd2c2"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/ReaderView.swift",
+      "sha256": "7f456234f5af560902dc7f366d9be614fe69859d8771ceef17060a19e1afd710"
+    },
+    {
+      "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/ReadingProgressBar.swift",
+      "sha256": "1b10709c808eff8f49a4352168fdd08c28c946a340f7ce8eacf9ba4637462c0b"
+    },
+    {
+      "path": "Packages/SettingsFeature/Sources/SettingsFeature/DeleteAccountSheet.swift",
+      "sha256": "01ee55fae4f23172da49b1c389eb4d151c4550fedc7ab6ddc7ee43f5363fa540"
+    },
+    {
+      "path": "Packages/SettingsFeature/Sources/SettingsFeature/DownloadsSettingsView.swift",
+      "sha256": "3ccdbbdfe1f30caa008c411004376ce7de356b90fbe2266eb6720501ddaa9167"
+    },
+    {
+      "path": "Packages/SettingsFeature/Sources/SettingsFeature/SettingsFeature.swift",
+      "sha256": "d53de51067653b2adcc46969c72589b2c1446349748429767069179dd4ddae82"
+    },
+    {
+      "path": "Packages/SettingsFeature/Sources/SettingsFeature/SettingsModel.swift",
+      "sha256": "3a0dab8795685c67467b90b16105647d85f2babbbc471bfb04ae894acd579c2e"
+    },
+    {
+      "path": "Packages/SettingsFeature/Sources/SettingsFeature/SettingsRepository.swift",
+      "sha256": "18da791548db2944e43947869af9aa2da7bba0b0e036dcc13b189a4400cea11c"
+    },
+    {
+      "path": "Packages/SettingsFeature/Sources/SettingsFeature/SettingsView+Previews.swift",
+      "sha256": "8d2ba066cde0cb0a7326a03fe2a4dac18e6e13ee0def310a1ead08c36426bd0c"
+    },
+    {
+      "path": "Packages/SettingsFeature/Sources/SettingsFeature/SettingsView+PushSection.swift",
+      "sha256": "cb14db9eeac1aa64a5aed9f93cb28e2650c6436c4f787f7bd0938feaba79bf8a"
+    },
+    {
+      "path": "Packages/SettingsFeature/Sources/SettingsFeature/SettingsView+SyncSection.swift",
+      "sha256": "a7867339c3e56b291331808c6cb9d3cee2eacc7c0be259b8666322b516438074"
+    },
+    {
+      "path": "Packages/SettingsFeature/Sources/SettingsFeature/SettingsView.swift",
+      "sha256": "e9512c232f2fa99f5fe22a77a39908ff4ae9825d14656ddd3ac8255c4f1635b2"
+    },
+    {
+      "path": "Packages/SettingsFeature/Sources/SettingsFeature/WhatsNew/WhatsNewContentProvider.swift",
+      "sha256": "9cb536a4d3a544c4d007a51a350917813bd7812bb1ff4186284d2132e0ebecb9"
+    },
+    {
+      "path": "Packages/SettingsFeature/Sources/SettingsFeature/WhatsNew/WhatsNewModel.swift",
+      "sha256": "59292986ae8583600af86d5ea5a8772b02e6b20ada396ba13ce1ddf0f35783c3"
+    },
+    {
+      "path": "Packages/SettingsFeature/Sources/SettingsFeature/WhatsNew/WhatsNewModels.swift",
+      "sha256": "2df49422f46c13afa197569cdae7e5cf407ce8685e488826de1170fdbb9215a5"
+    },
+    {
+      "path": "Packages/SettingsFeature/Sources/SettingsFeature/WhatsNew/WhatsNewPolicy.swift",
+      "sha256": "a1ffa164b1bd796c61ae57f2f7adde4cf1085a946196be17eec8c560209bf2ef"
+    },
+    {
+      "path": "Packages/SettingsFeature/Sources/SettingsFeature/WhatsNew/WhatsNewStore.swift",
+      "sha256": "caf5350eb95128655f117f701ac1b60b9c618a022c4f96144701b52487a05baf"
+    },
+    {
+      "path": "Packages/SettingsFeature/Sources/SettingsFeature/WhatsNew/WhatsNewView+Previews.swift",
+      "sha256": "61692b2f30afc8643200d9884965b2f44ffafad9c2524075dc4dea8a48d18cc8"
+    },
+    {
+      "path": "Packages/SettingsFeature/Sources/SettingsFeature/WhatsNew/WhatsNewView.swift",
+      "sha256": "a5d6cdbbdf86871faaea22ed8e8bce382d807998644782616cb59e39054ff309"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Models/ChapterReflection.swift",
+      "sha256": "bc14580d3684f009f7b9bdc60e46363771994ff594ec2d120682610a81e2b533"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Models/CosmeticItem.swift",
+      "sha256": "bc87d591854705efea53918367f86930fc7ae1a7cb94f6dfd20af7cd0e54af0f"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Models/Gift.swift",
+      "sha256": "ef039e1265ec0f2de9c0b236f3931eba8b189d79ff13cb9aa2b724ce43a66a87"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Models/OwnProfile.swift",
+      "sha256": "824fb18ee576f228bf612a518b46960a74ed28f9e45de6d9a1445a240d066fac"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Models/PrivacySettings.swift",
+      "sha256": "c3f523211927ec944156b8968f471a88694d2f1a5fc430130ddda8ae0eb56e5a"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Models/ProfileTier.swift",
+      "sha256": "8a63761966a70bbf76d8472ede8b6bfd52263263354eb7ae69a4ebf9c7c0e68d"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Models/PublicProfile.swift",
+      "sha256": "5335321f69bdfcfe0c02f0738dd33d0903b18d1be6d154cb6e866a5d539e135c"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Models/ReadingPair.swift",
+      "sha256": "2719b1463ac43234c0747ec0943c69af61a84eadb9cdb31b09cc964db9ca7708"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Models/ReferralProfile.swift",
+      "sha256": "1839b7a8e011614dccc8d1f853af33e5d977a738741f74529f122f871424d7a6"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Models/SafetyModels.swift",
+      "sha256": "76cad06d0ee06b383e1072e0512414045a2c370f5754dcb23a95058f30479a2b"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Models/ShareCard.swift",
+      "sha256": "0b6d902f741f74c792e3d79f226df5cb5dd71f4a0a52b6de761cb69d4cfa98af"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Repository/FakeSocialRepository.swift",
+      "sha256": "d2ff7cf4ee5d3d94eb234d275e754d7ef98a6b63551da4d4e9cee9f2c8d9dc3b"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Repository/LiveSocialRepository.swift",
+      "sha256": "79bb8c35a65986e10cf7e6bd34426cbe7dd28e6cbc09518a6794d1ed5b92dfb3"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Repository/ReflectionOutbox.swift",
+      "sha256": "a3ec1eb97889ea1665698cb872bc95e1759d323e07e9dc9b2ddbb13472cb349c"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Repository/SocialRepository.swift",
+      "sha256": "89a8599f0e6238d8f294c809ba33f36fe5d22b548d96e5ca0619e6e1601c5a71"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Safety/NudgeRateLimiter.swift",
+      "sha256": "9bb3eb202b70c0bfb632e7f8ab70d4d324271d2e0ff5f1102dceafa71e1b2218"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/SocialFeature.swift",
+      "sha256": "621b31775b75738aa94f48984494ea44266ef8e60529fa5b26b2f80731d173d7"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/Components/AvatarView.swift",
+      "sha256": "003c5fcf160a3e867e3cad5422f31a7c8167697774547ace27cee343fd44a106"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/Components/BadgePreviewView.swift",
+      "sha256": "60abf22b574c5fb4d76628ca9fa83973de24bd34ee10c73926c153448b34026d"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/Components/ProfileStatItemView.swift",
+      "sha256": "0df3d767249798a9419c19849c1be7555f6495261f18515661283733b5fc1a5a"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/EditProfileView.swift",
+      "sha256": "d062378228f136be72749bab6ed29af82767e6c07483011ff788b9655e156e99"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/EnterReferralCodeView.swift",
+      "sha256": "9ee6e59e2d4d2608cd56a75c916e28db0199b926ea46e51c4520b8244f9eb1ba"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/GiftClaimView.swift",
+      "sha256": "9a57b9efbf043ddee5971423b159d432d8f59e330d426e258f24a33c9cb4ba26"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/GiftModel.swift",
+      "sha256": "3a6914a3ce59298d5cbd9eab7c2b9597c85d76e71c145bfd550c25984e9c13f0"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/GiftSendView.swift",
+      "sha256": "c3ba69a8ea8f562f40cdd8808342af69e298cc5ea5569e2b7fdd328f30b88073"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/Pairs/AcceptInviteView.swift",
+      "sha256": "271b39b9bed30e05d85efe99df2a6f4d058e2c7f1f0e2e0ee640410291af7ccf"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/Pairs/InvitePairView.swift",
+      "sha256": "f88f75795c9bf0ee7db1655474271bb144592892e2522f9db08833d2706d0367"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/Pairs/PairDetailView.swift",
+      "sha256": "095e8c42a1decaa6a1eb73663a2dd17b84cb17f8cc98eb274619703f8be09d63"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/Pairs/PairsModel.swift",
+      "sha256": "c3792334843759382612d2515c4a48958691da7b8656f84c7b086eb53d8d0c17"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/Pairs/PairsView.swift",
+      "sha256": "9e73a30845c3d2ed22c58c8f00a7d9670ae4323bf1fb9d788de413c1e566b873"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/PreviewData.swift",
+      "sha256": "fad9469a2dc045cff170f57d64dc9ecc7a25546c5ce1ee7a8f2befd4e0af7c66"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/PrivacySettingsModel.swift",
+      "sha256": "4d5324aa4b39411cee969ec881b1316615d6ae1d0f59a2c4b3bb26b73789f682"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/PrivacySettingsView.swift",
+      "sha256": "d92cb8b3f74d14ce4b6050f3c2924c3b246d1aef68bd38022c8ca9b35871db42"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/ProfileModel.swift",
+      "sha256": "50bf4c8a63546887f126a32c2ac36b4a36540556bd6c4f07bc8131d741449e74"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/ProfileView.swift",
+      "sha256": "f4a8c9e6b1e09c0b556e3ee3c5813e4dd836bad50668092ffaa67fa738039f1a"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/PublicProfileModel.swift",
+      "sha256": "25e9a4f71b19c7a4e5024750ee746bdbdafa378225d38cfcbecc1059bc35ceb9"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/PublicProfileView.swift",
+      "sha256": "b48208825717c67d84b430f12d876270f9595335bacc04367af22eeef13d3ab4"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/ReferralModel.swift",
+      "sha256": "8efa30c343ca65bdac31b68bd5b0cdf4975e3678d57bc0efca3bfe986f985474"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/ReferralView.swift",
+      "sha256": "43ddb562ea3fd205fbc857f8086d96cdb8d5820624a28aa4de8ab8cbefcb6adb"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/Reflections/ReflectionRowView.swift",
+      "sha256": "fdda37190d4132c8a9780f45c24fd9dc48b5bcc0037868135d82272b685766fe"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/Reflections/ReflectionsModel.swift",
+      "sha256": "59a558e090ade2cb6b516a9c11f2b9b174f92cf0c13016959bcdde427fdc1ccd"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/Reflections/ReflectionsView.swift",
+      "sha256": "b28ce0deaee8c4a6bfc66f3df19e3affd263737f23be133fcb72bb5800dfd0f7"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/Safety/BlockConfirmationView.swift",
+      "sha256": "fd9748c0c370165decef76fe2967d4e5f0381eac5881db95c1a4659564256122"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/Safety/PairingConsentView.swift",
+      "sha256": "7cea5be813c0d9fe648aa92e0cb1f9af78bd2945b302e6906aadf5c9d1f0d760"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/Safety/ReportView.swift",
+      "sha256": "05c78fc3844a7e50f162e37d31db29c0bc1a10bd98f8b6e6a82eb09d0abb283a"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/Safety/SafetyMenuButton.swift",
+      "sha256": "84b8115d40d00ad10df5901a159816f37c6ff4baf0a93ace2473cb4ef7dee234"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/ShareCards/ShareCardModel.swift",
+      "sha256": "827dad049686117a438c0b7ce0bb45e03f50999db32db04b9200ffa951f73f15"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/ShareCards/ShareCardPreviews.swift",
+      "sha256": "c9aa73fd2a81c94753f680f7e43703349fd8f4f08b3d0376448ced652371204c"
+    },
+    {
+      "path": "Packages/SocialFeature/Sources/SocialFeature/Views/ShareCards/ShareCardView.swift",
+      "sha256": "53d82563df080a824d14fd189a3a744c8e69e9a432aabd4f3e0c839920a5da6a"
+    },
+    {
+      "path": "Packages/SyncEngine/Sources/SyncEngine/SyncDispatch.swift",
+      "sha256": "fb302095979c03086bfd80e4b153c746eefadbfa570d1557168961c1da0834e9"
+    },
+    {
+      "path": "Packages/SyncEngine/Sources/SyncEngine/SyncEngine.swift",
+      "sha256": "37f9c1f69bab4601a9d349d40e1a12b3cd30ef4d91ef23a34b5a07cffb855716"
+    },
+    {
+      "path": "Packages/SyncEngine/Sources/SyncEngine/SyncPayloads.swift",
+      "sha256": "5ed74080ac2fd561962e9b7969f303dc56b6a2a333d76cff5aac514e4f7dfeba"
+    },
+    {
+      "path": "Packages/SyncEngine/Sources/SyncEngine/SyncStatus.swift",
+      "sha256": "b2e0b63e567e7cdf3b62f797acd20b17dc2ee7e3a3ab8b78ee63c6c333f18095"
+    },
+    {
+      "path": "Packages/SyncEngine/Sources/SyncEngine/SyncStatusIndicatorView.swift",
+      "sha256": "ba114f1342d5816ab870e9f0f06a1d327c207faefdcb46c6239bcfd5ea1ceeaf"
+    },
+    {
+      "path": "Packages/SyncEngine/Sources/SyncEngine/SyncStore.swift",
+      "sha256": "3256b2b8517fb9c14dcfff048143ad00c433a1c46ba3a4789a8e767acef81355"
+    },
+    {
+      "path": "contracts/native-ios/v1/ios-native-contract-inventory-source.json",
+      "sha256": "0c3c7599345b5c5ae71830f071ab600526ca7ea0425288df6d17d08c3f4216ea"
+    },
+    {
+      "path": "scripts/contracts/generate_ios_native_inventory.py",
+      "sha256": "5cc53394683d272ed1df38e842dff65933c2a504ae8a17f8b57cdc19d2c6c8d7"
+    }
+  ],
+  "records": [
+    {
+      "operationId": "account-deactivate.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/account/deactivate",
+      "matrixRowId": "account-deactivation",
+      "operationVariantId": "account-deactivate.post:deactivateaccount",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "deactivateAccount",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Account.swift",
+      "stableVariantSuffix": "deactivateaccount",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/account/deactivate\""
+    },
+    {
+      "operationId": "account-delete.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/account/delete",
+      "matrixRowId": "account-deletion",
+      "operationVariantId": "account-delete.post:deleteaccount",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "deleteAccount",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Account.swift",
+      "stableVariantSuffix": "deleteaccount",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/account/delete\""
+    },
+    {
+      "operationId": "analytics-beacon.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/analytics/beacon",
+      "matrixRowId": null,
+      "operationVariantId": "analytics-beacon.post:defaultanalyticsclient-path-beacon",
+      "producerKind": "analytics_path",
+      "producerSymbol": "DefaultAnalyticsClient.Path.beacon",
+      "producerSourcePath": "Packages/CoreKit/Sources/CoreKit/Analytics/AnalyticsClient.swift",
+      "stableVariantSuffix": "defaultanalyticsclient-path-beacon",
+      "sourceMethodExpression": "request.httpMethod = \"POST\"",
+      "sourcePathExpression": "\"/book/me/analytics/beacon\""
+    },
+    {
+      "operationId": "analytics-track.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/analytics/track",
+      "matrixRowId": null,
+      "operationVariantId": "analytics-track.post:defaultanalyticsclient-path-track",
+      "producerKind": "analytics_path",
+      "producerSymbol": "DefaultAnalyticsClient.Path.track",
+      "producerSourcePath": "Packages/CoreKit/Sources/CoreKit/Analytics/AnalyticsClient.swift",
+      "stableVariantSuffix": "defaultanalyticsclient-path-track",
+      "sourceMethodExpression": "request.httpMethod = \"POST\"",
+      "sourcePathExpression": "\"/book/me/analytics/track\""
+    },
+    {
+      "operationId": "apple-verify.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/billing/apple/verify",
+      "matrixRowId": "apple-purchase-verification",
+      "operationVariantId": "apple-verify.post:liveentitlementrepository-verifyappletransaction",
+      "producerKind": "direct_endpoint",
+      "producerSymbol": "LiveEntitlementRepository.verifyAppleTransaction",
+      "producerSourcePath": "Packages/PaywallFeature/Sources/PaywallFeature/LiveEntitlementRepository.swift",
+      "stableVariantSuffix": "liveentitlementrepository-verifyappletransaction",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/billing/apple/verify\""
+    },
+    {
+      "operationId": "apple-verify.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/billing/apple/verify",
+      "matrixRowId": "apple-purchase-verification",
+      "operationVariantId": "apple-verify.post:verifyapplepurchase",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "verifyApplePurchase",
+      "producerSourcePath": "Packages/PaywallFeature/Sources/PaywallFeature/BillingEndpoints.swift",
+      "stableVariantSuffix": "verifyapplepurchase",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/billing/apple/verify\""
+    },
+    {
+      "operationId": "ask-book.post",
+      "method": "POST",
+      "routeTemplate": "/book/books/{bookId}/ask",
+      "matrixRowId": "ask-the-book",
+      "operationVariantId": "ask-book.post:askbook",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "askBook",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "askbook",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/books/\\(bookId)/ask\""
+    },
+    {
+      "operationId": "audio-plan.get",
+      "method": "GET",
+      "routeTemplate": "/book/books/{bookId}/chapters/{chapterNumber}/audio",
+      "matrixRowId": "audio-narration-plan",
+      "operationVariantId": "audio-plan.get:getaudioplan",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getAudioPlan",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getaudioplan",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/books/\\(bookId)/chapters/\\(chapterNumber)/audio\""
+    },
+    {
+      "operationId": "audio-plan.get",
+      "method": "GET",
+      "routeTemplate": "/book/books/{bookId}/chapters/{chapterNumber}/audio",
+      "matrixRowId": "audio-narration-plan",
+      "operationVariantId": "audio-plan.get:getaudioplanfreshurls",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getAudioPlanFreshURLs",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Downloads.swift",
+      "stableVariantSuffix": "getaudioplanfreshurls",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/books/\\(bookId)/chapters/\\(chapterNumber)/audio\""
+    },
+    {
+      "operationId": "badges.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/badges",
+      "matrixRowId": null,
+      "operationVariantId": "badges.get:getbadges",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getBadges",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getbadges",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/badges\""
+    },
+    {
+      "operationId": "block-user.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/blocks",
+      "matrixRowId": "profile-social",
+      "operationVariantId": "block-user.post:blockuser",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "blockUser",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Safety.swift",
+      "stableVariantSuffix": "blockuser",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/blocks\""
+    },
+    {
+      "operationId": "blocked-user.delete",
+      "method": "DELETE",
+      "routeTemplate": "/book/me/blocks/{userId}",
+      "matrixRowId": "profile-social",
+      "operationVariantId": "blocked-user.delete:unblockuser",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "unblockUser",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Safety.swift",
+      "stableVariantSuffix": "unblockuser",
+      "sourceMethodExpression": "method: .delete",
+      "sourcePathExpression": "\"/book/me/blocks/\\(userId)\""
+    },
+    {
+      "operationId": "blocked-users.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/blocks",
+      "matrixRowId": "profile-social",
+      "operationVariantId": "blocked-users.get:getblockedusers",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getBlockedUsers",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Safety.swift",
+      "stableVariantSuffix": "getblockedusers",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/blocks\""
+    },
+    {
+      "operationId": "book-detail.get",
+      "method": "GET",
+      "routeTemplate": "/book/books/{bookId}",
+      "matrixRowId": "book-detail-manifest",
+      "operationVariantId": "book-detail.get:getbook",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getBook",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getbook",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/books/\\(id)\""
+    },
+    {
+      "operationId": "book-detail.get",
+      "method": "GET",
+      "routeTemplate": "/book/books/{bookId}",
+      "matrixRowId": "book-detail-manifest",
+      "operationVariantId": "book-detail.get:getmanifestfordownload",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getManifestForDownload",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Downloads.swift",
+      "stableVariantSuffix": "getmanifestfordownload",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/books/\\(bookId)\""
+    },
+    {
+      "operationId": "book-state.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/books/{bookId}/state",
+      "matrixRowId": "book-state-cursor-preferences",
+      "operationVariantId": "book-state.get:getbookstate",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getBookState",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getbookstate",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/books/\\(bookId)/state\""
+    },
+    {
+      "operationId": "book-state.patch",
+      "method": "PATCH",
+      "routeTemplate": "/book/me/books/{bookId}/state",
+      "matrixRowId": "book-state-cursor-preferences",
+      "operationVariantId": "book-state.patch:patchbookcursor",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "patchBookCursor",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "patchbookcursor",
+      "sourceMethodExpression": "method: .patch",
+      "sourcePathExpression": "\"/book/me/books/\\(bookId)/state\""
+    },
+    {
+      "operationId": "book-state.patch",
+      "method": "PATCH",
+      "routeTemplate": "/book/me/books/{bookId}/state",
+      "matrixRowId": "book-state-cursor-preferences",
+      "operationVariantId": "book-state.patch:patchbookpreferredvariant",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "patchBookPreferredVariant",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "patchbookpreferredvariant",
+      "sourceMethodExpression": "method: .patch",
+      "sourcePathExpression": "\"/book/me/books/\\(bookId)/state\""
+    },
+    {
+      "operationId": "catalog.get",
+      "method": "GET",
+      "routeTemplate": "/book/books",
+      "matrixRowId": "catalog",
+      "operationVariantId": "catalog.get:getbooks",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getBooks",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getbooks",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/books\""
+    },
+    {
+      "operationId": "chapter.get",
+      "method": "GET",
+      "routeTemplate": "/book/books/{bookId}/chapters/{chapterNumber}",
+      "matrixRowId": "chapter-content",
+      "operationVariantId": "chapter.get:getchapter",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getChapter",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getchapter",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/books/\\(bookId)/chapters/\\(n)\""
+    },
+    {
+      "operationId": "chapter.get",
+      "method": "GET",
+      "routeTemplate": "/book/books/{bookId}/chapters/{chapterNumber}",
+      "matrixRowId": "chapter-content",
+      "operationVariantId": "chapter.get:getchapterfordownload",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getChapterForDownload",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Downloads.swift",
+      "stableVariantSuffix": "getchapterfordownload",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/books/\\(bookId)/chapters/\\(chapterNumber)\""
+    },
+    {
+      "operationId": "commitment.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/commitments/{commitmentId}",
+      "matrixRowId": "commitments",
+      "operationVariantId": "commitment.get:getcommitment",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getCommitment",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getcommitment",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/commitments/\\(id)\""
+    },
+    {
+      "operationId": "commitment.patch",
+      "method": "PATCH",
+      "routeTemplate": "/book/me/commitments/{commitmentId}",
+      "matrixRowId": "commitments",
+      "operationVariantId": "commitment.patch:updatecommitment",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "updateCommitment",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "updatecommitment",
+      "sourceMethodExpression": "method: .patch",
+      "sourcePathExpression": "\"/book/me/commitments/\\(id)\""
+    },
+    {
+      "operationId": "commitment.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/commitments",
+      "matrixRowId": "commitments",
+      "operationVariantId": "commitment.post:createcommitment",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "createCommitment",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "createcommitment",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/commitments\""
+    },
+    {
+      "operationId": "commitments.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/commitments",
+      "matrixRowId": "commitments",
+      "operationVariantId": "commitments.get:getcommitments",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getCommitments",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getcommitments",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/commitments\""
+    },
+    {
+      "operationId": "concept-graph.get",
+      "method": "GET",
+      "routeTemplate": "/book/books/{bookId}/concept-graph",
+      "matrixRowId": null,
+      "operationVariantId": "concept-graph.get:getconceptgraph",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getConceptGraph",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getconceptgraph",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/books/\\(bookId)/concept-graph\""
+    },
+    {
+      "operationId": "dashboard.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/dashboard",
+      "matrixRowId": null,
+      "operationVariantId": "dashboard.get:getdashboard",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getDashboard",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getdashboard",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/dashboard\""
+    },
+    {
+      "operationId": "depth-recommendation.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/books/{bookId}/depth-recommendation",
+      "matrixRowId": null,
+      "operationVariantId": "depth-recommendation.get:getdepthrecommendation",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getDepthRecommendation",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getdepthrecommendation",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/books/\\(bookId)/depth-recommendation\""
+    },
+    {
+      "operationId": "device-register.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/devices/register",
+      "matrixRowId": "apns-device-registration",
+      "operationVariantId": "device-register.post:registerdevice",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "registerDevice",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Devices.swift",
+      "stableVariantSuffix": "registerdevice",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/devices/register\""
+    },
+    {
+      "operationId": "device-unregister.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/devices/unregister",
+      "matrixRowId": "apns-device-registration",
+      "operationVariantId": "device-unregister.post:unregisterdevice",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "unregisterDevice",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Devices.swift",
+      "stableVariantSuffix": "unregisterdevice",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/devices/unregister\""
+    },
+    {
+      "operationId": "entitlements.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/entitlements",
+      "matrixRowId": "entitlements-paywall",
+      "operationVariantId": "entitlements.get:getentitlements",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getEntitlements",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getentitlements",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/entitlements\""
+    },
+    {
+      "operationId": "event-join.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/events/{eventId}/join",
+      "matrixRowId": null,
+      "operationVariantId": "event-join.post:joinevent",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "joinEvent",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "joinevent",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/events/\\(eventId)/join\""
+    },
+    {
+      "operationId": "event-progress.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/events/{eventId}/progress",
+      "matrixRowId": null,
+      "operationVariantId": "event-progress.get:geteventprogress",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getEventProgress",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "geteventprogress",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/events/\\(eventId)/progress\""
+    },
+    {
+      "operationId": "event-progress.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/events/{eventId}/progress",
+      "matrixRowId": null,
+      "operationVariantId": "event-progress.post:posteventprogress",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "postEventProgress",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "posteventprogress",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/events/\\(eventId)/progress\""
+    },
+    {
+      "operationId": "export.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/export",
+      "matrixRowId": "data-export",
+      "operationVariantId": "export.get:getexport",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getExport",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Account.swift",
+      "stableVariantSuffix": "getexport",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/export\""
+    },
+    {
+      "operationId": "flow-points-redeem.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/flow-points/redeem",
+      "matrixRowId": null,
+      "operationVariantId": "flow-points-redeem.post:redeemflowpoints",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "redeemFlowPoints",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "redeemflowpoints",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/flow-points/redeem\""
+    },
+    {
+      "operationId": "flow-points.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/flow-points",
+      "matrixRowId": null,
+      "operationVariantId": "flow-points.get:getflowpoints",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getFlowPoints",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getflowpoints",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/flow-points\""
+    },
+    {
+      "operationId": "gift-claim.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/gifts/{code}/claim",
+      "matrixRowId": "gifts-referrals",
+      "operationVariantId": "gift-claim.post:claimgift",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "claimGift",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "claimgift",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/gifts/\\(code)/claim\""
+    },
+    {
+      "operationId": "gift-create.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/gifts",
+      "matrixRowId": "gifts-referrals",
+      "operationVariantId": "gift-create.post:creategift",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "createGift",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "creategift",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/gifts\""
+    },
+    {
+      "operationId": "gift-preview.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/gifts/{code}",
+      "matrixRowId": "gifts-referrals",
+      "operationVariantId": "gift-preview.get:getgift",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getGift",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getgift",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/gifts/\\(code)\""
+    },
+    {
+      "operationId": "journey-start.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/journeys/{journeyId}/start",
+      "matrixRowId": null,
+      "operationVariantId": "journey-start.post:startjourney",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "startJourney",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "startjourney",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/journeys/\\(id)/start\""
+    },
+    {
+      "operationId": "journeys.get",
+      "method": "GET",
+      "routeTemplate": "/book/books/journeys",
+      "matrixRowId": null,
+      "operationVariantId": "journeys.get:getjourneys",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getJourneys",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getjourneys",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/books/journeys\""
+    },
+    {
+      "operationId": "mobile-config.get",
+      "method": "GET",
+      "routeTemplate": "/book/config/ios",
+      "matrixRowId": "mobile-config",
+      "operationVariantId": "mobile-config.get:getiosconfig",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getIOSConfig",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Config.swift",
+      "stableVariantSuffix": "getiosconfig",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/config/ios\""
+    },
+    {
+      "operationId": "moderation-report.post",
+      "method": "POST",
+      "routeTemplate": "/book/moderation/reports",
+      "matrixRowId": "profile-social",
+      "operationVariantId": "moderation-report.post:submitreport",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "submitReport",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Safety.swift",
+      "stableVariantSuffix": "submitreport",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/moderation/reports\""
+    },
+    {
+      "operationId": "notebook.delete",
+      "method": "DELETE",
+      "routeTemplate": "/book/me/notebook/{entryId}",
+      "matrixRowId": "notebook",
+      "operationVariantId": "notebook.delete:deletenotebookentry",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "deleteNotebookEntry",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "deletenotebookentry",
+      "sourceMethodExpression": "method: .delete",
+      "sourcePathExpression": "\"/book/me/notebook/\\(entryId)\""
+    },
+    {
+      "operationId": "notebook.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/notebook",
+      "matrixRowId": "notebook",
+      "operationVariantId": "notebook.get:getnotebook",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getNotebook",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getnotebook",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/notebook\""
+    },
+    {
+      "operationId": "notebook.patch",
+      "method": "PATCH",
+      "routeTemplate": "/book/me/notebook/{entryId}",
+      "matrixRowId": "notebook",
+      "operationVariantId": "notebook.patch:patchnotebookentry",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "patchNotebookEntry",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "patchnotebookentry",
+      "sourceMethodExpression": "method: .patch",
+      "sourcePathExpression": "\"/book/me/notebook/\\(entryId)\""
+    },
+    {
+      "operationId": "notebook.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/notebook",
+      "matrixRowId": "notebook",
+      "operationVariantId": "notebook.post:postnotebookentry",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "postNotebookEntry",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "postnotebookentry",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/notebook\""
+    },
+    {
+      "operationId": "notifications-read-all.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/notifications/read-all",
+      "matrixRowId": "notification-inbox",
+      "operationVariantId": "notifications-read-all.post:postmarkallnotificationsread",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "postMarkAllNotificationsRead",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Notifications.swift",
+      "stableVariantSuffix": "postmarkallnotificationsread",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/notifications/read-all\""
+    },
+    {
+      "operationId": "notifications.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/notifications",
+      "matrixRowId": "notification-inbox",
+      "operationVariantId": "notifications.get:getnotifications",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getNotifications",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Notifications.swift",
+      "stableVariantSuffix": "getnotifications",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/notifications\""
+    },
+    {
+      "operationId": "onboarding-complete.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/onboarding/complete",
+      "matrixRowId": "onboarding",
+      "operationVariantId": "onboarding-complete.post:postonboardingcomplete",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "postOnboardingComplete",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Onboarding.swift",
+      "stableVariantSuffix": "postonboardingcomplete",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/onboarding/complete\""
+    },
+    {
+      "operationId": "onboarding-progress.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/onboarding/progress",
+      "matrixRowId": "onboarding",
+      "operationVariantId": "onboarding-progress.get:getonboardingprogress",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getOnboardingProgress",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Onboarding.swift",
+      "stableVariantSuffix": "getonboardingprogress",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/onboarding/progress\""
+    },
+    {
+      "operationId": "onboarding-progress.post",
+      "method": "PATCH",
+      "routeTemplate": "/book/me/onboarding/progress",
+      "matrixRowId": "onboarding",
+      "operationVariantId": "onboarding-progress.post:postonboardingprogress",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "postOnboardingProgress",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Onboarding.swift",
+      "stableVariantSuffix": "postonboardingprogress",
+      "sourceMethodExpression": "method: .patch",
+      "sourcePathExpression": "\"/book/me/onboarding/progress\""
+    },
+    {
+      "operationId": "own-profile.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/profile",
+      "matrixRowId": "profile-social",
+      "operationVariantId": "own-profile.get:getmyprofile",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getMyProfile",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getmyprofile",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/profile\""
+    },
+    {
+      "operationId": "pair-accept.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/pairs/accept/{code}",
+      "matrixRowId": "reading-pairs",
+      "operationVariantId": "pair-accept.post:acceptpairinvite",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "acceptPairInvite",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "acceptpairinvite",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/pairs/accept/\\(code)\""
+    },
+    {
+      "operationId": "pair-invite.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/pairs/invite",
+      "matrixRowId": "reading-pairs",
+      "operationVariantId": "pair-invite.post:createpairinvite",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "createPairInvite",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "createpairinvite",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/pairs/invite\""
+    },
+    {
+      "operationId": "pair-nudge.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/pairs/{partnerId}/nudge",
+      "matrixRowId": "reading-pairs",
+      "operationVariantId": "pair-nudge.post:nudgepartner",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "nudgePartner",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "nudgepartner",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/pairs/\\(partnerId)/nudge\""
+    },
+    {
+      "operationId": "pair.delete",
+      "method": "DELETE",
+      "routeTemplate": "/book/me/pairs/{partnerId}",
+      "matrixRowId": "reading-pairs",
+      "operationVariantId": "pair.delete:deletepair",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "deletePair",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "deletepair",
+      "sourceMethodExpression": "method: .delete",
+      "sourcePathExpression": "\"/book/me/pairs/\\(partnerId)\""
+    },
+    {
+      "operationId": "pair.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/pairs/{partnerId}",
+      "matrixRowId": "reading-pairs",
+      "operationVariantId": "pair.get:getpair",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getPair",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getpair",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/pairs/\\(partnerId)\""
+    },
+    {
+      "operationId": "pairs.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/pairs",
+      "matrixRowId": "reading-pairs",
+      "operationVariantId": "pairs.get:getpairs",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getPairs",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getpairs",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/pairs\""
+    },
+    {
+      "operationId": "progress.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/progress",
+      "matrixRowId": "progress-overview",
+      "operationVariantId": "progress.get:getprogressoverview",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getProgressOverview",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getprogressoverview",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/progress\""
+    },
+    {
+      "operationId": "public-profile.get",
+      "method": "GET",
+      "routeTemplate": "/book/users/{userId}/profile",
+      "matrixRowId": "profile-social",
+      "operationVariantId": "public-profile.get:getpublicprofile",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getPublicProfile",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getpublicprofile",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/users/\\(userId)/profile\""
+    },
+    {
+      "operationId": "quiz-check.post",
+      "method": "POST",
+      "routeTemplate": "/book/books/{bookId}/chapters/{chapterNumber}/quiz/check",
+      "matrixRowId": "quiz-load-check-events",
+      "operationVariantId": "quiz-check.post:checkquizanswer",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "checkQuizAnswer",
+      "producerSourcePath": "Packages/QuizFeature/Sources/QuizFeature/Endpoints+Quiz.swift",
+      "stableVariantSuffix": "checkquizanswer",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/books/\\(bookId)/chapters/\\(n)/quiz/check\""
+    },
+    {
+      "operationId": "quiz-event.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/quiz/{bookId}/{chapterNumber}/events",
+      "matrixRowId": "quiz-load-check-events",
+      "operationVariantId": "quiz-event.post:postquizevent",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "postQuizEvent",
+      "producerSourcePath": "Packages/QuizFeature/Sources/QuizFeature/Endpoints+Quiz.swift",
+      "stableVariantSuffix": "postquizevent",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/quiz/\\(bookId)/\\(n)/events\""
+    },
+    {
+      "operationId": "quiz-submit.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/quiz/{bookId}/{chapterNumber}/submit",
+      "matrixRowId": "quiz-submit",
+      "operationVariantId": "quiz-submit.post:submitquiz-online",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "submitQuiz.online",
+      "producerSourcePath": "Packages/QuizFeature/Sources/QuizFeature/Endpoints+Quiz.swift",
+      "stableVariantSuffix": "submitquiz-online",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/quiz/\\(bookId)/\\(n)/submit\""
+    },
+    {
+      "operationId": "quiz-submit.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/quiz/{bookId}/{chapterNumber}/submit",
+      "matrixRowId": "quiz-submit",
+      "operationVariantId": "quiz-submit.post:submitquiz-sync",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "submitQuiz.sync",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Sync.swift",
+      "stableVariantSuffix": "submitquiz-sync",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/quiz/\\(encodedBook)/\\(chapterNumber)/submit\""
+    },
+    {
+      "operationId": "quiz.get",
+      "method": "GET",
+      "routeTemplate": "/book/books/{bookId}/chapters/{chapterNumber}/quiz",
+      "matrixRowId": "quiz-load-check-events",
+      "operationVariantId": "quiz.get:getquiz",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getQuiz",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getquiz",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/books/\\(bookId)/chapters/\\(n)/quiz\""
+    },
+    {
+      "operationId": "quiz.get",
+      "method": "GET",
+      "routeTemplate": "/book/books/{bookId}/chapters/{chapterNumber}/quiz",
+      "matrixRowId": "quiz-load-check-events",
+      "operationVariantId": "quiz.get:getquizfordownload",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getQuizForDownload",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Downloads.swift",
+      "stableVariantSuffix": "getquizfordownload",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/books/\\(bookId)/chapters/\\(chapterNumber)/quiz\""
+    },
+    {
+      "operationId": "reading-session.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/reading-sessions",
+      "matrixRowId": "reading-sessions",
+      "operationVariantId": "reading-session.post:postaudiosessionevent",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "postAudioSessionEvent",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "postaudiosessionevent",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/reading-sessions\""
+    },
+    {
+      "operationId": "reading-session.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/reading-sessions",
+      "matrixRowId": "reading-sessions",
+      "operationVariantId": "reading-session.post:postreadingsessionevent",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "postReadingSessionEvent",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "postreadingsessionevent",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/reading-sessions\""
+    },
+    {
+      "operationId": "referral-apply.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/referrals/apply",
+      "matrixRowId": "gifts-referrals",
+      "operationVariantId": "referral-apply.post:applyreferralcode",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "applyReferralCode",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Referrals.swift",
+      "stableVariantSuffix": "applyreferralcode",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/referrals/apply\""
+    },
+    {
+      "operationId": "referral-profile.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/referrals",
+      "matrixRowId": "gifts-referrals",
+      "operationVariantId": "referral-profile.get:getreferralprofile",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getReferralProfile",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Referrals.swift",
+      "stableVariantSuffix": "getreferralprofile",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/referrals\""
+    },
+    {
+      "operationId": "reflection-feedback.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/reflections/{bookId}/{chapterNumber}/feedback",
+      "matrixRowId": null,
+      "operationVariantId": "reflection-feedback.post:requestreflectionfeedback",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "requestReflectionFeedback",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Reflections.swift",
+      "stableVariantSuffix": "requestreflectionfeedback",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/reflections/\\(bookId)/\\(chapterN)/feedback\""
+    },
+    {
+      "operationId": "reflection.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/reflections/{bookId}/{chapterNumber}",
+      "matrixRowId": null,
+      "operationVariantId": "reflection.post:postreflection",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "postReflection",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Reflections.swift",
+      "stableVariantSuffix": "postreflection",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/reflections/\\(bookId)/\\(chapterN)\""
+    },
+    {
+      "operationId": "reflections.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/reflections/{bookId}/{chapterNumber}",
+      "matrixRowId": null,
+      "operationVariantId": "reflections.get:getreflections",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getReflections",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Reflections.swift",
+      "stableVariantSuffix": "getreflections",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/reflections/\\(bookId)/\\(chapterN)\""
+    },
+    {
+      "operationId": "review-grade.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/reviews/{cardId}",
+      "matrixRowId": "fsrs-reviews",
+      "operationVariantId": "review-grade.post:gradereviewcard",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "gradeReviewCard",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "gradereviewcard",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/reviews/\\(encoded)\""
+    },
+    {
+      "operationId": "reviews.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/reviews",
+      "matrixRowId": "fsrs-reviews",
+      "operationVariantId": "reviews.get:getreviews",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getReviews",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getreviews",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/reviews\""
+    },
+    {
+      "operationId": "saved-toggle.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/saved",
+      "matrixRowId": "saved-books",
+      "operationVariantId": "saved-toggle.post:togglesaved",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "toggleSaved",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "togglesaved",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/saved\""
+    },
+    {
+      "operationId": "saved.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/saved",
+      "matrixRowId": "saved-books",
+      "operationVariantId": "saved.get:getsavedbooks",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getSavedBooks",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getsavedbooks",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/saved\""
+    },
+    {
+      "operationId": "scenario.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/books/{bookId}/chapters/{chapterNumber}/scenarios",
+      "matrixRowId": null,
+      "operationVariantId": "scenario.post:postscenario",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "postScenario",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoints+Scenarios.swift",
+      "stableVariantSuffix": "postscenario",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/books/\\(bookId)/chapters/\\(chapterNumber)/scenarios\""
+    },
+    {
+      "operationId": "scenario.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/books/{bookId}/chapters/{chapterNumber}/scenarios",
+      "matrixRowId": null,
+      "operationVariantId": "scenario.post:scenariorepository-syncpendinguploads",
+      "producerKind": "direct_endpoint",
+      "producerSymbol": "ScenarioRepository.syncPendingUploads",
+      "producerSourcePath": "Packages/EngagementFeature/Sources/EngagementFeature/Scenarios/ScenarioRepository.swift",
+      "stableVariantSuffix": "scenariorepository-syncpendinguploads",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/books/\\(ticket.bookId)/chapters/\\(ticket.chapterNumber)/scenarios\""
+    },
+    {
+      "operationId": "scenarios.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/books/{bookId}/chapters/{chapterNumber}/scenarios",
+      "matrixRowId": null,
+      "operationVariantId": "scenarios.get:getscenarios",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getScenarios",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoints+Scenarios.swift",
+      "stableVariantSuffix": "getscenarios",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/books/\\(bookId)/chapters/\\(chapterNumber)/scenarios\""
+    },
+    {
+      "operationId": "search-index.get",
+      "method": "GET",
+      "routeTemplate": "/book/search-index",
+      "matrixRowId": "search-index",
+      "operationVariantId": "search-index.get:getsearchindex",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getSearchIndex",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getsearchindex",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/search-index\""
+    },
+    {
+      "operationId": "seasonal-event.get",
+      "method": "GET",
+      "routeTemplate": "/book/events/active",
+      "matrixRowId": null,
+      "operationVariantId": "seasonal-event.get:getactiveevent",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getActiveEvent",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getactiveevent",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/events/active\""
+    },
+    {
+      "operationId": "settings.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/settings",
+      "matrixRowId": "notification-preferences",
+      "operationVariantId": "settings.get:getsettings",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getSettings",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Notifications.swift",
+      "stableVariantSuffix": "getsettings",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/settings\""
+    },
+    {
+      "operationId": "settings.patch",
+      "method": "PATCH",
+      "routeTemplate": "/book/me/settings",
+      "matrixRowId": "notification-preferences",
+      "operationVariantId": "settings.patch:patchnotificationsettings",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "patchNotificationSettings",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Notifications.swift",
+      "stableVariantSuffix": "patchnotificationsettings",
+      "sourceMethodExpression": "method: .patch",
+      "sourcePathExpression": "\"/book/me/settings\""
+    },
+    {
+      "operationId": "settings.patch",
+      "method": "PATCH",
+      "routeTemplate": "/book/me/settings",
+      "matrixRowId": "notification-preferences",
+      "operationVariantId": "settings.patch:updatesettings",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "updateSettings",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "updatesettings",
+      "sourceMethodExpression": "method: .patch",
+      "sourcePathExpression": "\"/book/me/settings\""
+    },
+    {
+      "operationId": "share-event.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/share-events",
+      "matrixRowId": null,
+      "operationVariantId": "share-event.post:postshareevent",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "postShareEvent",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+ShareEvents.swift",
+      "stableVariantSuffix": "postshareevent",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/share-events\""
+    },
+    {
+      "operationId": "shop.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/shop",
+      "matrixRowId": null,
+      "operationVariantId": "shop.get:getshop",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getShop",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getshop",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/shop\""
+    },
+    {
+      "operationId": "start-book.post",
+      "method": "POST",
+      "routeTemplate": "/book/me/books/{bookId}/start",
+      "matrixRowId": "start-book",
+      "operationVariantId": "start-book.post:startbook",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "startBook",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "startbook",
+      "sourceMethodExpression": "method: .post",
+      "sourcePathExpression": "\"/book/me/books/\\(bookId)/start\""
+    },
+    {
+      "operationId": "streak.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/streak",
+      "matrixRowId": null,
+      "operationVariantId": "streak.get:getstreak",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getStreak",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getstreak",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/streak\""
+    },
+    {
+      "operationId": "tier.post",
+      "method": "GET",
+      "routeTemplate": "/book/me/tier",
+      "matrixRowId": null,
+      "operationVariantId": "tier.post:posttier",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "postTier",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "posttier",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/tier\""
+    },
+    {
+      "operationId": "user-journey.get",
+      "method": "GET",
+      "routeTemplate": "/book/me/journeys/{journeyId}",
+      "matrixRowId": null,
+      "operationVariantId": "user-journey.get:getuserjourney",
+      "producerKind": "endpoint_factory",
+      "producerSymbol": "getUserJourney",
+      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint.swift",
+      "stableVariantSuffix": "getuserjourney",
+      "sourceMethodExpression": "method: .get",
+      "sourcePathExpression": "\"/book/me/journeys/\\(id)\""
+    }
+  ],
+  "matrixRows": [
+    {
+      "id": "account-deactivation",
+      "operationIds": [
+        "account-deactivate.post"
+      ]
+    },
+    {
+      "id": "account-deletion",
+      "operationIds": [
+        "account-delete.post"
+      ]
+    },
+    {
+      "id": "apns-device-registration",
+      "operationIds": [
+        "device-register.post",
+        "device-unregister.post"
+      ]
+    },
+    {
+      "id": "apple-purchase-verification",
+      "operationIds": [
+        "apple-verify.post"
+      ]
+    },
+    {
+      "id": "ask-the-book",
+      "operationIds": [
+        "ask-book.post"
+      ]
+    },
+    {
+      "id": "audio-narration-plan",
+      "operationIds": [
+        "audio-plan.get"
+      ]
+    },
+    {
+      "id": "book-detail-manifest",
+      "operationIds": [
+        "book-detail.get"
+      ]
+    },
+    {
+      "id": "book-state-cursor-preferences",
+      "operationIds": [
+        "book-state.get",
+        "book-state.patch"
+      ]
+    },
+    {
+      "id": "catalog",
+      "operationIds": [
+        "catalog.get"
+      ]
+    },
+    {
+      "id": "chapter-content",
+      "operationIds": [
+        "chapter.get"
+      ]
+    },
+    {
+      "id": "commitments",
+      "operationIds": [
+        "commitment.get",
+        "commitment.patch",
+        "commitment.post",
+        "commitments.get"
+      ]
+    },
+    {
+      "id": "data-export",
+      "operationIds": [
+        "export.get"
+      ]
+    },
+    {
+      "id": "entitlements-paywall",
+      "operationIds": [
+        "entitlements.get"
+      ]
+    },
+    {
+      "id": "fsrs-reviews",
+      "operationIds": [
+        "review-grade.post",
+        "reviews.get"
+      ]
+    },
+    {
+      "id": "gifts-referrals",
+      "operationIds": [
+        "gift-claim.post",
+        "gift-create.post",
+        "gift-preview.get",
+        "referral-apply.post",
+        "referral-profile.get"
+      ]
+    },
+    {
+      "id": "mobile-config",
+      "operationIds": [
+        "mobile-config.get"
+      ]
+    },
+    {
+      "id": "notebook",
+      "operationIds": [
+        "notebook.delete",
+        "notebook.get",
+        "notebook.patch",
+        "notebook.post"
+      ]
+    },
+    {
+      "id": "notification-inbox",
+      "operationIds": [
+        "notifications-read-all.post",
+        "notifications.get"
+      ]
+    },
+    {
+      "id": "notification-preferences",
+      "operationIds": [
+        "settings.get",
+        "settings.patch"
+      ]
+    },
+    {
+      "id": "onboarding",
+      "operationIds": [
+        "onboarding-complete.post",
+        "onboarding-progress.get",
+        "onboarding-progress.post"
+      ]
+    },
+    {
+      "id": "profile-social",
+      "operationIds": [
+        "block-user.post",
+        "blocked-user.delete",
+        "blocked-users.get",
+        "moderation-report.post",
+        "own-profile.get",
+        "public-profile.get"
+      ]
+    },
+    {
+      "id": "progress-overview",
+      "operationIds": [
+        "progress.get"
+      ]
+    },
+    {
+      "id": "quiz-load-check-events",
+      "operationIds": [
+        "quiz-check.post",
+        "quiz-event.post",
+        "quiz.get"
+      ]
+    },
+    {
+      "id": "quiz-submit",
+      "operationIds": [
+        "quiz-submit.post"
+      ]
+    },
+    {
+      "id": "reading-pairs",
+      "operationIds": [
+        "pair-accept.post",
+        "pair-invite.post",
+        "pair-nudge.post",
+        "pair.delete",
+        "pair.get",
+        "pairs.get"
+      ]
+    },
+    {
+      "id": "reading-sessions",
+      "operationIds": [
+        "reading-session.post"
+      ]
+    },
+    {
+      "id": "saved-books",
+      "operationIds": [
+        "saved-toggle.post",
+        "saved.get"
+      ]
+    },
+    {
+      "id": "search-index",
+      "operationIds": [
+        "search-index.get"
+      ]
+    },
+    {
+      "id": "start-book",
+      "operationIds": [
+        "start-book.post"
+      ]
+    }
+  ],
+  "exactFactoryTestedProducerCount": 6,
+  "bundleSuccessDecoderTestedOperationCount": 24,
+  "backendRuntimeFactoryValidationPerformed": false,
+  "evidence": [
+    "The iOS repository owns the complete producer-to-operation-to-matrix mapping.",
+    "Every producer record is checked against exact production Swift method and path expressions.",
+    "Committed manifests hash generator, mapping, and every scanned production Swift input from the named Git object.",
+    "The backend consumes these records but does not replace or regenerate iOS inventory authority."
+  ]
+}

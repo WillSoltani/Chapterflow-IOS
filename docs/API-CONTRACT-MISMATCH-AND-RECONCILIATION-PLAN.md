@@ -2,21 +2,242 @@
 
 | | |
 |---|---|
-| **Status** | 🟢 IMPLEMENTED (client-side, Option A) — branch `feat/api-contract-reconcile`, 2026-07-10 |
+| **Status** | WP-CONTRACT-01 final merged-backend overlay prepared on draft iOS PR #120; exact-head GitHub verification is delegated to the PR workflows |
 | **Severity** | was P0 for native launch (the app could not load *any* real data from production) |
-| **Date** | 2026-07-10 (analysis); implemented same day |
+| **Date** | 2026-07-10 analysis and tolerant-client repair; backend-owned contract work finalized from merged source 2026-07-14 |
 | **Discovered** | First on-device run against production, during Phase 0 device bring-up |
-| **Scope** | iOS client (`Chapterflow-IOS`) ↔ deployed web backend (`ChapterFlow`, `app.chapterflow.ca`) |
-| **Owner decision required** | Resolved: Option A implemented; `CF_CI_TOKEN` still wanted for authed captures (see Implementation Record §I.6) |
+| **Scope** | iOS client (`Chapterflow-IOS`) ↔ current backend source (`ChapterFlow`); deployed compatibility is recorded separately and is not inferred from source main |
+| **Owner decision required** | None for fixture generation. Product/security decisions and deployment verification remain explicit blockers where listed. |
 
 > This document is self-contained. It explains the bug, the root cause, why it went undetected,
-> the full verified scope, the trade-off analysis, and the phased plan. §0–§13 are the original
-> ANALYSIS (kept verbatim); the **Implementation Record** below documents what was actually
+> the full verified scope, the trade-off analysis, and the phased plan. §0–§13 preserve the original
+> analysis as explicitly historical context; the **Implementation Record** below documents what was actually
 > built, what the analysis missed, and what remains.
+
+## WP-CONTRACT-01 control plane (final merged-backend integration 2026-07-14)
+
+### Final merged-backend checkpoint
+
+Backend PR #402 was squash-merged into backend `main` as
+`6a792cf2572f585e56ce5dbb181307955c1896a8`. The squash commit has sole parent
+`968ff67ecafbed7e8e1d4c7b77badf507cfc5aee`, has the same tree as the former PR head
+`0ee789788c155505e039651b19483e37b41d28ff`, and is the latest commit on backend `main` that
+changes `contracts/native-ios/v1/contract-bundle.json`. Backend push-to-main CI run
+`29300772440` completed successfully with all 11 jobs passing. This establishes merged source
+provenance only; it is not evidence of deployment or deployed-backend compatibility.
+
+The iOS PR branch retains its existing history and contains current iOS `main`
+`16d9b17c2743f40656ac9617af13eece51e1afc4`, including merged PRs #119 and #121. Its prepared
+source snapshot is `8fec3a3a2ae21af87a799334949491fd90d9af72`, including scanner remediation
+`7f9080fb503c3ad9a0010af0f7744cfd21cd288e`; the separate manifest commit is
+`5dec724e77f04e91aecf321c60280bdbbf71a083`. The scanner suite passes all **66/66** canaries,
+including both alternate-normal-return reproductions.
+
+The final iOS overlay is generated from a clean detached backend checkout at the squash commit
+with `sourceRevisionPhase: "merged_backend"` and trusted ref `refs/remotes/origin/main`:
+
+| Evidence | Final value |
+|---|---|
+| Backend source and trusted-main revision | `6a792cf2572f585e56ce5dbb181307955c1896a8` |
+| Overlay SHA-256 | `c004d42cdcb0e60e4acc5f0d94c0fb349bef6261a029348ccf952edf993dfd5f` |
+| Backend committed-input-tree SHA-256 | `2f9caf4485a4f7af52dcbeaebe0b00100a458bdcfcfa285d839955a916c5bf98` |
+| Generator-tree SHA-256 | `50c49dff44d58fc2cc0c36cd58826987e5370953a6db4f9c388a92b563d4b056` |
+| iOS manifest SHA-256 | `03a2b3295fc6dd97dc4f06c6a1189c6b70924424cb056157adf4839ee1b0fd05` |
+| Operation-key SHA-256 | `b24a9ad2861744ad127ce1aca976c13b621fdb7460fc8cd9b9d5669ec9468174` |
+| Producer-variant SHA-256 | `6c52d6b0f465d50f0e68d5a98cca273f90c8611c3b962f1d8f7d36d1f292ba20` |
+| Producer-identity SHA-256 | `9f1c75e50035022d7b46da7be173fec2f265a58110f77504c9e7d247bd8ea453` |
+| Relational-record SHA-256 | `03103dcada4b7ae3ed2763372dda873aa504a75c18ae4553e91cc71f17007a78` |
+| iOS source-input-tree SHA-256 | `9f1b7285c945cee0f457535066fd7be664b7d28973ffb71b13ac67889c97377e` |
+
+Inventory and coverage remain exactly **83 operations / 93 producers / 29 matrix rows / 93
+relations**, **0 full / 60 partial / 23 blocked**, **6/93** exact request-factory proof, and
+**24/60** production success-decoder/cache proof. The four source-proven request corrections remain:
+
+1. public book detail and download manifest use unauthenticated `GET`;
+2. the retained `postTier` factory sends `GET` without a body;
+3. both audio-plan factories send ordered `mode=plan`;
+4. the retained `postOnboardingProgress` factory sends `PATCH`.
+
+The 23 blockers and their closed owners remain unchanged. `quiz-submit.post` remains
+blocked/unproven and fail-closed; no `/passed`, `/scorePercent`, or `/unlockedNextChapter` success
+fixture was invented. No backend deployment, production call, physical-device session, real-API
+test, release action, or deployed-backend compatibility claim is part of this checkpoint.
+
+### Independent assessment and reproduced pre-fix failures
+
+The independent verifier returned **FAIL** on the previous backend and iOS heads: two P1 integrity
+failures, three P2 contract-evidence/semantic failures, and additional P3-class evidence and
+regression-test gaps. This remediation does **not** claim that independent verification now passes;
+a fresh verifier must inspect the new heads.
+
+All ten reported defects were reproduced before the proof model was changed:
+
+1. `committed_backend_branch` accepted a stale ancestor that lacked the generator and bundle.
+2. Dirty relevant route/serializer bytes were hashed while provenance still named clean `HEAD`.
+3. An unmerged PR head could be labeled `merged_backend`.
+4. Swapping analytics track/beacon producer evidence preserved the flattened digest and passed.
+5. Moving `commitment.get` between matrix rows preserved the global sets and passed.
+6. Replacing matrix-summary membership while retaining operation and row names passed.
+7. `account-delete.post` and `export.get` were misclassified as
+   `recent_auth_active_user`.
+8. All 23 blockers lacked an explicit closed resolution owner.
+9. The broad iOS authority-pointer test passed through a test-local helper instead of production
+   decoding/mapping.
+10. The positive provenance canary itself accepted an unmerged branch head as `merged_backend`.
+
+The remediation adds committed negative canaries for these bypasses, including constant-count
+producer reassignment, operation-to-row reassignment, duplicate/missing relations, method/route
+drift, producer symbol/path drift, stale and dirty sources, false merged provenance, and valid
+branch, normal-merge, and squash-merge cases.
+
+A subsequent fresh review found additional raw-substring and dead-witness risks in the iOS source
+scanner. The final scanner now lexes comments/strings, balances complete function signatures,
+requires terminal factory return expressions, binds direct endpoints through their real function,
+variable, and transport callsites, binds analytics constants through the sent URLRequest, and
+rejects shadowing/reassignment. Its 35 canaries include the reproduced comment, string, default
+closure, dead closure, wrong transport, shadowing, and request-reassignment mutations.
+
+A final cross-repository review then reproduced the same raw-text witness class in the backend
+route-method fence: a comment or string containing an old exported method could satisfy the fence
+after the executable handler changed. Backend commits
+`7d3de18d34f34ef95aa48a767cc4bb4184a19867` and
+`b34efa4a04478c02af55976c69cab7ca84c9f3a5` replace that regular expression with a fail-closed
+TypeScript AST check for a runnable, top-level, named exported function. Committed canaries cover
+line/block comments, string/template literals, real method drift, declaration-only functions,
+default exports, and the valid named-export case.
+
+### Independent iOS inventory authority
+
+iOS is now the sole generator authority for
+`contracts/native-ios/v1/ios-source-inventory-manifest.json`. The backend consumes and validates a
+byte-identical copy; it does not generate the iOS authority that it is checking. The dependency
+sequence is:
+
+- I1 `3bc162719cebda98744b05d261242bd5868841c6`: add the iOS-owned mapping, generator, and
+  relational canaries.
+- I2 `d65d7268c937ac9c571dd7bf165f701f9e8b7549`: pin the generated manifest.
+- I3 `ff13d4b3f0f9495ab2f3fa673d205c216f1d2629`: harden cross-repository provenance checks.
+- I4 `121864285c460fb911dba72ca720a989b97e5d53`: structurally bind source expressions and
+  correct analytics producer identities.
+- I5 `5a349bd27e7f47994c7509a71754bc3c93d7619d`: repin that structural inventory.
+- I6 `0b0f6bc8399b18e0abd75c0a444af9cf6fe98d40`: bind evidence to terminal/live callsites and
+  close shadowing/reassignment paths.
+- I7 `e15db4bd81d5b3604767fbdc672bdf524f1ed182`: repin the final reviewed inventory.
+- I8 `93fa4e7950d0fde26b166575cd2bf2d0480c468d`: pin the reviewed backend overlay and validator
+  output without changing the iOS-owned inventory provenance established by I6/I7.
+- I9 `c8cc60b6cc8e287234c9330629a5489d6f797456`: apply the SwiftLint-only formatting correction in
+  the inventory canary suite.
+- I10 `2ee007fb65a046d4fe88af64b07ffb4fcb63e18b`: repin the overlay after backend method-fence
+  hardening. The following documentation-only commit records I10 and does not change either
+  generated artifact; its SHA is reported in the draft PR because a commit cannot embed its own
+  final object ID.
+
+The manifest proves 83 operations, 93 production producers, 29 matrix rows, and 93 relational
+records. Each record has exactly 11 fields: operation ID, method, route template, matrix-row ID,
+operation-variant ID, producer kind, producer symbol, producer source path, stable variant suffix,
+source method expression, and source path expression. Its provenance hashes exactly 584 Git-object
+inputs: all 582 production Swift source files plus the mapping and generator. Addition, removal,
+dirty/staged/untracked changes, or nonmapped source drift therefore fail closed.
+
+The pinned manifest SHA-256 is
+`03a2b3295fc6dd97dc4f06c6a1189c6b70924424cb056157adf4839ee1b0fd05`; the relational-record
+SHA-256 is `03103dcada4b7ae3ed2763372dda873aa504a75c18ae4553e91cc71f17007a78`, and the 584-input
+Git-object tree SHA-256 is `9f1b7285c945cee0f457535066fd7be664b7d28973ffb71b13ac67889c97377e`.
+Backend validation requires one exact registry match per manifest relation and derives matrix
+membership from those records instead of trusting flattened counts or summary sets.
+
+### Exact backend provenance and artifacts
+
+The backend's checked-in canonical bundle intentionally remains self-reference-safe with
+`sourceRevision: null`, `sourceRevisionPhase: "uncommitted_backend"`, and
+`committedInputTree: null`. The iOS bundle is a generated overlay over the actual backend squash
+commit `6a792cf2572f585e56ce5dbb181307955c1896a8`, using trusted backend-main ref
+`refs/remotes/origin/main` at that same revision and phase `merged_backend`.
+
+The overlay SHA-256 is
+`c004d42cdcb0e60e4acc5f0d94c0fb349bef6261a029348ccf952edf993dfd5f`; its committed input-tree
+SHA-256 is `2f9caf4485a4f7af52dcbeaebe0b00100a458bdcfcfa285d839955a916c5bf98`.
+Provenance binds 120 present inputs and seven expected-missing route paths to exact Git-object
+bytes, then requires matching worktree bytes. It also requires a full source commit equal to
+`HEAD`, a non-shallow repository, an explicit trusted main ref, the latest contract-changing
+revision, and phase-correct integration evidence. Consequently, stale ancestors, dirty/staged or
+unexpected untracked inputs, absent required blobs, false merged revisions, missing trusted refs,
+and already-integrated branch-phase revisions all fail closed. `merged_backend` requires the exact
+source revision to be reachable from the trusted main ref; branch integration additionally handles
+normal and squash histories through exact ancestry/blob-history checks.
+
+### Authentication, blocker ownership, and authority evidence
+
+`account-delete.post` and `export.get` now use the closed class `recent_auth_user`: a Cognito
+`id_token`, `requireUser`, and `requireRecentAuth` are required, while the active-account guard is
+intentionally bypassed. Exact source evidence is pinned by merged backend revision
+`6a792cf2572f585e56ce5dbb181307955c1896a8`; the behavior-source baseline remains
+`968ff67ecafbed7e8e1d4c7b77badf507cfc5aee`:
+
+- `app/app/api/book/me/account/delete/route.ts:31-40` — `POST` calls `requireUser` and then
+  `requireRecentAuth`; lines 42-55 enforce the `{confirm:"DELETE"}` body.
+- `app/app/api/book/me/export/route.ts:337-340` — `GET` calls `requireUser` and then
+  `requireRecentAuth`.
+- `app/app/api/_lib/auth.ts:131-199` — Cognito `id_token` verification/identity mapping and the
+  `requireRecentAuth` implementation.
+- `app/app/api/book/_lib/account-guard.ts:13-27` — documents the intentional active-account-guard
+  bypass for delete and export.
+
+Account deletion remains an iOS-owned request mismatch. No runtime route or account behavior
+changed.
+
+All 23 blockers now have a closed resolution owner, rationale, concrete evidence, dependency where
+known, and decision status:
+
+| Owner | Count |
+|---|---:|
+| `backend` | 3 |
+| `coordinated` | 7 |
+| `ios` | 6 |
+| `product_or_security_decision` | 7 |
+
+Authority evidence is no longer conflated:
+
+- 51 operations have structural synthetic-fixture authority proof.
+- Four have deletion tests through production iOS decoders/mappers:
+  `models.chapter-progress.authority-deletion`, `models.quiz-progress.authority-deletion`,
+  `models.entitlement.authority-deletion`, and
+  `social.own-profile-identity.authority-deletion`.
+- One is blocked/unproven: `quiz-submit.post`. No success fixture is invented; `/passed`,
+  `/scorePercent`, and `/unlockedNextChapter` remain unproven, owned by iOS under `WP-SYNC-02`.
+
+Structural fixture presence is not represented as production-consumer proof. Partial operations
+without an executed production deletion test retain an explicit `native_authority_consumer_proof`
+gap with an owner and dependency.
+
+### Deterministic refresh, CI, and honest limits
+
+The iOS refresh flow never copies a manifest from the backend. It independently regenerates the
+iOS manifest from exact Git inputs, compares it byte-for-byte with the backend-consumed copy, runs
+the backend Git-graph and exact-byte verifier, checks the canonical bundle, generates the overlay
+twice, requires byte-stable output, and copies or checks only that overlay. The separate contract
+drift workflow uses full Git history, an explicit trusted main ref, relational canaries, Models,
+Networking, and SocialFeature authority consumers, plus secret/PII and deterministic-output checks.
+
+Coverage remains deliberately honest: **0 full / 60 partial / 23 blocked**. Only 24 of 60 partial
+operations execute the canonical success payload through a production decoder plus cache
+round-trip, and only six of 93 producers have exact runtime factory tests. `reflection.post` and
+`gift-claim.post` retain structural/native authority-consumer gaps. Route-specific error coverage
+is not exhaustive, source fences are selected direct evidence rather than a transitive dependency
+closure, and no physical-device, deployed-backend, production-runtime, or release claim is made.
+These remain explicit P2/P3 limitations, not evidence of full coverage.
+This remediation changed proof tooling, fixtures, tests, CI, and documentation only: it added no
+runtime route, changed no product behavior, performed no deployment, and touched no release,
+App Store, TestFlight, StoreKit, or signing state.
 
 ---
 
-## Implementation Record (added 2026-07-10, post-implementation)
+## Historical Implementation Record (2026-07-10; operationally superseded)
+
+The evidence below records the earlier reconciliation work at its dated revision. Any workflow,
+credential, deployment, or production-probe instruction in this historical record is not a current
+WP-CONTRACT-01 action or attestation; the current static provenance limits in the preceding section
+control.
 
 **Direction taken: Option A (client-side tolerant reconciliation), implemented on
 `feat/api-contract-reconcile`.** All 17 packages pass (2,065+ tests) and the app builds for the
@@ -75,12 +296,16 @@ Wrapper-or-bare envelope adapters where the deployed route nests/flattens/lists 
   `.distantFuture` instead of being dropped (user-authored data); `Chapter`'s no-active-variant
   content fallback made deterministic.
 
-### I.5 Safety net turned on (Phase 5)
-- `scripts/refresh-fixtures.sh` rewritten: correct endpoint paths (the old ones 404'd — wrong
-  prefixes and fake book ids), a PUBLIC tier that needs NO token and FAILS on any error, and an
-  authed tier gated on `CF_CI_TOKEN`.
-- `.github/workflows/contract-drift.yml`: the public tier now ALWAYS runs (weekly + manual) —
-  no more silent full skip; authed tier reports its skip loudly.
+### I.5 Historical Phase 5 safety net (superseded)
+This section described the earlier deployed-fixture workflow; it is retained only as historical
+context. The current WP-CONTRACT-01 refresh is a static, Git-provenance-checked generation path:
+it does not call a deployed backend, does not use `CF_CI_TOKEN`, and does not provide weekly
+production-drift evidence. Runtime/deployed verification remains explicitly blocked until a
+separately authorized environment probe is supplied.
+
+- Historical behavior: `scripts/refresh-fixtures.sh` captured public endpoints and optionally
+  captured authenticated endpoints with `CF_CI_TOKEN`.
+- Historical behavior: `.github/workflows/contract-drift.yml` scheduled that public capture.
 - New always-on PR coverage: `RealContractTests` (verbatim captures) +
   `DeployedShapeContractTests` (serializer-derived authed shapes, Models + SocialFeature) run in
   the normal package suites.
@@ -91,15 +316,22 @@ Wrapper-or-bare envelope adapters where the deployed route nests/flattens/lists 
    deployed sha. The iOS narration player needs a **web deploy** — no client change can fix it.
 2. **`GET /book/config/ios` (B4) 404s in prod** for the same reason (merged `d276ab244`, not
    deployed) — force-update/kill-switch is inert until the next web deploy.
-3. **`CF_CI_TOKEN`** still wanted so the authed tier captures REAL fixtures (replacing the
-   serializer-derived ones); the script + workflow are ready for it.
+3. A future deployed-contract probe requires separate owner authorization and an approved
+   credential strategy; WP-CONTRACT-01 does not accept or consume `CF_CI_TOKEN`.
 4. Dashboard/tier/profile synthesized values are placeholders (0/reader) by design — the UI
    overlays real values from the dedicated endpoints; if any screen shows a zero it shouldn't,
    check whether it reads the aggregate instead of the dedicated endpoint.
-5. Next web deploy should be checked against the drift workflow (manual dispatch) since prod
-   will jump from 19b44fac to a much newer main.
+5. A future web deploy needs a separately authorized deployed-contract check; the current static
+   workflow cannot attest to production behavior.
 
 ---
+
+## Historical analysis and plan (preserved; not current operating guidance)
+
+Everything from this point through the appendices is the original pre-WP-CONTRACT-01 diagnosis and
+proposal. References to production capture, `CF_CI_TOKEN`, weekly jobs, deployment, or owner decisions
+are retained as historical context only and are superseded by the current static contract workflow
+and its explicit limitations above.
 
 ## Table of contents
 
