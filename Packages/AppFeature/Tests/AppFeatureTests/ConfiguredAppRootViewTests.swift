@@ -1,136 +1,233 @@
+import AuthKit
 import CoreKit
-import SwiftUI
+import Persistence
 import Testing
 @testable import AppFeature
 
 @MainActor
 @Suite("Configured app bootstrap")
 struct ConfiguredAppRootViewTests {
-    @Test("invalid configuration never invokes the live graph factory")
-    func invalidConfigurationDoesNotBuildGraph() {
-        let counter = InvocationCounter()
-        let bootstrap = AppGraphBootstrap(
-            config: invalidConfig(),
-            buildConfiguration: .debug,
-            diagnostics: NoopAppConfigurationDiagnosticsRecorder()
-        ) { _ in
-            counter.increment()
-            return TestGraph()
-        }
+    @Test("valid configuration renders preparing before storage or graph construction")
+    func validConfigurationStartsWithLightweightFirstFrame() async {
+        let loader = ControlledPersistenceLoader()
+        let factory = RecordingGraphFactory()
+        let coordinator = makeCoordinator(loader: loader, factory: factory)
 
-        #expect(counter.count == .zero)
-        guard case .configurationFailure(let record) = bootstrap.route else {
-            Issue.record("Invalid configuration reached the live application route")
+        guard case .preparing = coordinator.state else {
+            Issue.record("Valid configuration did not render the preparing state")
+            return
+        }
+        #expect(await loader.callCount == 0)
+        #expect(factory.attemptCount == 0)
+        #expect(factory.models.isEmpty)
+    }
+
+    @Test("invalid configuration wins before storage and never builds a graph")
+    func invalidConfigurationDoesNotStartPrerequisites() async {
+        let loader = ControlledPersistenceLoader()
+        let factory = RecordingGraphFactory()
+        let coordinator = makeCoordinator(
+            config: invalidConfig(),
+            loader: loader,
+            factory: factory
+        )
+
+        coordinator.start()
+
+        guard case .invalidConfiguration(let record) = coordinator.state else {
+            Issue.record("Invalid configuration reached another bootstrap state")
             return
         }
         #expect(record.status == .invalid)
         #expect(!record.liveServicesConstructed)
         #expect(!record.issues.isEmpty)
+        #expect(await loader.callCount == 0)
+        #expect(factory.attemptCount == 0)
     }
 
-    @Test("valid configuration invokes the live graph factory exactly once")
-    func validConfigurationBuildsOneGraph() {
-        let counter = InvocationCounter()
-        let graph = TestGraph()
-        let bootstrap = AppGraphBootstrap(
-            config: validConfig(),
-            buildConfiguration: .debug,
-            diagnostics: NoopAppConfigurationDiagnosticsRecorder()
-        ) { _ in
-            counter.increment()
-            return graph
-        }
-
-        #expect(counter.count == 1)
-        guard case .application(_, let resolvedGraph) = bootstrap.route else {
-            Issue.record("Valid configuration did not reach the live application route")
-            return
-        }
-        #expect(resolvedGraph === graph)
-    }
-
-    @Test("repeated SwiftUI body evaluation cannot rebuild the graph")
-    func repeatedViewEvaluationKeepsOneGraph() {
-        let counter = InvocationCounter()
-        let bootstrap = AppGraphBootstrap(
-            config: validConfig(),
-            buildConfiguration: .debug,
-            diagnostics: NoopAppConfigurationDiagnosticsRecorder()
-        ) { _ in
-            counter.increment()
-            return TestGraph()
-        }
+    @Test("duplicate starts keep one active load and publish exactly one graph")
+    func duplicateStartsBuildOneGraph() async throws {
+        let resources = try makeTestPersistenceResources()
+        let loader = ControlledPersistenceLoader()
+        let factory = RecordingGraphFactory()
+        let coordinator = makeCoordinator(loader: loader, factory: factory)
 
         for _ in 0..<50 {
-            let probe = BootstrapProbe(bootstrap: bootstrap)
-            _ = probe.body
+            coordinator.start()
         }
+        await loader.waitForCallCount(1)
+        await loader.succeed(call: 1, with: resources)
+        await coordinator.waitForCurrentAttempt()
 
-        #expect(counter.count == 1)
+        #expect(await loader.callCount == 1)
+        #expect(factory.attemptCount == 1)
+        #expect(factory.models.count == 1)
+        #expect(factory.receivedContainer === resources.controller.container)
+        guard case .ready(_, let model) = coordinator.state else {
+            Issue.record("Successful prerequisites did not publish ready")
+            return
+        }
+        #expect(model === factory.models[0])
     }
 
-    @Test("configuration transitions are deterministic")
-    func deterministicTransitions() {
-        let counter = InvocationCounter()
-        let invalid = AppGraphBootstrap(
-            config: invalidConfig(),
-            buildConfiguration: .debug,
-            diagnostics: NoopAppConfigurationDiagnosticsRecorder()
-        ) { _ in
-            counter.increment()
-            return TestGraph()
-        }
-        let valid = AppGraphBootstrap(
-            config: validConfig(),
-            buildConfiguration: .debug,
-            diagnostics: NoopAppConfigurationDiagnosticsRecorder()
-        ) { _ in
-            counter.increment()
-            return TestGraph()
-        }
+    @Test("storage failure publishes a dedicated state and no graph")
+    func storageFailurePublishesNoGraph() async {
+        let loader = ControlledPersistenceLoader()
+        let factory = RecordingGraphFactory()
+        let coordinator = makeCoordinator(loader: loader, factory: factory)
 
-        guard case .configurationFailure = invalid.route else {
-            Issue.record("Expected invalid route")
+        coordinator.start()
+        await loader.waitForCallCount(1)
+        await loader.fail(call: 1)
+        await coordinator.waitForCurrentAttempt()
+
+        guard case .storageUnavailable(let failure) = coordinator.state else {
+            Issue.record("Storage failure did not reach its dedicated state")
             return
         }
-        guard case .application = valid.route else {
-            Issue.record("Expected valid route")
-            return
-        }
-        #expect(counter.count == 1)
-        #expect(invalidConfig().configurationIssues == invalidConfig().configurationIssues)
-        #expect(validConfig().configurationIssues.isEmpty)
+        #expect(failure.supportCode == "CF-BOOT-STORAGE-001")
+        #expect(factory.attemptCount == 0)
+        #expect(factory.models.isEmpty)
     }
 
-    @Test("diagnostics failure never blocks either bootstrap outcome")
-    func diagnosticsFailureDoesNotBlock() {
-        let counter = InvocationCounter()
-        let valid = AppGraphBootstrap(
-            config: validConfig(),
-            buildConfiguration: .debug,
-            diagnostics: ThrowingDiagnosticsRecorder()
-        ) { _ in
-            counter.increment()
-            return TestGraph()
+    @Test("retry starts one fresh attempt and can recover to ready")
+    func retryIsAtomicAndRecoverable() async throws {
+        let resources = try makeTestPersistenceResources()
+        let loader = ControlledPersistenceLoader()
+        let factory = RecordingGraphFactory()
+        let coordinator = makeCoordinator(loader: loader, factory: factory)
+
+        coordinator.start()
+        await loader.waitForCallCount(1)
+        await loader.fail(call: 1)
+        await coordinator.waitForCurrentAttempt()
+
+        for _ in 0..<20 {
+            coordinator.retry()
         }
-        let invalid = AppGraphBootstrap(
-            config: invalidConfig(),
-            buildConfiguration: .debug,
-            diagnostics: ThrowingDiagnosticsRecorder()
-        ) { _ in
-            counter.increment()
-            return TestGraph()
+        await loader.waitForCallCount(2)
+        await loader.succeed(call: 2, with: resources)
+        await coordinator.waitForCurrentAttempt()
+
+        #expect(await loader.callCount == 2)
+        #expect(factory.attemptCount == 1)
+        guard case .ready = coordinator.state else {
+            Issue.record("Retry did not recover to ready")
+            return
+        }
+    }
+
+    @Test("required session failure publishes no graph")
+    func sessionFailurePublishesNoGraph() async throws {
+        let resources = try makeTestPersistenceResources()
+        let loader = ControlledPersistenceLoader()
+        let factory = RecordingGraphFactory(shouldFail: true)
+        let coordinator = makeCoordinator(loader: loader, factory: factory)
+
+        coordinator.start()
+        await loader.waitForCallCount(1)
+        await loader.succeed(call: 1, with: resources)
+        await coordinator.waitForCurrentAttempt()
+
+        guard case .sessionConfigurationFailed(let failure) = coordinator.state else {
+            Issue.record("Session failure did not reach its dedicated state")
+            return
+        }
+        #expect(failure.supportCode == "CF-BOOT-SESSION-001")
+        #expect(factory.attemptCount == 1)
+        #expect(factory.models.isEmpty)
+    }
+
+    @Test("superseded attempt cannot overwrite the newer ready graph")
+    func staleCompletionCannotWin() async throws {
+        let oldResources = try makeTestPersistenceResources()
+        let currentResources = try makeTestPersistenceResources()
+        let loader = ControlledPersistenceLoader()
+        let factory = RecordingGraphFactory()
+        let coordinator = makeCoordinator(loader: loader, factory: factory)
+
+        coordinator.start()
+        await loader.waitForCallCount(1)
+        coordinator.restartActiveAttempt()
+        await loader.waitForCallCount(2)
+
+        await loader.succeed(call: 2, with: currentResources)
+        await coordinator.waitForCurrentAttempt()
+        guard case .ready(_, let currentModel) = coordinator.state else {
+            Issue.record("Replacement attempt did not become ready")
+            return
         }
 
-        guard case .application = valid.route else {
-            Issue.record("Valid bootstrap was blocked by diagnostics")
+        // The controlled loader deliberately ignores task cancellation until
+        // resumed, exercising the generation guard rather than timing luck.
+        await loader.succeed(call: 1, with: oldResources)
+        await Task.yield()
+
+        guard case .ready(_, let finalModel) = coordinator.state else {
+            Issue.record("Stale completion replaced ready with another state")
             return
         }
-        guard case .configurationFailure = invalid.route else {
-            Issue.record("Invalid bootstrap was blocked by diagnostics")
+        #expect(finalModel === currentModel)
+        #expect(factory.attemptCount == 1)
+        #expect(factory.receivedContainer === currentResources.controller.container)
+    }
+
+    @Test("explicit cancellation remains preparing instead of becoming user-facing failure")
+    func cancellationIsNotFailure() async {
+        let loader = ControlledPersistenceLoader()
+        let factory = RecordingGraphFactory()
+        let coordinator = makeCoordinator(loader: loader, factory: factory)
+
+        coordinator.start()
+        await loader.waitForCallCount(1)
+        coordinator.cancel()
+
+        guard case .preparing = coordinator.state else {
+            Issue.record("Cancellation was converted into a terminal failure")
             return
         }
-        #expect(counter.count == 1)
+        #expect(factory.attemptCount == 0)
+    }
+
+    @Test("failure state carries fixed privacy-safe support codes only")
+    func failureStateIsPrivacySafe() {
+        let storage = AppBootstrapStorageFailure()
+        let session = AppBootstrapSessionFailure()
+
+        #expect(storage.supportCode == "CF-BOOT-STORAGE-001")
+        #expect(session.supportCode == "CF-BOOT-SESSION-001")
+        #expect(String(reflecting: storage) == "AppFeature.AppBootstrapStorageFailure()")
+        #expect(String(reflecting: session) == "AppFeature.AppBootstrapSessionFailure()")
+    }
+
+    @Test("diagnostics recording failure cannot block invalid configuration")
+    func diagnosticsFailureDoesNotBlockInvalidState() {
+        let coordinator = AppBootstrapCoordinator(
+            config: invalidConfig(),
+            buildConfiguration: .debug,
+            diagnostics: ThrowingDiagnosticsRecorder(),
+            persistenceLoader: ControlledPersistenceLoader(),
+            graphFactory: RecordingGraphFactory()
+        )
+
+        guard case .invalidConfiguration = coordinator.state else {
+            Issue.record("Best-effort diagnostics blocked bootstrap")
+            return
+        }
+    }
+
+    private func makeCoordinator(
+        config: AppConfig? = nil,
+        loader: ControlledPersistenceLoader,
+        factory: RecordingGraphFactory
+    ) -> AppBootstrapCoordinator {
+        AppBootstrapCoordinator(
+            config: config ?? validConfig(),
+            buildConfiguration: .debug,
+            diagnostics: NoopAppConfigurationDiagnosticsRecorder(),
+            persistenceLoader: loader,
+            graphFactory: factory
+        )
     }
 
     private func validConfig() -> AppConfig {
@@ -154,35 +251,84 @@ struct ConfiguredAppRootViewTests {
     }
 }
 
-@MainActor
-private struct BootstrapProbe: View {
-    let bootstrap: AppGraphBootstrap<TestGraph>
+private actor ControlledPersistenceLoader: AppPersistenceLoading {
+    private struct Waiter {
+        let target: Int
+        let continuation: CheckedContinuation<Void, Never>
+    }
 
-    var body: some View {
-        switch bootstrap.route {
-        case .application:
-            Text("Application")
-        case .configurationFailure:
-            Text("Configuration failure")
+    private var pending: [Int: CheckedContinuation<AppPersistenceResources, any Error>] = [:]
+    private var waiters: [Waiter] = []
+    private(set) var callCount = 0
+
+    func load() async throws -> AppPersistenceResources {
+        callCount += 1
+        let call = callCount
+        resumeSatisfiedWaiters()
+        return try await withCheckedThrowingContinuation { continuation in
+            pending[call] = continuation
+        }
+    }
+
+    func waitForCallCount(_ target: Int) async {
+        guard callCount < target else { return }
+        await withCheckedContinuation { continuation in
+            waiters.append(Waiter(target: target, continuation: continuation))
+        }
+    }
+
+    func succeed(call: Int, with resources: AppPersistenceResources) {
+        pending.removeValue(forKey: call)?.resume(returning: resources)
+    }
+
+    func fail(call: Int) {
+        pending.removeValue(forKey: call)?.resume(throwing: ControlledBootstrapError())
+    }
+
+    private func resumeSatisfiedWaiters() {
+        while let index = waiters.firstIndex(where: { $0.target <= callCount }) {
+            waiters.remove(at: index).continuation.resume()
         }
     }
 }
 
 @MainActor
-private final class InvocationCounter {
-    private(set) var count = 0
+private final class RecordingGraphFactory: AppGraphFactory {
+    private let shouldFail: Bool
+    private(set) var attemptCount = 0
+    private(set) var models: [AppModel] = []
+    private(set) var receivedContainer: AnyObject?
 
-    func increment() {
-        count += 1
+    init(shouldFail: Bool = false) {
+        self.shouldFail = shouldFail
+    }
+
+    func makeConfiguredGraph(
+        config: ValidatedAppConfig,
+        persistence: AppPersistenceResources
+    ) throws -> AppModel {
+        attemptCount += 1
+        receivedContainer = persistence.controller.container
+        if shouldFail {
+            throw ControlledBootstrapError()
+        }
+
+        let authService = AuthService(config: config.value)
+        let model = AppModel(
+            config: config,
+            persistence: persistence,
+            authService: authService,
+            session: SessionManager(authService: authService)
+        )
+        models.append(model)
+        return model
     }
 }
 
-private final class TestGraph {}
+private struct ControlledBootstrapError: Error {}
 
 private struct ThrowingDiagnosticsRecorder: AppConfigurationDiagnosticsRecording {
-    struct RecordingError: Error {}
-
     func record(_ record: AppConfigurationDiagnosticRecord) throws {
-        throw RecordingError()
+        throw ControlledBootstrapError()
     }
 }

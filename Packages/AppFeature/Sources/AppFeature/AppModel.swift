@@ -129,8 +129,8 @@ public final class AppModel {
     public let readerRepository: any ReaderRepository
     /// Shared repository for chapter quizzes.
     public let quizRepository: any QuizRepository
-    /// `nil` when the persistence container couldn't be initialised (edge case).
-    public let annotationRepository: (any AnnotationRepository)?
+    /// Required durable repository for notes, highlights, and bookmarks.
+    public let annotationRepository: any AnnotationRepository
 
     // MARK: - Reviews
 
@@ -227,15 +227,14 @@ public final class AppModel {
     // MARK: - Sync engine (P3.4)
 
     /// Drains the offline write outbox when connectivity is restored.
-    /// `nil` only when SwiftData couldn't be initialised (edge case).
-    private let syncEngineInternal: SyncEngine?
+    private let syncEngineInternal: SyncEngine
 
     /// Observable sync status forwarded to the Settings sync section.
-    public var syncStatus: SyncStatus? { syncEngineInternal?.status }
+    public var syncStatus: SyncStatus? { syncEngineInternal.status }
 
     // MARK: - Download manager (P3.2 / P3.6)
 
-    private let downloadManagerInternal: DownloadManager?
+    private let downloadManagerInternal: DownloadManager
     public var downloadInfoProvider: (any DownloadInfoProviding)? { downloadManagerInternal }
 
     #if os(iOS)
@@ -264,17 +263,25 @@ public final class AppModel {
     /// String is a value type and the only hazard is a brief sign-in/out race.
     private let userIdBox: UserIdBox
 
+    /// Guards process-long lifecycle hooks from duplicate starts.
+    private var didActivateRequiredServices = false
+    private var didStartRootServices = false
+
     // MARK: - Init
 
     // swiftlint:disable:next function_body_length
-    public init(config validatedConfig: ValidatedAppConfig) {
+    public init(
+        config validatedConfig: ValidatedAppConfig,
+        persistence: AppPersistenceResources,
+        authService: AuthService,
+        session: SessionManager
+    ) {
         let config = validatedConfig.value
-        let svc = AuthService(config: config)
-        self.authService = svc
-        let sm = SessionManager(authService: svc)
-        self.session = sm
+        self.authService = authService
+        let sm = session
+        self.session = session
 
-        let container = try? PersistenceController.makeDefault().container
+        let container = persistence.controller.container
         let client = APIClient(config: config, tokenProvider: sm)
         self.apiClient = client
         self.appConfigService = AppConfigService(apiClient: client)
@@ -301,7 +308,6 @@ public final class AppModel {
 
         #if os(iOS)
         let mkSubscriber = MetricKitCrashSubscriber(reporter: reporter, analytics: analyticsClient)
-        mkSubscriber.register()
         self.metricKitSubscriber = mkSubscriber
         #endif
 
@@ -330,23 +336,15 @@ public final class AppModel {
             reachability: reach,
             userId: userIdClosure
         )
-        let engine: SyncEngine?
-        let dlManager: DownloadManager?
-        if let container {
-            self.annotationRepository = LiveAnnotationRepository(container: container, apiClient: client)
-            let syncEngine = SyncEngine(apiClient: client, container: container)
-            self.syncEngineInternal = syncEngine
-            engine = syncEngine
-            let dm = Self.makeDownloadManager(container: container, apiClient: client)
-            self.downloadManagerInternal = dm
-            dlManager = dm
-        } else {
-            self.annotationRepository = nil
-            self.syncEngineInternal = nil
-            self.downloadManagerInternal = nil
-            engine = nil
-            dlManager = nil
-        }
+        self.annotationRepository = LiveAnnotationRepository(container: container, apiClient: client)
+        let syncEngine = SyncEngine(apiClient: client, container: container)
+        self.syncEngineInternal = syncEngine
+        let downloadManager = Self.makeDownloadManager(
+            container: container,
+            fileStore: persistence.downloadFileStore,
+            apiClient: client
+        )
+        self.downloadManagerInternal = downloadManager
 
         self.reviewsRepository = ReviewsRepository(apiClient: client, modelContainer: container)
         self.onboardingRepository = LiveOnboardingRepository(apiClient: client)
@@ -388,11 +386,12 @@ public final class AppModel {
         self.notificationInboxModel = NotificationInboxModel(repository: inboxRepo)
 
         #if os(iOS)
-        sm.registerBackgroundRefresh()
         let coordinator = Self.makeCoordinator(
-            box: box, engine: engine, dlManager: dlManager, entSvc: self.entitlementService
+            box: box,
+            engine: syncEngine,
+            downloadManager: downloadManager,
+            entitlementService: self.entitlementService
         )
-        coordinator.registerBackgroundTasks()
         self.bgSyncCoordinator = coordinator
         #endif
         #if DEBUG
@@ -402,11 +401,31 @@ public final class AppModel {
 
     // MARK: - Lifecycle
 
-    /// Configures Amplify, starts auth-events listener, and begins entitlement refresh.
-    /// Call once at launch.
-    public func configure() throws {
-        try session.configure()
+    /// Activates process-long services after the graph factory has successfully
+    /// configured the required session boundary. Repeated calls are harmless.
+    func activateRequiredServices() {
+        guard !didActivateRequiredServices else { return }
+        didActivateRequiredServices = true
         entitlementService.start()
+        #if os(iOS)
+        metricKitSubscriber.register()
+        session.registerBackgroundRefresh()
+        bgSyncCoordinator.registerBackgroundTasks()
+        #endif
+    }
+
+    /// Starts non-critical root services exactly once after bootstrap publishes
+    /// the configured graph.
+    public func startRootServices() {
+        guard !didStartRootServices else { return }
+        didStartRootServices = true
+        wirePushRouting()
+        Task { await appConfigService.refresh() }
+        analytics.track(.appOpen)
+        Task(priority: .utility) {
+            IntentDonationManager.update()
+        }
+        Task { await analytics.flush() }
     }
 
     /// Starts APNs registration. Call once after `authState` transitions to `.signedIn`.
@@ -420,7 +439,7 @@ public final class AppModel {
         guard case .signedIn(let user) = session.authState else { return }
         let userId = user.userId
         Task { [weak self] in
-            await self?.syncEngineInternal?.start(userId: userId)
+            await self?.syncEngineInternal.start(userId: userId)
         }
     }
 
@@ -429,7 +448,7 @@ public final class AppModel {
     public func signOut() async {
         userIdBox.userId = nil
         await apnsManager.handleSignOut()
-        await syncEngineInternal?.stop()
+        await syncEngineInternal.stop()
         await session.signOut()
         isGuestMode = false
         await spotlightIndexer.removeAll()

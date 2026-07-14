@@ -737,3 +737,130 @@ source mapping, historical generator/test, schema, migration, secret, deployment
 Store, TestFlight, branch-protection, PR #117 or unrelated-user state changed. This status record is
 prepared before publication and therefore makes no draft-PR or exact-head GitHub conclusion; those
 checks remain mandatory for the final merge verdict. WP-CONTRACT-01F remains unmerged.
+
+---
+
+## WP-BOOT-01A deterministic launch and storage health — 2026-07-14
+
+**Phase:** A, local implementation only
+
+**Branch/worktree:** `codex/wp-boot-01a-launch-storage-health` at
+`/private/tmp/Chapterflow-IOS-wp-boot-01a`
+
+**Base:** `5df81f7722e856130854add1590585acddb9d6e7`
+
+### Outcome
+
+The launch path now renders a lightweight preparing surface before persistent storage opens. An
+`@MainActor @Observable` coordinator owns one generation-tagged bootstrap task and publishes one of
+five closed states:
+
+| State | User-visible behavior | Live graph |
+|---|---|---:|
+| preparing | Lightweight launch surface | 0 |
+| ready | One normal `AppRootView` | 1 |
+| invalid configuration | Existing WP-DEV-01 fail-closed surface | 0 |
+| storage unavailable | Retryable recovery surface, support code `CF-BOOT-STORAGE-001` | 0 |
+| session configuration failed | Retryable recovery surface, support code `CF-BOOT-SESSION-001` | 0 |
+
+The default persistence loader opens the existing `PersistenceController` migration plan and the
+required download directory asynchronously across Swift's `@concurrent` boundary. It returns both
+resources as one required value. `AppModel` therefore receives valid, non-optional persistence for
+annotations, sync, downloads, and reviews only after storage and minimal session configuration
+succeed. Production has no in-memory fallback, alternate directory, automatic deletion, or reset.
+
+Repeated starts while active or ready are idempotent. Explicit retry replaces only a failed attempt,
+increments its generation, and synchronously returns to preparing. Cancellation is not rendered as
+failure, and a late completion from a cancelled or superseded generation cannot publish a graph or
+replace newer state. Long-lived entitlement, MetricKit, session/background registrations, remote
+configuration, analytics, push routing, and intent startup occur only after their required ordering
+point and are individually idempotent.
+
+The focused UI harness can select hermetic storage only when both the existing explicit stub-server
+flag and hermetic-configuration flag are present. That factory is compiled under `#if DEBUG` and is
+absent from non-Debug builds; it is a deterministic test dependency, not a recovery fallback.
+
+### Validation and remediation evidence
+
+- Persistence package: **PASS**, 100 tests in 31 suites.
+- AppFeature package: **PASS**, 76 tests in 18 suites. This includes 10 bootstrap-coordinator tests
+  and 8 deterministic failure/configuration render tests.
+- CoreKit package: **PASS**, 147 tests in 26 suites.
+- Focused bootstrap XCUITests, initial run: **FAIL**, 2/4 passed. Both session-failure and
+  storage-retry cases reached the storage recovery surface because an unsigned Simulator process
+  could not open production App Group storage.
+- Single focused remediation: add an explicit DEBUG-only hermetic persistence dependency behind the
+  paired test flags; no production fallback behavior changed.
+- Focused bootstrap XCUITests, final run: **PASS**, 4/4 on iPhone 17 Pro, iOS 26.5. Preparing,
+  storage failure/retry, session failure, and invalid-configuration precedence all passed.
+- Unsigned Debug generic iOS Simulator build: **PASS**, `** BUILD SUCCEEDED **`.
+- WP-DEV-01 non-Debug compile boundaries: **PASS**; both hermetic overlay and caller support APIs are
+  unavailable outside Debug.
+- Strict SwiftLint: **PASS**, 0 violations and 0 serious violations in 746 files.
+- Incremental contract semantics: **PASS**, 83 operations, 93 producers, 29 matrix rows, and 93
+  relations. Bootstrap changes require no contract repin.
+- `git diff --check`: **PASS** before the final documentation update and required again before the
+  local commit.
+
+The isolated worktree uses an ignored placeholder `Secrets.xcconfig` copied from the committed
+example solely for compile parity. Live authentication, deployed-backend integration, signed-device
+launch, and production configuration were not tested or claimed. No schema, migration plan, API,
+backend, authentication method, navigation architecture, entitlement authority, or release
+contract changed. Rollback is a normal revert of the local WP-BOOT-01A commit(s); existing durable
+data and the V8 migration plan are unchanged.
+
+The recovery surfaces use heading traits, logical reading order, flexible vertical layout, semantic
+system colors, and fixed privacy-safe support codes. Deterministic render coverage includes Light
+and Dark Mode, AX5 Dynamic Type, and reduced animation. Raw storage/session errors, paths, store
+names, SDK messages, identifiers, tokens, and private URLs are discarded before state publication.
+No physical VoiceOver or reference-device performance capture was run. The performance result is
+architectural—the first frame no longer waits on store opening—not a claim that the 1.5-second
+device budget is measured.
+
+### Deferred to WP-BOOT-01B
+
+- Cold/warm privacy-safe launch signposts and Instruments measurements on reference and older
+  supported physical devices.
+- Historic migration fixtures and protected-data-unavailable, disk-full, migration-failure, and
+  corrupt-store recovery taxonomy without silent reset.
+- A product decision on whether safe public browsing can operate independently of private durable
+  storage.
+
+The single mandatory fresh fixed-checklist read-only reviewer returned **CLEAR**, with no valid
+P0/P1/P2 finding. The resulting local head is recorded in the Phase A handoff. Nothing in this
+local phase is pushed or published.
+
+### Phase B rebase and pre-publication evidence — 2026-07-14
+
+The owner authorized Phase B after CI Stage B completed. The delegated checkpoint contained one
+hyphen in place of a hexadecimal character; a fresh fetch resolved it unambiguously to current
+`origin/main` at `0830ba198d9271f7354f4f5d494d67fad1a478c1` (`WP-CI-02: Make CI v2
+authoritative and retire duplicate CI (#123)`). The Phase A commit rebased onto that exact revision
+without conflict or manual resolution. The rebased implementation head before this evidence-only
+documentation successor was `84bd8a267d16887d1584156f6d9f09fecb17bf79`.
+
+The current authoritative pull-request workflow is `.github/workflows/pr-v2.yml`, named
+`CI — Required`, with aggregate check `CI / Required`. `.github/workflows/pr.yml` is now the
+manual-only legacy fallback and is not treated as a required automatic lane.
+
+Every bounded local gate was rerun after the rebase:
+
+- Persistence: **100 tests in 31 suites passed**.
+- AppFeature: **76 tests in 18 suites passed**.
+- CoreKit: **147 tests in 26 suites passed**.
+- Focused bootstrap XCUITests: **4/4 passed**, 0 failed, 0 skipped, on iPhone 17 Pro with iOS 26.5.
+  The selected classes cover preparing, storage failure/retry, required-session failure, and invalid
+  configuration precedence. Xcode emitted existing test-target actor-isolation warnings, including
+  the shared harness; no warning was suppressed and no XCTest-wide migration was added to this
+  bounded bootstrap package.
+- Unsigned Debug generic iOS Simulator build: **PASS**, exit 0 and `BUILD SUCCEEDED`.
+- WP-DEV-01 non-Debug compile boundaries: **PASS**.
+- Strict SwiftLint: **PASS**, 0 violations and 0 serious violations in 746 files.
+- Incremental native contract semantics: **PASS**, 83 operations / 93 producers / 29 matrix rows /
+  93 relations; no contract repin is required.
+- Rebased diff/conflict guard: **PASS**.
+
+This pre-publication record makes no exact-head GitHub CI or merge claim. Those conclusions require
+the draft PR, terminal required checks on its exact head, the ready-state transition, squash merge,
+and post-merge main CI. No backend, release, App Store, TestFlight, signing, deployment, PR #117, or
+unrelated user state changed during the rebase and local revalidation.

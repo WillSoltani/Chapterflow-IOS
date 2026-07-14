@@ -6,6 +6,50 @@ import Testing
 @MainActor
 @Suite("Invalid development configuration UI")
 struct InvalidConfigRenderTests {
+    @Test("bootstrap preparing surface renders on the smallest phone")
+    func bootstrapPreparing() {
+        assertRenders(BootstrapPreparingView())
+    }
+
+    @Test("storage recovery renders in light appearance")
+    func storageRecoveryLight() {
+        assertRenders(
+            BootstrapFailureView(
+                kind: .storage,
+                supportCode: AppBootstrapStorageFailure.supportCode,
+                onRetry: {}
+            )
+        )
+    }
+
+    @Test("session recovery renders in dark appearance")
+    func sessionRecoveryDark() {
+        assertRenders(
+            BootstrapFailureView(
+                kind: .session,
+                supportCode: AppBootstrapSessionFailure.supportCode,
+                onRetry: {}
+            )
+            .preferredColorScheme(.dark)
+        )
+    }
+
+    @Test("storage recovery renders at AX5 with motion disabled")
+    func storageRecoveryAX5() {
+        assertRenders(
+            BootstrapFailureView(
+                kind: .storage,
+                supportCode: AppBootstrapStorageFailure.supportCode,
+                onRetry: {}
+            )
+            .environment(\.dynamicTypeSize, .accessibility5)
+            .transaction {
+                $0.animation = nil
+                $0.disablesAnimations = true
+            }
+        )
+    }
+
     @Test("renders in light appearance on the smallest supported phone geometry")
     func lightSmallPhone() {
         assertRenders(InvalidDevelopmentConfigurationView(diagnostic: diagnostic))

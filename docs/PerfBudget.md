@@ -69,17 +69,22 @@ No schema migration needed: the index already exists; only the query predicates 
 
 ---
 
-## Known remaining bottlenecks (deferred)
+### 5. Deterministic async storage bootstrap — `WP-BOOT-01A`
 
-### `PersistenceController.makeDefault()` on the main actor at launch
+**Problem.** `ChapterFlowApp.init()` synchronously created `AppModel`, whose main-actor initializer opened SwiftData with `try?`. A failure silently removed annotations, sync, and downloads while the UI still appeared usable. The same path delayed the first frame until persistent storage was open.
 
-`AppModel.init()` calls `PersistenceController.makeDefault()` synchronously, blocking the main actor while SQLite opens the store and validates the migration plan. On a fresh install with 7 schema versions this adds ~80–150 ms to cold launch on device.
+**Fix.** `ChapterFlowApp` now creates only an observable bootstrap coordinator. Its initial state renders a lightweight launch shell. `DefaultAppPersistenceLoader.load()` uses Swift's `@concurrent` execution boundary to open the existing SwiftData migration plan and required download directory away from the caller's actor. Only then does the main actor configure the minimal required session and construct one live graph with non-optional storage resources. Storage or session failure publishes a dedicated retry surface; production has no in-memory, reset, or alternate-directory fallback.
 
-**Root cause.** All repositories accept `container: ModelContainer?` but are `let` constants in `AppModel.init()`. There is no late-binding mechanism to inject the container after init completes.
+**Architectural evidence.** Deterministic tests hold storage suspended while asserting the first frame exists and graph count remains zero; duplicate starts and retry taps retain one active attempt; a superseded loader that ignores cancellation cannot publish stale results. The unsigned generic Simulator build passes with both Simulator architectures.
 
-**Required fix (future work).** Introduce a `ContainerProvider` actor that repositories hold by reference and query asynchronously. `AppModel.init()` would pass `nil` container initially; the background task updates the provider when the store is ready. This is a cross-cutting interface change (all live repositories + `AppModel`) and is intentionally deferred to avoid mid-stream breakage.
+**Measurement status.** This is an architecture and correctness result, not a new device-performance measurement. The historical 80–150 ms fresh-install store-open estimate above is not reused as an after number. `WP-BOOT-01B` owns cold/warm signposts, reference-device Instruments captures, migration fixtures, protected-data/corruption taxonomy, and any budget adjustment.
 
-**Workaround.** SQLite WAL-mode file open is fast on warm launches (< 20 ms); the 80–150 ms cost is mainly on fresh install where migration stages run. The 1.5 s launch budget is still met because Amplify configuration (the larger cost) runs after the first frame in the async `.task`.
+## Known remaining launch work (deferred to `WP-BOOT-01B`)
+
+- Record process start, first frame, storage open/migration, required-session readiness, and ready-state timings with privacy-safe signposts.
+- Measure cold and warm launch on the reference device and a representative older supported device.
+- Exercise existing-store migration fixtures, protected-data unavailable, disk-full, migration failure, and corruption without adding a silent reset.
+- Decide whether safe public browsing can be separated from account-private durable storage; `WP-BOOT-01A` intentionally fails closed for every currently promised durable feature.
 
 ---
 

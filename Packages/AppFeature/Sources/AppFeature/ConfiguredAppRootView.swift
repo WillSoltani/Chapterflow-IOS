@@ -1,37 +1,117 @@
+import AuthKit
 import CoreKit
 import DesignSystem
+import Persistence
 import SwiftUI
 
-/// One-time result of validating configuration and, only when valid, building
-/// the application's live service graph.
-@MainActor
-struct AppGraphBootstrap<Graph> {
-    enum Route {
-        case application(config: ValidatedAppConfig, graph: Graph)
-        case configurationFailure(AppConfigurationDiagnosticRecord)
-    }
+/// A privacy-safe storage bootstrap failure. The raw error is intentionally not
+/// retained, reflected into UI state, logged, or exposed to accessibility APIs.
+public struct AppBootstrapStorageFailure: Equatable, Sendable {
+    public static let supportCode = "CF-BOOT-STORAGE-001"
 
-    let route: Route
+    public init() {}
+
+    public var supportCode: String { Self.supportCode }
+}
+
+/// A privacy-safe required-session bootstrap failure.
+public struct AppBootstrapSessionFailure: Equatable, Sendable {
+    public static let supportCode = "CF-BOOT-SESSION-001"
+
+    public init() {}
+
+    public var supportCode: String { Self.supportCode }
+}
+
+/// Closed launch state. Exactly one configured graph is published only after
+/// configuration validation, required storage, and required session setup pass.
+@MainActor
+public enum AppBootstrapState {
+    case preparing
+    case ready(config: ValidatedAppConfig, model: AppModel)
+    case invalidConfiguration(AppConfigurationDiagnosticRecord)
+    case storageUnavailable(AppBootstrapStorageFailure)
+    case sessionConfigurationFailed(AppBootstrapSessionFailure)
+}
+
+@MainActor
+protocol AppGraphFactory {
+    func makeConfiguredGraph(
+        config: ValidatedAppConfig,
+        persistence: AppPersistenceResources
+    ) throws -> AppModel
+}
+
+@MainActor
+struct LiveAppGraphFactory: AppGraphFactory {
+    func makeConfiguredGraph(
+        config: ValidatedAppConfig,
+        persistence: AppPersistenceResources
+    ) throws -> AppModel {
+        // Configure the minimal session boundary before constructing services
+        // such as reachability that start process-long observation in init.
+        let authService = AuthService(config: config.value)
+        let session = SessionManager(authService: authService)
+        try session.configure()
+
+        let model = AppModel(
+            config: config,
+            persistence: persistence,
+            authService: authService,
+            session: session
+        )
+        model.activateRequiredServices()
+        return model
+    }
+}
+
+/// Owns the one live bootstrap attempt and prevents stale or duplicate attempts
+/// from publishing an application graph.
+@Observable
+@MainActor
+public final class AppBootstrapCoordinator {
+    public private(set) var state: AppBootstrapState
+
+    private let buildConfiguration: AppBuildConfiguration
+    private let diagnostics: any AppConfigurationDiagnosticsRecording
+    private let persistenceLoader: any AppPersistenceLoading
+    private let graphFactory: any AppGraphFactory
+    private let validatedConfig: ValidatedAppConfig?
+    private var attempt: Task<Void, Never>?
+    private var attemptGeneration: UInt = 0
+
+    public convenience init(
+        config: AppConfig,
+        buildConfiguration: AppBuildConfiguration
+    ) {
+        self.init(
+            config: config,
+            buildConfiguration: buildConfiguration,
+            diagnostics: NoopAppConfigurationDiagnosticsRecorder(),
+            persistenceLoader: DefaultAppPersistenceLoader(),
+            graphFactory: LiveAppGraphFactory()
+        )
+    }
 
     init(
         config: AppConfig,
         buildConfiguration: AppBuildConfiguration,
         diagnostics: any AppConfigurationDiagnosticsRecording,
-        makeGraph: (ValidatedAppConfig) -> Graph
+        persistenceLoader: any AppPersistenceLoading,
+        graphFactory: any AppGraphFactory
     ) {
+        self.buildConfiguration = buildConfiguration
+        self.diagnostics = diagnostics
+        self.persistenceLoader = persistenceLoader
+        self.graphFactory = graphFactory
+
         switch config.validate() {
         case .valid(let validated):
-            let graph = makeGraph(validated)
-            let record = AppConfigurationDiagnosticRecord(
-                status: .valid,
-                buildConfiguration: buildConfiguration,
-                issues: [],
-                liveServicesConstructed: true
-            )
-            _ = try? diagnostics.record(record)
-            route = .application(config: validated, graph: graph)
+            validatedConfig = validated
+            state = .preparing
 
         case .invalid(let issues):
+            validatedConfig = nil
             let record = AppConfigurationDiagnosticRecord(
                 status: .invalid,
                 buildConfiguration: buildConfiguration,
@@ -39,45 +119,156 @@ struct AppGraphBootstrap<Graph> {
                 liveServicesConstructed: false
             )
             _ = try? diagnostics.record(record)
-            route = .configurationFailure(record)
+            state = .invalidConfiguration(record)
         }
     }
-}
 
-/// Stored bootstrap value created once by `ChapterFlowApp.init()`.
-/// SwiftUI receives the already-resolved value and cannot re-run the graph
-/// factory during view initialization or body evaluation.
-@MainActor
-public struct AppBootstrap {
-    let resolution: AppGraphBootstrap<AppModel>
+    /// Starts the initial attempt. Repeated starts while preparing, ready, or in
+    /// a terminal state never create another task or graph.
+    public func start() {
+        guard case .preparing = state, attempt == nil else { return }
+        beginAttempt()
+    }
 
-    public init(config: AppConfig, buildConfiguration: AppBuildConfiguration) {
-        resolution = AppGraphBootstrap(
-            config: config,
-            buildConfiguration: buildConfiguration,
-            diagnostics: NoopAppConfigurationDiagnosticsRecorder(),
-            makeGraph: AppModel.init(config:)
-        )
+    /// Retries only recoverable bootstrap failures. The state changes to
+    /// preparing synchronously so repeated taps cannot overlap attempts.
+    public func retry() {
+        switch state {
+        case .storageUnavailable, .sessionConfigurationFailed:
+            state = .preparing
+            beginAttempt()
+        case .preparing, .ready, .invalidConfiguration:
+            break
+        }
+    }
+
+    /// Cancels the owned attempt when the launch root leaves the hierarchy.
+    public func cancel() {
+        guard attempt != nil else { return }
+        attemptGeneration &+= 1
+        attempt?.cancel()
+        attempt = nil
+    }
+
+    /// Awaitable test/view-lifetime hook for the currently owned attempt.
+    func waitForCurrentAttempt() async {
+        await attempt?.value
+    }
+
+    /// Atomically supersedes an active attempt. Generation checks guarantee a
+    /// loader that ignores cancellation still cannot publish stale results.
+    func restartActiveAttempt() {
+        guard validatedConfig != nil else { return }
+        state = .preparing
+        beginAttempt(replacingCurrent: true)
+    }
+
+    private func beginAttempt(replacingCurrent: Bool = false) {
+        guard let validatedConfig else { return }
+        if replacingCurrent {
+            attempt?.cancel()
+        } else {
+            guard attempt == nil else { return }
+        }
+
+        attemptGeneration &+= 1
+        let generation = attemptGeneration
+        let loader = persistenceLoader
+        attempt = Task { @MainActor [weak self, loader] in
+            do {
+                let persistence = try await loader.load()
+                try Task.checkCancellation()
+                self?.finishStorageLoad(
+                    persistence,
+                    config: validatedConfig,
+                    generation: generation
+                )
+            } catch is CancellationError {
+                self?.finishCancellation(generation: generation)
+            } catch {
+                self?.finishStorageFailure(generation: generation)
+            }
+        }
+    }
+
+    private func finishStorageLoad(
+        _ persistence: AppPersistenceResources,
+        config: ValidatedAppConfig,
+        generation: UInt
+    ) {
+        guard generation == attemptGeneration else { return }
+
+        do {
+            let model = try graphFactory.makeConfiguredGraph(
+                config: config,
+                persistence: persistence
+            )
+            let record = AppConfigurationDiagnosticRecord(
+                status: .valid,
+                buildConfiguration: buildConfiguration,
+                issues: [],
+                liveServicesConstructed: true
+            )
+            _ = try? diagnostics.record(record)
+            attempt = nil
+            state = .ready(config: config, model: model)
+        } catch {
+            attempt = nil
+            state = .sessionConfigurationFailed(AppBootstrapSessionFailure())
+        }
+    }
+
+    private func finishStorageFailure(generation: UInt) {
+        guard generation == attemptGeneration else { return }
+        attempt = nil
+        state = .storageUnavailable(AppBootstrapStorageFailure())
+    }
+
+    private func finishCancellation(generation: UInt) {
+        guard generation == attemptGeneration else { return }
+        attempt = nil
     }
 }
 
-/// Root switch between the prebuilt live application and the dedicated invalid
-/// development-configuration surface.
+/// Root switch between a lightweight first frame, one configured application
+/// graph, and dedicated actionable failure surfaces.
 public struct ConfiguredAppRootView: View {
-    private let bootstrap: AppBootstrap
+    private let bootstrap: AppBootstrapCoordinator
 
-    public init(bootstrap: AppBootstrap) {
+    public init(bootstrap: AppBootstrapCoordinator) {
         self.bootstrap = bootstrap
     }
 
     public var body: some View {
-        switch bootstrap.resolution.route {
-        case .application(let validated, let model):
+        switch bootstrap.state {
+        case .preparing:
+            BootstrapPreparingView()
+                .task {
+                    bootstrap.start()
+                    await bootstrap.waitForCurrentAttempt()
+                }
+                .onDisappear { bootstrap.cancel() }
+
+        case .ready(let validated, let model):
             AppRootView(model: model)
                 .environment(\.appConfig, validated.value)
 
-        case .configurationFailure(let diagnostic):
+        case .invalidConfiguration(let diagnostic):
             InvalidDevelopmentConfigurationView(diagnostic: diagnostic)
+
+        case .storageUnavailable(let failure):
+            BootstrapFailureView(
+                kind: .storage,
+                supportCode: failure.supportCode,
+                onRetry: bootstrap.retry
+            )
+
+        case .sessionConfigurationFailed(let failure):
+            BootstrapFailureView(
+                kind: .session,
+                supportCode: failure.supportCode,
+                onRetry: bootstrap.retry
+            )
         }
     }
 }

@@ -1,4 +1,5 @@
 #if DEBUG
+import AppFeature
 import CoreKit
 import Foundation
 
@@ -22,6 +23,9 @@ enum CFAppLaunchSupport {
     private static let hermeticConfigurationKey = "CF_HERMETIC_TEST_CONFIGURATION"
     private static let invalidConfigurationKey = "CF_INVALID_TEST_CONFIGURATION"
     private static let stubServerKey = "CF_STUB_SERVER"
+    private static let suspendStorageKey = "CF_BOOTSTRAP_SUSPEND_STORAGE"
+    private static let failStorageOnceKey = "CF_BOOTSTRAP_FAIL_STORAGE_ONCE"
+    private static let failSessionKey = "CF_BOOTSTRAP_FAIL_SESSION"
 
     static func applyUITestOverrides() {
         let env = ProcessInfo.processInfo.environment
@@ -83,6 +87,39 @@ enum CFAppLaunchSupport {
             cognitoDomain: "auth.chapterflow.test"
         )
         return defaultConfig.applyingHermeticServiceOverlay(requiredServices)
+    }
+
+    /// Builds the production coordinator unless a bootstrap failure mode is
+    /// explicitly requested inside the fully hermetic XCUITest boundary.
+    static func makeBootstrap(
+        config: AppConfig,
+        buildConfiguration: AppBuildConfiguration
+    ) -> AppBootstrapCoordinator {
+        let env = ProcessInfo.processInfo.environment
+        guard env[stubServerKey] == "1",
+              env[hermeticConfigurationKey] == "1" else {
+            return AppBootstrapCoordinator(
+                config: config,
+                buildConfiguration: buildConfiguration
+            )
+        }
+
+        let mode: AppBootstrapDebugMode
+        if env[suspendStorageKey] == "1" {
+            mode = .suspendStorage
+        } else if env[failStorageOnceKey] == "1" {
+            mode = .failStorageOnce
+        } else if env[failSessionKey] == "1" {
+            mode = .failSessionConfiguration
+        } else {
+            mode = .live
+        }
+
+        return AppBootstrapCoordinator(
+            config: config,
+            buildConfiguration: buildConfiguration,
+            debugMode: mode
+        )
     }
 }
 #endif
