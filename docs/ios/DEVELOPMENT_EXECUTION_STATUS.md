@@ -829,3 +829,38 @@ device budget is measured.
 The single mandatory fresh fixed-checklist read-only reviewer returned **CLEAR**, with no valid
 P0/P1/P2 finding. The resulting local head is recorded in the Phase A handoff. Nothing in this
 local phase is pushed or published.
+
+### Phase B rebase and pre-publication evidence — 2026-07-14
+
+The owner authorized Phase B after CI Stage B completed. The delegated checkpoint contained one
+hyphen in place of a hexadecimal character; a fresh fetch resolved it unambiguously to current
+`origin/main` at `0830ba198d9271f7354f4f5d494d67fad1a478c1` (`WP-CI-02: Make CI v2
+authoritative and retire duplicate CI (#123)`). The Phase A commit rebased onto that exact revision
+without conflict or manual resolution. The rebased implementation head before this evidence-only
+documentation successor was `84bd8a267d16887d1584156f6d9f09fecb17bf79`.
+
+The current authoritative pull-request workflow is `.github/workflows/pr-v2.yml`, named
+`CI — Required`, with aggregate check `CI / Required`. `.github/workflows/pr.yml` is now the
+manual-only legacy fallback and is not treated as a required automatic lane.
+
+Every bounded local gate was rerun after the rebase:
+
+- Persistence: **100 tests in 31 suites passed**.
+- AppFeature: **76 tests in 18 suites passed**.
+- CoreKit: **147 tests in 26 suites passed**.
+- Focused bootstrap XCUITests: **4/4 passed**, 0 failed, 0 skipped, on iPhone 17 Pro with iOS 26.5.
+  The selected classes cover preparing, storage failure/retry, required-session failure, and invalid
+  configuration precedence. Xcode emitted existing test-target actor-isolation warnings, including
+  the shared harness; no warning was suppressed and no XCTest-wide migration was added to this
+  bounded bootstrap package.
+- Unsigned Debug generic iOS Simulator build: **PASS**, exit 0 and `BUILD SUCCEEDED`.
+- WP-DEV-01 non-Debug compile boundaries: **PASS**.
+- Strict SwiftLint: **PASS**, 0 violations and 0 serious violations in 746 files.
+- Incremental native contract semantics: **PASS**, 83 operations / 93 producers / 29 matrix rows /
+  93 relations; no contract repin is required.
+- Rebased diff/conflict guard: **PASS**.
+
+This pre-publication record makes no exact-head GitHub CI or merge claim. Those conclusions require
+the draft PR, terminal required checks on its exact head, the ready-state transition, squash merge,
+and post-merge main CI. No backend, release, App Store, TestFlight, signing, deployment, PR #117, or
+unrelated user state changed during the rebase and local revalidation.
