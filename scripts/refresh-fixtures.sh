@@ -32,8 +32,7 @@ repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 backend_repo=${CHAPTERFLOW_BACKEND_REPO:-"$(dirname "$repo_root")/ChapterFlow"}
 relative_bundle="contracts/native-ios/v1/contract-bundle.json"
 relative_inventory_manifest="contracts/native-ios/v1/ios-source-inventory-manifest.json"
-relative_inventory_mapping="contracts/native-ios/v1/ios-native-contract-inventory-source.json"
-relative_inventory_generator="scripts/contracts/generate_ios_native_inventory.py"
+relative_inventory_verifier="scripts/contracts/verify_ios_incremental_contract_drift.py"
 backend_inventory_manifest="$backend_repo/$relative_inventory_manifest"
 ios_bundle="$repo_root/$relative_bundle"
 ios_inventory_manifest="$repo_root/$relative_inventory_manifest"
@@ -91,13 +90,10 @@ if [[ ! "$ios_inventory_revision" =~ ^[0-9a-f]{40}$ ]]; then
   exit 1
 fi
 
-echo "Verifying the iOS-owned relational inventory from its pinned Git object..."
-PYTHONDONTWRITEBYTECODE=1 python3 "$repo_root/$relative_inventory_generator" \
+echo "Verifying historical iOS provenance and current worktree contract semantics..."
+PYTHONDONTWRITEBYTECODE=1 python3 "$repo_root/$relative_inventory_verifier" \
   --repo-root "$repo_root" \
-  --mapping "$relative_inventory_mapping" \
-  --source-revision "$ios_inventory_revision" \
-  --output "$ios_inventory_manifest" \
-  --check
+  --manifest "$relative_inventory_manifest"
 
 if ! cmp -s "$ios_inventory_manifest" "$backend_inventory_manifest"; then
   echo "error: backend must consume a byte-identical copy of the iOS-owned inventory manifest" >&2

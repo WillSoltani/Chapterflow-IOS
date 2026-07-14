@@ -8,6 +8,13 @@ on:
       - "Packages/Networking/**"
       - "Packages/SocialFeature/**"
       - "Packages/**/Sources/**/*.swift"
+      - "ChapterFlow/**/*.swift"
+      - "ChapterflowWidgets/**/*.swift"
+      - "NotificationService/**/*.swift"
+      - "NotificationContent/**/*.swift"
+      - "ShareExtension/**/*.swift"
+      - "ActionExtension/**/*.swift"
+      - "SharedExtensionKit/**/*.swift"
       - "scripts/refresh-fixtures.sh"
       - "scripts/verify-backend-contract-provenance.sh"
       - "scripts/test-backend-contract-provenance.sh"
@@ -114,6 +121,12 @@ jobs:
           PYTHONDONTWRITEBYTECODE: "1"
         run: python3 scripts/contracts/test_generate_ios_native_inventory.py
 
+      - name: Verify incremental iOS contract drift canaries
+        working-directory: ios
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 scripts/contracts/test_verify_ios_incremental_contract_drift.py
+
       - name: Regenerate twice and compare the committed iOS bundle
         working-directory: ios
         env:
@@ -162,11 +175,13 @@ jobs:
           PINNED_BACKEND_REVISION: ${{ steps.backend_source.outputs.sha }}
           PINNED_BACKEND_PHASE: ${{ steps.backend_source.outputs.phase }}
         run: |
-          echo "### Native contract drift" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Source: backend-generated synthetic bundle" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Live production routes called: no" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Expected inventory: 83 operations / 93 native producers / 29 matrix rows" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Pinned source: ${PINNED_BACKEND_REVISION:-unavailable} (${PINNED_BACKEND_PHASE:-unavailable})" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Coverage: 0 full / 60 partial / 23 blocked" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Native proof: request factories 6/93; success consumers 24/60" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Authority proof: 51 structural fixtures; 4 production consumers; 1 blocked/unproven" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "### Native contract drift"
+            echo "- Source: backend-generated synthetic bundle"
+            echo "- Live production routes called: no"
+            echo "- Expected inventory: 83 operations / 93 native producers / 29 matrix rows"
+            echo "- Pinned source: ${PINNED_BACKEND_REVISION:-unavailable} (${PINNED_BACKEND_PHASE:-unavailable})"
+            echo "- Coverage: 0 full / 60 partial / 23 blocked"
+            echo "- Native proof: request factories 6/93; success consumers 24/60"
+            echo "- Authority proof: 51 structural fixtures; 4 production consumers; 1 blocked/unproven"
+          } >> "$GITHUB_STEP_SUMMARY"

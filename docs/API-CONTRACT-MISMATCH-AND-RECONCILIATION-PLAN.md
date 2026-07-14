@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | WP-CONTRACT-01 final merged-backend overlay prepared on draft iOS PR #120; exact-head GitHub verification is delegated to the PR workflows |
+| **Status** | WP-CONTRACT-01 merged through iOS PR #120; WP-CONTRACT-01F remains unmerged, but its owner-authorized final local classification correction is complete and independently CLEAR; the merge verdict still requires exact-head draft-PR workflows |
 | **Severity** | was P0 for native launch (the app could not load *any* real data from production) |
 | **Date** | 2026-07-10 analysis and tolerant-client repair; backend-owned contract work finalized from merged source 2026-07-14 |
 | **Discovered** | First on-device run against production, during Phase 0 device bring-up |
@@ -14,7 +14,7 @@
 > analysis as explicitly historical context; the **Implementation Record** below documents what was actually
 > built, what the analysis missed, and what remains.
 
-## WP-CONTRACT-01 control plane (final merged-backend integration 2026-07-14)
+## WP-CONTRACT-01 control plane and WP-CONTRACT-01F follow-up (2026-07-14)
 
 ### Final merged-backend checkpoint
 
@@ -26,12 +26,16 @@ changes `contracts/native-ios/v1/contract-bundle.json`. Backend push-to-main CI 
 `29300772440` completed successfully with all 11 jobs passing. This establishes merged source
 provenance only; it is not evidence of deployment or deployed-backend compatibility.
 
-The iOS PR branch retains its existing history and contains current iOS `main`
-`16d9b17c2743f40656ac9617af13eece51e1afc4`, including merged PRs #119 and #121. Its prepared
-source snapshot is `8fec3a3a2ae21af87a799334949491fd90d9af72`, including scanner remediation
+iOS PR #120 merged through real merge commit
+`72d4a1a90a6f360479dfccfda5cafd7f193af7b5`, whose parents are prior iOS `main`
+`16d9b17c2743f40656ac9617af13eece51e1afc4` and PR head
+`04781abf338928003682e1fa2754e50490c5db25`. The merge commit and PR head share tree
+`c6319d52967d3e2fa97e12b4c7aecb7b6c58deb0`; this was neither a squash nor an inferred
+integration. The prepared source snapshot remains
+`8fec3a3a2ae21af87a799334949491fd90d9af72`, including scanner remediation
 `7f9080fb503c3ad9a0010af0f7744cfd21cd288e`; the separate manifest commit is
-`5dec724e77f04e91aecf321c60280bdbbf71a083`. The scanner suite passes all **66/66** canaries,
-including both alternate-normal-return reproductions.
+`5dec724e77f04e91aecf321c60280bdbbf71a083`. The historical scanner suite remains **66/66**
+canaries, including both alternate-normal-return reproductions.
 
 The final iOS overlay is generated from a clean detached backend checkout at the squash commit
 with `sourceRevisionPhase: "merged_backend"` and trusted ref `refs/remotes/origin/main`:
@@ -136,8 +140,9 @@ The manifest proves 83 operations, 93 production producers, 29 matrix rows, and 
 records. Each record has exactly 11 fields: operation ID, method, route template, matrix-row ID,
 operation-variant ID, producer kind, producer symbol, producer source path, stable variant suffix,
 source method expression, and source path expression. Its provenance hashes exactly 584 Git-object
-inputs: all 582 production Swift source files plus the mapping and generator. Addition, removal,
-dirty/staged/untracked changes, or nonmapped source drift therefore fail closed.
+inputs: all 582 production Swift source files plus the mapping and generator. Those hashes prove
+the committed historical artifact from its pinned revision; they are not a requirement that an
+ongoing development worktree remain byte-identical to that older revision.
 
 The pinned manifest SHA-256 is
 `03a2b3295fc6dd97dc4f06c6a1189c6b70924424cb056157adf4839ee1b0fd05`; the relational-record
@@ -145,6 +150,101 @@ SHA-256 is `03103dcada4b7ae3ed2763372dda873aa504a75c18ae4553e91cc71f17007a78`, a
 Git-object tree SHA-256 is `9f1b7285c945cee0f457535066fd7be664b7d28973ffb71b13ac67889c97377e`.
 Backend validation requires one exact registry match per manifest relation and derives matrix
 membership from those records instead of trusting flattened counts or summary sets.
+
+### Ongoing incremental drift verification
+
+The unmerged WP-CONTRACT-01F branch is intended to keep the committed manifest and backend copy
+unchanged while separating two proofs:
+
+1. Historical provenance executes the generator and mapping from the manifest's exact
+   `iosSourceRevision` in a clean detached checkout, reads the pinned Git objects, and requires an
+   exact byte reproduction of the committed manifest.
+2. Current-worktree drift scans every production Swift source, validates the same 83 operations,
+   93 producers, 29 matrix rows, and 93 canonical relations, and compares request method, route,
+   query, authentication, body wire identity, producer identity, source path, and matrix ownership.
+   Comments, views, models, design tokens, computed properties that neither expose/produce
+   `Endpoint` nor alter request wire identity, and other non-contract bytes do not require a
+   manifest or backend repin.
+
+The current verifier has its own content-addressed policy lock in
+`contracts/native-ios/v1/incremental-drift-policy.json`. Changing verifier logic, the historical
+generator, or the source mapping fails closed until the corresponding evidence is deliberately
+regenerated and reviewed.
+
+The pre-remediation P1 was reproduced exactly with
+`typealias Factory<T> = @Sendable () -> T` and a stored `Factory<Endpoint>`: the focused test failed
+with `AssertionError: DriftError not raised` (`1 test in 58.653s`). The branch now contains a
+bounded masked-source type parser and recursive alias resolver with positional generic
+substitution, lexical/module ownership and shadowing, alias chains, and cycle, arity, depth, node,
+token, ambiguity, and incomplete-proof diagnostics. File/type-scope functions, subscripts,
+computed properties, and stored closure/function initializers are discovered independently of
+their declared spelling. Unsupported Endpoint-bearing aliases and unresolved escaping flows fail
+closed; a proven local, nonescaping, direct-call-only value may pass.
+
+The initial implementation passed all 132 then-current incremental canaries, and the unchanged
+historical generator/scanner passed all 66 canaries. Two authorized remediation passes expanded the
+incremental suite to 153 canaries and fixed the original alias bypass plus independently found
+type-erasure, trailing-closure, namespace-metatype, attributed/access-level import, concrete
+carrier, and shadowing variants. The final independent review nevertheless found one P2 false
+positive: in `return send(make())`, where local `make = Endpoints.getBooks`, the verifier treats
+the direct-call-only local factory as escaped merely because its name occurs in a return
+expression. The valid sample typechecked, but semantic comparison rejected `debug` as an
+unexpected producer. The full final 153-canary run was therefore stopped and no draft PR or
+exact-head GitHub CI conclusion exists. WP-CONTRACT-01F is not complete or merge-ready.
+
+The backend manifest byte-identity check, merged-backend provenance, canonical bundle generation,
+**0 full / 60 partial / 23 blocked** coverage state, and all 23 blockers remain unchanged. This
+follow-up changes development drift verification only; it provides no deployment or
+deployed-backend claim.
+
+#### Owner-authorized final local-use classification correction
+
+The preceding **NOT MERGE READY** paragraph is retained as the exact historical checkpoint that
+triggered this final cycle. The owner subsequently superseded the two-pass remediation ceiling and
+narrowed the architecture: a function-local reference such as
+`let make = Endpoints.getBooks` is consuming dataflow, not an independent producer. Each occurrence
+is a direct invocation only when the identifier is the immediate syntactic callee, including
+`send(make())`, `return try await send(make())`, and `(make)()`. Bare return, bare argument,
+assignment/storage, collection/tuple placement, captured closure use, and unsupported ambiguity
+remain fail-closed escapes. Producer status still comes from a file/type stored value, an enclosing
+declared or resolved Endpoint-carrying result, direct Endpoint/native-wire construction, or an
+existing mapped analytics transport.
+
+The exact pre-fix Swift sample typechecked, while the focused verifier canary rejected
+`debug() async throws -> Response` as an unexpected producer (`1 test in 21.542 seconds`). The
+bounded immediate-use-role classifier replaced the ancestor-`return` heuristic without adding a
+general Swift parser. The exact canary then passed (`1 test in 22.935 seconds`; 23.08 seconds wall
+time). Five pure structural classifier tests cover direct, nested, parenthesized, repeated and
+branched invocation plus bare return/argument/storage/collection/tuple/capture/ambiguous escapes;
+they complete in 0.001 seconds. A separate local Endpoint value retains its prior result-flow proof
+and is not processed as a function value.
+
+Final local evidence on verifier digest
+`20fac4a9dc26736612e5a96b1de84e57c58d7aa1d4a45435f1c5749fdfb59c58` is:
+
+- complete incremental suite: **162/162** in 2,680.016 seconds;
+- unchanged historical generator/scanner: **66/66** in 50.254 seconds;
+- production verifier: **83 operations / 93 producers / 29 matrix rows / 93 relations** in 26.11
+  seconds, with exact reproduction from 584 pinned Git-object inputs;
+- merged-backend provenance and `refresh-fixtures.sh --check`: pass against clean backend revision
+  `6a792cf2572f585e56ce5dbb181307955c1896a8`; all 53 backend contract tests passed and two generated
+  overlays were byte-identical;
+- policy schema v2 and stale-digest canary: pass; unsupported or ambiguous local uses remain
+  fail-closed;
+- shellcheck, Bash syntax, actionlint, changed-YAML parse, strict SwiftLint (0 violations in 742
+  files), and diff/conflict guards: pass.
+
+The single fresh scope-frozen read-only review returned **CLEAR** with no valid P0/P1/P2 finding.
+Its novel exhaustive enum-switch `Response` consumer, using both `builder()` and `(builder)()`, was
+accepted; its bare `return builder` counterpart was rejected as an unmapped Endpoint factory
+producer and independently classified as an escape. The reviewer also rechecked mapped method
+drift, an unrelated generic `Endpoint` alias producer, stale policy digest, historical provenance,
+current production semantics, workflow triggers and unconditional fail-closed steps.
+
+The historical manifest, bundle, backend manifest copy, mapping, generator, generator tests and all
+production Swift remain unchanged. This local record deliberately does not preclaim a draft-PR URL
+or GitHub workflow conclusion; exact-head workflow evidence remains required before the final merge
+verdict and does not make WP-CONTRACT-01F merged.
 
 ### Exact backend provenance and artifacts
 

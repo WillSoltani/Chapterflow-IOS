@@ -73,17 +73,18 @@ Skills and MCP servers accelerate the work; they do not replace engineering judg
 
 ## 2. Current checkpoint and deferred release branch
 
-Revalidate this checkpoint before substantial work.
+Before substantial work, fetch `origin/main` and record the exact current revision. Do not treat a
+dated SHA in a plan, audit, or prior PR as the development baseline.
 
-Known state on **2026-07-13**:
+Durable checkpoint decisions:
 
-- iOS repo: `WillSoltani/Chapterflow-IOS`
-- iOS `main`: `03747305819eccc8bb3c738a21e79d78a82d587d`
-- Backend repo: `WillSoltani/ChapterFlow`
+- iOS repo: `WillSoltani/Chapterflow-IOS`.
+- Backend repo: `WillSoltani/ChapterFlow`.
+- Completed foundations include `WP-DEV-01`, `WP-CONTRACT-01`, and CI Stage A2.
 - Deferred iOS branch: `codex/wp-rel-01`
 - Deferred iOS PR: `#117`
 - PR `#117` checkpoint head: `7bb9b5a88494027832cfe1553cc3c6c464702ab6`
-- Backend PR `#400` is merged in source. **Merged does not mean deployed.**
+- A merged iOS or backend change proves source integration only. **Merged does not mean deployed.**
 
 ### PR #117 is frozen
 
