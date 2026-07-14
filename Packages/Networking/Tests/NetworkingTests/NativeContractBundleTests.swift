@@ -36,7 +36,7 @@ let expectedMatrixRowIDs: Set<String> = [
     "mobile-config",
 ]
 
-let expectedIOSInventoryRevision = "0b0f6bc8399b18e0abd75c0a444af9cf6fe98d40"
+let expectedIOSInventoryRevision = "8fec3a3a2ae21af87a799334949491fd90d9af72"
 
 let expectedProductionAuthorityTests = [
     "chapter.get": "models.chapter-progress.authority-deletion",

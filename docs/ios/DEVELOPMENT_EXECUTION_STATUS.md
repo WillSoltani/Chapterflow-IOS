@@ -550,3 +550,96 @@ The complete diff contains no App Store identity, product/price/subscription-gro
 - The setup root still contains hard-coded English development guidance. Localization is deferred to `WP-L10N-01`; this remediation intentionally did not broaden into a localization rewrite.
 - Independent verification remains **FAIL at `63cdbb...`** until the new draft PR head receives a separate read-only re-verification. Local validation and local read-only review are not substitutes for that checkpoint.
 - PR #119 remains draft and unmerged. No merge, deployment, App Store Connect action, TestFlight action, Sandbox purchase, signing/provisioning change, production-data action, PR #117/PR #120 mutation, backend PR #402/backend change, or unrelated-user change occurred.
+
+---
+
+## WP-CONTRACT-01 final merged-backend integration — 2026-07-14
+
+### Revisions and integration shape
+
+- Current iOS `main`: `16d9b17c2743f40656ac9617af13eece51e1afc4`.
+- Existing iOS PR #120 remote head before finalization: `da70b02e73c67cf9a19962edacc4a7a5ff1b7a8b`.
+- Prepared iOS source snapshot: `8fec3a3a2ae21af87a799334949491fd90d9af72`.
+- Prepared iOS manifest commit and temporary-branch head: `5dec724e77f04e91aecf321c60280bdbbf71a083`.
+- Scanner remediation: `7f9080fb503c3ad9a0010af0f7744cfd21cd288e`.
+- Backend PR #402 merge method: squash.
+- Backend `main` and exact latest contract-changing commit:
+  `6a792cf2572f585e56ce5dbb181307955c1896a8`.
+- The backend squash commit and former PR head `0ee789788c155505e039651b19483e37b41d28ff`
+  have the same tree; the old PR head is intentionally not used as merged provenance.
+- Backend push-to-main CI run `29300772440` passed all 11 jobs in 3m58s.
+
+The local `codex/wp-contract-01` branch already equaled the verified temporary source-snapshot
+head, so `git merge --ff-only origin/codex/wp-contract-01-source-snapshot` completed as
+`Already up to date`. No rebase, squash, reset, or history rewrite occurred.
+
+### Final generated evidence
+
+The final overlay was generated twice and checked from a clean detached backend checkout at
+`6a792cf2572f585e56ce5dbb181307955c1896a8` with:
+
+- `sourceRevision`: `6a792cf2572f585e56ce5dbb181307955c1896a8`;
+- `sourceRevisionPhase`: `merged_backend`;
+- `trustedMainRef`: `refs/remotes/origin/main`;
+- `trustedMainRevision`: `6a792cf2572f585e56ce5dbb181307955c1896a8`;
+- overlay SHA-256: `c004d42cdcb0e60e4acc5f0d94c0fb349bef6261a029348ccf952edf993dfd5f`;
+- backend input-tree SHA-256: `2f9caf4485a4f7af52dcbeaebe0b00100a458bdcfcfa285d839955a916c5bf98`;
+- generator-tree SHA-256: `50c49dff44d58fc2cc0c36cd58826987e5370953a6db4f9c388a92b563d4b056`;
+- manifest SHA-256: `03a2b3295fc6dd97dc4f06c6a1189c6b70924424cb056157adf4839ee1b0fd05`;
+- relational-record SHA-256: `03103dcada4b7ae3ed2763372dda873aa504a75c18ae4553e91cc71f17007a78`;
+- iOS input-tree SHA-256: `9f1b7285c945cee0f457535066fd7be664b7d28973ffb71b13ac67889c97377e`.
+
+The iOS-owned manifest remained byte-identical to the merged backend copy and still records
+`iosSourceRevision = 8fec3a3a2ae21af87a799334949491fd90d9af72`. It covers 584 exact Git-object
+inputs: 582 production Swift sources plus the inventory mapping and generator.
+
+Inventory and coverage remain **83 operations / 93 producers / 29 matrix rows / 93 relations**,
+**0 full / 60 partial / 23 blocked**, **6/93** exact factory proof, and **24/60** production
+success-decoder/cache proof. Authority remains 51 structural proofs, four production-consumer
+deletion tests, and one blocked/unproven server decision. `quiz-submit.post` remains fail-closed;
+no success fixture or local grade/unlock result was added.
+
+### Source-proven request corrections
+
+The six parameterized factory cases prove the four existing corrections without changing public
+Swift signatures:
+
+1. `getBook` and `getManifestForDownload` are public `GET` requests.
+2. `postTier` sends `GET` without a body.
+3. `getAudioPlan` and `getAudioPlanFreshURLs` send ordered `mode=plan`.
+4. `postOnboardingProgress` sends `PATCH`.
+
+### Focused local validation
+
+- Python compilation: passed with an external bytecode cache.
+- iOS inventory/scanner suite: **66/66 passed** in 58.822s.
+- Backend canonical/provenance suite through refresh: **53/53 passed**; deterministic double
+  generation and the identical `--check` command passed.
+- Backend branch/normal-merge/squash-merge provenance canaries: passed.
+- Models: **180 tests in 66 suites passed**.
+- Networking first full run: **failed with three issues** because
+  `expectedIOSInventoryRevision` still named the pre-snapshot revision `0b0f6bc...`.
+- Focused red reproduction: the inventory-manifest test failed at its two stale equality checks.
+- Remediation: updated only that test-evidence constant to `8fec3a3...`.
+- Focused inventory regression: passed; corrected endpoint factories: **6/6 passed**.
+- Networking final run: **67 tests in 6 suites passed**.
+- Shell syntax, ShellCheck, and contract-drift YAML syntax/shape validation: passed.
+- Strict SwiftLint: **0 violations and 0 serious violations in 742 files**.
+- The first SwiftPM attempts were blocked by the outer sandbox's nested `sandbox-exec`; the exact
+  commands were rerun once outside that restriction and produced the results above.
+- The first refresh attempt was blocked by the outer sandbox denying the `tsx` IPC socket; the
+  exact command and its `--check` form passed outside that restriction.
+- The first SwiftLint attempt found zero violations but could not save its cache; the exact command
+  then passed outside that restriction.
+
+The full package matrix, app build, and XCUITest were intentionally not run locally. Exact-head
+GitHub workflows are the broad regression executor and their terminal results are recorded in PR
+#120 after the single final push.
+
+### Remaining limitations and prohibited-action confirmation
+
+All 23 blockers retain their prior closed owners and dependencies. No blocker was reclassified or
+fixed in this finalization. No deployed-backend compatibility, production request, physical-device,
+real-API, StoreKit, signing, TestFlight, App Store, deployment, release, or migration claim is made.
+PR #120 remains draft and must not be merged as part of this task. PR #117, backend PR #401,
+branch protection, CI architecture, release state, and unrelated user work remain untouched.

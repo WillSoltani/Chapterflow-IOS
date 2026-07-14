@@ -2,9 +2,9 @@
 
 | | |
 |---|---|
-| **Status** | WP-CONTRACT-01 remediation implemented on draft branches; fresh independent verification is still required |
+| **Status** | WP-CONTRACT-01 final merged-backend overlay prepared on draft iOS PR #120; exact-head GitHub verification is delegated to the PR workflows |
 | **Severity** | was P0 for native launch (the app could not load *any* real data from production) |
-| **Date** | 2026-07-10 analysis and tolerant-client repair; backend-owned contract work updated 2026-07-13 |
+| **Date** | 2026-07-10 analysis and tolerant-client repair; backend-owned contract work finalized from merged source 2026-07-14 |
 | **Discovered** | First on-device run against production, during Phase 0 device bring-up |
 | **Scope** | iOS client (`Chapterflow-IOS`) ↔ current backend source (`ChapterFlow`); deployed compatibility is recorded separately and is not inferred from source main |
 | **Owner decision required** | None for fixture generation. Product/security decisions and deployment verification remain explicit blockers where listed. |
@@ -14,7 +14,54 @@
 > analysis as explicitly historical context; the **Implementation Record** below documents what was actually
 > built, what the analysis missed, and what remains.
 
-## WP-CONTRACT-01 control plane (remediated 2026-07-13)
+## WP-CONTRACT-01 control plane (final merged-backend integration 2026-07-14)
+
+### Final merged-backend checkpoint
+
+Backend PR #402 was squash-merged into backend `main` as
+`6a792cf2572f585e56ce5dbb181307955c1896a8`. The squash commit has sole parent
+`968ff67ecafbed7e8e1d4c7b77badf507cfc5aee`, has the same tree as the former PR head
+`0ee789788c155505e039651b19483e37b41d28ff`, and is the latest commit on backend `main` that
+changes `contracts/native-ios/v1/contract-bundle.json`. Backend push-to-main CI run
+`29300772440` completed successfully with all 11 jobs passing. This establishes merged source
+provenance only; it is not evidence of deployment or deployed-backend compatibility.
+
+The iOS PR branch retains its existing history and contains current iOS `main`
+`16d9b17c2743f40656ac9617af13eece51e1afc4`, including merged PRs #119 and #121. Its prepared
+source snapshot is `8fec3a3a2ae21af87a799334949491fd90d9af72`, including scanner remediation
+`7f9080fb503c3ad9a0010af0f7744cfd21cd288e`; the separate manifest commit is
+`5dec724e77f04e91aecf321c60280bdbbf71a083`. The scanner suite passes all **66/66** canaries,
+including both alternate-normal-return reproductions.
+
+The final iOS overlay is generated from a clean detached backend checkout at the squash commit
+with `sourceRevisionPhase: "merged_backend"` and trusted ref `refs/remotes/origin/main`:
+
+| Evidence | Final value |
+|---|---|
+| Backend source and trusted-main revision | `6a792cf2572f585e56ce5dbb181307955c1896a8` |
+| Overlay SHA-256 | `c004d42cdcb0e60e4acc5f0d94c0fb349bef6261a029348ccf952edf993dfd5f` |
+| Backend committed-input-tree SHA-256 | `2f9caf4485a4f7af52dcbeaebe0b00100a458bdcfcfa285d839955a916c5bf98` |
+| Generator-tree SHA-256 | `50c49dff44d58fc2cc0c36cd58826987e5370953a6db4f9c388a92b563d4b056` |
+| iOS manifest SHA-256 | `03a2b3295fc6dd97dc4f06c6a1189c6b70924424cb056157adf4839ee1b0fd05` |
+| Operation-key SHA-256 | `b24a9ad2861744ad127ce1aca976c13b621fdb7460fc8cd9b9d5669ec9468174` |
+| Producer-variant SHA-256 | `6c52d6b0f465d50f0e68d5a98cca273f90c8611c3b962f1d8f7d36d1f292ba20` |
+| Producer-identity SHA-256 | `9f1c75e50035022d7b46da7be173fec2f265a58110f77504c9e7d247bd8ea453` |
+| Relational-record SHA-256 | `03103dcada4b7ae3ed2763372dda873aa504a75c18ae4553e91cc71f17007a78` |
+| iOS source-input-tree SHA-256 | `9f1b7285c945cee0f457535066fd7be664b7d28973ffb71b13ac67889c97377e` |
+
+Inventory and coverage remain exactly **83 operations / 93 producers / 29 matrix rows / 93
+relations**, **0 full / 60 partial / 23 blocked**, **6/93** exact request-factory proof, and
+**24/60** production success-decoder/cache proof. The four source-proven request corrections remain:
+
+1. public book detail and download manifest use unauthenticated `GET`;
+2. the retained `postTier` factory sends `GET` without a body;
+3. both audio-plan factories send ordered `mode=plan`;
+4. the retained `postOnboardingProgress` factory sends `PATCH`.
+
+The 23 blockers and their closed owners remain unchanged. `quiz-submit.post` remains
+blocked/unproven and fail-closed; no `/passed`, `/scorePercent`, or `/unlockedNextChapter` success
+fixture was invented. No backend deployment, production call, physical-device session, real-API
+test, release action, or deployed-backend compatibility claim is part of this checkpoint.
 
 ### Independent assessment and reproduced pre-fix failures
 
@@ -88,14 +135,14 @@ sequence is:
 The manifest proves 83 operations, 93 production producers, 29 matrix rows, and 93 relational
 records. Each record has exactly 11 fields: operation ID, method, route template, matrix-row ID,
 operation-variant ID, producer kind, producer symbol, producer source path, stable variant suffix,
-source method expression, and source path expression. Its provenance hashes exactly 578 Git-object
-inputs: all 576 production Swift source files plus the mapping and generator. Addition, removal,
+source method expression, and source path expression. Its provenance hashes exactly 584 Git-object
+inputs: all 582 production Swift source files plus the mapping and generator. Addition, removal,
 dirty/staged/untracked changes, or nonmapped source drift therefore fail closed.
 
 The pinned manifest SHA-256 is
-`f4c0a3ea9cf49ac68f2c0bfd2ec398e6e0800ad6b48ad2c0f6863c344aa2b142`; the relational-record
-SHA-256 is `03103dcada4b7ae3ed2763372dda873aa504a75c18ae4553e91cc71f17007a78`, and the 578-input
-Git-object tree SHA-256 is `2d18ba0c12388cda626da2c2bbaf0319c95d4b2e0a79a79fd4f55c1c2327a234`.
+`03a2b3295fc6dd97dc4f06c6a1189c6b70924424cb056157adf4839ee1b0fd05`; the relational-record
+SHA-256 is `03103dcada4b7ae3ed2763372dda873aa504a75c18ae4553e91cc71f17007a78`, and the 584-input
+Git-object tree SHA-256 is `9f1b7285c945cee0f457535066fd7be664b7d28973ffb71b13ac67889c97377e`.
 Backend validation requires one exact registry match per manifest relation and derives matrix
 membership from those records instead of trusting flattened counts or summary sets.
 
@@ -103,13 +150,13 @@ membership from those records instead of trusting flattened counts or summary se
 
 The backend's checked-in canonical bundle intentionally remains self-reference-safe with
 `sourceRevision: null`, `sourceRevisionPhase: "uncommitted_backend"`, and
-`committedInputTree: null`. The iOS bundle is a generated overlay over backend head
-`b34efa4a04478c02af55976c69cab7ca84c9f3a5`, using trusted backend-main ref
-`968ff67ecafbed7e8e1d4c7b77badf507cfc5aee` and phase `committed_backend_branch`.
+`committedInputTree: null`. The iOS bundle is a generated overlay over the actual backend squash
+commit `6a792cf2572f585e56ce5dbb181307955c1896a8`, using trusted backend-main ref
+`refs/remotes/origin/main` at that same revision and phase `merged_backend`.
 
 The overlay SHA-256 is
-`03bfcf06702394fd074c5ea68802c92cba33e078e269e54ce8d54d9d386f3d24`; its committed input-tree
-SHA-256 is `6d87076a5b7651d9b9fc7561d791ce8f920961559486ec077dbc2ca2c6b06e59`.
+`c004d42cdcb0e60e4acc5f0d94c0fb349bef6261a029348ccf952edf993dfd5f`; its committed input-tree
+SHA-256 is `2f9caf4485a4f7af52dcbeaebe0b00100a458bdcfcfa285d839955a916c5bf98`.
 Provenance binds 120 present inputs and seven expected-missing route paths to exact Git-object
 bytes, then requires matching worktree bytes. It also requires a full source commit equal to
 `HEAD`, a non-shallow repository, an explicit trusted main ref, the latest contract-changing
@@ -123,8 +170,9 @@ normal and squash histories through exact ancestry/blob-history checks.
 
 `account-delete.post` and `export.get` now use the closed class `recent_auth_user`: a Cognito
 `id_token`, `requireUser`, and `requireRecentAuth` are required, while the active-account guard is
-intentionally bypassed. Exact source evidence at backend revision
-`b34efa4a04478c02af55976c69cab7ca84c9f3a5` is:
+intentionally bypassed. Exact source evidence is pinned by merged backend revision
+`6a792cf2572f585e56ce5dbb181307955c1896a8`; the behavior-source baseline remains
+`968ff67ecafbed7e8e1d4c7b77badf507cfc5aee`:
 
 - `app/app/api/book/me/account/delete/route.ts:31-40` — `POST` calls `requireUser` and then
   `requireRecentAuth`; lines 42-55 enforce the `{confirm:"DELETE"}` body.
