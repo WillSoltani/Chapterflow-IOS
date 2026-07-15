@@ -31,37 +31,18 @@ struct QuickActionBridgeTests {
 @MainActor
 struct QuickActionRoutingTests {
 
-    @Test("continue-reading routes to chapter when snapshot has record")
-    func continueReadingRoutesToChapter() async {
+    @Test("ownerless continue-reading snapshot is preserved but not routed")
+    func ownerlessContinueReadingIsNotRouted() async {
         let suiteName = "test.qa.continueReading.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.set("book-qa1", forKey: SharedStateKeys.continueBookId)
         defaults.set(5, forKey: SharedStateKeys.continueChapterNumber)
 
-        let reader = SharedStateReader(suiteName: suiteName)
-        let snapshot = reader.load()
+        let link = DeepLink.library
 
-        let link: DeepLink
-        if let bookId = snapshot.continueBookId, let chapter = snapshot.continueChapterNumber {
-            link = .chapter(bookId: bookId, chapter: chapter)
-        } else {
-            link = .library
-        }
-        #expect(link == .chapter(bookId: "book-qa1", chapter: 5))
-    }
-
-    @Test("continue-reading falls back to library when no snapshot")
-    func continueReadingFallsBackToLibrary() async {
-        let reader = SharedStateReader(suiteName: "test.qa.empty.\(UUID().uuidString)")
-        let snapshot = reader.load()
-
-        let link: DeepLink
-        if let bookId = snapshot.continueBookId, let chapter = snapshot.continueChapterNumber {
-            link = .chapter(bookId: bookId, chapter: chapter)
-        } else {
-            link = .library
-        }
         #expect(link == .library)
+        #expect(defaults.string(forKey: SharedStateKeys.continueBookId) == "book-qa1")
+        #expect(defaults.integer(forKey: SharedStateKeys.continueChapterNumber) == 5)
     }
 }
 

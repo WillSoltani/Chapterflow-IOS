@@ -95,7 +95,12 @@ struct OnboardingModelTests {
         let prefs = preferences ?? AppPreferences(defaults: UserDefaults(suiteName: suite)!)
         let goalStore = DailyGoalStore(defaults: UserDefaults(suiteName: goalSuite)!)
         let repo = MockOnboardingRepository(stubbedProgress: progress)
-        let model = OnboardingModel(preferences: prefs, repository: repo, goalStore: goalStore)
+        let model = OnboardingModel(
+            preferences: prefs,
+            repository: repo,
+            goalStore: goalStore,
+            workPermit: SessionWorkPermit()
+        )
         return ModelFixture(model: model, repo: repo, prefs: prefs, goalStore: goalStore)
     }
 
@@ -120,7 +125,12 @@ struct OnboardingModelTests {
         goalStore.dailyGoalMinutes = 20
 
         let repo = MockOnboardingRepository()
-        let model = OnboardingModel(preferences: prefs, repository: repo, goalStore: goalStore)
+        let model = OnboardingModel(
+            preferences: prefs,
+            repository: repo,
+            goalStore: goalStore,
+            workPermit: SessionWorkPermit()
+        )
         #expect(model.readingTone == .competitive)
         #expect(model.dailyGoalMinutes == 20)
         #expect(model.selectedInterestIds == ["business", "science"])

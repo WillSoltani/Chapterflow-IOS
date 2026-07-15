@@ -8,33 +8,44 @@ public struct KeyValueStore {
     private let defaults: UserDefaults
     private let encoder: JSONEncoder
     private let decoder: JSONDecoder
+    private let keyPrefix: String?
 
     /// Creates a store over the given defaults (App Group suite by default).
-    public init(defaults: UserDefaults? = nil) {
+    ///
+    /// When `keyPrefix` is present, it is prepended verbatim to every key used by
+    /// this store. Include any desired separator in the prefix itself. Omitting
+    /// the prefix preserves the historical key layout.
+    public init(defaults: UserDefaults? = nil, keyPrefix: String? = nil) {
         self.defaults = defaults ?? UserDefaults(suiteName: AppGroup.identifier) ?? .standard
-        self.encoder = JSONEncoder()
-        self.decoder = JSONDecoder()
+        encoder = JSONEncoder()
+        decoder = JSONDecoder()
+        self.keyPrefix = keyPrefix
     }
 
     /// Decodes and returns the value for `key`, or `nil` if absent/undecodable.
     public func value<T: Decodable>(_ type: T.Type = T.self, forKey key: String) -> T? {
-        guard let data = defaults.data(forKey: key) else { return nil }
+        guard let data = defaults.data(forKey: storageKey(for: key)) else { return nil }
         return try? decoder.decode(T.self, from: data)
     }
 
     /// Encodes and stores `value` for `key`.
     public func set<T: Encodable>(_ value: T, forKey key: String) throws {
         let data = try encoder.encode(value)
-        defaults.set(data, forKey: key)
+        defaults.set(data, forKey: storageKey(for: key))
     }
 
     /// Removes any value stored for `key`.
     public func removeValue(forKey key: String) {
-        defaults.removeObject(forKey: key)
+        defaults.removeObject(forKey: storageKey(for: key))
     }
 
     /// Whether a value exists for `key`.
     public func contains(_ key: String) -> Bool {
-        defaults.object(forKey: key) != nil
+        defaults.object(forKey: storageKey(for: key)) != nil
+    }
+
+    private func storageKey(for key: String) -> String {
+        guard let keyPrefix else { return key }
+        return keyPrefix + key
     }
 }

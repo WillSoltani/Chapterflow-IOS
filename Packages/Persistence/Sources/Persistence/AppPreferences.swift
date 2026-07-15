@@ -80,52 +80,53 @@ public enum LearningMode: String, Sendable, CaseIterable, Codable {
 @Observable
 public final class AppPreferences {
     @ObservationIgnored private let defaults: UserDefaults
+    @ObservationIgnored private let keyPrefix: String?
 
     /// Preferred teaching tone.
     public var readingTone: ReadingTone {
-        didSet { defaults.set(readingTone.rawValue, forKey: Keys.readingTone) }
+        didSet { defaults.set(readingTone.rawValue, forKey: storageKey(Keys.readingTone)) }
     }
 
     /// Preferred reading-depth variant.
     public var depthVariant: DepthVariant {
-        didSet { defaults.set(depthVariant.rawValue, forKey: Keys.depthVariant) }
+        didSet { defaults.set(depthVariant.rawValue, forKey: storageKey(Keys.depthVariant)) }
     }
 
     /// Appearance mode (system/light/dark).
     public var themeMode: ThemeMode {
-        didSet { defaults.set(themeMode.rawValue, forKey: Keys.themeMode) }
+        didSet { defaults.set(themeMode.rawValue, forKey: storageKey(Keys.themeMode)) }
     }
 
     /// Reader visual theme.
     public var readerTheme: ReadingTheme {
-        didSet { defaults.set(readerTheme.rawValue, forKey: Keys.readerTheme) }
+        didSet { defaults.set(readerTheme.rawValue, forKey: storageKey(Keys.readerTheme)) }
     }
 
     /// Reader font scale multiplier (1.0 == Dynamic Type base size).
     /// Range 0.8 – 1.8; values below 1.0 are clamped to DT base at render time.
     public var readerFontScale: Double {
-        didSet { defaults.set(readerFontScale, forKey: Keys.readerFontScale) }
+        didSet { defaults.set(readerFontScale, forKey: storageKey(Keys.readerFontScale)) }
     }
 
     /// Extra line spacing added to the reader body text (in points).
     /// Range 0 – 16; default 6.
     public var readerLineSpacing: Double {
-        didSet { defaults.set(readerLineSpacing, forKey: Keys.readerLineSpacing) }
+        didSet { defaults.set(readerLineSpacing, forKey: storageKey(Keys.readerLineSpacing)) }
     }
 
     /// Audio narration playback speed (1.0 == normal).
     public var audioSpeed: Double {
-        didSet { defaults.set(audioSpeed, forKey: Keys.audioSpeed) }
+        didSet { defaults.set(audioSpeed, forKey: storageKey(Keys.audioSpeed)) }
     }
 
     /// Daily reminder hour (0...23).
     public var reminderHour: Int {
-        didSet { defaults.set(reminderHour, forKey: Keys.reminderHour) }
+        didSet { defaults.set(reminderHour, forKey: storageKey(Keys.reminderHour)) }
     }
 
     /// Daily reminder minute (0...59).
     public var reminderMinute: Int {
-        didSet { defaults.set(reminderMinute, forKey: Keys.reminderMinute) }
+        didSet { defaults.set(reminderMinute, forKey: storageKey(Keys.reminderMinute)) }
     }
 
     /// The daily reminder time as `DateComponents` (hour + minute).
@@ -142,25 +143,25 @@ public final class AppPreferences {
     /// IDs of interest categories the user selected during onboarding.
     /// Read by the Discover "For You" rail (P2.9) to rank content.
     public var interestIds: [String] {
-        didSet { defaults.set(interestIds, forKey: Keys.interestIds) }
+        didSet { defaults.set(interestIds, forKey: storageKey(Keys.interestIds)) }
     }
 
     /// `true` once the first-run onboarding flow has been completed or skipped.
     public var onboardingCompleted: Bool {
-        didSet { defaults.set(onboardingCompleted, forKey: Keys.onboardingCompleted) }
+        didSet { defaults.set(onboardingCompleted, forKey: storageKey(Keys.onboardingCompleted)) }
     }
 
     // MARK: - Downloads
 
     /// When `true`, audio segment downloads are restricted to Wi-Fi connections.
     public var downloadOverWifiOnly: Bool {
-        didSet { defaults.set(downloadOverWifiOnly, forKey: Keys.downloadOverWifiOnly) }
+        didSet { defaults.set(downloadOverWifiOnly, forKey: storageKey(Keys.downloadOverWifiOnly)) }
     }
 
     /// Maximum on-disk storage for all downloaded books, in gigabytes.
     /// `0` means unlimited. Default: 5 GB.
     public var downloadStorageLimitGB: Double {
-        didSet { defaults.set(downloadStorageLimitGB, forKey: Keys.downloadStorageLimitGB) }
+        didSet { defaults.set(downloadStorageLimitGB, forKey: storageKey(Keys.downloadStorageLimitGB)) }
     }
 
     /// Convenience: `downloadStorageLimitGB` converted to bytes, or `nil` when unlimited.
@@ -170,27 +171,59 @@ public final class AppPreferences {
 
     /// Creates a preferences store. Pass a custom `defaults` for tests/previews;
     /// defaults to the App Group suite, falling back to `.standard`.
-    public init(defaults: UserDefaults? = nil) {
+    ///
+    /// When `keyPrefix` is present, it is prepended verbatim to every preference
+    /// key. Include any desired separator in the prefix. Omitting the prefix
+    /// preserves the historical key layout.
+    public init(defaults: UserDefaults? = nil, keyPrefix: String? = nil) {
         let store = defaults ?? UserDefaults(suiteName: AppGroup.identifier) ?? .standard
         self.defaults = store
+        self.keyPrefix = keyPrefix
 
-        self.readingTone = store.string(forKey: Keys.readingTone)
+        self.readingTone = store.string(forKey: Self.storageKey(Keys.readingTone, prefix: keyPrefix))
             .flatMap(ReadingTone.init(rawValue:)) ?? .direct
-        self.depthVariant = store.string(forKey: Keys.depthVariant)
+        self.depthVariant = store.string(forKey: Self.storageKey(Keys.depthVariant, prefix: keyPrefix))
             .flatMap(DepthVariant.init(rawValue:)) ?? .medium
-        self.themeMode = store.string(forKey: Keys.themeMode)
+        self.themeMode = store.string(forKey: Self.storageKey(Keys.themeMode, prefix: keyPrefix))
             .flatMap(ThemeMode.init(rawValue:)) ?? .system
-        self.readerTheme = store.string(forKey: Keys.readerTheme)
+        self.readerTheme = store.string(forKey: Self.storageKey(Keys.readerTheme, prefix: keyPrefix))
             .flatMap(ReadingTheme.init(rawValue:)) ?? .system
-        self.readerFontScale = (store.object(forKey: Keys.readerFontScale) as? Double) ?? 1.0
-        self.readerLineSpacing = (store.object(forKey: Keys.readerLineSpacing) as? Double) ?? 6.0
-        self.audioSpeed = (store.object(forKey: Keys.audioSpeed) as? Double) ?? 1.0
-        self.reminderHour = (store.object(forKey: Keys.reminderHour) as? Int) ?? 20
-        self.reminderMinute = (store.object(forKey: Keys.reminderMinute) as? Int) ?? 0
-        self.interestIds = store.stringArray(forKey: Keys.interestIds) ?? []
-        self.onboardingCompleted = store.bool(forKey: Keys.onboardingCompleted)
-        self.downloadOverWifiOnly = store.bool(forKey: Keys.downloadOverWifiOnly)
-        self.downloadStorageLimitGB = (store.object(forKey: Keys.downloadStorageLimitGB) as? Double) ?? 5.0
+        self.readerFontScale = (
+            store.object(forKey: Self.storageKey(Keys.readerFontScale, prefix: keyPrefix)) as? Double
+        ) ?? 1.0
+        self.readerLineSpacing = (
+            store.object(forKey: Self.storageKey(Keys.readerLineSpacing, prefix: keyPrefix)) as? Double
+        ) ?? 6.0
+        self.audioSpeed = (
+            store.object(forKey: Self.storageKey(Keys.audioSpeed, prefix: keyPrefix)) as? Double
+        ) ?? 1.0
+        self.reminderHour = (
+            store.object(forKey: Self.storageKey(Keys.reminderHour, prefix: keyPrefix)) as? Int
+        ) ?? 20
+        self.reminderMinute = (
+            store.object(forKey: Self.storageKey(Keys.reminderMinute, prefix: keyPrefix)) as? Int
+        ) ?? 0
+        self.interestIds = store.stringArray(
+            forKey: Self.storageKey(Keys.interestIds, prefix: keyPrefix)
+        ) ?? []
+        self.onboardingCompleted = store.bool(
+            forKey: Self.storageKey(Keys.onboardingCompleted, prefix: keyPrefix)
+        )
+        self.downloadOverWifiOnly = store.bool(
+            forKey: Self.storageKey(Keys.downloadOverWifiOnly, prefix: keyPrefix)
+        )
+        self.downloadStorageLimitGB = (
+            store.object(forKey: Self.storageKey(Keys.downloadStorageLimitGB, prefix: keyPrefix)) as? Double
+        ) ?? 5.0
+    }
+
+    private func storageKey(_ key: String) -> String {
+        Self.storageKey(key, prefix: keyPrefix)
+    }
+
+    private static func storageKey(_ key: String, prefix: String?) -> String {
+        guard let prefix else { return key }
+        return prefix + key
     }
 
     private enum Keys {

@@ -1,4 +1,6 @@
 import SwiftUI
+import AuthKit
+import CoreKit
 import Persistence
 import NotificationsFeature
 
@@ -68,7 +70,8 @@ import NotificationsFeature
         pushStatus: NotificationPermissionStatus.authorized,
         notificationSettingsModel: NotificationSettingsModel(
             repository: FakeNotificationPreferencesRepository(),
-            authorizer: PreviewNotificationAuthorizer()
+            authorizer: PreviewNotificationAuthorizer(),
+            pendingStore: KeyValueStore()
         )
     )
 }
@@ -92,7 +95,8 @@ import NotificationsFeature
     let model = SettingsModel(
         repository: FakeSettingsRepository(),
         preferences: prefs,
-        onSignOut: {}
+        onSignOut: {},
+        accountContext: makeSettingsPreviewAccountContext()
     )
     SettingsView(
         isPro: true,
@@ -110,7 +114,8 @@ import NotificationsFeature
     let model = SettingsModel(
         repository: FakeSettingsRepository(),
         preferences: prefs,
-        onSignOut: {}
+        onSignOut: {},
+        accountContext: makeSettingsPreviewAccountContext()
     )
     SettingsView(
         isPro: false,
@@ -128,7 +133,8 @@ import NotificationsFeature
     let model = SettingsModel(
         repository: FakeSettingsRepository(),
         preferences: prefs,
-        onSignOut: {}
+        onSignOut: {},
+        accountContext: makeSettingsPreviewAccountContext()
     )
     SettingsView(
         isPro: false,
@@ -137,6 +143,29 @@ import NotificationsFeature
         onSignOut: {}
     )
     .dynamicTypeSize(.accessibility3)
+}
+
+func makeSettingsPreviewAccountContext() -> AccountContext {
+    guard let identity = SessionIdentity(
+        subject: "settings-preview-account",
+        username: "preview-reader",
+        email: "reader@example.test",
+        source: .hermeticUITest
+    ) else {
+        preconditionFailure("Static preview identity must be valid")
+    }
+
+    let config = AppConfig(
+        apiBaseURL: "https://api.chapterflow.test",
+        cognitoRegion: "us-east-1",
+        cognitoUserPoolID: "us-east-1_ChapterFlowPreview",
+        cognitoClientID: "ChapterFlowPreviewClient1234567890",
+        cognitoDomain: "chapterflow-preview.auth.us-east-1.amazoncognito.com"
+    )
+    guard case let .valid(validatedConfig) = config.validate() else {
+        preconditionFailure("Static preview configuration must be valid")
+    }
+    return AccountContext(identity: identity, config: validatedConfig)
 }
 
 #endif

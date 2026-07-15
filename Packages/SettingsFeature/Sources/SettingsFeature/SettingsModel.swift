@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import AuthKit
 import CoreKit
 import Persistence
 
@@ -37,6 +38,7 @@ public final class SettingsModel {
     private let repository: any SettingsRepository
     let preferences: AppPreferences
     private let onSignOut: () async -> Void
+    private let workPermit: SessionWorkPermit
 
     // MARK: - Async state
 
@@ -57,9 +59,10 @@ public final class SettingsModel {
     // MARK: - Downloads (new SwiftData-backed)
 
     /// Optional download-info provider (DownloadManager from LibraryFeature).
-    /// When nil, falls back to the legacy file-scan approach.
+    /// When nil, download inventory remains unavailable. Accountless legacy
+    /// storage is intentionally neither scanned nor mutated in this lifecycle.
     public let downloadInfoProvider: (any DownloadInfoProviding)?
-    public let userId: String
+    public let accountContext: AccountContext
 
     public private(set) var downloadedFiles: [DownloadedFile] = []
     public private(set) var totalDownloadBytes: Int64 = 0
@@ -82,13 +85,15 @@ public final class SettingsModel {
         preferences: AppPreferences,
         onSignOut: @escaping () async -> Void,
         downloadInfoProvider: (any DownloadInfoProviding)? = nil,
-        userId: String = ""
+        accountContext: AccountContext,
+        workPermit: SessionWorkPermit = SessionWorkPermit()
     ) {
         self.repository = repository
         self.preferences = preferences
         self.onSignOut = onSignOut
         self.downloadInfoProvider = downloadInfoProvider
-        self.userId = userId
+        self.accountContext = accountContext
+        self.workPermit = workPermit
     }
 
     // MARK: - Lifecycle
@@ -96,29 +101,40 @@ public final class SettingsModel {
     /// Loads server reading settings and syncs them into `AppPreferences`.
     /// Also refreshes the downloads inventory.
     public func load() async {
-        isLoading = true
-        defer { isLoading = false }
-        error = nil
-        await loadReadingSettings()
-        await loadDownloads()
+        guard let ticket = try? workPermit.begin() else { return }
+        try? workPermit.commit(ticket) {
+            isLoading = true
+            error = nil
+        }
+        defer {
+            try? workPermit.commit(ticket) {
+                isLoading = false
+            }
+        }
+        await loadReadingSettings(ticket: ticket)
+        await loadDownloads(ticket: ticket)
     }
 
-    private func loadReadingSettings() async {
+    private func loadReadingSettings(ticket: UInt64) async {
         do {
             guard let remote = try await repository.getReadingSettings() else { return }
-            // Sync remote values into local preferences (server is authoritative on first load).
-            if let raw = remote.defaultDepth, let v = DepthVariant(rawValue: raw) {
-                preferences.depthVariant = v
+            try workPermit.commit(ticket) {
+                // Sync remote values into local preferences (server is authoritative on first load).
+                if let raw = remote.defaultDepth, let v = DepthVariant(rawValue: raw) {
+                    preferences.depthVariant = v
+                }
+                if let raw = remote.readingTone, let t = ReadingTone(rawValue: raw) {
+                    preferences.readingTone = t
+                }
+                if let scale = remote.fontScale {
+                    preferences.readerFontScale = max(0.8, min(1.8, scale))
+                }
+                if let speed = remote.audioSpeed {
+                    preferences.audioSpeed = max(0.5, min(3.0, speed))
+                }
             }
-            if let raw = remote.readingTone, let t = ReadingTone(rawValue: raw) {
-                preferences.readingTone = t
-            }
-            if let scale = remote.fontScale {
-                preferences.readerFontScale = max(0.8, min(1.8, scale))
-            }
-            if let speed = remote.audioSpeed {
-                preferences.audioSpeed = max(0.5, min(3.0, speed))
-            }
+        } catch is CancellationError {
+            return
         } catch {
             // Non-fatal: local prefs remain valid if the server call fails.
         }
@@ -130,11 +146,13 @@ public final class SettingsModel {
     /// `AppPreferences` (write-through) then debounces a server PATCH.
     public func readingPreferencesDidChange() {
         patchTask?.cancel()
+        guard let ticket = try? workPermit.begin() else { return }
         patchTask = Task { [weak self] in
             guard let self else { return }
             // 800 ms debounce — accumulates rapid picker changes.
             do { try await Task.sleep(for: .milliseconds(800)) } catch { return }
             guard !Task.isCancelled else { return }
+            guard (try? self.workPermit.validate(ticket)) != nil else { return }
             let patch = UserReadingSettings(
                 defaultDepth: preferences.depthVariant.rawValue,
                 readingTone: preferences.readingTone.rawValue,
@@ -147,11 +165,19 @@ public final class SettingsModel {
 
     // MARK: - Downloads
 
-    private func loadDownloads() async {
-        if let provider = downloadInfoProvider, !userId.isEmpty {
-            // SwiftData-backed inventory
-            let books = await provider.downloadedBooks(userId: userId)
-            let total = await provider.totalUsedBytes(userId: userId)
+    private func loadDownloads(ticket: UInt64) async {
+        guard let provider = downloadInfoProvider else {
+            try? workPermit.commit(ticket) {
+                downloadedFiles = []
+                totalDownloadBytes = 0
+            }
+            return
+        }
+
+        let accountID = accountContext.accountID
+        let books = await provider.downloadedBooks(userId: accountID)
+        let total = await provider.totalUsedBytes(userId: accountID)
+        try? workPermit.commit(ticket) {
             downloadedFiles = books.map {
                 DownloadedFile(
                     id: $0.bookId,
@@ -161,69 +187,37 @@ public final class SettingsModel {
                 )
             }.sorted { $0.displayName < $1.displayName }
             totalDownloadBytes = total
-            return
         }
-        // Legacy file-scan fallback (pre-P3.2 data)
-        guard let store = try? FileStore.applicationSupport(subdirectory: "Downloads") else { return }
-        let fm = FileManager.default
-        guard let contents = try? fm.contentsOfDirectory(
-            at: store.root,
-            includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey],
-            options: .skipsHiddenFiles
-        ) else { return }
-
-        var files: [DownloadedFile] = []
-        var total: Int64 = 0
-        for url in contents {
-            let values = try? url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
-            guard values?.isRegularFile == true else { continue }
-            let size = Int64(values?.fileSize ?? 0)
-            let name = url.deletingPathExtension().lastPathComponent
-            files.append(DownloadedFile(
-                id: url.lastPathComponent,
-                displayName: name,
-                byteCount: size,
-                url: url
-            ))
-            total += size
-        }
-        downloadedFiles = files.sorted { $0.displayName < $1.displayName }
-        totalDownloadBytes = total
     }
 
-    /// Deletes a single downloaded book (SwiftData path) or file (legacy path).
+    /// Deletes a single downloaded book through the account-scoped provider.
     public func deleteDownload(_ file: DownloadedFile) {
-        if let provider = downloadInfoProvider, !userId.isEmpty {
-            let bid = file.id
-            let uid = userId
-            Task {
-                try? await provider.deleteBookDownload(bookId: bid, userId: uid)
-                downloadedFiles.removeAll { $0.id == bid }
-                totalDownloadBytes = await provider.totalUsedBytes(userId: uid)
+        guard let provider = downloadInfoProvider else { return }
+        guard let ticket = try? workPermit.begin() else { return }
+        let bookID = file.id
+        let accountID = accountContext.accountID
+        Task {
+            try? await provider.deleteBookDownload(bookId: bookID, userId: accountID)
+            let total = await provider.totalUsedBytes(userId: accountID)
+            try? workPermit.commit(ticket) {
+                downloadedFiles.removeAll { $0.id == bookID }
+                totalDownloadBytes = total
             }
-            return
         }
-        try? FileManager.default.removeItem(at: file.url)
-        downloadedFiles.removeAll { $0.id == file.id }
-        totalDownloadBytes -= file.byteCount
     }
 
     /// Deletes all downloaded books.
     public func deleteAllDownloads() {
-        if let provider = downloadInfoProvider, !userId.isEmpty {
-            let uid = userId
-            Task {
-                try? await provider.deleteAllBookDownloads(userId: uid)
+        guard let provider = downloadInfoProvider else { return }
+        guard let ticket = try? workPermit.begin() else { return }
+        let accountID = accountContext.accountID
+        Task {
+            try? await provider.deleteAllBookDownloads(userId: accountID)
+            try? workPermit.commit(ticket) {
                 downloadedFiles = []
                 totalDownloadBytes = 0
             }
-            return
         }
-        for file in downloadedFiles {
-            try? FileManager.default.removeItem(at: file.url)
-        }
-        downloadedFiles = []
-        totalDownloadBytes = 0
     }
 
     // MARK: - Export
@@ -231,16 +225,32 @@ public final class SettingsModel {
     /// Fetches the data export and triggers the share sheet.
     public func requestExport() async {
         guard !isDangerousOperationInProgress else { return }
-        isDangerousOperationInProgress = true
-        defer { isDangerousOperationInProgress = false }
-        error = nil
+        guard let ticket = try? workPermit.begin() else { return }
+        try? workPermit.commit(ticket) {
+            isDangerousOperationInProgress = true
+            error = nil
+        }
+        defer {
+            try? workPermit.commit(ticket) {
+                isDangerousOperationInProgress = false
+            }
+        }
         do {
-            exportData = try await repository.exportData()
-            showShareSheet = true
+            let data = try await repository.exportData()
+            try workPermit.commit(ticket) {
+                exportData = data
+                showShareSheet = true
+            }
+        } catch is CancellationError {
+            return
         } catch let appErr as AppError {
-            error = appErr
+            try? workPermit.commit(ticket) {
+                error = appErr
+            }
         } catch {
-            self.error = .offline
+            try? workPermit.commit(ticket) {
+                self.error = .offline
+            }
         }
     }
 
@@ -248,16 +258,30 @@ public final class SettingsModel {
 
     public func confirmDeactivate() async {
         guard !isDangerousOperationInProgress else { return }
-        isDangerousOperationInProgress = true
-        defer { isDangerousOperationInProgress = false }
-        error = nil
+        guard let ticket = try? workPermit.begin() else { return }
+        try? workPermit.commit(ticket) {
+            isDangerousOperationInProgress = true
+            error = nil
+        }
+        defer {
+            try? workPermit.commit(ticket) {
+                isDangerousOperationInProgress = false
+            }
+        }
         do {
             try await repository.deactivateAccount()
+            try workPermit.validate(ticket)
             await onSignOut()
+        } catch is CancellationError {
+            return
         } catch let appErr as AppError {
-            error = appErr
+            try? workPermit.commit(ticket) {
+                error = appErr
+            }
         } catch {
-            self.error = .offline
+            try? workPermit.commit(ticket) {
+                self.error = .offline
+            }
         }
     }
 
@@ -265,16 +289,30 @@ public final class SettingsModel {
 
     public func confirmDelete() async {
         guard !isDangerousOperationInProgress else { return }
-        isDangerousOperationInProgress = true
-        defer { isDangerousOperationInProgress = false }
-        error = nil
+        guard let ticket = try? workPermit.begin() else { return }
+        try? workPermit.commit(ticket) {
+            isDangerousOperationInProgress = true
+            error = nil
+        }
+        defer {
+            try? workPermit.commit(ticket) {
+                isDangerousOperationInProgress = false
+            }
+        }
         do {
             try await repository.deleteAccount()
+            try workPermit.validate(ticket)
             await onSignOut()
+        } catch is CancellationError {
+            return
         } catch let appErr as AppError {
-            error = appErr
+            try? workPermit.commit(ticket) {
+                error = appErr
+            }
         } catch {
-            self.error = .offline
+            try? workPermit.commit(ticket) {
+                self.error = .offline
+            }
         }
     }
 

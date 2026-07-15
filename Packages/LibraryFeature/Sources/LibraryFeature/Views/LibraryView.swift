@@ -24,8 +24,13 @@ public struct LibraryView: View {
     private let repository: any LibraryRepository
     private let bookDetailRepository: any BookDetailRepository
     private let aiRepository: (any AIRepository)?
+    private let preferences: AppPreferences
+    private let store: KeyValueStore
+    private let downloadManager: DownloadManager?
+    private let accountID: String?
     private let isGuest: Bool
     private let analytics: any AnalyticsClient
+    private let workPermit: SessionWorkPermit
     private let onOpenReader: ((String, Int, VariantFamily) -> Void)?
     private let onShowPaywall: (() -> Void)?
     private let onRequireAuth: (() -> Void)?
@@ -35,8 +40,13 @@ public struct LibraryView: View {
         repository: any LibraryRepository,
         bookDetailRepository: any BookDetailRepository,
         aiRepository: (any AIRepository)? = nil,
+        preferences: AppPreferences,
+        store: KeyValueStore,
+        downloadManager: DownloadManager? = nil,
+        accountID: String? = nil,
         isGuest: Bool = false,
         analytics: any AnalyticsClient = NoopAnalyticsClient(),
+        workPermit: SessionWorkPermit = SessionWorkPermit(),
         onOpenReader: ((String, Int, VariantFamily) -> Void)? = nil,
         onShowPaywall: (() -> Void)? = nil,
         onRequireAuth: (() -> Void)? = nil,
@@ -46,8 +56,13 @@ public struct LibraryView: View {
         self.repository = repository
         self.bookDetailRepository = bookDetailRepository
         self.aiRepository = aiRepository
+        self.preferences = preferences
+        self.store = store
+        self.downloadManager = downloadManager
+        self.accountID = accountID
         self.isGuest = isGuest
         self.analytics = analytics
+        self.workPermit = workPermit
         self.onOpenReader = onOpenReader
         self.onShowPaywall = onShowPaywall
         self.onRequireAuth = onRequireAuth
@@ -71,8 +86,13 @@ public struct LibraryView: View {
                             bookId: bookId,
                             repository: bookDetailRepository,
                             aiRepository: aiRepository,
+                            preferences: preferences,
+                            store: store,
+                            downloadManager: downloadManager,
+                            accountID: accountID,
                             isGuest: isGuest,
                             analytics: analytics,
+                            workPermit: workPermit,
                             onOpenReader: onOpenReader,
                             onShowPaywall: onShowPaywall,
                             onSignInRequired: onSignInRequired
@@ -80,6 +100,7 @@ public struct LibraryView: View {
                     case .globalSearch:
                         GlobalSearchView(
                             repository: repository,
+                            kvStore: store,
                             onOpenBook: { bookId in
                                 router.push(LibraryRoute.bookDetail(bookId: bookId))
                             },
@@ -94,7 +115,12 @@ public struct LibraryView: View {
                             savedBookIds: model.savedBookIds,
                             bookDetailRepository: bookDetailRepository,
                             aiRepository: aiRepository,
+                            preferences: preferences,
+                            store: store,
+                            downloadManager: downloadManager,
+                            accountID: accountID,
                             isGuest: isGuest,
+                            workPermit: workPermit,
                             onToggleSaved: { bookId in
                                 guard !isGuest else { onRequireAuth?(); return }
                                 Task { await model.toggleSaved(bookId: bookId) }
@@ -332,24 +358,49 @@ public struct LibraryView: View {
 
 #if DEBUG
 #Preview("Library — loaded") {
-    LibraryView(repository: PreviewData.loadedRepo, bookDetailRepository: PreviewData.bookDetailInProgress)
+    LibraryView(
+        repository: PreviewData.loadedRepo,
+        bookDetailRepository: PreviewData.bookDetailInProgress,
+        preferences: AppPreferences(keyPrefix: "preview.library."),
+        store: KeyValueStore(keyPrefix: "preview.library.")
+    )
 }
 
 #Preview("Library — empty catalog") {
-    LibraryView(repository: PreviewData.emptyRepo, bookDetailRepository: PreviewData.bookDetailFreeLocked)
+    LibraryView(
+        repository: PreviewData.emptyRepo,
+        bookDetailRepository: PreviewData.bookDetailFreeLocked,
+        preferences: AppPreferences(keyPrefix: "preview.library."),
+        store: KeyValueStore(keyPrefix: "preview.library.")
+    )
 }
 
 #Preview("Library — error") {
-    LibraryView(repository: PreviewData.errorRepo, bookDetailRepository: PreviewData.bookDetailFreeLocked)
+    LibraryView(
+        repository: PreviewData.errorRepo,
+        bookDetailRepository: PreviewData.bookDetailFreeLocked,
+        preferences: AppPreferences(keyPrefix: "preview.library."),
+        store: KeyValueStore(keyPrefix: "preview.library.")
+    )
 }
 
 #Preview("Library — dark mode") {
-    LibraryView(repository: PreviewData.loadedRepo, bookDetailRepository: PreviewData.bookDetailInProgress)
+    LibraryView(
+        repository: PreviewData.loadedRepo,
+        bookDetailRepository: PreviewData.bookDetailInProgress,
+        preferences: AppPreferences(keyPrefix: "preview.library."),
+        store: KeyValueStore(keyPrefix: "preview.library.")
+    )
         .preferredColorScheme(.dark)
 }
 
 #Preview("Library — XXL text") {
-    LibraryView(repository: PreviewData.loadedRepo, bookDetailRepository: PreviewData.bookDetailInProgress)
+    LibraryView(
+        repository: PreviewData.loadedRepo,
+        bookDetailRepository: PreviewData.bookDetailInProgress,
+        preferences: AppPreferences(keyPrefix: "preview.library."),
+        store: KeyValueStore(keyPrefix: "preview.library.")
+    )
         .dynamicTypeSize(.accessibility3)
 }
 #endif

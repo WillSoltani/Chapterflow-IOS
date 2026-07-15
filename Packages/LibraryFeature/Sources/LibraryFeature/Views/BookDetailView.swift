@@ -18,7 +18,6 @@ import UIKit
 /// Navigation callbacks (`onOpenReader`, `onShowPaywall`) are injected from
 /// `AppFeature` and default to no-ops until those features are wired.
 public struct BookDetailView: View {
-
     @State private var model: BookDetailModel
     @State private var showAskSheet = false
     @State private var showPreferencesSheet = false
@@ -37,13 +36,23 @@ public struct BookDetailView: View {
         preferences: AppPreferences = AppPreferences(),
         store: KeyValueStore = KeyValueStore(),
         preferencesRepository: (any BookPreferencesRepository)? = nil,
+        downloadManager: DownloadManager? = nil,
+        accountID: String? = nil,
         isGuest: Bool = false,
         analytics: any AnalyticsClient = NoopAnalyticsClient(),
+        workPermit: SessionWorkPermit = SessionWorkPermit(),
         onOpenReader: ((String, Int, VariantFamily) -> Void)? = nil,
         onShowPaywall: (() -> Void)? = nil,
         onSignInRequired: ((String, VariantFamily) -> Void)? = nil
     ) {
-        let m = BookDetailModel(bookId: bookId, repository: repository, analytics: analytics)
+        let m = BookDetailModel(
+            bookId: bookId,
+            repository: repository,
+            downloadManager: downloadManager,
+            accountID: accountID,
+            analytics: analytics,
+            workPermit: workPermit
+        )
         m.isGuest = isGuest
         m.onOpenReader = onOpenReader
         m.onShowPaywall = onShowPaywall
@@ -101,7 +110,6 @@ public struct BookDetailView: View {
     }
 
     // MARK: - Content
-
     @ViewBuilder
     private var contentView: some View {
         switch model.loadState {
@@ -115,7 +123,6 @@ public struct BookDetailView: View {
     }
 
     // MARK: - Loaded
-
     private var loadedScrollView: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0) {
@@ -148,7 +155,6 @@ public struct BookDetailView: View {
     }
 
     // MARK: - Hero
-
     private var heroSection: some View {
         VStack(alignment: .center, spacing: .cfSpacing12) {
             if let manifest = model.manifest {
@@ -189,7 +195,6 @@ public struct BookDetailView: View {
     }
 
     // MARK: - Stats
-
     private var statsSection: some View {
         HStack(spacing: .cfSpacing20) {
             progressSummary
@@ -263,7 +268,6 @@ public struct BookDetailView: View {
     }
 
     // MARK: - Primary action
-
     private var primaryActionSection: some View {
         Button {
             triggerHaptic()
@@ -336,7 +340,6 @@ public struct BookDetailView: View {
     }
 
     // MARK: - Download
-
     private var downloadSection: some View {
         BookDownloadButton(
             state: model.downloadState,
@@ -348,7 +351,6 @@ public struct BookDetailView: View {
     }
 
     // MARK: - Private data notice
-
     @ViewBuilder
     private var privateDataNotice: some View {
         if !model.isGuest {
@@ -419,7 +421,6 @@ public struct BookDetailView: View {
     }
 
     // MARK: - Depth & Tone entry point
-
     private var depthToneRow: some View {
         VStack(spacing: 0) {
             Divider().padding(.leading, .cfSpacing16)
@@ -452,7 +453,6 @@ public struct BookDetailView: View {
     }
 
     // MARK: - Chapter list
-
     private var chapterListSection: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Chapters")

@@ -3,6 +3,7 @@ import Models
 import DesignSystem
 import CoreKit
 import AIFeature
+import Persistence
 #if canImport(UIKit)
 import UIKit
 #endif
@@ -20,6 +21,11 @@ public struct DiscoverView: View {
 
     private let bookDetailRepository: any BookDetailRepository
     private let aiRepository: (any AIRepository)?
+    private let preferences: AppPreferences
+    private let store: KeyValueStore
+    private let downloadManager: DownloadManager?
+    private let accountID: String?
+    private let workPermit: SessionWorkPermit
     private let onOpenReader: ((String, Int, VariantFamily) -> Void)?
     private let onShowPaywall: (() -> Void)?
     private let onShowJourneys: (() -> Void)?
@@ -29,6 +35,11 @@ public struct DiscoverView: View {
         repository: any LibraryRepository,
         bookDetailRepository: any BookDetailRepository,
         aiRepository: (any AIRepository)? = nil,
+        preferences: AppPreferences,
+        store: KeyValueStore,
+        downloadManager: DownloadManager? = nil,
+        accountID: String? = nil,
+        workPermit: SessionWorkPermit = SessionWorkPermit(),
         userInterests: [String] = [],
         onOpenReader: ((String, Int, VariantFamily) -> Void)? = nil,
         onShowPaywall: (() -> Void)? = nil,
@@ -41,6 +52,11 @@ public struct DiscoverView: View {
         ))
         self.bookDetailRepository = bookDetailRepository
         self.aiRepository = aiRepository
+        self.preferences = preferences
+        self.store = store
+        self.downloadManager = downloadManager
+        self.accountID = accountID
+        self.workPermit = workPermit
         self.onOpenReader = onOpenReader
         self.onShowPaywall = onShowPaywall
         self.onShowJourneys = onShowJourneys
@@ -64,6 +80,11 @@ public struct DiscoverView: View {
                             bookId: bookId,
                             repository: bookDetailRepository,
                             aiRepository: aiRepository,
+                            preferences: preferences,
+                            store: store,
+                            downloadManager: downloadManager,
+                            accountID: accountID,
+                            workPermit: workPermit,
                             onOpenReader: onOpenReader,
                             onShowPaywall: onShowPaywall
                         )
@@ -301,6 +322,11 @@ public struct DiscoverView: View {
             savedBookIds: model.savedBookIds,
             bookDetailRepository: bookDetailRepository,
             aiRepository: aiRepository,
+            preferences: preferences,
+            store: store,
+            downloadManager: downloadManager,
+            accountID: accountID,
+            workPermit: workPermit,
             onToggleSaved: toggleSaved(_:),
             onOpenReader: onOpenReader,
             onShowPaywall: onShowPaywall
@@ -373,6 +399,8 @@ private extension Color {
     DiscoverView(
         repository: PreviewData.loadedRepo,
         bookDetailRepository: PreviewData.bookDetailInProgress,
+        preferences: AppPreferences(keyPrefix: "preview.discover."),
+        store: KeyValueStore(keyPrefix: "preview.discover."),
         userInterests: ["Productivity", "Psychology"]
     )
 }
@@ -381,6 +409,8 @@ private extension Color {
     DiscoverView(
         repository: PreviewData.loadedRepo,
         bookDetailRepository: PreviewData.bookDetailInProgress,
+        preferences: AppPreferences(keyPrefix: "preview.discover."),
+        store: KeyValueStore(keyPrefix: "preview.discover."),
         userInterests: []
     )
 }
@@ -399,7 +429,9 @@ private extension Color {
 #Preview("Discover — error") {
     DiscoverView(
         repository: PreviewData.errorRepo,
-        bookDetailRepository: PreviewData.bookDetailFreeLocked
+        bookDetailRepository: PreviewData.bookDetailFreeLocked,
+        preferences: AppPreferences(keyPrefix: "preview.discover."),
+        store: KeyValueStore(keyPrefix: "preview.discover.")
     )
 }
 
@@ -407,6 +439,8 @@ private extension Color {
     DiscoverView(
         repository: PreviewData.loadedRepo,
         bookDetailRepository: PreviewData.bookDetailInProgress,
+        preferences: AppPreferences(keyPrefix: "preview.discover."),
+        store: KeyValueStore(keyPrefix: "preview.discover."),
         userInterests: ["Productivity"]
     )
     .preferredColorScheme(.dark)
@@ -416,6 +450,8 @@ private extension Color {
     DiscoverView(
         repository: PreviewData.loadedRepo,
         bookDetailRepository: PreviewData.bookDetailInProgress,
+        preferences: AppPreferences(keyPrefix: "preview.discover."),
+        store: KeyValueStore(keyPrefix: "preview.discover."),
         userInterests: ["Productivity"]
     )
     .dynamicTypeSize(.accessibility3)

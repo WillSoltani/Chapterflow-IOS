@@ -43,6 +43,7 @@ struct ReadingFlowView: View {
     @State private var quizContext: QuizContext?
 
     private let quizRepository: any QuizRepository
+    private let workPermit: SessionWorkPermit
     private let onDismiss: () -> Void
     private let onQuizPassed: () -> Void
 
@@ -53,6 +54,8 @@ struct ReadingFlowView: View {
         quizRepository: any QuizRepository,
         annotationRepository: (any AnnotationRepository)?,
         preferences: AppPreferences,
+        store: KeyValueStore,
+        workPermit: SessionWorkPermit,
         analytics: any AnalyticsClient = NoopAnalyticsClient(),
         onDismiss: @escaping () -> Void,
         onQuizPassed: @escaping () -> Void = {}
@@ -63,10 +66,13 @@ struct ReadingFlowView: View {
             variantFamily: flow.variantFamily,
             repository: readerRepository,
             preferences: preferences,
+            store: store,
+            workPermit: workPermit,
             annotationRepository: annotationRepository,
             analytics: analytics
         ))
         self.quizRepository = quizRepository
+        self.workPermit = workPermit
         self.onDismiss = onDismiss
         self.onQuizPassed = onQuizPassed
     }
@@ -99,6 +105,7 @@ struct ReadingFlowView: View {
                 chapterNumber: ctx.chapterNumber,
                 tone: ctx.toneKey,
                 repository: quizRepository,
+                workPermit: workPermit,
                 onContinue: {
                     quizContext = nil
                     onDismiss()

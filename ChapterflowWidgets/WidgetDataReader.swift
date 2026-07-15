@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import WidgetKit
 
 // MARK: - Shared state keys
 // Must stay in sync with SharedStateKeys in Persistence/SharedStateWriter.swift
@@ -46,6 +47,7 @@ struct WidgetSnapshot: Sendable {
     var dailyGoalMinutes: Int
     var goalProgressMinutes: Int
     var lastUpdated: Date
+    var isAccountDataAvailable: Bool = true
 
     var goalFraction: Double {
         guard dailyGoalMinutes > 0 else { return 0 }
@@ -58,32 +60,29 @@ struct WidgetSnapshot: Sendable {
     // MARK: - Factory
 
     static func load() -> WidgetSnapshot {
-        let defaults = UserDefaults(suiteName: appGroupID) ?? .standard
-
-        let rawGoal = defaults.object(forKey: Keys.dailyGoalMinutes) as? Int
-        let goal = rawGoal.map {
-            goalTiers.contains($0) ? $0 : defaultGoalMinutes
-        } ?? defaultGoalMinutes
-
-        return WidgetSnapshot(
-            streakDays: max(0, defaults.integer(forKey: Keys.streakDays)),
-            longestStreak: max(0, defaults.integer(forKey: Keys.longestStreak)),
-            streakShieldsHeld: max(0, defaults.integer(forKey: Keys.streakShieldsHeld)),
-            streakAtRisk: defaults.bool(forKey: Keys.streakAtRisk),
-            continueBookId: defaults.string(forKey: Keys.continueBookId),
-            continueBookTitle: defaults.string(forKey: Keys.continueBookTitle),
-            continueBookCoverEmoji: defaults.string(forKey: Keys.continueBookCoverEmoji),
-            continueBookCoverColor: defaults.string(forKey: Keys.continueBookCoverColor),
-            continueChapterNumber: defaults.object(forKey: Keys.continueChapterNumber) as? Int,
-            continueProgress: (defaults.object(forKey: Keys.continueProgress) as? Double)
-                .map { max(0, min(1, $0)) },
-            dueReviewCount: max(0, defaults.integer(forKey: Keys.dueReviewCount)),
-            dailyGoalMinutes: goal,
-            goalProgressMinutes: max(0, defaults.integer(forKey: Keys.goalProgressMinutes)),
-            lastUpdated: (defaults.object(forKey: Keys.lastUpdated) as? Double)
-                .map { Date(timeIntervalSince1970: $0) } ?? .distantPast
-        )
+        // Legacy App Group values have no provable account owner. Preserve them
+        // untouched for WP-ID-01B, but never display or deep-link them under the
+        // account that happens to be active when WidgetKit asks for a timeline.
+        .ownerlessQuarantined
     }
+
+    static let ownerlessQuarantined = WidgetSnapshot(
+        streakDays: 0,
+        longestStreak: 0,
+        streakShieldsHeld: 0,
+        streakAtRisk: false,
+        continueBookId: nil,
+        continueBookTitle: nil,
+        continueBookCoverEmoji: nil,
+        continueBookCoverColor: nil,
+        continueChapterNumber: nil,
+        continueProgress: nil,
+        dueReviewCount: 0,
+        dailyGoalMinutes: defaultGoalMinutes,
+        goalProgressMinutes: 0,
+        lastUpdated: .distantPast,
+        isAccountDataAvailable: false
+    )
 
     static let placeholder = WidgetSnapshot(
         streakDays: 12,
@@ -101,6 +100,44 @@ struct WidgetSnapshot: Sendable {
         goalProgressMinutes: 14,
         lastUpdated: Date()
     )
+}
+
+/// Fail-closed presentation used while App Group snapshots are ownerless.
+/// It never turns quarantine defaults into claims about the current account.
+struct WidgetAccountDataUnavailableView: View {
+    @Environment(\.widgetFamily) private var family
+
+    var body: some View {
+        Group {
+            switch family {
+            case .accessoryCircular:
+                ZStack {
+                    AccessoryWidgetBackground()
+                    Image(systemName: "person.crop.circle.badge.questionmark")
+                }
+            case .accessoryInline:
+                Label("Open ChapterFlow", systemImage: "book.closed")
+            case .accessoryRectangular:
+                Label("Account data unavailable", systemImage: "book.closed")
+                    .font(.system(size: 13, weight: .semibold))
+            default:
+                VStack(spacing: .wS8) {
+                    Image(systemName: "book.closed.fill")
+                        .font(.title2)
+                        .foregroundStyle(Color.cfWidgetAccent)
+                    Text("Open ChapterFlow")
+                        .font(.headline)
+                    Text("Account data is unavailable here.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.wS16)
+            }
+        }
+        .containerBackground(.background, for: .widget)
+        .widgetURL(URL(string: "chapterflow://library"))
+    }
 }
 
 // MARK: - Widget design tokens (mirrors DesignSystem values)

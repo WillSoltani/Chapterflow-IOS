@@ -142,17 +142,21 @@ struct ProgressRingEntryView: View {
     @Environment(\.widgetFamily) var family
 
     var body: some View {
-        switch family {
-        case .systemSmall:
-            ProgressSmallView(snapshot: entry.snapshot)
-        case .accessoryCircular:
-            ProgressAccessoryCircularView(snapshot: entry.snapshot)
-        case .accessoryRectangular:
-            ProgressAccessoryRectangularView(snapshot: entry.snapshot)
-        case .accessoryInline:
-            ProgressAccessoryInlineView(snapshot: entry.snapshot)
-        default:
-            ProgressSmallView(snapshot: entry.snapshot)
+        if !entry.snapshot.isAccountDataAvailable {
+            WidgetAccountDataUnavailableView()
+        } else {
+            switch family {
+            case .systemSmall:
+                ProgressSmallView(snapshot: entry.snapshot)
+            case .accessoryCircular:
+                ProgressAccessoryCircularView(snapshot: entry.snapshot)
+            case .accessoryRectangular:
+                ProgressAccessoryRectangularView(snapshot: entry.snapshot)
+            case .accessoryInline:
+                ProgressAccessoryInlineView(snapshot: entry.snapshot)
+            default:
+                ProgressSmallView(snapshot: entry.snapshot)
+            }
         }
     }
 }

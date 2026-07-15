@@ -972,3 +972,131 @@ App Store, TestFlight, deployment, PR #117, or unrelated user state changed. Rol
 revert of the WP-BOOT-01B commit; existing V8 data and its production migration path are unchanged.
 This pre-publication record makes no pull-request, exact-head GitHub CI, merge, or post-merge-main
 claim.
+
+---
+
+## WP-ID-01A account context, session scope, and deterministic sign-out — 2026-07-15
+
+**Phase:** local implementation, integrated validation, and the fixed-checklist independent review
+are complete; publication and merge are pending
+
+**Branch/worktree:** `codex/wp-id-01a-session-scope` at
+`/private/tmp/Chapterflow-IOS-wp-id-01a`
+
+**Base and current committed HEAD:** `2a8b93ff2512027cbbf32402f7a037db3966b8fd`
+
+### Current local outcome
+
+The uncommitted local change set introduces an immutable `AccountContext` only after
+`SessionManager` has produced a nonempty verified `SessionIdentity`. Its environment and storage
+namespaces are opaque and stable, while descriptions and reflection remain redacted. Invalid or
+fallback identities cannot construct the context.
+
+`AppModel` now owns one account-lifetime `SessionScope` rather than constructing private services at
+process launch. Guest and signed-out states use public catalog/detail facades and construct no
+private graph. Repeated notification of the same identity retains the same scope; an account change
+invalidates and finalizes the old scope before constructing the new one. Scope construction is
+single-flight, cancellation/generation guarded, and a session-scoped API wrapper rejects work before
+or after a session boundary when its permit or authoritative identity no longer matches.
+
+The current scope owns account-specific persistence and downloads, private feature repositories,
+preferences, audio, StoreKit/entitlement state, notifications/APNs, analytics/reflection-outbox
+storage, sync, and background work. Reader, quiz, AI, Library detail/download, notifications,
+Social, analytics, and related composition paths receive immutable account identity or an opaque
+account namespace; the mutable `UserIdBox` and production `"anon"`, `"local"`, empty-current-user
+fallbacks are removed from the guarded private paths.
+
+The sign-out transition is explicit: quiesce the current scope, stop account work and observers,
+attempt Cognito sign-out, then finalize/deallocate the scope and clear private presentation only on
+success. A failed provider sign-out resumes the exact same still-authorized scope and does not show
+false signed-out UI. Preparing, quiescing, and privacy-safe recovery states do not render previous
+account content.
+
+### Decision D-05 and persistence boundary
+
+Ordinary sign-out does not purge account-bound unsynced state. Private SwiftData and file resources
+use a stable opaque account/environment namespace, preferences and caches use the same ownership
+boundary, and a different account cannot open or drain the previous account's resources through the
+new scope. The existing V8 schema and migration sequence are unchanged.
+
+Unknown-owner legacy data is not assigned to the current account, cleared as successful work, or
+silently deleted. The 01A paths preserve and leave it dormant when ownership cannot be proven. This
+is intentionally a retain/quarantine boundary, not a claim that legacy recovery is complete.
+Deletion-specific purge remains `WP-ACCOUNT-01` work.
+
+### Integrated local evidence
+
+The following commands and counts were recorded on the integrated uncommitted worktree after the
+final source changes. SwiftPM's home-directory caches were unavailable in the managed sandbox, so
+package commands used `--disable-sandbox` with module caches redirected under the isolated worktree.
+AppFeature received a clean rebuild after a stale incremental artifact exposed the changed
+`KeyValueStore` layout.
+
+| Scope | Integrated result |
+|---|---|
+| CoreKit | **PASS**, 183 tests in 32 suites |
+| AuthKit | **PASS**, 70 tests in 11 suites |
+| Persistence | **PASS**, 112 tests in 33 suites |
+| AppFeature | **PASS**, 111 tests in 19 suites |
+| LibraryFeature | **PASS**, 172 tests in 19 suites |
+| QuizFeature | **PASS**, 27 tests in 6 suites |
+| NotificationsFeature | **PASS**, 211 tests in 23 suites |
+| SyncEngine | **PASS**, 30 tests in 7 suites |
+| AIFeature | **PASS**, 170 tests in 28 suites |
+| ReaderFeature | **PASS**, 184 tests in 23 suites |
+| PaywallFeature | **PASS**, 164 tests in 22 suites |
+| SocialFeature | **PASS**, 206 tests in 43 suites |
+| SettingsFeature | **PASS**, 50 tests in 12 suites |
+| EngagementFeature | **PASS**, 344 tests in 56 suites |
+| OnboardingFeature | **PASS**, 26 tests in 5 suites |
+| Unsigned Debug iOS Simulator build | **PASS**, iPhone 17 Pro / iOS 26.5; ignored example secrets template only |
+| Focused hermetic XCUITests | **PASS**, 3 tests: signed-in shell, tab composition, required-session fail-closed surface |
+| Repository-wide SwiftLint | **PASS**, strict, 0 violations in 793 files |
+| `scripts/verify-wp-id-01a-identity-boundaries.sh` | **PASS**, all 23 mutable/fallback identity and external-process fail-closed boundaries |
+| `scripts/verify-wp-dev-01-compile-boundaries.sh` | **PASS**, non-Debug hermetic/support-code APIs remain unavailable |
+| Incremental native contract drift verifier | **PASS**, 83 operations / 93 producers / 29 matrix rows / 93 relations |
+| `git diff --check` | **PASS** |
+
+Integrated validation corrected two issues without weakening a gate. Concurrent AppFeature tests
+exposed shared process-global intent storage, so the hermetic Siri paths now use isolated stores
+while production routing retains the production store. The native-contract verifier then exposed
+that an analytics refactor had moved canonical send witnesses and mixed a durable queue identifier
+into the exact wire shape; the final implementation keeps the wire event unchanged, stores the
+durable identifier in a separate wrapper, and preserves canonical single-flight send sites. Strict
+lint also drove behavior-neutral companion-file splits for oversized Book Detail and audio types.
+
+The fixed-checklist reviewer then found one P2: sign-out could cancel an optimistic notification
+preference save without retaining the pending value. The single bounded remediation stores the
+latest value in the existing opaque account `KeyValueStore`, preserves it when transport is
+cancelled, and quarantines uncertain delivery from automatic replay even when that same account scope
+returns. This prevents an accepted remote write from racing a later replay without delaying ordinary
+sign-out or changing the backend contract. Controlled-delivery regressions prove that B cannot see or
+drain A's retained value, rapid updates reach the server in order during one active scope, and an
+uncertain A value stays durable but unsent until the deferred 01B recovery path can reconcile it. This
+adds a `NotificationsFeature` dependency on the existing `Persistence` package; it adds no schema,
+journal, endpoint, or server-contract change.
+
+The final fixed-checklist review is **CLEAR** with zero remaining P0/P1/P2 findings. Publication,
+exact-head GitHub CI, and post-merge-main CI remain pending. The XCUITest harness exposes one fixed
+synthetic identity, so exact hermetic A-to-B switching is proven by AppFeature integration tests
+rather than claimed as XCUITest coverage. No signed-device two-account claim is made.
+
+### Deferred to WP-ID-01B and unchanged boundaries
+
+- Migrate or expose recovery for legacy persisted rows whose owner cannot be proven; keep current
+  ownerless data preserved until that policy is implemented.
+- Bind and migrate App Group, widget, Share/Action extension, and other external-process artifacts
+  with a proven opaque owner before importing, clearing, or replaying them.
+- Complete signed physical-device two-account, background transfer, protected-data, APNs, widget,
+  and extension evidence, plus any remaining external-process storage hardening.
+- Add a durable account-owned APNs unregister retry for the case where provider sign-out succeeds
+  while the unregister request is offline or no longer authorized. This slice clears local
+  registration state and attempts unregister during quiesce, but it does not claim that a failed
+  remote request proves zero residual server registration.
+- Complete recovery/discard UX for retained pending work in coordination with `WP-SYNC-01`; do not
+  introduce a second mutation journal in this package.
+
+This slice changes no backend source, endpoint contract, retry policy, mutation semantics,
+navigation architecture, release configuration, signing, App Store/TestFlight/deployment state, or
+frozen PR #117 state. The primary checkout and unrelated user work remain untouched. This local
+record makes no commit, push, pull-request, exact-head CI, merge, or post-merge-main claim.

@@ -123,16 +123,18 @@ public final class ReflectionsModel {
     public func load() async {
         loadPhase = .loading
 
-        // 1. Flush the offline outbox first (no-op if nothing pending).
-        let synced = await repository.syncPendingReflections(bookId: bookId, chapterN: chapterN)
-
-        // 2. Fetch server history.
         do {
+            // 1. Flush the offline outbox first (no-op if nothing pending).
+            _ = try await repository.syncPendingReflections(bookId: bookId, chapterN: chapterN)
+
+            // 2. Fetch server history.
             let serverItems = try await repository.getReflections(bookId: bookId, chapterN: chapterN)
             // 3. Fetch still-pending items (those that couldn't be synced).
             let stillPending = await repository.getPendingReflections(bookId: bookId, chapterN: chapterN)
             rebuild(server: serverItems, pending: stillPending)
             loadPhase = .loaded
+        } catch is CancellationError {
+            return
         } catch {
             // If offline, show whatever we have in the outbox + an error.
             let pending = await repository.getPendingReflections(bookId: bookId, chapterN: chapterN)
@@ -144,7 +146,6 @@ public final class ReflectionsModel {
             }
         }
 
-        _ = synced  // suppress unused-warning; used above
     }
 
     // MARK: - Compose
@@ -158,11 +159,19 @@ public final class ReflectionsModel {
         submitError = nil
         defer { isSubmitting = false }
 
-        let item = await repository.postReflection(bookId: bookId, chapterN: chapterN, text: text)
-        draftText = ""
-
-        // Optimistically insert the new item at the top of the list.
-        items.insert(.pending(item), at: 0)
+        do {
+            let item = try await repository.postReflection(
+                bookId: bookId,
+                chapterN: chapterN,
+                text: text
+            )
+            draftText = ""
+            items.insert(.pending(item), at: 0)
+        } catch is CancellationError {
+            return
+        } catch {
+            submitError = AppError.localizedDescription(error)
+        }
     }
 
     // MARK: - AI feedback
@@ -186,14 +195,21 @@ public final class ReflectionsModel {
                     serverReflectionId: serverId
                 )
                 applyFeedback(text, to: item)
+            } catch is CancellationError {
+                return
             } catch {
                 feedbackError = AppError.localizedDescription(error)
             }
         } else if let localId = item.localId {
             // Pure offline item: queue feedback for when it syncs.
-            _ = await repository.queueFeedbackForPending(localId: localId)
-            // Update the display item to show "pending" state.
-            updatePendingFeedbackState(localId: localId)
+            do {
+                _ = try await repository.queueFeedbackForPending(localId: localId)
+                updatePendingFeedbackState(localId: localId)
+            } catch is CancellationError {
+                return
+            } catch {
+                feedbackError = AppError.localizedDescription(error)
+            }
         }
     }
 

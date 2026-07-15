@@ -56,7 +56,6 @@ struct AIRenderGuardTests {
     private func model() -> AskTheBookModel {
         AskTheBookModel(
             bookId: "b-atomic-habits",
-            userId: "preview-user",
             bookTitle: "Atomic Habits",
             repository: FakeAIRepository(delay: 0)
         )
@@ -74,7 +73,6 @@ struct AIRenderGuardTests {
         assertMatrix("Ask (context)") {
             AskTheBookSheet(model: AskTheBookModel(
                 bookId: "b-atomic-habits",
-                userId: "preview-user",
                 bookTitle: "Atomic Habits",
                 repository: FakeAIRepository(delay: 0),
                 selectionContext: "Habits are the compound interest of self-improvement."

@@ -1,5 +1,6 @@
 import Foundation
 import StoreKit
+import Synchronization
 import CoreKit
 import Networking
 import Models
@@ -22,6 +23,8 @@ public enum StoreKitServiceError: Error, LocalizedError, Sendable {
     case unverified(Error)
     /// No products were found for the configured product IDs.
     case noProductsFound
+    /// The account-owned service has been quiesced or permanently stopped.
+    case inactive
 
     public var errorDescription: String? {
         switch self {
@@ -29,6 +32,8 @@ public enum StoreKitServiceError: Error, LocalizedError, Sendable {
             return "The purchase could not be verified. Please contact support."
         case .noProductsFound:
             return "Subscription products are unavailable right now. Please try again later."
+        case .inactive:
+            return "Purchases are unavailable for this session."
         }
     }
 }
@@ -79,6 +84,13 @@ public protocol StoreKitServicing: Sendable {
     ///
     /// The verify-then-finish path is identical to `purchase(_:)`.
     func purchaseWithWinBack(productID: String, offerID: String) async throws -> PurchaseResult
+
+    /// Reversibly quiesces account-bound StoreKit work and awaits listener cancellation.
+    func pause() async
+    /// Restarts the transaction listener after a reversible pause.
+    func resume() async
+    /// Permanently stops this account-bound service and awaits listener cancellation.
+    func stop() async
 }
 
 // MARK: - Default implementations
@@ -88,6 +100,21 @@ public extension StoreKitServicing {
     func introOfferEligibleProductIDs() async -> Set<String> { [] }
     func winBackDisplayInfo() async -> WinBackDisplayInfo? { nil }
     func purchaseWithWinBack(productID: String, offerID: String) async throws -> PurchaseResult { .userCancelled }
+    func pause() async {}
+    func resume() async {}
+    func stop() async {}
+}
+
+enum StoreKitServiceLifecycleState: Sendable, Equatable {
+    case active
+    case paused
+    case stopped
+}
+
+struct StoreKitServiceLifecycleSnapshot: Sendable, Equatable {
+    let state: StoreKitServiceLifecycleState
+    let listenerStartCount: Int
+    let hasListener: Bool
 }
 
 // MARK: - StoreKitService
@@ -110,16 +137,22 @@ public extension StoreKitServicing {
 ///   `Transaction.currentEntitlements` + `Product.SubscriptionInfo.Status`.
 public actor StoreKitService: StoreKitServicing {
 
+    typealias ListenerOperation = @Sendable () async -> Void
+
     // MARK: - Stored properties
 
     private let apiClient: any APIClientProtocol
     private let config: StoreKitConfig
     private let log = AppLog(category: .billing)
 
-    /// Long-lived listener for `Transaction.updates`.
-    /// `nonisolated(unsafe)` lets the init assign it after capturing `self` in a Task,
-    /// and lets `deinit` cancel it without an actor hop.
-    nonisolated(unsafe) private var listenerTask: Task<Void, Never>?
+    /// Long-lived listener for `Transaction.updates`. The mutex is only a task-handle
+    /// lifetime box: all lifecycle decisions remain actor-isolated, while deinit can
+    /// still synchronously cancel the retained task without an unsafe isolation escape.
+    private let listenerTask = Mutex<Task<Void, Never>?>(nil)
+    private let listenerOperation: ListenerOperation?
+    private var lifecycleState: StoreKitServiceLifecycleState
+    private var lifecycleGeneration = 0
+    private var listenerStartCount = 0
 
     // MARK: - Entitlement change stream
 
@@ -133,20 +166,79 @@ public actor StoreKitService: StoreKitServicing {
     public init(apiClient: any APIClientProtocol, config: StoreKitConfig) {
         self.apiClient = apiClient
         self.config = config
+        self.listenerOperation = nil
+        self.lifecycleState = .active
 
         var continuation: AsyncStream<Void>.Continuation!
         self.entitlementChanges = AsyncStream<Void> { cont in continuation = cont }
         self.entitlementContinuation = continuation
 
-        // listenerTask is nil (Optional default) at this point — self is fully initialized.
-        // Start the background listener after self is complete.
-        self.listenerTask = Task {
-            await self.listenForTransactionUpdates()
+        listenerStartCount = 1
+        listenerTask.withLock { task in
+            task = Self.makeProductionListener(owner: self)
+        }
+    }
+
+    init(
+        apiClient: any APIClientProtocol,
+        config: StoreKitConfig,
+        listenerOperation: ListenerOperation?,
+        automaticallyStarts: Bool
+    ) {
+        self.apiClient = apiClient
+        self.config = config
+        self.listenerOperation = listenerOperation
+        self.lifecycleState = automaticallyStarts ? .active : .paused
+
+        var continuation: AsyncStream<Void>.Continuation!
+        self.entitlementChanges = AsyncStream<Void> { cont in continuation = cont }
+        self.entitlementContinuation = continuation
+
+        if automaticallyStarts {
+            listenerStartCount = 1
+            listenerTask.withLock { task in
+                task = Self.makeListener(owner: self, operation: listenerOperation)
+            }
         }
     }
 
     nonisolated deinit {
-        listenerTask?.cancel()
+        listenerTask.withLock { task in
+            task?.cancel()
+            task = nil
+        }
+        entitlementContinuation.finish()
+    }
+
+    var lifecycleSnapshotForTesting: StoreKitServiceLifecycleSnapshot {
+        StoreKitServiceLifecycleSnapshot(
+            state: lifecycleState,
+            listenerStartCount: listenerStartCount,
+            hasListener: listenerTask.withLock { $0 != nil }
+        )
+    }
+
+    // MARK: - Account lifetime
+
+    public func pause() async {
+        guard lifecycleState == .active else { return }
+        lifecycleState = .paused
+        lifecycleGeneration &+= 1
+        await cancelListener()
+    }
+
+    public func resume() async {
+        guard lifecycleState == .paused else { return }
+        lifecycleState = .active
+        lifecycleGeneration &+= 1
+        startListener()
+    }
+
+    public func stop() async {
+        guard lifecycleState != .stopped else { return }
+        lifecycleState = .stopped
+        lifecycleGeneration &+= 1
+        await cancelListener()
         entitlementContinuation.finish()
     }
 
@@ -154,9 +246,11 @@ public actor StoreKitService: StoreKitServicing {
 
     /// Fetches subscription products from the App Store for all configured product IDs.
     public func loadProducts() async throws -> [Product] {
+        let generation = try activeGeneration()
         let ids = config.allProductIDs
         guard !ids.isEmpty else { throw StoreKitServiceError.noProductsFound }
         let products = try await Product.products(for: ids)
+        try requireActive(generation: generation)
         guard !products.isEmpty else { throw StoreKitServiceError.noProductsFound }
         return products.sorted { lhs, rhs in
             lhs.id == config.annualProductID && rhs.id != config.annualProductID
@@ -171,7 +265,9 @@ public actor StoreKitService: StoreKitServicing {
     ///   Throws `AppError` propagated from the backend verify call.
     ///   The transaction is NOT finished in either error path.
     public func purchase(_ product: Product) async throws -> PurchaseResult {
+        let generation = try activeGeneration()
         let result = try await product.purchase()
+        try requireActive(generation: generation)
         switch result {
         case .success(let verificationResult):
             switch verificationResult {
@@ -195,7 +291,9 @@ public actor StoreKitService: StoreKitServicing {
     /// Restores purchases by syncing with the App Store and re-verifying
     /// all current entitlement transactions with the backend.
     public func restorePurchases() async throws {
+        let generation = try activeGeneration()
         try await AppStore.sync()
+        try requireActive(generation: generation)
         try await verifyCurrentEntitlements()
     }
 
@@ -203,11 +301,15 @@ public actor StoreKitService: StoreKitServicing {
     /// **without** calling `AppStore.sync()`. Safe to call on every foreground refresh
     /// as part of cross-platform reconciliation.
     public func verifyCurrentEntitlements() async throws {
+        let generation = try activeGeneration()
         for await result in Transaction.currentEntitlements {
+            try requireActive(generation: generation)
             guard case .verified(let transaction) = result,
                   config.allProductIDs.contains(transaction.productID) else { continue }
             do {
                 try await handleVerifiedResult(result)
+            } catch StoreKitServiceError.inactive {
+                throw StoreKitServiceError.inactive
             } catch {
                 log.warning("verifyCurrentEntitlements: failed for \(transaction.productID): \(error.localizedDescription)")
             }
@@ -217,10 +319,12 @@ public actor StoreKitService: StoreKitServicing {
     /// Computes the current subscription status from `Transaction.currentEntitlements`
     /// and `Product.SubscriptionInfo.Status`.
     public func currentSubscriptionStatus() async throws -> SubscriptionStatus {
+        let generation = try activeGeneration()
         var bestProductID: String?
         var bestExpirationDate: Date?
 
         for await result in Transaction.currentEntitlements {
+            try requireActive(generation: generation)
             guard case .verified(let transaction) = result else { continue }
             guard config.allProductIDs.contains(transaction.productID) else { continue }
 
@@ -237,8 +341,10 @@ public actor StoreKitService: StoreKitServicing {
 
         // Refine with subscription lifecycle state (grace period, billing retry).
         let products = (try? await Product.products(for: [productID])) ?? []
+        try requireActive(generation: generation)
         for product in products {
             guard let statuses = try? await product.subscription?.status else { continue }
+            try requireActive(generation: generation)
             for status in statuses {
                 guard case .verified = status.renewalInfo,
                       case .verified = status.transaction else { continue }
@@ -266,7 +372,11 @@ public actor StoreKitService: StoreKitServicing {
     /// Returns the UInt64 ID of the first currently-entitling verified transaction
     /// whose product ID matches the configured subscription product IDs.
     public func currentTransactionID() async -> UInt64? {
+        guard lifecycleState == .active else { return nil }
+        let generation = lifecycleGeneration
         for await result in Transaction.currentEntitlements {
+            guard lifecycleState == .active,
+                  lifecycleGeneration == generation else { return nil }
             guard case .verified(let transaction) = result,
                   config.allProductIDs.contains(transaction.productID) else { continue }
             return transaction.id
@@ -280,13 +390,19 @@ public actor StoreKitService: StoreKitServicing {
     ///
     /// Checks `Product.SubscriptionInfo.isEligibleForIntroOffer` per product.
     public func introOfferEligibleProductIDs() async -> Set<String> {
+        guard lifecycleState == .active else { return [] }
+        let generation = lifecycleGeneration
         let ids = config.allProductIDs
         guard !ids.isEmpty else { return [] }
         let products = (try? await Product.products(for: ids)) ?? []
+        guard lifecycleState == .active,
+              lifecycleGeneration == generation else { return [] }
         var eligible = Set<String>()
         for product in products {
             guard let subscription = product.subscription else { continue }
             if await subscription.isEligibleForIntroOffer {
+                guard lifecycleState == .active,
+                      lifecycleGeneration == generation else { return [] }
                 eligible.insert(product.id)
             }
         }
@@ -298,9 +414,13 @@ public actor StoreKitService: StoreKitServicing {
     /// Checks `Product.SubscriptionInfo.RenewalInfo.eligibleWinBackOfferIDs`
     /// (sorted best-first by the App Store) against the configured win-back offers.
     public func winBackDisplayInfo() async -> WinBackDisplayInfo? {
+        guard lifecycleState == .active else { return nil }
+        let generation = lifecycleGeneration
         let ids = config.allProductIDs
         guard !ids.isEmpty else { return nil }
         let products = (try? await Product.products(for: ids)) ?? []
+        guard lifecycleState == .active,
+              lifecycleGeneration == generation else { return nil }
 
         for product in products {
             guard let subscription = product.subscription else { continue }
@@ -309,6 +429,8 @@ public actor StoreKitService: StoreKitServicing {
 
             // Pull subscription statuses to find which win-back offer IDs this user is eligible for.
             let statuses = (try? await product.subscription?.status) ?? []
+            guard lifecycleState == .active,
+                  lifecycleGeneration == generation else { return nil }
             var eligibleOfferIDs: [String] = []
             for status in statuses {
                 if case .verified(let renewalInfo) = status.renewalInfo {
@@ -332,12 +454,15 @@ public actor StoreKitService: StoreKitServicing {
     /// with `.winBackOffer(_:)`. The verify-then-finish path is identical to
     /// `purchase(_:)`, including posting the JWS to the backend.
     public func purchaseWithWinBack(productID: String, offerID: String) async throws -> PurchaseResult {
+        let generation = try activeGeneration()
         let products = (try? await Product.products(for: [productID])) ?? []
+        try requireActive(generation: generation)
         guard let product = products.first,
               let offer = product.subscription?.winBackOffers.first(where: { $0.id == offerID })
         else { throw StoreKitServiceError.noProductsFound }
 
         let result = try await product.purchase(options: [.winBackOffer(offer)])
+        try requireActive(generation: generation)
         switch result {
         case .success(let verificationResult):
             switch verificationResult {
@@ -360,18 +485,69 @@ public actor StoreKitService: StoreKitServicing {
 
     // MARK: - Private
 
-    private func listenForTransactionUpdates() async {
-        for await verificationResult in Transaction.updates {
-            switch verificationResult {
-            case .unverified(_, let error):
-                log.warning("Transaction.updates: unverified transaction ignored: \(error.localizedDescription)")
-            case .verified:
-                do {
-                    try await handleVerifiedResult(verificationResult)
-                } catch {
-                    log.error("Transaction.updates: failed to handle transaction: \(error.localizedDescription)")
-                }
+    private static func makeListener(
+        owner: StoreKitService,
+        operation: ListenerOperation?
+    ) -> Task<Void, Never> {
+        if let operation {
+            return Task { await operation() }
+        }
+        return makeProductionListener(owner: owner)
+    }
+
+    private static func makeProductionListener(owner: StoreKitService) -> Task<Void, Never> {
+        Task { [weak owner] in
+            for await verificationResult in Transaction.updates {
+                guard !Task.isCancelled, let owner else { return }
+                await owner.processTransactionUpdate(verificationResult)
             }
+        }
+    }
+
+    private func startListener() {
+        guard lifecycleState == .active,
+              listenerTask.withLock({ $0 == nil }) else { return }
+        listenerStartCount += 1
+        let task = Self.makeListener(owner: self, operation: listenerOperation)
+        listenerTask.withLock { $0 = task }
+    }
+
+    private func cancelListener() async {
+        let task = listenerTask.withLock { stored -> Task<Void, Never>? in
+            defer { stored = nil }
+            return stored
+        }
+        task?.cancel()
+        await task?.value
+    }
+
+    private func processTransactionUpdate(
+        _ verificationResult: VerificationResult<Transaction>
+    ) async {
+        guard lifecycleState == .active else { return }
+        switch verificationResult {
+        case .unverified:
+            log.warning("Transaction.updates: unverified transaction ignored")
+        case .verified:
+            do {
+                try await handleVerifiedResult(verificationResult)
+            } catch StoreKitServiceError.inactive {
+                // Account scope was quiesced while verification was in flight.
+            } catch {
+                log.error("Transaction.updates: transaction handling failed")
+            }
+        }
+    }
+
+    private func activeGeneration() throws -> Int {
+        try requireActive()
+        return lifecycleGeneration
+    }
+
+    private func requireActive(generation: Int? = nil) throws {
+        guard lifecycleState == .active,
+              generation.map({ $0 == lifecycleGeneration }) ?? true else {
+            throw StoreKitServiceError.inactive
         }
     }
 
@@ -389,6 +565,7 @@ public actor StoreKitService: StoreKitServicing {
     /// 3. Calls `transaction.finish()` only after the backend succeeds.
     /// 4. Signals `entitlementChanges` so observers refresh the UI.
     private func handleVerifiedResult(_ verificationResult: VerificationResult<Transaction>) async throws {
+        let generation = try activeGeneration()
         guard case .verified(let transaction) = verificationResult else { return }
 
         if transaction.ownershipType == .familyShared {
@@ -399,8 +576,10 @@ public actor StoreKitService: StoreKitServicing {
             jwsRepresentation: verificationResult.jwsRepresentation
         )
         let _: EntitlementResponse = try await apiClient.send(endpoint)
+        try requireActive(generation: generation)
 
         await transaction.finish()
+        try requireActive(generation: generation)
         log.info("Transaction finished after backend grant: \(transaction.productID)")
         entitlementContinuation.yield(())
     }

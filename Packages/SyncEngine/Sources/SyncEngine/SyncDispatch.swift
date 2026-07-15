@@ -56,7 +56,7 @@ extension SyncEngine {
         let payload = try snapshot.decodePayload(as: QuizSubmitPayload.self)
 
         // Guard against double-submit within a single drain pass.
-        // Session IDs are added here and cleared at drain-end (in stop()),
+        // Session IDs are added here and cleared when the tracked drain ends,
         // so a duplicate mutation for the same sessionId is silently skipped.
         let key = payload.sessionId
         guard !activeQuizSessionIds.contains(key) else { return }

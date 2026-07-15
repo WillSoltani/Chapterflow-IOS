@@ -6,6 +6,24 @@ import Persistence
 import CoreKit
 import os
 
+/// Main-actor owner for the non-Sendable UserDefaults-backed position store.
+@MainActor
+private final class ReaderPositionStore {
+    private let storage: KeyValueStore
+
+    init(_ store: KeyValueStore) {
+        storage = store
+    }
+
+    func set(_ value: Int, forKey key: String) throws {
+        try storage.set(value, forKey: key)
+    }
+
+    func value(forKey key: String) -> Int? {
+        storage.value(Int.self, forKey: key)
+    }
+}
+
 // MARK: - Live implementation
 
 /// Production `ReaderRepository` — cache-first, offline-capable.
@@ -19,42 +37,52 @@ import os
 /// - Session events (heartbeat, start, end) are fire-and-forget; silently dropped
 ///   when offline.
 ///
-/// `@unchecked Sendable`: `KeyValueStore` wraps `UserDefaults` (thread-safe);
-/// `ModelContainer` is `Sendable`; `JSONEncoder`/`JSONDecoder` use value semantics.
-public struct LiveReaderRepository: ReaderRepository, @unchecked Sendable {
+public struct LiveReaderRepository: ReaderRepository, Sendable {
     private let client: any APIClientProtocol
-    private let store: KeyValueStore
+    private let positionStore: ReaderPositionStore
     private let container: ModelContainer?
     private let reachability: ReachabilityService
-    private let userId: @Sendable () -> String?
+    private let accountID: String
+    private let workPermit: SessionWorkPermit
     private let logger = Logger(subsystem: "com.chapterflow.ios", category: "ReaderRepository")
 
+    @MainActor
     public init(
         client: any APIClientProtocol,
         store: KeyValueStore = KeyValueStore(),
         container: ModelContainer? = nil,
         reachability: ReachabilityService,
-        userId: @Sendable @escaping () -> String?
+        accountID: String,
+        workPermit: SessionWorkPermit = SessionWorkPermit()
     ) {
         self.client = client
-        self.store = store
+        self.positionStore = ReaderPositionStore(store)
         self.container = container
         self.reachability = reachability
-        self.userId = userId
+        self.accountID = accountID
+        self.workPermit = workPermit
     }
 
     // MARK: - Chapter loading
 
     public func getChapter(bookId: String, n: Int, mode: String?) async throws -> ChapterResponse {
+        let ticket = try workPermit.begin()
         // Cache-first: serve any cached chapter immediately.
         if let cached = try loadCachedChapter(bookId: bookId, n: n) {
             if reachability.isConnectedSync {
-                Task { try? await fetchAndCacheChapter(bookId: bookId, n: n, mode: mode) }
+                Task {
+                    try? await fetchAndCacheChapter(
+                        bookId: bookId,
+                        n: n,
+                        mode: mode,
+                        ticket: ticket
+                    )
+                }
             }
             return cached
         }
         guard reachability.isConnectedSync else { throw AppError.offline }
-        return try await fetchAndCacheChapter(bookId: bookId, n: n, mode: mode)
+        return try await fetchAndCacheChapter(bookId: bookId, n: n, mode: mode, ticket: ticket)
     }
 
     private func loadCachedChapter(bookId: String, n: Int) throws -> ChapterResponse? {
@@ -62,7 +90,7 @@ public struct LiveReaderRepository: ReaderRepository, @unchecked Sendable {
         let ctx = ModelContext(container)
         // Use the composite rowId (has @Attribute(.unique) → SQLite index) instead of
         // querying on bookId+number, which are unindexed columns and force a table scan.
-        let uid = userId() ?? "anon"
+        let uid = accountID
         let rowId = CachedChapter.makeRowId(userId: uid, bookId: bookId, number: n)
         let descriptor = FetchDescriptor<CachedChapter>(predicate: #Predicate { $0.rowId == rowId })
         guard let row = try ctx.fetch(descriptor).first else { return nil }
@@ -81,11 +109,18 @@ public struct LiveReaderRepository: ReaderRepository, @unchecked Sendable {
     }
 
     @discardableResult
-    private func fetchAndCacheChapter(bookId: String, n: Int, mode: String?) async throws -> ChapterResponse {
+    private func fetchAndCacheChapter(
+        bookId: String,
+        n: Int,
+        mode: String?,
+        ticket: UInt64
+    ) async throws -> ChapterResponse {
         let endpoint = Endpoints.getChapter(bookId: bookId, n: n, mode: mode)
         let response: ChapterResponse = try await client.send(endpoint)
         if let container {
-            try cacheChapterResponse(response, bookId: bookId, n: n, in: container)
+            try workPermit.commit(ticket) {
+                try cacheChapterResponse(response, bookId: bookId, n: n, in: container)
+            }
         }
         return response
     }
@@ -97,7 +132,7 @@ public struct LiveReaderRepository: ReaderRepository, @unchecked Sendable {
         in container: ModelContainer
     ) throws {
         let ctx = ModelContext(container)
-        let uid = userId() ?? "anon"
+        let uid = accountID
 
         // Cache the chapter content.
         let rowId = CachedChapter.makeRowId(userId: uid, bookId: bookId, number: n)
@@ -154,9 +189,12 @@ public struct LiveReaderRepository: ReaderRepository, @unchecked Sendable {
     // MARK: - Cursor patch
 
     public func patchBookCursor(bookId: String, chapterId: String) async throws {
+        let ticket = try workPermit.begin()
         guard reachability.isConnectedSync else {
             // Queue cursor update for sync when back online.
-            try enqueueCursorMutation(bookId: bookId, chapterId: chapterId)
+            try workPermit.commit(ticket) {
+                try enqueueCursorMutation(bookId: bookId, chapterId: chapterId)
+            }
             return
         }
         let endpoint = try Endpoints.patchBookCursor(bookId: bookId, chapterId: chapterId)
@@ -166,7 +204,7 @@ public struct LiveReaderRepository: ReaderRepository, @unchecked Sendable {
     private func enqueueCursorMutation(bookId: String, chapterId: String) throws {
         guard let container else { return }
         let ctx = ModelContext(container)
-        let uid = userId() ?? "anon"
+        let uid = accountID
         struct CursorPayload: Codable {
             let bookId: String
             let chapterId: String
@@ -232,32 +270,38 @@ public struct LiveReaderRepository: ReaderRepository, @unchecked Sendable {
     // MARK: - Book state
 
     public func getBookState(bookId: String) async throws -> BookStateResponse {
+        let ticket = try workPermit.begin()
         if let cached = try loadCachedBookState(bookId: bookId) {
             if reachability.isConnectedSync {
-                Task { try? await fetchAndCacheBookState(bookId: bookId) }
+                Task { try? await fetchAndCacheBookState(bookId: bookId, ticket: ticket) }
             }
             return cached
         }
         guard reachability.isConnectedSync else { throw AppError.offline }
-        return try await fetchAndCacheBookState(bookId: bookId)
+        return try await fetchAndCacheBookState(bookId: bookId, ticket: ticket)
     }
 
     private func loadCachedBookState(bookId: String) throws -> BookStateResponse? {
         guard let container else { return nil }
         let ctx = ModelContext(container)
         // Use indexed rowId (same format as the write path) to avoid a full table scan.
-        let uid = userId() ?? "anon"
+        let uid = accountID
         let rowId = "\(uid):\(bookId)"
         let descriptor = FetchDescriptor<CachedBookState>(predicate: #Predicate { $0.rowId == rowId })
         return try ctx.fetch(descriptor).first.flatMap { try? $0.toDomain() }
     }
 
     @discardableResult
-    private func fetchAndCacheBookState(bookId: String) async throws -> BookStateResponse {
+    private func fetchAndCacheBookState(
+        bookId: String,
+        ticket: UInt64
+    ) async throws -> BookStateResponse {
         let endpoint = Endpoints.getBookState(bookId: bookId)
         let response: BookStateResponse = try await client.send(endpoint)
         if let container {
-            try storeBookState(response, bookId: bookId, in: container)
+            try workPermit.commit(ticket) {
+                try storeBookState(response, bookId: bookId, in: container)
+            }
         }
         return response
     }
@@ -268,7 +312,7 @@ public struct LiveReaderRepository: ReaderRepository, @unchecked Sendable {
         in container: ModelContainer
     ) throws {
         let ctx = ModelContext(container)
-        let uid = userId() ?? "anon"
+        let uid = accountID
         let rowId = "\(uid):\(bookId)"
         let descriptor = FetchDescriptor<CachedBookState>(
             predicate: #Predicate { $0.rowId == rowId }
@@ -297,20 +341,25 @@ public struct LiveReaderRepository: ReaderRepository, @unchecked Sendable {
 
     // MARK: - Position persistence
 
+    @MainActor
     public func saveScrollPosition(bookId: String, chapterNumber: Int, blockIndex: Int) {
+        guard let ticket = try? workPermit.begin() else { return }
         let key = positionKey(bookId: bookId, chapterNumber: chapterNumber)
-        try? store.set(blockIndex, forKey: key)
+        try? workPermit.commit(ticket) {
+            try positionStore.set(blockIndex, forKey: key)
+        }
     }
 
+    @MainActor
     public func loadScrollPosition(bookId: String, chapterNumber: Int) -> Int? {
         let key = positionKey(bookId: bookId, chapterNumber: chapterNumber)
-        return store.value(Int.self, forKey: key)
+        return positionStore.value(forKey: key)
     }
 
     // MARK: - Private
 
     private func positionKey(bookId: String, chapterNumber: Int) -> String {
-        "reader.position.v1.\(bookId).\(chapterNumber)"
+        "reader.position.v1.\(accountID).\(bookId).\(chapterNumber)"
     }
 }
 

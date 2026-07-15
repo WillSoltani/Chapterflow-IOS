@@ -34,6 +34,7 @@ let package = Package(
             name: "LibraryFeatureTests",
             dependencies: [
                 "LibraryFeature",
+                "Persistence",
                 .product(name: "Fixtures", package: "Fixtures"),
             ]
         ),

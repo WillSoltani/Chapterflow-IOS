@@ -37,6 +37,8 @@ let package = Package(
             name: "SettingsFeatureTests",
             dependencies: [
                 "SettingsFeature",
+                .product(name: "AuthKit", package: "AuthKit"),
+                .product(name: "CoreKit", package: "CoreKit"),
                 .product(name: "Networking", package: "Networking"),
                 .product(name: "Persistence", package: "Persistence"),
             ]

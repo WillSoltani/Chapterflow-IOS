@@ -7,20 +7,19 @@ private let log = Logger(subsystem: "com.chapterflow.engagement", category: "rev
 
 // MARK: - ReviewNotificationScheduler
 
-/// Schedules and cancels local `UNUserNotificationCenter` notifications for
-/// upcoming FSRS review sessions.
+/// Cancels legacy local `UNUserNotificationCenter` notifications for FSRS
+/// review sessions at an irreversible session boundary.
 ///
 /// Runs on the main actor so all `UNUserNotificationCenter` calls happen on the
 /// same isolation domain as the framework type itself.
 ///
-/// P9.3 (central notification orchestration) should replace this lightweight
-/// scheduler with the full-featured `NotificationScheduler` from
-/// `NotificationsFeature` once that task ships.
+/// New scheduling is disabled until notification requests have an
+/// account-scoped owner. The scheduling implementation is retained for a later
+/// migration, but production repositories do not invoke it.
 @MainActor
 public final class ReviewNotificationScheduler {
 
-    /// Singleton — shared across the app so there is never more than one
-    /// scheduling pass running at a time.
+    /// Process-global cleanup owner for legacy review notifications.
     public static let shared = ReviewNotificationScheduler()
 
     private init() {}
@@ -84,14 +83,24 @@ public final class ReviewNotificationScheduler {
         }
     }
 
-    /// Cancels all pending review notifications (e.g. after the user completes the session).
+    /// Cancels all pending and delivered review notifications.
+    ///
+    /// Delivered entries are account-private presentation too: leaving A's
+    /// "cards due" copy in Notification Center after B becomes active would
+    /// cross the session boundary even though no future request can fire.
     public func cancelAll() async {
         let center = UNUserNotificationCenter.current()
         let pending = await center.pendingNotificationRequests()
-        let ids = pending
+        let pendingIDs = pending
             .filter { $0.identifier.hasPrefix("review-due-") }
             .map(\.identifier)
-        center.removePendingNotificationRequests(withIdentifiers: ids)
+        center.removePendingNotificationRequests(withIdentifiers: pendingIDs)
+
+        let delivered = await center.deliveredNotifications()
+        let deliveredIDs = delivered
+            .filter { $0.request.identifier.hasPrefix("review-due-") }
+            .map(\.request.identifier)
+        center.removeDeliveredNotifications(withIdentifiers: deliveredIDs)
     }
 
     // MARK: - Private helpers

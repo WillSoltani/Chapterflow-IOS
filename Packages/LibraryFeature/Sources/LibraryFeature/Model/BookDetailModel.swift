@@ -4,51 +4,6 @@ import Models
 import CoreKit
 import Persistence
 
-// MARK: - Supporting types
-
-/// The primary call-to-action the book detail screen should present.
-public enum BookDetailPrimaryAction: Equatable {
-    /// The book hasn't been started; call `startBook` then navigate to chapter 1.
-    case startReading
-    /// The book is in progress; navigate directly to the current chapter.
-    case continueReading
-    /// The user has no access; open the paywall.
-    case showPaywall
-    /// The user is browsing as a guest; prompt sign-in before starting.
-    case signInRequired
-    /// Data is still loading; disable the button.
-    case disabled
-}
-
-/// Why a chapter is currently inaccessible.
-public enum ChapterLockReason: Equatable {
-    /// The user must finish the prior chapter's quiz to unlock this one.
-    case finishPriorQuiz
-    /// The chapter requires a Pro subscription.
-    case requiresPro
-}
-
-/// Server-authoritative private reading state for Book Detail.
-public enum BookDetailPrivateState: Sendable {
-    case loading
-    case started(
-        state: BookUserBookState,
-        applicationStates: [String: ChapterApplicationState]
-    )
-    case notStarted
-    case unavailable(UserFacingError)
-    case compatibilityUnknown
-}
-
-/// Account entitlement state is tracked independently from public metadata and
-/// book-state authority so one private request cannot erase a valid book outline.
-public enum BookDetailEntitlementState: Sendable {
-    case loading
-    case available(Entitlement)
-    case unavailable(UserFacingError)
-    case notRequired
-}
-
 // MARK: - BookDetailModel
 
 /// Observable model driving ``BookDetailView``.
@@ -120,6 +75,7 @@ public final class BookDetailModel {
     public let bookId: String
     private let repository: any BookDetailRepository
     private let analytics: any AnalyticsClient
+    private let workPermit: SessionWorkPermit
     private let evaluator = EntitlementEvaluator()
     @MainActor private var recommendationTask: Task<Void, Never>?
     private var downloadTask: Task<Void, Never>?
@@ -127,7 +83,9 @@ public final class BookDetailModel {
     private var fetchGeneration = 0
     private var privateStateGeneration = 0
     private var entitlementGeneration = 0
-    var userId: String = ""
+    /// Immutable account authority for private download state. `nil` means the
+    /// model has no private download capability (guest/preview/public catalog).
+    let accountID: String?
 
     // MARK: - Init
 
@@ -135,14 +93,16 @@ public final class BookDetailModel {
         bookId: String,
         repository: any BookDetailRepository,
         downloadManager: DownloadManager? = nil,
-        userId: String = "",
-        analytics: any AnalyticsClient = NoopAnalyticsClient()
+        accountID: String? = nil,
+        analytics: any AnalyticsClient = NoopAnalyticsClient(),
+        workPermit: SessionWorkPermit = SessionWorkPermit()
     ) {
         self.bookId = bookId
         self.repository = repository
         self.downloadManager = downloadManager
-        self.userId = userId
+        self.accountID = accountID
         self.analytics = analytics
+        self.workPermit = workPermit
     }
 
     // MARK: - Derived: overview
@@ -483,36 +443,46 @@ public final class BookDetailModel {
         switch primaryAction {
         case .signInRequired:
             // Guest mode: delegate to AppFeature to show the auth gate.
-            onSignInRequired?(bookId, manifest?.variantFamily ?? .emh)
+            performIfSessionActive {
+                onSignInRequired?(bookId, manifest?.variantFamily ?? .emh)
+            }
 
         case .showPaywall:
-            onShowPaywall?()
+            performIfSessionActive { onShowPaywall?() }
 
         case .continueReading:
-            onOpenReader?(bookId, currentChapterNumber, manifest?.variantFamily ?? .emh)
+            performIfSessionActive {
+                onOpenReader?(bookId, currentChapterNumber, manifest?.variantFamily ?? .emh)
+            }
 
         case .startReading:
             guard !isStarting else { return }
+            guard let ticket = try? workPermit.begin() else { return }
             isStarting = true
             startError = nil
-            defer { isStarting = false }
             privateStateGeneration &+= 1
             let generation = privateStateGeneration
             do {
                 let stateResponse = try await repository.startBook(id: bookId)
                 guard !Task.isCancelled, generation == privateStateGeneration else { return }
-                privateState = .started(
-                    state: stateResponse.state,
-                    applicationStates: stateResponse.applicationStates ?? [:]
-                )
-                analytics.track(.bookStarted(bookId: bookId))
-                // Navigate to the first unlocked chapter (typically ch. 1).
-                onOpenReader?(bookId, currentChapterNumber, manifest?.variantFamily ?? .emh)
+                try workPermit.commit(ticket) {
+                    privateState = .started(
+                        state: stateResponse.state,
+                        applicationStates: stateResponse.applicationStates ?? [:]
+                    )
+                    isStarting = false
+                    analytics.track(.bookStarted(bookId: bookId))
+                    // Navigate to the first unlocked chapter (typically ch. 1).
+                    onOpenReader?(bookId, currentChapterNumber, manifest?.variantFamily ?? .emh)
+                }
             } catch is CancellationError {
                 return
             } catch {
                 guard generation == privateStateGeneration else { return }
-                startError = UserFacingError.mapping(error)
+                try? workPermit.commit(ticket) {
+                    isStarting = false
+                    startError = UserFacingError.mapping(error)
+                }
             }
 
         case .disabled:
@@ -523,15 +493,22 @@ public final class BookDetailModel {
     /// Navigates to an unlocked chapter; no-ops for locked ones.
     public func tapChapter(_ chapter: BookManifestChapter) {
         guard isUnlocked(chapter) else { return }
-        onOpenReader?(bookId, chapter.number, manifest?.variantFamily ?? .emh)
+        performIfSessionActive {
+            onOpenReader?(bookId, chapter.number, manifest?.variantFamily ?? .emh)
+        }
+    }
+
+    private func performIfSessionActive(_ operation: () -> Void) {
+        guard let ticket = try? workPermit.begin() else { return }
+        try? workPermit.commit(ticket, operation)
     }
 
     // MARK: - Download actions
 
     /// Checks the stored download state and updates `downloadState`.
     public func refreshDownloadState() async {
-        guard let manager = downloadManager, !userId.isEmpty else { return }
-        let isOffline = await manager.isDownloaded(bookId: bookId, userId: userId)
+        guard let manager = downloadManager, let accountID else { return }
+        let isOffline = await manager.isDownloaded(bookId: bookId, userId: accountID)
         downloadState = isOffline ? .downloaded : .notDownloaded
     }
 
@@ -539,10 +516,10 @@ public final class BookDetailModel {
     public func startDownload() {
         guard hasAuthoritativeStartedState,
               let manager = downloadManager,
-              !userId.isEmpty else { return }
+              let accountID else { return }
         downloadTask?.cancel()
         let bid = bookId
-        let uid = userId
+        let uid = accountID
         downloadTask = Task { [weak self] in
             guard let self else { return }
             let stream = await manager.downloadBook(bookId: bid, userId: uid)
@@ -565,8 +542,8 @@ public final class BookDetailModel {
         downloadTask?.cancel()
         downloadTask = nil
         downloadState = .notDownloaded
-        guard let manager = downloadManager, !userId.isEmpty else { return }
-        Task { await manager.cancelDownload(bookId: bookId, userId: userId) }
+        guard let manager = downloadManager, let accountID else { return }
+        Task { await manager.cancelDownload(bookId: bookId, userId: accountID) }
     }
 
     /// Deletes the stored download.
@@ -574,9 +551,9 @@ public final class BookDetailModel {
         downloadTask?.cancel()
         downloadTask = nil
         downloadState = .notDownloaded
-        guard let manager = downloadManager, !userId.isEmpty else { return }
+        guard let manager = downloadManager, let accountID else { return }
         Task {
-            try? await manager.deleteBookDownload(bookId: bookId, userId: userId)
+            try? await manager.deleteBookDownload(bookId: bookId, userId: accountID)
         }
     }
 }

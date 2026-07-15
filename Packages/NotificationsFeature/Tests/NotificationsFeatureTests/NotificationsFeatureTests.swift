@@ -4,6 +4,43 @@ import CoreKit
 import Networking
 import Foundation
 
+private actor SuspendedDeviceRegistrationRepository: DeviceRegistrationRepository {
+    private var registerContinuation: CheckedContinuation<Void, Never>?
+    private var startWaiters: [CheckedContinuation<Void, Never>] = []
+    private var unregisteredTokens: [String] = []
+
+    func register(apnsToken: String) async throws {
+        _ = apnsToken
+        await withCheckedContinuation { continuation in
+            registerContinuation = continuation
+            let waiters = startWaiters
+            startWaiters.removeAll()
+            waiters.forEach { $0.resume() }
+        }
+        try Task.checkCancellation()
+    }
+
+    func unregister(apnsToken: String) async throws {
+        unregisteredTokens.append(apnsToken)
+    }
+
+    func waitUntilRegistrationStarts() async {
+        if registerContinuation != nil { return }
+        await withCheckedContinuation { continuation in
+            startWaiters.append(continuation)
+        }
+    }
+
+    func resumeRegistration() {
+        registerContinuation?.resume()
+        registerContinuation = nil
+    }
+
+    func unregisteredTokenValues() -> [String] {
+        unregisteredTokens
+    }
+}
+
 // MARK: - Module smoke test
 
 @Suite("NotificationsFeature")
@@ -61,44 +98,81 @@ struct ApnsHexTests {
 struct DeviceRegistrationRepositoryTests {
 
     @Test("register appends token to registeredTokens")
-    func registerRecordsToken() async {
+    func registerRecordsToken() async throws {
         let repo = FakeDeviceRegistrationRepository()
-        await repo.register(apnsToken: "abc123")
+        try await repo.register(apnsToken: "abc123")
         #expect(repo.registeredTokens == ["abc123"])
     }
 
     @Test("unregister appends token to unregisteredTokens")
-    func unregisterRecordsToken() async {
+    func unregisterRecordsToken() async throws {
         let repo = FakeDeviceRegistrationRepository()
-        await repo.unregister(apnsToken: "abc123")
+        try await repo.unregister(apnsToken: "abc123")
         #expect(repo.unregisteredTokens == ["abc123"])
     }
 
     @Test("multiple registers accumulate all tokens")
-    func multipleRegisters() async {
+    func multipleRegisters() async throws {
         let repo = FakeDeviceRegistrationRepository()
-        await repo.register(apnsToken: "token1")
-        await repo.register(apnsToken: "token2")
+        try await repo.register(apnsToken: "token1")
+        try await repo.register(apnsToken: "token2")
         #expect(repo.registeredTokens == ["token1", "token2"])
+    }
+
+    @Test("fake propagates registration and unregistration failures")
+    func failuresPropagate() async {
+        let repo = FakeDeviceRegistrationRepository()
+        repo.shouldFailRegistration = true
+        await #expect(throws: AppError.self) {
+            try await repo.register(apnsToken: "token")
+        }
+        repo.shouldFailUnregistration = true
+        await #expect(throws: AppError.self) {
+            try await repo.unregister(apnsToken: "token")
+        }
+    }
+
+    @Test("live registration propagates backend failure")
+    func liveRegistrationPropagatesFailure() async {
+        let client = MockAPIClient()
+        await client.setStub(.failure(.offline), for: "/book/me/devices/register")
+        let repo = LiveDeviceRegistrationRepository(apiClient: client)
+
+        await #expect(throws: AppError.self) {
+            try await repo.register(apnsToken: "token")
+        }
+    }
+
+    @Test("live unregistration propagates backend failure")
+    func liveUnregistrationPropagatesFailure() async {
+        let client = MockAPIClient()
+        await client.setStub(.failure(.offline), for: "/book/me/devices/unregister")
+        let repo = LiveDeviceRegistrationRepository(apiClient: client)
+
+        await #expect(throws: AppError.self) {
+            try await repo.unregister(apnsToken: "token")
+        }
     }
 }
 
 // MARK: - APNSRegistrationManager de-duplication
 
-@Suite("APNSRegistrationManager — de-dup")
+@Suite("APNSRegistrationManager — session lifecycle", .serialized)
 @MainActor
 struct APNSRegistrationManagerDedupTests {
 
-    static let testDefaultsKey = "com.chapterflow.apnsLastRegisteredToken"
+    static let legacyDefaultsKey = "com.chapterflow.apnsLastRegisteredToken"
 
     func makeManager(
         defaults: UserDefaults = .standard,
-        repo: FakeDeviceRegistrationRepository = .init()
+        repo: FakeDeviceRegistrationRepository = .init(),
+        authorizer: MockNotificationAuthorizer = .init(),
+        storageNamespace: String = "account-a"
     ) -> (APNSRegistrationManager, FakeDeviceRegistrationRepository) {
-        let authorizer = MockNotificationAuthorizer()
         let manager = APNSRegistrationManager(
             authorizer: authorizer,
             repository: repo,
+            storageNamespace: storageNamespace,
             defaults: defaults
         )
         return (manager, repo)
@@ -107,8 +181,9 @@ struct APNSRegistrationManagerDedupTests {
     @Test("same token is not re-registered")
     func sameTokenSkipsRegistration() async {
         let defaults = UserDefaults(suiteName: "test-apns-dedup-same")!
-        defaults.removeObject(forKey: "com.chapterflow.apnsLastRegisteredToken")
         let (manager, repo) = makeManager(defaults: defaults)
+        manager.start()
+        defer { manager.stopAndReset() }
 
         let tokenData = Data([0x01, 0x02, 0x03])
         // Register once
@@ -123,8 +198,9 @@ struct APNSRegistrationManagerDedupTests {
     @Test("different token unregisters old and registers new")
     func differentTokenRotates() async {
         let defaults = UserDefaults(suiteName: "test-apns-dedup-rotate")!
-        defaults.removeObject(forKey: "com.chapterflow.apnsLastRegisteredToken")
         let (manager, repo) = makeManager(defaults: defaults)
+        manager.start()
+        defer { manager.stopAndReset() }
 
         let token1 = Data([0x01, 0x02])
         let token2 = Data([0x03, 0x04])
@@ -138,27 +214,30 @@ struct APNSRegistrationManagerDedupTests {
         defaults.removePersistentDomain(forName: "test-apns-dedup-rotate")
     }
 
-    @Test("handleSignOut unregisters stored token and clears it")
+    @Test("handleSignOut clears scoped token only after acknowledgement")
     func signOutClearsToken() async {
         let defaults = UserDefaults(suiteName: "test-apns-signout")!
-        defaults.set("stored_hex_token", forKey: "com.chapterflow.apnsLastRegisteredToken")
         let (manager, repo) = makeManager(defaults: defaults)
+        manager.start()
+        await manager.handleTokenReceived(Data([0xAA]))
 
-        await manager.handleSignOut()
+        let result = await manager.handleSignOut()
 
-        #expect(repo.unregisteredTokens == ["stored_hex_token"])
-        #expect(defaults.string(forKey: "com.chapterflow.apnsLastRegisteredToken") == nil)
+        #expect(result == .unregistered)
+        #expect(repo.unregisteredTokens == ["aa"])
+        #expect(manager.storedToken == nil)
+        manager.stopAndReset()
         defaults.removePersistentDomain(forName: "test-apns-signout")
     }
 
     @Test("handleSignOut is a no-op when no token is stored")
     func signOutWithNoStoredToken() async {
         let defaults = UserDefaults(suiteName: "test-apns-signout-empty")!
-        defaults.removeObject(forKey: "com.chapterflow.apnsLastRegisteredToken")
         let (manager, repo) = makeManager(defaults: defaults)
 
-        await manager.handleSignOut()
+        let result = await manager.handleSignOut()
 
+        #expect(result == .noRegisteredToken)
         #expect(repo.unregisteredTokens.isEmpty)
         defaults.removePersistentDomain(forName: "test-apns-signout-empty")
     }
@@ -174,8 +253,9 @@ struct APNSRegistrationManagerDedupTests {
     @Test("registration error is cleared on successful token receipt")
     func errorClearedOnSuccess() async {
         let defaults = UserDefaults(suiteName: "test-apns-error-clear")!
-        defaults.removeObject(forKey: "com.chapterflow.apnsLastRegisteredToken")
         let (manager, _) = makeManager(defaults: defaults)
+        manager.start()
+        defer { manager.stopAndReset() }
 
         manager.handleRegistrationFailed(URLError(.notConnectedToInternet))
         #expect(manager.registrationError != nil)
@@ -183,6 +263,138 @@ struct APNSRegistrationManagerDedupTests {
         await manager.handleTokenReceived(Data([0xAA, 0xBB]))
         #expect(manager.registrationError == nil)
         defaults.removePersistentDomain(forName: "test-apns-error-clear")
+    }
+
+    @Test("repeated start is idempotent")
+    func repeatedStartIsIdempotent() async {
+        let authorizer = MockNotificationAuthorizer()
+        let (manager, _) = makeManager(authorizer: authorizer)
+        manager.start()
+        manager.start()
+        await manager.waitForPendingOperations()
+
+        #expect(authorizer.currentStatusCallCount == 1)
+        manager.stopAndReset()
+    }
+
+    @Test("failed registration is surfaced and never persisted")
+    func failedRegistrationIsNotPersisted() async {
+        let defaults = UserDefaults(suiteName: "test-apns-register-failure")!
+        let repo = FakeDeviceRegistrationRepository()
+        repo.shouldFailRegistration = true
+        let (manager, _) = makeManager(defaults: defaults, repo: repo)
+        manager.start()
+
+        await manager.handleTokenReceived(Data([0xAB]))
+
+        #expect(manager.storedToken == nil)
+        #expect(manager.registrationError is APNSRegistrationError)
+        manager.stopAndReset()
+        defaults.removePersistentDomain(forName: "test-apns-register-failure")
+    }
+
+    @Test("failed sign-out unregister retains scoped token")
+    func failedSignOutRetainsToken() async {
+        let defaults = UserDefaults(suiteName: "test-apns-unregister-failure")!
+        let repo = FakeDeviceRegistrationRepository()
+        let (manager, _) = makeManager(defaults: defaults, repo: repo)
+        manager.start()
+        await manager.handleTokenReceived(Data([0xCD]))
+        repo.shouldFailUnregistration = true
+
+        let result = await manager.handleSignOut()
+
+        #expect(result == .unregistrationFailed)
+        #expect(manager.storedToken == "cd")
+        manager.stopAndReset()
+        defaults.removePersistentDomain(forName: "test-apns-unregister-failure")
+    }
+
+    @Test("sign-out waits for an acknowledged in-flight registration")
+    func signOutAwaitsInflightRegistration() async {
+        let suiteName = "test-apns-inflight-signout"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        let repo = SuspendedDeviceRegistrationRepository()
+        let authorizer = MockNotificationAuthorizer()
+        let manager = APNSRegistrationManager(
+            authorizer: authorizer,
+            repository: repo,
+            storageNamespace: "account-a",
+            defaults: defaults
+        )
+        manager.start()
+        APNSRegistrationBridge.shared.didReceiveToken(Data([0xFE]))
+        await repo.waitUntilRegistrationStarts()
+
+        let signOutTask = Task { await manager.handleSignOut() }
+        while !manager.isPausedForTesting {
+            await Task.yield()
+        }
+        await repo.resumeRegistration()
+        let result = await signOutTask.value
+        let unregisteredTokens = await repo.unregisteredTokenValues()
+
+        #expect(result == .unregistered)
+        #expect(unregisteredTokens == ["fe"])
+        #expect(manager.storedToken == nil)
+        manager.stopAndReset()
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    @Test("pause detaches token delivery and resume restores it")
+    func pauseAndResume() async {
+        let defaults = UserDefaults(suiteName: "test-apns-pause-resume")!
+        let (manager, repo) = makeManager(defaults: defaults)
+        manager.start()
+        await manager.waitForPendingOperations()
+        APNSRegistrationBridge.shared.didReceiveToken(Data([0x01]))
+        await manager.waitForPendingOperations()
+
+        manager.pause()
+        APNSRegistrationBridge.shared.didReceiveToken(Data([0x02]))
+        await manager.waitForPendingOperations()
+        #expect(repo.registeredTokens == ["01"])
+
+        manager.resume()
+        APNSRegistrationBridge.shared.didReceiveToken(Data([0x02]))
+        await manager.waitForPendingOperations()
+        #expect(repo.registeredTokens == ["01", "02"])
+
+        manager.stopAndReset()
+        defaults.removePersistentDomain(forName: "test-apns-pause-resume")
+    }
+
+    @Test("account namespaces isolate tokens")
+    func accountNamespacesIsolateTokens() async {
+        let defaults = UserDefaults(suiteName: "test-apns-account-isolation")!
+        let (managerA, _) = makeManager(defaults: defaults, storageNamespace: "account-a")
+        let (managerB, _) = makeManager(defaults: defaults, storageNamespace: "account-b")
+        managerA.start()
+        managerB.start()
+
+        await managerA.handleTokenReceived(Data([0x0A]))
+        await managerB.handleTokenReceived(Data([0x0B]))
+
+        #expect(managerA.storedToken == "0a")
+        #expect(managerB.storedToken == "0b")
+        managerA.stopAndReset()
+        managerB.stopAndReset()
+        defaults.removePersistentDomain(forName: "test-apns-account-isolation")
+    }
+
+    @Test("legacy global token is ignored and preserved")
+    func legacyTokenIsQuarantined() async {
+        let defaults = UserDefaults(suiteName: "test-apns-legacy-token")!
+        defaults.set("legacy-token", forKey: Self.legacyDefaultsKey)
+        let (manager, repo) = makeManager(defaults: defaults)
+
+        let result = await manager.handleSignOut()
+
+        #expect(result == .noRegisteredToken)
+        #expect(repo.unregisteredTokens.isEmpty)
+        #expect(defaults.string(forKey: Self.legacyDefaultsKey) == "legacy-token")
+        manager.stopAndReset()
+        defaults.removePersistentDomain(forName: "test-apns-legacy-token")
     }
 }
 

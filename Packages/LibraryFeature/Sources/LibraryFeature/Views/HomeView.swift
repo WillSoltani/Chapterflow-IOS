@@ -18,8 +18,13 @@ public struct HomeView: View {
     private let repository: any LibraryRepository
     private let bookDetailRepository: any BookDetailRepository
     private let aiRepository: (any AIRepository)?
+    private let preferences: AppPreferences
+    private let store: KeyValueStore
+    private let downloadManager: DownloadManager?
+    private let accountID: String?
     private let isGuest: Bool
     private let analytics: any AnalyticsClient
+    private let workPermit: SessionWorkPermit
     private let onOpenReader: ((String, Int, VariantFamily) -> Void)?
     private let onShowPaywall: (() -> Void)?
     /// Called when a guest taps a gated action (save, etc.). Triggers the auth gate.
@@ -33,8 +38,13 @@ public struct HomeView: View {
         repository: any LibraryRepository,
         bookDetailRepository: any BookDetailRepository,
         aiRepository: (any AIRepository)? = nil,
+        preferences: AppPreferences,
+        store: KeyValueStore,
+        downloadManager: DownloadManager? = nil,
+        accountID: String? = nil,
         isGuest: Bool = false,
         analytics: any AnalyticsClient = NoopAnalyticsClient(),
+        workPermit: SessionWorkPermit = SessionWorkPermit(),
         onOpenReader: ((String, Int, VariantFamily) -> Void)? = nil,
         onShowPaywall: (() -> Void)? = nil,
         onRequireAuth: (() -> Void)? = nil,
@@ -45,8 +55,13 @@ public struct HomeView: View {
         self.repository = repository
         self.bookDetailRepository = bookDetailRepository
         self.aiRepository = aiRepository
+        self.preferences = preferences
+        self.store = store
+        self.downloadManager = downloadManager
+        self.accountID = accountID
         self.isGuest = isGuest
         self.analytics = analytics
+        self.workPermit = workPermit
         self.onOpenReader = onOpenReader
         self.onShowPaywall = onShowPaywall
         self.onRequireAuth = onRequireAuth
@@ -70,8 +85,13 @@ public struct HomeView: View {
                             bookId: bookId,
                             repository: bookDetailRepository,
                             aiRepository: aiRepository,
+                            preferences: preferences,
+                            store: store,
+                            downloadManager: downloadManager,
+                            accountID: accountID,
                             isGuest: isGuest,
                             analytics: analytics,
+                            workPermit: workPermit,
                             onOpenReader: onOpenReader,
                             onShowPaywall: onShowPaywall,
                             onSignInRequired: onSignInRequired
@@ -79,6 +99,7 @@ public struct HomeView: View {
                     case .globalSearch:
                         GlobalSearchView(
                             repository: repository,
+                            kvStore: store,
                             onOpenBook: { bookId in
                                 router.push(LibraryRoute.bookDetail(bookId: bookId))
                             },
@@ -94,7 +115,12 @@ public struct HomeView: View {
                             progressItems: model.progressItems,
                             bookDetailRepository: bookDetailRepository,
                             aiRepository: aiRepository,
+                            preferences: preferences,
+                            store: store,
+                            downloadManager: downloadManager,
+                            accountID: accountID,
                             isGuest: isGuest,
+                            workPermit: workPermit,
                             onToggleSaved: { bookId in
                                 guard !isGuest else { onRequireAuth?(); return }
                                 Task { await model.toggleSaved(bookId: bookId) }
@@ -314,24 +340,49 @@ public struct HomeView: View {
 
 #if DEBUG
 #Preview("Home — loaded") {
-    HomeView(repository: PreviewData.loadedRepo, bookDetailRepository: PreviewData.bookDetailInProgress)
+    HomeView(
+        repository: PreviewData.loadedRepo,
+        bookDetailRepository: PreviewData.bookDetailInProgress,
+        preferences: AppPreferences(keyPrefix: "preview.home."),
+        store: KeyValueStore(keyPrefix: "preview.home.")
+    )
 }
 
 #Preview("Home — empty") {
-    HomeView(repository: PreviewData.emptyRepo, bookDetailRepository: PreviewData.bookDetailFreeLocked)
+    HomeView(
+        repository: PreviewData.emptyRepo,
+        bookDetailRepository: PreviewData.bookDetailFreeLocked,
+        preferences: AppPreferences(keyPrefix: "preview.home."),
+        store: KeyValueStore(keyPrefix: "preview.home.")
+    )
 }
 
 #Preview("Home — error") {
-    HomeView(repository: PreviewData.errorRepo, bookDetailRepository: PreviewData.bookDetailFreeLocked)
+    HomeView(
+        repository: PreviewData.errorRepo,
+        bookDetailRepository: PreviewData.bookDetailFreeLocked,
+        preferences: AppPreferences(keyPrefix: "preview.home."),
+        store: KeyValueStore(keyPrefix: "preview.home.")
+    )
 }
 
 #Preview("Home — dark mode") {
-    HomeView(repository: PreviewData.loadedRepo, bookDetailRepository: PreviewData.bookDetailInProgress)
+    HomeView(
+        repository: PreviewData.loadedRepo,
+        bookDetailRepository: PreviewData.bookDetailInProgress,
+        preferences: AppPreferences(keyPrefix: "preview.home."),
+        store: KeyValueStore(keyPrefix: "preview.home.")
+    )
         .preferredColorScheme(.dark)
 }
 
 #Preview("Home — XXL text") {
-    HomeView(repository: PreviewData.loadedRepo, bookDetailRepository: PreviewData.bookDetailInProgress)
+    HomeView(
+        repository: PreviewData.loadedRepo,
+        bookDetailRepository: PreviewData.bookDetailInProgress,
+        preferences: AppPreferences(keyPrefix: "preview.home."),
+        store: KeyValueStore(keyPrefix: "preview.home.")
+    )
         .dynamicTypeSize(.accessibility3)
 }
 #endif

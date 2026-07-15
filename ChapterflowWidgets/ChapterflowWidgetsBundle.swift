@@ -12,9 +12,7 @@ struct ChapterflowWidgetsBundle: WidgetBundle {
         // Live Activities (P8.2)
         ReadingSessionActivity()
         StreakAtRiskActivity()
-        // Control Center / Lock Screen / Action Button controls (P8.9)
-        StartReadingControl()
-        StartReviewControl()
-        AudioPlaybackControl()
+        // P8.9 controls remain unregistered until WP-ID-01B can bind their
+        // App Group commands and presentation state to a proven account.
     }
 }

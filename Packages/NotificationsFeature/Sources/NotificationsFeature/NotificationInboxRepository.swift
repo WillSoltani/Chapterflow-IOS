@@ -15,20 +15,22 @@ public protocol NotificationInboxRepository: Sendable {
 /// UserDefaults-backed cache for the notification inbox.
 /// Renders last-fetched data when the device is offline.
 public struct NotificationInboxCache: @unchecked Sendable {
-    private static let defaultsKey = "cf.notifications.inbox"
     private let defaults: UserDefaults
+    private let defaultsKey: String
 
-    public init(defaults: UserDefaults = .standard) {
+    public init(storageNamespace: String, defaults: UserDefaults = .standard) {
+        precondition(!storageNamespace.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         self.defaults = defaults
+        self.defaultsKey = "cf.notifications.inbox.v2.\(storageNamespace)"
     }
 
     func store(_ response: NotificationsResponse) {
         guard let data = try? JSONEncoder().encode(response) else { return }
-        defaults.set(data, forKey: Self.defaultsKey)
+        defaults.set(data, forKey: defaultsKey)
     }
 
     func load() -> NotificationsResponse? {
-        guard let data = defaults.data(forKey: Self.defaultsKey) else { return nil }
+        guard let data = defaults.data(forKey: defaultsKey) else { return nil }
         return try? JSONDecoder().decode(NotificationsResponse.self, from: data)
     }
 }
@@ -38,19 +40,31 @@ public struct NotificationInboxCache: @unchecked Sendable {
 public struct LiveNotificationInboxRepository: NotificationInboxRepository {
     private let apiClient: any APIClientProtocol
     private let cache: NotificationInboxCache
+    private let workPermit: SessionWorkPermit
     private let log = AppLog(category: .notifications)
 
-    public init(apiClient: any APIClientProtocol, defaults: UserDefaults = .standard) {
+    public init(
+        apiClient: any APIClientProtocol,
+        storageNamespace: String,
+        defaults: UserDefaults = .standard,
+        workPermit: SessionWorkPermit = SessionWorkPermit()
+    ) {
         self.apiClient = apiClient
-        self.cache = NotificationInboxCache(defaults: defaults)
+        self.cache = NotificationInboxCache(storageNamespace: storageNamespace, defaults: defaults)
+        self.workPermit = workPermit
     }
 
     public func fetchNotifications() async throws -> NotificationsResponse {
+        let ticket = try workPermit.begin()
         do {
             let response: NotificationsResponse = try await apiClient.send(Endpoints.getNotifications())
-            cache.store(response)
+            try workPermit.commit(ticket) {
+                cache.store(response)
+            }
             log.info("Fetched \(response.notifications.count) notifications, \(response.unreadCount) unread")
             return response
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             if let cached = cache.load() {
                 log.info("Network error — returning cached inbox")

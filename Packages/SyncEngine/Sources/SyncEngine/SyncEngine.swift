@@ -45,9 +45,17 @@ public actor SyncEngine {
 
     /// The current drain task, if any.
     private var drainTask: Task<Void, Never>?
+    private var drainTaskID: UUID?
 
     /// The network-monitor task that fires ``triggerDrain(userId:)`` on path changes.
     private var monitorTask: Task<Void, Never>?
+    private var monitorTaskID: UUID?
+
+    /// Invalidates callbacks from an earlier start/stop lifecycle.
+    private var lifecycleID = UUID()
+
+    /// `false` while stopped or while a replacement lifecycle is joining old work.
+    private var acceptsDrainTriggers = true
 
     private let logger = Logger(subsystem: "com.chapterflow.ios", category: "SyncEngine")
 
@@ -65,19 +73,49 @@ public actor SyncEngine {
     ///
     /// Begins monitoring network connectivity and triggers an initial drain
     /// in case mutations accumulated while offline.
-    public func start(userId: String) {
-        startNetworkMonitor(userId: userId)
+    public func start(userId: String) async {
+        let lifecycleID = UUID()
+        self.lifecycleID = lifecycleID
+        acceptsDrainTriggers = false
+
+        await cancelAndJoinMonitor()
+        await cancelAndJoinDrain()
+
+        guard self.lifecycleID == lifecycleID else { return }
+        acceptsDrainTriggers = true
+        startNetworkMonitor(userId: userId, lifecycleID: lifecycleID)
         // Trigger an eager drain in case mutations accumulated while offline.
-        triggerDrain(userId: userId)
+        triggerDrain(userId: userId, lifecycleID: lifecycleID)
     }
 
     /// Stops the sync engine (call on sign-out or app termination).
-    public func stop() {
-        monitorTask?.cancel()
-        monitorTask = nil
-        drainTask?.cancel()
-        drainTask = nil
-        activeQuizSessionIds.removeAll()
+    ///
+    /// Cancellation is followed by a join so a resumed account scope cannot
+    /// overlap an earlier drain or network monitor.
+    public func stop() async {
+        let lifecycleID = UUID()
+        self.lifecycleID = lifecycleID
+        acceptsDrainTriggers = false
+
+        let monitor = monitorTask
+        let monitorID = monitorTaskID
+        let drain = drainTask
+        let drainID = drainTaskID
+        monitor?.cancel()
+        drain?.cancel()
+
+        await monitor?.value
+        await drain?.value
+
+        if let monitorID {
+            finishMonitor(id: monitorID)
+        }
+        if let drainID {
+            finishDrain(id: drainID)
+        }
+        if self.lifecycleID == lifecycleID {
+            activeQuizSessionIds.removeAll()
+        }
     }
 
     // MARK: - Drain trigger
@@ -88,11 +126,7 @@ public actor SyncEngine {
     /// The engine serialises drain passes — a new pass starts only after the
     /// previous one completes (or is cancelled).
     public func triggerDrain(userId: String) {
-        guard drainTask == nil || drainTask?.isCancelled == true else { return }
-        drainTask = Task { [weak self] in
-            await self?.drain(userId: userId)
-            await self?.clearDrainTask()
-        }
+        triggerDrain(userId: userId, lifecycleID: lifecycleID)
     }
 
     /// Cancels any in-flight drain and performs a full drain pass to completion.
@@ -101,27 +135,92 @@ public actor SyncEngine {
     /// awaits the drain loop. Use it from BGTask handlers so the task is marked
     /// complete only when the outbox is truly empty.
     public func drainAndWait(userId: String) async {
-        drainTask?.cancel()
-        drainTask = nil
-        await drain(userId: userId)
+        let lifecycleID = lifecycleID
+        guard acceptsDrainTriggers else { return }
+
+        await cancelAndJoinDrain()
+
+        guard acceptsDrainTriggers,
+              self.lifecycleID == lifecycleID,
+              !Task.isCancelled else { return }
+        triggerDrain(userId: userId, lifecycleID: lifecycleID)
+        guard let drainTask else { return }
+
+        await withTaskCancellationHandler {
+            await drainTask.value
+        } onCancel: {
+            drainTask.cancel()
+        }
     }
 
-    private func clearDrainTask() {
+    private func triggerDrain(userId: String, lifecycleID: UUID) {
+        guard acceptsDrainTriggers,
+              self.lifecycleID == lifecycleID,
+              drainTask == nil else { return }
+
+        let taskID = UUID()
+        drainTaskID = taskID
+        drainTask = Task { [weak self] in
+            guard let self else { return }
+            await self.drain(userId: userId)
+            await self.finishDrain(id: taskID)
+        }
+    }
+
+    private func cancelAndJoinDrain() async {
+        guard let drainTask else { return }
+        let taskID = drainTaskID
+        drainTask.cancel()
+        await drainTask.value
+        if let taskID {
+            finishDrain(id: taskID)
+        }
+    }
+
+    private func finishDrain(id: UUID) {
+        guard drainTaskID == id else { return }
         drainTask = nil
+        drainTaskID = nil
         // Reset the quiz idempotency set so the next drain pass starts fresh.
         activeQuizSessionIds.removeAll()
     }
 
+    /// Waits for the currently tracked drain without changing its lifecycle.
+    /// Internal so deterministic tests can prove teardown/resume ordering.
+    func waitForCurrentDrain() async {
+        let drainTask = drainTask
+        await drainTask?.value
+    }
+
     // MARK: - Network monitoring
 
-    private func startNetworkMonitor(userId: String) {
-        monitorTask?.cancel()
+    private func startNetworkMonitor(userId: String, lifecycleID: UUID) {
         let monitor = NWPathMonitor()
+        let taskID = UUID()
+        monitorTaskID = taskID
         monitorTask = Task { [weak self] in
             for await path in Self.networkPathStream(monitor: monitor) where path.status == .satisfied {
-                await self?.triggerDrain(userId: userId)
+                guard !Task.isCancelled else { break }
+                await self?.triggerDrain(userId: userId, lifecycleID: lifecycleID)
             }
+            await self?.finishMonitor(id: taskID)
         }
+    }
+
+    private func cancelAndJoinMonitor() async {
+        guard let monitorTask else { return }
+        let taskID = monitorTaskID
+        monitorTask.cancel()
+        await monitorTask.value
+        if let taskID {
+            finishMonitor(id: taskID)
+        }
+    }
+
+    private func finishMonitor(id: UUID) {
+        guard monitorTaskID == id else { return }
+        monitorTask = nil
+        monitorTaskID = nil
     }
 
     /// Wraps `NWPathMonitor` in an `AsyncStream` so we can use `for await`.
@@ -138,7 +237,11 @@ public actor SyncEngine {
     private func drain(userId: String) async {
         let snapshots: [SyncMutationSnapshot]
         do {
+            try Task.checkCancellation()
             snapshots = try await store.fetchPendingMutations(userId: userId)
+            try Task.checkCancellation()
+        } catch is CancellationError {
+            return
         } catch {
             logger.error("SyncEngine: failed to fetch pending mutations: \(error)")
             await updateStatus(phase: .error, pendingCount: 0, error: error.localizedDescription)
@@ -156,15 +259,18 @@ public actor SyncEngine {
 
         var remaining = total
         for snapshot in snapshots {
-            if Task.isCancelled { break }
-
             do {
+                try Task.checkCancellation()
                 try await store.markInflight(mutationId: snapshot.mutationId)
+                try Task.checkCancellation()
+            } catch is CancellationError {
+                return
             } catch {
                 logger.warning("SyncEngine: could not mark inflight \(snapshot.mutationId): \(error)")
             }
 
             do {
+                try Task.checkCancellation()
                 try await withAsyncRetry(
                     maxAttempts: 3,
                     initialDelay: .milliseconds(500),
@@ -173,10 +279,14 @@ public actor SyncEngine {
                 ) { [self] in
                     try await self.dispatchMutation(snapshot)
                 }
+                try Task.checkCancellation()
                 try await store.deleteMutation(mutationId: snapshot.mutationId)
+                try Task.checkCancellation()
                 remaining -= 1
                 await updateStatus(phase: .syncing, pendingCount: remaining)
                 logger.info("SyncEngine: synced \(snapshot.kindRaw) (\(snapshot.mutationId))")
+            } catch is CancellationError {
+                return
             } catch let error as AppError {
                 if error.isAuthenticationFailure {
                     // Stop the drain — user needs to re-authenticate before we retry.
@@ -190,7 +300,9 @@ public actor SyncEngine {
             }
         }
 
+        guard !Task.isCancelled else { return }
         let finalCount = (try? await store.countPendingMutations(userId: userId)) ?? remaining
+        guard !Task.isCancelled else { return }
         let finalPhase: SyncPhase = finalCount == 0 ? .idle : .error
         await updateStatus(phase: finalPhase, pendingCount: finalCount)
 
@@ -206,12 +318,16 @@ public actor SyncEngine {
     // MARK: - Failure handling
 
     private func recordFailure(snapshot: SyncMutationSnapshot, error: Error) async {
+        guard !(error is CancellationError), !Task.isCancelled else { return }
         logger.error("SyncEngine: failed to sync \(snapshot.kindRaw) (\(snapshot.mutationId)): \(error)")
         do {
+            try Task.checkCancellation()
             try await store.markFailed(
                 mutationId: snapshot.mutationId,
                 errorDescription: error.localizedDescription
             )
+        } catch is CancellationError {
+            return
         } catch {
             logger.error("SyncEngine: could not record failure for \(snapshot.mutationId): \(error)")
         }

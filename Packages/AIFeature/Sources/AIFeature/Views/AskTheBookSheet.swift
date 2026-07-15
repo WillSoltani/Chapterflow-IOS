@@ -318,7 +318,6 @@ public struct AskTheBookSheet: View {
 #Preview("Ask — idle (light)") {
     let model = AskTheBookModel(
         bookId: "b-atomic-habits",
-        userId: "preview-user",
         bookTitle: "Atomic Habits",
         repository: FakeAIRepository(delay: 0)
     )
@@ -328,7 +327,6 @@ public struct AskTheBookSheet: View {
 #Preview("Ask — history loaded (dark)") {
     let model = AskTheBookModel(
         bookId: "b-atomic-habits",
-        userId: "preview-user",
         bookTitle: "Atomic Habits",
         repository: FakeAIRepository(delay: 0)
     )
@@ -345,7 +343,6 @@ public struct AskTheBookSheet: View {
 #Preview("Ask — with context (light)") {
     let model = AskTheBookModel(
         bookId: "b-atomic-habits",
-        userId: "preview-user",
         bookTitle: "Atomic Habits",
         repository: FakeAIRepository(delay: 0),
         selectionContext: "Habits are the compound interest of self-improvement."
@@ -356,7 +353,6 @@ public struct AskTheBookSheet: View {
 #Preview("Ask — rate limited with history") {
     let model = AskTheBookModel(
         bookId: "b-atomic-habits",
-        userId: "preview-user",
         bookTitle: "Atomic Habits",
         repository: FakeAIRepository(error: FakeAIRepository.rateLimitedError, delay: 0)
     )
@@ -370,7 +366,6 @@ public struct AskTheBookSheet: View {
 #Preview("Ask — offline (no on-device)") {
     let model = AskTheBookModel(
         bookId: "b-atomic-habits",
-        userId: "preview-user",
         repository: FakeAIRepository(error: FakeAIRepository.offlineError, delay: 0)
     )
     Task { @MainActor in
@@ -388,7 +383,6 @@ public struct AskTheBookSheet: View {
     """
     let model = AskTheBookModel(
         bookId: "b-atomic-habits",
-        userId: "preview-user",
         bookTitle: "Atomic Habits",
         repository: FakeAIRepository(error: FakeAIRepository.offlineError, delay: 0),
         chapterText: chapterText,
@@ -405,7 +399,6 @@ public struct AskTheBookSheet: View {
     let chapterText = "Habits are the compound interest of self-improvement."
     let model = AskTheBookModel(
         bookId: "b-atomic-habits",
-        userId: "preview-user",
         bookTitle: "Atomic Habits",
         repository: FakeAIRepository(error: FakeAIRepository.offlineError, delay: 0),
         chapterText: chapterText,
@@ -422,7 +415,6 @@ public struct AskTheBookSheet: View {
 #Preview("Ask — on-device wired, idle with privacy note") {
     let model = AskTheBookModel(
         bookId: "b-atomic-habits",
-        userId: "preview-user",
         repository: FakeAIRepository(delay: 0),
         chapterText: "Habits are the compound interest of self-improvement.",
         onDeviceService: FakeOnDeviceAIService(availability: .available)
@@ -433,7 +425,6 @@ public struct AskTheBookSheet: View {
 #Preview("Ask — XXL text") {
     let model = AskTheBookModel(
         bookId: "b-atomic-habits",
-        userId: "preview-user",
         repository: FakeAIRepository(delay: 0)
     )
     return AskTheBookSheet(model: model)

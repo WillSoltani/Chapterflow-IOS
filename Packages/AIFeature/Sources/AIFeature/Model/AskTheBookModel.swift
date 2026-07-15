@@ -67,8 +67,8 @@ public final class AskTheBookModel {
     /// Optional book title used for copy/share attribution.
     public let bookTitle: String?
 
-    /// The user identifier used for thread keying.
-    public let userId: String
+    /// Immutable account authority used for thread and outbox keying.
+    public let accountID: String
 
     /// Optional highlighted passage shown as a context chip; sent with every request.
     public let selectionContext: String?
@@ -96,7 +96,6 @@ public final class AskTheBookModel {
 
     public init(
         bookId: String,
-        userId: String = "local",
         bookTitle: String? = nil,
         repository: any AIRepository,
         selectionContext: String? = nil,
@@ -106,7 +105,7 @@ public final class AskTheBookModel {
         modelContext: ModelContext? = nil
     ) {
         self.bookId = bookId
-        self.userId = userId
+        self.accountID = repository.accountID
         self.bookTitle = bookTitle
         self.repository = repository
         self.selectionContext = selectionContext
@@ -199,7 +198,7 @@ public final class AskTheBookModel {
             bookTitle: bookTitle,
             tags: ["ai-answer"]
         )
-        if let cached = try? CachedNotebookEntry.from(domain, userId: userId) {
+        if let cached = try? CachedNotebookEntry.from(domain, userId: accountID) {
             context.insert(cached)
         }
 
@@ -225,7 +224,7 @@ public final class AskTheBookModel {
             color: nil
         )
         if let mutation = try? PendingMutation.make(
-            userId: userId,
+            userId: accountID,
             kind: .notebookWrite,
             payload: payload
         ) {
@@ -287,7 +286,7 @@ public final class AskTheBookModel {
     /// Loads the persisted thread from SwiftData and seeds `messages`.
     private func loadPersistedThread() {
         guard let context = modelContext else { return }
-        let stored = AskThreadStore.loadMessages(bookId: bookId, userId: userId, context: context)
+        let stored = AskThreadStore.loadMessages(bookId: bookId, userId: accountID, context: context)
         messages = stored.map { $0.asAskMessage() }
         pinnedMessageIds = Set(stored.filter { $0.isPinned }.map { $0.id })
     }
@@ -302,7 +301,7 @@ public final class AskTheBookModel {
         }
         AskThreadStore.upsertThread(
             bookId: bookId,
-            userId: userId,
+            userId: accountID,
             bookTitle: bookTitle,
             messages: stored,
             context: context
@@ -316,7 +315,7 @@ public final class AskTheBookModel {
             messageId: messageId,
             isPinned: isPinned,
             bookId: bookId,
-            userId: userId,
+            userId: accountID,
             context: context
         )
     }

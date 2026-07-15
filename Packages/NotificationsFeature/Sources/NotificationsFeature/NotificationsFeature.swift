@@ -9,11 +9,14 @@
 //   5. When status is `.denied`, present `NotificationDeniedView` for recovery.
 //
 // Wiring (P9.1 — APNs registration):
-//   1. Create `APNSRegistrationManager(authorizer:repository:)` in `AppModel`.
+//   1. Create `APNSRegistrationManager(authorizer:repository:storageNamespace:)`
+//      inside the authenticated session scope.
 //   2. Wire `AppDelegate` callbacks to `APNSRegistrationBridge.shared`.
 //   3. Call `manager.start()` after sign-in resolves.
-//   4. Call `manager.handleSignOut()` on sign-out.
-//   5. Display `PushStatusView` in Settings.
+//   4. Pause before teardown; resume the same manager if sign-out fails.
+//   5. Call `manager.handleSignOut()` while authentication is still valid, then
+//      `stopAndReset()` only after sign-out succeeds.
+//   6. Display `PushStatusView` in Settings.
 //
 // Wiring (P9.7 — notification coordinator):
 //   1. At app startup: `NotificationCoordinator.configure(analytics: analyticsClient)`.

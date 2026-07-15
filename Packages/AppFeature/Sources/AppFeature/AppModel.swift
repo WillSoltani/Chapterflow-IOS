@@ -18,6 +18,25 @@ import OnboardingFeature
 import SettingsFeature
 import CoreSpotlight
 import SyncEngine
+#if os(iOS)
+import WidgetKit
+#endif
+
+private enum SessionTransitionTarget: Equatable {
+    case signedIn(SessionIdentity)
+    case signedOut
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        switch (lhs, rhs) {
+        case (.signedOut, .signedOut):
+            true
+        case (.signedIn(let lhs), .signedIn(let rhs)):
+            lhs.subject == rhs.subject
+        default:
+            false
+        }
+    }
+}
 
 /// The top-level observable app state that drives `AppRootView`.
 ///
@@ -103,16 +122,20 @@ public final class AppModel {
 
     // MARK: - Library
 
-    /// Shared repository for the Home and Library tabs.
-    public let libraryRepository: any LibraryRepository
+    /// Public-only when signed out; account-scoped when the matching scope is active.
+    public var libraryRepository: any LibraryRepository {
+        activeGraph?.libraryRepository ?? guestLibraryRepository
+    }
 
     /// Shared repository for the Book Detail screen.
-    public let bookDetailRepository: any BookDetailRepository
+    public var bookDetailRepository: any BookDetailRepository {
+        activeGraph?.bookDetailRepository ?? guestBookDetailRepository
+    }
 
     // MARK: - Social
 
     /// Shared repository for all of Lane S — profile, pairs, gifts, reflections, referrals.
-    public let socialRepository: any SocialRepository
+    public var socialRepository: any SocialRepository { requiredGraph.socialRepository }
 
     /// Set when the app opens via a `chapterflow://pair/accept/{code}` Universal Link.
     /// ``ProfileView`` reads this to surface the ``AcceptInviteView`` immediately.
@@ -122,21 +145,21 @@ public final class AppModel {
     // MARK: - AI
 
     /// Shared repository for the "Ask the book" feature.
-    public let aiRepository: any AIRepository
+    public var aiRepository: any AIRepository { requiredGraph.aiRepository }
 
     // MARK: - Reader / Quiz / Annotation
 
     /// Shared repository for the reading experience.
-    public let readerRepository: any ReaderRepository
+    public var readerRepository: any ReaderRepository { requiredGraph.readerRepository }
     /// Shared repository for chapter quizzes.
-    public let quizRepository: any QuizRepository
+    public var quizRepository: any QuizRepository { requiredGraph.quizRepository }
     /// Required durable repository for notes, highlights, and bookmarks.
-    public let annotationRepository: any AnnotationRepository
+    public var annotationRepository: any AnnotationRepository { requiredGraph.annotationRepository }
 
     // MARK: - Reviews
 
     /// Shared repository for the FSRS spaced-repetition Reviews tab.
-    public let reviewsRepository: ReviewsRepository
+    public var reviewsRepository: ReviewsRepository { requiredGraph.reviewsRepository }
 
     // MARK: - App Store review
 
@@ -147,28 +170,37 @@ public final class AppModel {
     // MARK: - Audio
 
     /// Shared user preferences (persisted to App Group UserDefaults).
-    public let preferences: AppPreferences
+    public var preferences: AppPreferences { requiredGraph.preferences }
+
+    /// Lightweight account-scoped state used by search, book preferences, and reader resume.
+    var keyValueStore: KeyValueStore { requiredGraph.keyValueStore }
+    var workPermit: SessionWorkPermit { requiredGraph.permit }
+    var dailyGoalStore: DailyGoalStore { requiredGraph.dailyGoalStore }
+
+    /// Explicitly public guest state; never reads historical unprefixed account keys.
+    var guestKeyValueStore: KeyValueStore { guestPresentationStores.keyValueStore }
+    var guestPreferences: AppPreferences { guestPresentationStores.preferences }
 
     /// Shared audio player model — owns the AVQueuePlayer and session for the entire app.
-    public let audioPlayerModel: AudioPlayerModel
+    public var audioPlayerModel: AudioPlayerModel { requiredGraph.audioPlayerModel }
 
     // MARK: - Onboarding
 
     /// Repository driving the first-run onboarding flow.
-    public let onboardingRepository: any OnboardingRepository
+    public var onboardingRepository: any OnboardingRepository { requiredGraph.onboardingRepository }
 
     // MARK: - Settings
 
     /// Repository for the Settings tab: server reading prefs, export, and account lifecycle.
-    public let settingsRepository: any SettingsRepository
+    public var settingsRepository: any SettingsRepository { requiredGraph.settingsRepository }
 
     // MARK: - Subscription / Paywall
 
     /// StoreKit 2 service — shared with `EntitlementService` and `PaywallModel`.
-    public let storeKitService: StoreKitService
+    public var storeKitService: StoreKitService { requiredGraph.storeKitService }
 
     /// Single source of truth for Pro access throughout the app.
-    public let entitlementService: EntitlementService
+    public var entitlementService: EntitlementService { requiredGraph.entitlementService }
 
     /// Whether the paywall sheet is currently presented.
     public var showPaywall: Bool = false
@@ -183,16 +215,18 @@ public final class AppModel {
 
     /// Manages APNs token registration with the backend. Observable so
     /// `SettingsView` can display the live push authorization status.
-    public let apnsManager: APNSRegistrationManager
+    public var apnsManager: APNSRegistrationManager { requiredGraph.apnsManager }
 
     /// Drives the Notification Settings screen. Exposed so `SettingsView` can
     /// pass it to `NotificationSettingsView` as a navigation destination.
-    public let notificationSettingsModel: NotificationSettingsModel
+    public var notificationSettingsModel: NotificationSettingsModel {
+        requiredGraph.notificationSettingsModel
+    }
 
     // MARK: - Notification inbox
 
     /// Drives the in-app notification inbox (P9.4).
-    public let notificationInboxModel: NotificationInboxModel
+    public var notificationInboxModel: NotificationInboxModel { requiredGraph.notificationInboxModel }
 
     /// Whether the notification inbox sheet is currently presented.
     public var showNotificationInbox: Bool = false
@@ -224,19 +258,30 @@ public final class AppModel {
     /// Indexes books and chapters into Core Spotlight. Owned here so the app can
     /// clear the index on sign-out regardless of which screen is active.
     let spotlightIndexer = SpotlightIndexer()
+    private var spotlightIndexTask: Task<Void, Never>?
+    private var spotlightIndexTaskID: UUID?
 
     // MARK: - Sync engine (P3.4)
 
     /// Drains the offline write outbox when connectivity is restored.
-    private let syncEngineInternal: SyncEngine
-
     /// Observable sync status forwarded to the Settings sync section.
-    public var syncStatus: SyncStatus? { syncEngineInternal.status }
+    public var syncStatus: SyncStatus? { activeGraph?.syncEngine.status }
 
     // MARK: - Download manager (P3.2 / P3.6)
 
-    private let downloadManagerInternal: DownloadManager
-    public var downloadInfoProvider: (any DownloadInfoProviding)? { downloadManagerInternal }
+    public var downloadInfoProvider: (any DownloadInfoProviding)? {
+        activeGraph?.downloadManager
+    }
+
+    /// The active account identity used by account-bound UI collaborators.
+    /// Access is valid only while the root is rendering the active private shell.
+    var activeAccountID: String { requiredGraph.context.accountID }
+
+    /// Full immutable authority passed only to private collaborators that require it.
+    var activeAccountContext: AccountContext { requiredGraph.context }
+
+    /// The active account's download coordinator. Guest/public UI never receives it.
+    var activeDownloadManager: DownloadManager { requiredGraph.downloadManager }
 
     #if os(iOS)
     let bgSyncCoordinator: BackgroundSyncCoordinator
@@ -245,7 +290,9 @@ public final class AppModel {
     // MARK: - Analytics & crash reporting
 
     /// The production analytics sink — shared across all feature models.
-    public let analytics: any AnalyticsClient
+    public var analytics: any AnalyticsClient {
+        activeGraph?.analytics ?? processAnalytics
+    }
 
     /// The crash reporter (Sentry-backed in prod, no-op in debug when DSN is empty).
     public let crashReporter: any CrashReporter
@@ -256,17 +303,38 @@ public final class AppModel {
 
     // MARK: - Internal
 
-    /// Retained so `makePaywallModel(context:)` can build `PaywallModel` without re-creating the client.
-    private let apiClient: any APIClientProtocol
-
     /// Internal only so composition/lifecycle tests can inject closed events.
     /// Diagnostics consumers receive immutable snapshots through the public API.
     let apiObservationHealthRecorder: APIObservationHealthRecorder
 
-    /// Thread-safe store for the current user ID, readable cross-actor.
-    /// Written on MainActor when sign-in completes; reads are safe because
-    /// String is a value type and the only hazard is a brief sign-in/out race.
-    private let userIdBox: UserIdBox
+    private let validatedConfig: ValidatedAppConfig
+    private let accountPersistenceLoader: any AccountPersistenceLoading
+    private let guestLibraryRepository: any LibraryRepository
+    private let guestBookDetailRepository: any BookDetailRepository
+    private let guestPresentationStores = SessionPresentationStores.guest()
+    private let processAnalytics: any AnalyticsClient
+    private let backgroundWorkBroker: SessionBackgroundWorkBroker
+    private let scopeBuilder: @MainActor (AccountContext) async throws -> SessionScope
+
+    private(set) var activeSessionScope: SessionScope?
+    private(set) var sessionScopePhase: SessionScopePhase = .none
+    private var sessionTransitionTask: Task<Void, Never>?
+    private var sessionTransitionTarget: SessionTransitionTarget?
+    private var sessionTransitionID: UUID?
+    private var sessionPreparationGeneration: UInt64 = 0
+    private var signOutTask: Task<Bool, Never>?
+    private(set) var isCoordinatingSignOut = false
+    public private(set) var showsSignOutFailure = false
+
+    /// Authentication entry must stay closed until every A-owned scope has
+    /// finished teardown. `SessionManager` may publish `.signedOut` before the
+    /// app-level transaction or an auth-observer transition has completed.
+    var canPresentSignedOutEntry: Bool {
+        session.authState == .signedOut
+            && !isCoordinatingSignOut
+            && sessionScopePhase == .none
+            && activeSessionScope == nil
+    }
 
     /// Guards process-long lifecycle hooks from duplicate starts.
     private var didActivateRequiredServices = false
@@ -274,16 +342,34 @@ public final class AppModel {
 
     // MARK: - Init
 
-    // swiftlint:disable:next function_body_length
-    public init(
-        config validatedConfig: ValidatedAppConfig,
+    public convenience init(
+        config: ValidatedAppConfig,
         persistence: AppPersistenceResources,
         authService: AuthService,
         session: SessionManager
     ) {
+        self.init(
+            config: config,
+            persistence: persistence,
+            authService: authService,
+            session: session,
+            accountPersistenceLoader: DefaultAccountPersistenceLoader(),
+            scopeBuilder: nil
+        )
+    }
+
+    init(
+        config validatedConfig: ValidatedAppConfig,
+        persistence: AppPersistenceResources,
+        authService: AuthService,
+        session: SessionManager,
+        accountPersistenceLoader: any AccountPersistenceLoading,
+        scopeBuilder injectedScopeBuilder: (@MainActor (AccountContext) async throws -> SessionScope)?
+    ) {
         let config = validatedConfig.value
+        self.validatedConfig = validatedConfig
+        self.accountPersistenceLoader = accountPersistenceLoader
         self.authService = authService
-        let sm = session
         self.session = session
 
         let reporter = CrashReporterFactory.make(
@@ -296,116 +382,56 @@ public final class AppModel {
                 #endif
             }()
         )
-        self.crashReporter = reporter
+        crashReporter = reporter
 
         let observationComposition = LiveAPIClientComposition(
             config: config,
-            tokenProvider: sm,
+            tokenProvider: session,
             reporter: reporter,
             initialSessionState: Self.apiObservationSessionState(for: session.authState)
         )
         let client = observationComposition.client
-        self.apiObservationHealthRecorder = observationComposition.healthRecorder
-        self.apiClient = client
-        self.appConfigService = AppConfigService(apiClient: client)
+        apiObservationHealthRecorder = observationComposition.healthRecorder
+        appConfigService = AppConfigService(apiClient: client)
 
-        let container = persistence.controller.container
-
-        let analyticsBaseURL = URL(string: config.apiBaseURL) ?? URL(string: "https://api.chapterflow.ca")!
-        let analyticsTransport = URLSessionAnalyticsTransport(
-            baseURL: analyticsBaseURL,
-            tokenProvider: { [sm] in try? await sm.validToken() }
-        )
-        let analyticsClient = DefaultAnalyticsClient.makeDurable(transport: analyticsTransport)
-        self.analytics = analyticsClient
-
-        #if os(iOS)
-        let mkSubscriber = MetricKitCrashSubscriber(reporter: reporter, analytics: analyticsClient)
-        self.metricKitSubscriber = mkSubscriber
-        #endif
-
-        let reach = ReachabilityService()
-        self.reachability = reach
-        let box = UserIdBox()
-        self.userIdBox = box
-        let userIdClosure: @Sendable () -> String? = { [box] in box.userId }
-        self.libraryRepository = LiveLibraryRepository(
+        let reachability = ReachabilityService()
+        self.reachability = reachability
+        let publicRepository = LiveLibraryRepository(
             client: client,
-            container: container,
-            reachability: reach
+            container: persistence.controller.container,
+            reachability: reachability
         )
-        self.bookDetailRepository = LiveBookDetailRepository(client: client)
-        self.socialRepository = LiveSocialRepository(client: client)
-        self.aiRepository = LiveAIRepository(client: client)
-        self.readerRepository = LiveReaderRepository(
-            client: client,
-            container: container,
-            reachability: reach,
-            userId: userIdClosure
+        guestLibraryRepository = GuestPublicLibraryRepository(base: publicRepository)
+        guestBookDetailRepository = GuestPublicBookDetailRepository(
+            base: LiveBookDetailRepository(client: client)
         )
-        self.quizRepository = LiveQuizRepository(
-            client: client,
-            container: container,
-            reachability: reach,
-            userId: userIdClosure
-        )
-        self.annotationRepository = LiveAnnotationRepository(container: container, apiClient: client)
-        let syncEngine = SyncEngine(apiClient: client, container: container)
-        self.syncEngineInternal = syncEngine
-        let downloadManager = Self.makeDownloadManager(
-            container: container,
-            fileStore: persistence.downloadFileStore,
-            apiClient: client
-        )
-        self.downloadManagerInternal = downloadManager
+        processAnalytics = NoopAnalyticsClient()
 
-        self.reviewsRepository = ReviewsRepository(apiClient: client, modelContainer: container)
-        self.onboardingRepository = LiveOnboardingRepository(apiClient: client)
-        self.settingsRepository = LiveSettingsRepository(client: client)
-
-        self.reviewPromptController = ReviewPromptController(
+        reviewPromptController = ReviewPromptController(
             store: KeyValueReviewPromptVersionStore(),
             currentVersion: Bundle.main.appShortVersion
         )
 
-        let prefs = AppPreferences()
-        self.preferences = prefs
-        let audioPlayer = AudioPlayer(repository: LiveAudioRepository(client: client))
-        self.audioPlayerModel = AudioPlayerModel(player: audioPlayer, preferences: prefs)
-
-        let sks = StoreKitService(apiClient: client, config: StoreKitConfig.from(config))
-        self.storeKitService = sks
-        self.entitlementService = EntitlementService(storeKitService: sks, apiClient: client)
+        let broker = SessionBackgroundWorkBroker()
+        backgroundWorkBroker = broker
+        let factory = DefaultSessionScopeFactory(
+            config: validatedConfig,
+            apiClientFactory: observationComposition.clientFactory,
+            session: session,
+            persistenceLoader: accountPersistenceLoader,
+            reachability: reachability,
+            backgroundBroker: broker
+        )
+        scopeBuilder = injectedScopeBuilder ?? { context in
+            try await factory.make(context: context)
+        }
 
         #if os(iOS)
-        let authorizer: any NotificationAuthorizerProtocol = NotificationAuthorizer()
-        #else
-        // AppFeature declares macOS only as a SwiftPM build/test host. Apple's
-        // process-global notification center traps there because the test
-        // runner is not an application bundle, so keep host-only composition
-        // inert without changing the shipping iOS graph.
-        let authorizer: any NotificationAuthorizerProtocol = HostNotificationAuthorizer()
-        #endif
-        let registrationRepo = LiveDeviceRegistrationRepository(apiClient: client)
-        self.apnsManager = APNSRegistrationManager(authorizer: authorizer, repository: registrationRepo)
-
-        let notifPrefsRepo = LiveNotificationPreferencesRepository(apiClient: client)
-        self.notificationSettingsModel = NotificationSettingsModel(
-            repository: notifPrefsRepo,
-            authorizer: authorizer
+        metricKitSubscriber = MetricKitCrashSubscriber(
+            reporter: reporter,
+            analytics: NoopAnalyticsClient()
         )
-
-        let inboxRepo = LiveNotificationInboxRepository(apiClient: client)
-        self.notificationInboxModel = NotificationInboxModel(repository: inboxRepo)
-
-        #if os(iOS)
-        let coordinator = Self.makeCoordinator(
-            box: box,
-            engine: syncEngine,
-            downloadManager: downloadManager,
-            entitlementService: self.entitlementService
-        )
-        self.bgSyncCoordinator = coordinator
+        bgSyncCoordinator = Self.makeCoordinator(broker: broker)
         #endif
         #if DEBUG
         applyLaunchArguments()
@@ -420,12 +446,12 @@ public final class AppModel {
     func activateRequiredServices() {
         guard !didActivateRequiredServices else { return }
         didActivateRequiredServices = true
-        entitlementService.start()
         #if os(iOS)
         metricKitSubscriber.register()
         session.registerBackgroundRefresh()
         bgSyncCoordinator.registerBackgroundTasks()
         #endif
+        Task { [weak self] in await self?.reconcileCurrentSession() }
     }
 
     /// Starts non-critical root services exactly once after bootstrap publishes
@@ -435,38 +461,72 @@ public final class AppModel {
         didStartRootServices = true
         wirePushRouting()
         Task { await appConfigService.refresh() }
-        analytics.track(.appOpen)
         Task(priority: .utility) {
             IntentDonationManager.update()
         }
-        Task { await analytics.flush() }
     }
 
-    /// Starts APNs registration. Call once after `authState` transitions to `.signedIn`.
-    public func startAPNS() {
-        apnsManager.start()
-    }
-
-    /// Starts the offline sync engine for the currently signed-in user.
-    /// Call once after `authState` transitions to `.signedIn`.
-    public func startSyncEngine() {
-        guard case .signedIn(let user) = session.authState else { return }
-        let userId = user.userId
-        Task { [weak self] in
-            await self?.syncEngineInternal.start(userId: userId)
-        }
-    }
-
-    /// Signs the user out, unregistering the APNs token from the backend first.
-    /// Also removes all Spotlight index entries to honour auth state.
+    /// Runs one idempotent reversible sign-out transaction.
     public func signOut() async {
-        apiObservationHealthRecorder.transition(to: .signedOut)
-        userIdBox.userId = nil
-        await apnsManager.handleSignOut()
-        await syncEngineInternal.stop()
-        await session.signOut()
-        isGuestMode = false
-        await spotlightIndexer.removeAll()
+        if session.authState == .signedOut, activeSessionScope == nil,
+           sessionTransitionTask == nil {
+            showsSignOutFailure = false
+            apiObservationHealthRecorder.transition(to: .signedOut)
+            return
+        }
+        if let signOutTask {
+            _ = await signOutTask.value
+            return
+        }
+        let task = Task { @MainActor [weak self] in
+            await self?.performSignOutTransaction() ?? false
+        }
+        signOutTask = task
+        _ = await task.value
+        signOutTask = nil
+    }
+
+    private func performSignOutTransaction() async -> Bool {
+        guard !isCoordinatingSignOut else { return false }
+        showsSignOutFailure = false
+        isCoordinatingSignOut = true
+        defer { isCoordinatingSignOut = false }
+
+        await cancelSessionTransition()
+        await cancelSpotlightIndexing()
+        await cancelAccountBackgroundWork()
+        let scope = activeSessionScope
+        if let scope {
+            sessionScopePhase = .quiescing
+            await scope.quiesce()
+        }
+
+        let succeeded = await session.signOut()
+        if succeeded {
+            apiObservationHealthRecorder.transition(to: .signedOut)
+            if let scope { await scope.invalidate() }
+            activeSessionScope = nil
+            sessionScopePhase = .none
+            displayName = ""
+            isGuestMode = false
+            showAuthGate = false
+            clearAccountPresentationState()
+            await spotlightIndexer.removeAll()
+        } else if let scope {
+            await scope.resume()
+            activeSessionScope = scope
+            sessionScopePhase = .active
+            showsSignOutFailure = true
+            startSpotlightIndexing()
+        } else {
+            sessionScopePhase = .none
+            showsSignOutFailure = true
+        }
+        return succeeded
+    }
+
+    public func dismissSignOutFailure() {
+        showsSignOutFailure = false
     }
 
     /// Returns only bounded, already-sanitized API health for tests and a later
@@ -490,8 +550,263 @@ public final class AppModel {
                     to: Self.apiObservationSessionState(for: self.session.authState)
                 )
                 self.observeAPIObservationSessionTransitions()
+                await self.reconcileCurrentSession()
             }
         }
+    }
+
+    /// Deterministic test seam and the sole auth-observer reconciliation path.
+    func reconcileCurrentSession() async {
+        guard !isCoordinatingSignOut else { return }
+        let target: SessionTransitionTarget
+        switch session.authState {
+        case .signedIn(let identity):
+            let context = AccountContext(identity: identity, config: validatedConfig)
+            if let activeMatchingScope,
+               activeMatchingScope.context.accountID == context.accountID,
+               activeMatchingScope.context.environmentNamespace == context.environmentNamespace,
+               sessionTransitionTask == nil {
+                sessionScopePhase = .active
+                return
+            }
+            target = .signedIn(identity)
+        case .signedOut:
+            target = .signedOut
+        case .unknown, .reauthRequired, .reconnecting:
+            return
+        }
+
+        if let task = sessionTransitionTask, sessionTransitionTarget == target {
+            await task.value
+            return
+        }
+        if sessionTransitionTask != nil {
+            await cancelSessionTransition()
+        }
+        guard !isCoordinatingSignOut else { return }
+
+        sessionPreparationGeneration &+= 1
+        let generation = sessionPreparationGeneration
+        let transitionID = UUID()
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.performSessionTransition(target, generation: generation)
+            self.finishSessionTransition(transitionID)
+        }
+        sessionTransitionID = transitionID
+        sessionTransitionTarget = target
+        sessionTransitionTask = task
+        await task.value
+    }
+
+    private func performSessionTransition(
+        _ target: SessionTransitionTarget,
+        generation: UInt64
+    ) async {
+        switch target {
+        case .signedIn(let identity):
+            await prepareScope(for: identity, generation: generation)
+        case .signedOut:
+            await tearDownForAuthoritativeSignedOut()
+        }
+    }
+
+    private func prepareScope(for identity: SessionIdentity, generation: UInt64) async {
+        let context = AccountContext(identity: identity, config: validatedConfig)
+        if let activeSessionScope,
+           activeSessionScope.context.accountID == context.accountID,
+           activeSessionScope.context.environmentNamespace == context.environmentNamespace,
+           activeSessionScope.state == .active,
+           sessionCanPublish(context, generation: generation) {
+            sessionScopePhase = .active
+            return
+        }
+
+        if let oldScope = activeSessionScope {
+            sessionScopePhase = .quiescing
+            activeSessionScope = nil
+            await cancelSpotlightIndexingAndRemoveAll()
+            await cancelAccountBackgroundWork()
+            await oldScope.invalidate()
+            clearAccountPresentationState()
+
+            // A production SessionManager requires A's sign-out transaction to
+            // finish before B can authenticate. If an unsupported/test-only
+            // identity replacement bypasses that boundary, fail closed instead
+            // of constructing B after A's authenticated teardown opportunity is
+            // already gone.
+            guard oldScope.context.accountID == context.accountID else {
+                sessionScopePhase = .failure
+                return
+            }
+        }
+
+        guard sessionCanPublish(context, generation: generation) else {
+            sessionScopePhase = .none
+            return
+        }
+        sessionScopePhase = .preparing
+        let builder = scopeBuilder
+
+        do {
+            let scope = try await builder(context)
+            guard sessionCanPublish(context, generation: generation) else {
+                await scope.invalidate()
+                if generation == sessionPreparationGeneration { sessionScopePhase = .none }
+                return
+            }
+            await scope.activate()
+            guard sessionCanPublish(context, generation: generation),
+                  scope.state == .active else {
+                await scope.invalidate()
+                if generation == sessionPreparationGeneration { sessionScopePhase = .none }
+                return
+            }
+            activeSessionScope = scope
+            sessionScopePhase = .active
+            hydrateDisplayName()
+            showAuthGate = false
+            isGuestMode = false
+            scope.graph?.analytics.track(.appOpen)
+            startSpotlightIndexing()
+        } catch is CancellationError {
+            if generation == sessionPreparationGeneration {
+                sessionScopePhase = .none
+            }
+        } catch {
+            if generation == sessionPreparationGeneration {
+                activeSessionScope = nil
+                clearAccountPresentationState()
+                sessionScopePhase = .failure
+            }
+        }
+    }
+
+    private func cancelSessionTransition() async {
+        guard let task = sessionTransitionTask else { return }
+        sessionPreparationGeneration &+= 1
+        task.cancel()
+        await task.value
+    }
+
+    private func finishSessionTransition(_ transitionID: UUID) {
+        guard sessionTransitionID == transitionID else { return }
+        sessionTransitionTask = nil
+        sessionTransitionTarget = nil
+        sessionTransitionID = nil
+    }
+
+    private func sessionCanPublish(
+        _ context: AccountContext,
+        generation: UInt64
+    ) -> Bool {
+        !Task.isCancelled
+            && generation == sessionPreparationGeneration
+            && !isCoordinatingSignOut
+            && session.currentIdentity?.subject == context.accountID
+    }
+
+    private func tearDownForAuthoritativeSignedOut() async {
+        let scope = activeSessionScope
+        activeSessionScope = nil
+        sessionScopePhase = .quiescing
+        await cancelSpotlightIndexingAndRemoveAll()
+        await cancelAccountBackgroundWork()
+        if let scope {
+            await scope.invalidate()
+        }
+        sessionScopePhase = .none
+        displayName = ""
+        clearAccountPresentationState()
+    }
+
+    private func clearAccountPresentationState() {
+        pendingHandoffFlow = nil
+        pendingGiftCode = nil
+        pendingReferralCode = ""
+        pendingPairAcceptCode = ""
+        showPaywall = false
+        showSubscriptionManagement = false
+        showNotificationInbox = false
+        pendingAuthIntent = .none
+        showAuthGate = false
+        showsSignOutFailure = false
+        extensionInboxCount = 0
+        showExtensionInboxBanner = false
+        IntentActionStore.shared.pendingDeepLink = nil
+        IntentActionStore.shared.pendingAudioPlay = nil
+        #if canImport(UIKit)
+        QuickActionBridge.shared.pendingShortcutType = nil
+        #endif
+        #if os(iOS)
+        // WidgetKit may otherwise keep an already-materialized A timeline or
+        // control value visible after the app has closed A's presentation gate.
+        WidgetCenter.shared.reloadAllTimelines()
+        if #available(iOS 18.0, *) {
+            ControlCenter.shared.reloadAllControls()
+        }
+        #endif
+        homeRouter.popToRoot()
+        libraryRouter.popToRoot()
+        reviewsRouter.popToRoot()
+        profileRouter.popToRoot()
+        settingsRouter.popToRoot()
+        selectedTab = .home
+    }
+
+    private func cancelAccountBackgroundWork() async {
+        #if os(iOS)
+        await bgSyncCoordinator.cancelActiveWork()
+        #endif
+    }
+
+    /// The sole private-presentation authority. Auth state and the immutable
+    /// scope context must agree synchronously; deferred reconciliation is never
+    /// allowed to keep vending the prior account's graph.
+    private var activeMatchingScope: SessionScope? {
+        guard sessionScopePhase == .active,
+              let scope = activeSessionScope,
+              scope.state == .active,
+              let identity = session.currentIdentity else {
+            return nil
+        }
+        switch session.authState {
+        case .signedIn(let signedInIdentity):
+            guard signedInIdentity.subject == identity.subject else { return nil }
+        case .reauthRequired, .reconnecting:
+            break
+        case .unknown, .signedOut:
+            return nil
+        }
+        let currentContext = AccountContext(identity: identity, config: validatedConfig)
+        guard scope.context.accountID == currentContext.accountID,
+              scope.context.environmentNamespace == currentContext.environmentNamespace else {
+            return nil
+        }
+        return scope
+    }
+
+    private var activeGraph: SessionPrivateGraph? {
+        activeMatchingScope?.graph
+    }
+
+    var hasActiveMatchingSessionScope: Bool {
+        activeMatchingScope != nil
+    }
+
+    var activeScopeInstanceID: UUID? {
+        activeMatchingScope?.context.instanceID
+    }
+
+    private var requiredGraph: SessionPrivateGraph {
+        guard let graph = activeGraph else {
+            preconditionFailure("Account-private dependency requested without an active matching session scope")
+        }
+        return graph
+    }
+
+    var activeAudioPlayerModel: AudioPlayerModel? {
+        activeGraph?.audioPlayerModel
     }
 
     private static func apiObservationSessionState(
@@ -510,18 +825,48 @@ public final class AppModel {
     /// submits them to Core Spotlight. Idempotent — safe to call on every sign-in
     /// and whenever the library reloads.
     public func startSpotlightIndexing() {
+        guard let scope = activeMatchingScope,
+              let repo = scope.graph?.libraryRepository else {
+            return
+        }
+        spotlightIndexTask?.cancel()
         let indexer = spotlightIndexer
-        let repo = libraryRepository
-        Task.detached(priority: .utility) {
+        let scopeID = scope.context.instanceID
+        let taskID = UUID()
+        spotlightIndexTaskID = taskID
+        let task = Task(priority: .utility) { [weak self] in
+            defer { self?.finishSpotlightIndexing(taskID) }
             do {
                 async let catalogTask = repo.getCatalog()
                 async let searchTask = repo.getSearchIndex()
                 let (catalog, searchIndex) = try await (catalogTask, searchTask)
+                try Task.checkCancellation()
+                guard self?.activeScopeInstanceID == scopeID else { return }
                 await indexer.index(books: catalog, searchBooks: searchIndex.books)
             } catch {
                 // Spotlight indexing is best-effort; never surface errors to the user.
             }
         }
+        spotlightIndexTask = task
+    }
+
+    private func finishSpotlightIndexing(_ taskID: UUID) {
+        guard spotlightIndexTaskID == taskID else { return }
+        spotlightIndexTask = nil
+        spotlightIndexTaskID = nil
+    }
+
+    private func cancelSpotlightIndexing() async {
+        guard let task = spotlightIndexTask else { return }
+        spotlightIndexTask = nil
+        spotlightIndexTaskID = nil
+        task.cancel()
+        await task.value
+    }
+
+    private func cancelSpotlightIndexingAndRemoveAll() async {
+        await cancelSpotlightIndexing()
+        await spotlightIndexer.removeAll()
     }
 
     // MARK: - Guest browse mode
@@ -586,13 +931,23 @@ public final class AppModel {
     /// Creates a fresh `PaywallModel` for the given context.
     /// Called by `AppRootView` each time the paywall sheet is presented.
     public func makePaywallModel(context: PaywallContext) -> PaywallModel {
-        PaywallModel(storeKitService: storeKitService, apiClient: apiClient, analytics: analytics, context: context)
+        let graph = requiredGraph
+        return PaywallModel(
+            storeKitService: graph.storeKitService,
+            apiClient: graph.apiClient,
+            analytics: graph.analytics,
+            context: context
+        )
     }
 
     /// Creates a fresh `SubscriptionManagementModel`.
     /// Called by `AppRootView` when the subscription management sheet is presented.
     public func makeSubscriptionManagementModel() -> SubscriptionManagementModel {
-        SubscriptionManagementModel(storeKitService: storeKitService, apiClient: apiClient)
+        let graph = requiredGraph
+        return SubscriptionManagementModel(
+            storeKitService: graph.storeKitService,
+            apiClient: graph.apiClient
+        )
     }
 
     /// Opens the App Store subscription management page.
@@ -611,11 +966,6 @@ public final class AppModel {
     /// Resolves and caches the display name from the stored id_token JWT.
     /// Call after `authState` transitions to `.signedIn`.
     public func hydrateDisplayName() {
-        // Resolve userId first so repositories can use it immediately.
-        if case .signedIn(let user) = session.authState {
-            userIdBox.userId = user.userId
-        }
-
         // 1. JWT claims (Cognito stores the name attribute).
         if let token = session.currentIdToken(),
            let profile = UserProfile.from(idToken: token),
@@ -698,13 +1048,3 @@ public final class AppModel {
         #endif
     }
 }
-
-#if !os(iOS)
-private struct HostNotificationAuthorizer: NotificationAuthorizerProtocol {
-    func currentStatus() async -> NotificationPermissionStatus { .denied }
-
-    func requestAuthorization() async -> NotificationAuthorizationOutcome { .denied }
-
-    func requestProvisionalAuthorization() async -> NotificationAuthorizationOutcome { .denied }
-}
-#endif

@@ -184,7 +184,11 @@ struct ContinueReadingWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: Self.kind, provider: ContinueProvider()) { entry in
-            ContinueMediumView(snapshot: entry.snapshot)
+            if entry.snapshot.isAccountDataAvailable {
+                ContinueMediumView(snapshot: entry.snapshot)
+            } else {
+                WidgetAccountDataUnavailableView()
+            }
         }
         .configurationDisplayName("Continue Reading")
         .description("Pick up where you left off.")

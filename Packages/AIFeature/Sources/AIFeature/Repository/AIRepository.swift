@@ -19,6 +19,9 @@ public struct AIConversationTurn: Codable, Sendable {
 /// Concrete implementations: ``LiveAIRepository`` (production) and
 /// ``FakeAIRepository`` (tests and previews).
 public protocol AIRepository: Sendable {
+    /// Immutable account authority used to key private conversation state.
+    nonisolated var accountID: String { get }
+
     /// Sends a question about the given book to the server.
     ///
     /// - Parameters:

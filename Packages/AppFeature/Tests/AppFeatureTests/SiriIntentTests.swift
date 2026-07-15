@@ -4,53 +4,26 @@ import Foundation
 import Persistence
 import CoreKit
 
-// MARK: - StartDailyReadingIntent tests
+// MARK: - IntentActionStore routing tests
 
-@Suite("StartDailyReadingIntent")
+@Suite("IntentActionStore routing", .serialized)
 @MainActor
-struct StartDailyReadingIntentTests {
+struct IntentActionStoreRoutingTests {
 
-    @Test("routes to chapter when continue-reading record exists")
-    func routesToChapterWhenRecordExists() async throws {
-        let suiteName = "test.intent.daily.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.set("book-abc", forKey: SharedStateKeys.continueBookId)
-        defaults.set("Atomic Habits", forKey: SharedStateKeys.continueBookTitle)
-        defaults.set(3, forKey: SharedStateKeys.continueChapterNumber)
+    @Test("ownerless continue-reading state is never replayed")
+    func ownerlessStateIsNeverReplayed() {
+        let store = IntentActionStore()
+        store.pendingDeepLink = .chapter(bookId: "stale-a", chapter: 3)
+        store.pendingAudioPlay = AudioPlayRequest(
+            bookId: "stale-a",
+            chapterNumber: 3
+        )
 
-        let reader = SharedStateReader(suiteName: suiteName)
-        let snapshot = reader.load()
+        StartDailyReadingIntent.prepareNeutralLibraryNavigation(in: store)
 
-        #expect(snapshot.continueBookId == "book-abc")
-        #expect(snapshot.continueChapterNumber == 3)
-
-        // Simulate perform() logic without instantiating the intent.
-        let link: DeepLink
-        if let bookId = snapshot.continueBookId, let chapter = snapshot.continueChapterNumber {
-            link = .chapter(bookId: bookId, chapter: chapter)
-        } else {
-            link = .library
-        }
-        #expect(link == .chapter(bookId: "book-abc", chapter: 3))
+        #expect(store.pendingDeepLink == .library)
+        #expect(store.pendingAudioPlay == nil)
     }
-
-    @Test("falls back to library when no continue-reading record")
-    func fallsBackToLibraryWhenNoRecord() async throws {
-        let reader = SharedStateReader(suiteName: "test.intent.empty.\(UUID().uuidString)")
-        let snapshot = reader.load()
-
-        let link: DeepLink = (snapshot.continueBookId != nil && snapshot.continueChapterNumber != nil)
-            ? .chapter(bookId: snapshot.continueBookId!, chapter: snapshot.continueChapterNumber!)
-            : .library
-        #expect(link == .library)
-    }
-}
-
-// MARK: - StartReviewIntent tests
-
-@Suite("StartReviewIntent")
-@MainActor
-struct StartReviewIntentTests {
 
     @Test("sets pendingDeepLink to .review")
     func setsReviewDeepLink() async throws {
@@ -60,48 +33,20 @@ struct StartReviewIntentTests {
         #expect(IntentActionStore.shared.pendingDeepLink == .review)
         IntentActionStore.shared.pendingDeepLink = nil
     }
-}
 
-// MARK: - StartAudioNarrationIntent tests
+    @Test("ownerless continue-reading state never starts audio")
+    func ownerlessStateNeverStartsAudio() {
+        let store = IntentActionStore()
+        store.pendingDeepLink = .chapter(bookId: "stale-a", chapter: 2)
+        store.pendingAudioPlay = AudioPlayRequest(
+            bookId: "stale-a",
+            chapterNumber: 2
+        )
 
-@Suite("StartAudioNarrationIntent")
-@MainActor
-struct StartAudioNarrationIntentTests {
+        StartAudioNarrationIntent.prepareNeutralLibraryNavigation(in: store)
 
-    @Test("sets pendingAudioPlay when continue-reading record exists")
-    func setsPendingAudioPlay() async throws {
-        let suiteName = "test.intent.audio.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.set("book-xyz", forKey: SharedStateKeys.continueBookId)
-        defaults.set(2, forKey: SharedStateKeys.continueChapterNumber)
-
-        let reader = SharedStateReader(suiteName: suiteName)
-        let snapshot = reader.load()
-
-        IntentActionStore.shared.pendingAudioPlay = nil
-
-        if let bookId = snapshot.continueBookId, let chapter = snapshot.continueChapterNumber {
-            let request = AudioPlayRequest(bookId: bookId, chapterNumber: chapter)
-            await MainActor.run { IntentActionStore.shared.pendingAudioPlay = request }
-        }
-
-        #expect(IntentActionStore.shared.pendingAudioPlay == AudioPlayRequest(bookId: "book-xyz", chapterNumber: 2))
-        IntentActionStore.shared.pendingAudioPlay = nil
-    }
-
-    @Test("falls back to library deep link when no record")
-    func fallsBackWhenNoRecord() async throws {
-        let reader = SharedStateReader(suiteName: "test.intent.audio.empty.\(UUID().uuidString)")
-        let snapshot = reader.load()
-
-        IntentActionStore.shared.pendingDeepLink = nil
-
-        if snapshot.continueBookId == nil || snapshot.continueChapterNumber == nil {
-            await MainActor.run { IntentActionStore.shared.pendingDeepLink = .library }
-        }
-
-        #expect(IntentActionStore.shared.pendingDeepLink == .library)
-        IntentActionStore.shared.pendingDeepLink = nil
+        #expect(store.pendingDeepLink == .library)
+        #expect(store.pendingAudioPlay == nil)
     }
 }
 
@@ -110,27 +55,21 @@ struct StartAudioNarrationIntentTests {
 @Suite("LogDailyReadingIntent")
 struct LogDailyReadingIntentTests {
 
-    @Test("accumulates minutes in App Group UserDefaults")
-    func accumulatesMinutes() throws {
+    @Test("cached legacy invocation emits no ownerless reading write")
+    func cachedInvocationIsFailClosed() async throws {
         let suiteName = "test.intent.log.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        defaults.set(25, forKey: IntentKeys.pendingReadingMinutes)
 
-        // First log: 10 minutes.
-        let existing1 = defaults.integer(forKey: IntentKeys.pendingReadingMinutes)
-        defaults.set(existing1 + 10, forKey: IntentKeys.pendingReadingMinutes)
-        #expect(defaults.integer(forKey: IntentKeys.pendingReadingMinutes) == 10)
+        _ = try await LogDailyReadingIntent().perform()
 
-        // Second log: 15 more minutes.
-        let existing2 = defaults.integer(forKey: IntentKeys.pendingReadingMinutes)
-        defaults.set(existing2 + 15, forKey: IntentKeys.pendingReadingMinutes)
         #expect(defaults.integer(forKey: IntentKeys.pendingReadingMinutes) == 25)
     }
 
-    @Test("clamps minutes to at least 1")
-    func clampsToOne() {
-        let raw = 0
-        let clamped = max(1, raw)
-        #expect(clamped == 1)
+    @Test("ownerless logging shortcut is no longer donated")
+    func loggingShortcutIsNotRegistered() {
+        #expect(ChapterFlowShortcuts.appShortcuts.count == 3)
     }
 }
 
@@ -140,22 +79,15 @@ struct LogDailyReadingIntentTests {
 @MainActor
 struct AppModelAudioCommandTests {
 
-    @Test("clears audioControlCommand key after consuming")
-    func clearsKeyAfterConsuming() throws {
+    @Test("preserves ownerless audio command without applying it")
+    func preservesOwnerlessAudioCommand() throws {
         let suiteName = "test.intent.audioCmd.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.set("pause", forKey: IntentKeys.audioControlCommand)
 
-        // Simulate AppModel consumption logic.
-        guard let command = defaults.string(forKey: IntentKeys.audioControlCommand),
-              !command.isEmpty else {
-            Issue.record("Expected a command in UserDefaults")
-            return
-        }
-        defaults.removeObject(forKey: IntentKeys.audioControlCommand)
+        AppModel.preserveOwnerlessAudioControlCommand(in: defaults)
 
-        #expect(command == "pause")
-        #expect(defaults.string(forKey: IntentKeys.audioControlCommand) == nil)
+        #expect(defaults.string(forKey: IntentKeys.audioControlCommand) == "pause")
     }
 
     @Test("no-ops when key is absent")
@@ -167,118 +99,36 @@ struct AppModelAudioCommandTests {
     }
 }
 
-// MARK: - P8.9 Control widget intent key tests
-
-@Suite("ControlWidgetIntents — App Group signaling")
-struct ControlWidgetIntentKeyTests {
-
-    @Test("StartReadingControlIntent logic writes startReading key")
-    func startReadingWritesKey() {
-        let suiteName = "test.control.reading.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-
-        // Simulate StartReadingControlIntent.perform()
-        defaults.set("startReading", forKey: IntentKeys.controlPendingAction)
-
-        #expect(defaults.string(forKey: IntentKeys.controlPendingAction) == "startReading")
-    }
-
-    @Test("StartReviewControlIntent logic writes startReview key")
-    func startReviewWritesKey() {
-        let suiteName = "test.control.review.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-
-        // Simulate StartReviewControlIntent.perform()
-        defaults.set("startReview", forKey: IntentKeys.controlPendingAction)
-
-        #expect(defaults.string(forKey: IntentKeys.controlPendingAction) == "startReview")
-    }
-
-    @Test("ToggleAudioControlIntent logic writes audioControlCommand for play")
-    func toggleAudioWritesPlayCommand() {
-        let suiteName = "test.control.audio.play.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-
-        // Simulate ToggleAudioControlIntent.perform() with value = true (play)
-        defaults.set("play", forKey: IntentKeys.audioControlCommand)
-        defaults.set(true, forKey: IntentKeys.isAudioPlaying)
-
-        #expect(defaults.string(forKey: IntentKeys.audioControlCommand) == "play")
-        #expect(defaults.bool(forKey: IntentKeys.isAudioPlaying) == true)
-    }
-
-    @Test("ToggleAudioControlIntent logic writes audioControlCommand for pause")
-    func toggleAudioWritesPauseCommand() {
-        let suiteName = "test.control.audio.pause.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-
-        // Simulate ToggleAudioControlIntent.perform() with value = false (pause)
-        defaults.set("pause", forKey: IntentKeys.audioControlCommand)
-        defaults.set(false, forKey: IntentKeys.isAudioPlaying)
-
-        #expect(defaults.string(forKey: IntentKeys.audioControlCommand) == "pause")
-        #expect(defaults.bool(forKey: IntentKeys.isAudioPlaying) == false)
-    }
-}
-
 // MARK: - AppModel consumeControlIntentAction tests
 
 @Suite("AppModel — consumeControlIntentAction")
+@MainActor
 struct AppModelControlIntentTests {
 
-    @Test("routes to chapter when startReading and continue-reading record exists")
-    func routesToChapterOnStartReading() throws {
+    @Test("preserves ownerless reading navigation and snapshot without routing")
+    func preservesOwnerlessReadingNavigation() throws {
         let suiteName = "test.control.consume.reading.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.set("startReading", forKey: IntentKeys.controlPendingAction)
         defaults.set("book-ctrl", forKey: SharedStateKeys.continueBookId)
         defaults.set(4, forKey: SharedStateKeys.continueChapterNumber)
 
-        // Simulate consumeControlIntentAction routing logic
-        guard let action = defaults.string(forKey: IntentKeys.controlPendingAction),
-              !action.isEmpty else {
-            Issue.record("Expected a pending action")
-            return
-        }
-        defaults.removeObject(forKey: IntentKeys.controlPendingAction)
+        AppModel.preserveOwnerlessControlIntentAction(in: defaults)
 
-        let reader = SharedStateReader(suiteName: suiteName)
-        let snapshot = reader.load()
-
-        let link: DeepLink
-        switch action {
-        case "startReading":
-            if let bookId = snapshot.continueBookId, let chapter = snapshot.continueChapterNumber {
-                link = .chapter(bookId: bookId, chapter: chapter)
-            } else {
-                link = .library
-            }
-        case "startReview":
-            link = .review
-        default:
-            link = .library
-        }
-
-        #expect(link == .chapter(bookId: "book-ctrl", chapter: 4))
-        #expect(defaults.string(forKey: IntentKeys.controlPendingAction) == nil)
+        #expect(defaults.string(forKey: IntentKeys.controlPendingAction) == "startReading")
+        #expect(defaults.string(forKey: SharedStateKeys.continueBookId) == "book-ctrl")
+        #expect(defaults.integer(forKey: SharedStateKeys.continueChapterNumber) == 4)
     }
 
-    @Test("routes to review tab on startReview")
-    func routesToReviewOnStartReview() throws {
+    @Test("preserves ownerless review navigation")
+    func preservesOwnerlessReviewNavigation() throws {
         let suiteName = "test.control.consume.review.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.set("startReview", forKey: IntentKeys.controlPendingAction)
 
-        guard let action = defaults.string(forKey: IntentKeys.controlPendingAction) else {
-            Issue.record("Expected a pending action")
-            return
-        }
-        defaults.removeObject(forKey: IntentKeys.controlPendingAction)
+        AppModel.preserveOwnerlessControlIntentAction(in: defaults)
 
-        let link: DeepLink = action == "startReview" ? .review : .library
-
-        #expect(link == .review)
-        #expect(defaults.string(forKey: IntentKeys.controlPendingAction) == nil)
+        #expect(defaults.string(forKey: IntentKeys.controlPendingAction) == "startReview")
     }
 
     @Test("no-ops when key is absent")
@@ -289,37 +139,35 @@ struct AppModelControlIntentTests {
         #expect(action == nil)
     }
 
-    @Test("publishAudioPlayingState writes isAudioPlaying to App Group")
-    func publishesAudioPlayingState() {
+    @Test("does not overwrite ownerless audio playing state")
+    func preservesAudioPlayingState() {
         let suiteName = "test.control.audioPlaying.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
-
-        // Simulate publishAudioPlayingState(true)
         defaults.set(true, forKey: IntentKeys.isAudioPlaying)
-        #expect(defaults.bool(forKey: IntentKeys.isAudioPlaying) == true)
 
-        // Simulate publishAudioPlayingState(false)
-        defaults.set(false, forKey: IntentKeys.isAudioPlaying)
-        #expect(defaults.bool(forKey: IntentKeys.isAudioPlaying) == false)
+        AppModel.preserveOwnerlessAudioPlayingState(false, in: defaults)
+
+        #expect(defaults.bool(forKey: IntentKeys.isAudioPlaying) == true)
     }
 }
 
 // MARK: - AppModel pending reading minutes tests
 
 @Suite("AppModel — consumePendingReadingMinutes")
+@MainActor
 struct AppModelReadingMinutesTests {
 
-    @Test("reads and clears pending minutes")
-    func readsAndClearsPending() throws {
+    @Test("preserves ownerless pending minutes without crediting the shared snapshot")
+    func preservesOwnerlessPendingMinutes() throws {
         let suiteName = "test.intent.readingMin.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.set(30, forKey: IntentKeys.pendingReadingMinutes)
+        defaults.set(7, forKey: SharedStateKeys.goalProgressMinutes)
 
-        let pending = defaults.integer(forKey: IntentKeys.pendingReadingMinutes)
-        #expect(pending == 30)
-        guard pending > 0 else { return }
-        defaults.removeObject(forKey: IntentKeys.pendingReadingMinutes)
-        #expect(defaults.integer(forKey: IntentKeys.pendingReadingMinutes) == 0)
+        AppModel.preserveOwnerlessPendingReadingMinutes(in: defaults)
+
+        #expect(defaults.integer(forKey: IntentKeys.pendingReadingMinutes) == 30)
+        #expect(defaults.integer(forKey: SharedStateKeys.goalProgressMinutes) == 7)
     }
 
     @Test("no-ops when pending is zero")

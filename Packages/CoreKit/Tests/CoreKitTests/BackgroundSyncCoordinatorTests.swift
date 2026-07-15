@@ -21,6 +21,32 @@ struct BackgroundSyncCoordinatorTests {
         func increment() { count += 1 }
     }
 
+    private final class CancellationProbe: Sendable {
+        let starts: AsyncStream<Void>
+        let cancellations: AsyncStream<Void>
+        private let startContinuation: AsyncStream<Void>.Continuation
+        private let cancellationContinuation: AsyncStream<Void>.Continuation
+        private let hold: AsyncStream<Void>
+        private let holdContinuation: AsyncStream<Void>.Continuation
+
+        init() {
+            (starts, startContinuation) = AsyncStream.makeStream()
+            (cancellations, cancellationContinuation) = AsyncStream.makeStream()
+            (hold, holdContinuation) = AsyncStream.makeStream()
+        }
+
+        func run() async {
+            startContinuation.yield()
+            await withTaskCancellationHandler {
+                for await _ in hold {}
+            } onCancel: {
+                cancellationContinuation.yield()
+                cancellationContinuation.finish()
+                holdContinuation.finish()
+            }
+        }
+    }
+
     // MARK: - Foreground sync invokes work
 
     @Test("triggerForegroundSync runs appRefreshWork when permitted")
@@ -79,6 +105,34 @@ struct BackgroundSyncCoordinatorTests {
         // Each completed call contributes at most 1; totals monotonically increase.
         #expect(countAfterSecond >= countAfterFirst)
         #expect(countAfterSecond <= 2)
+    }
+
+    @Test("cancelActiveWork cancels and joins both handles idempotently")
+    func cancelActiveWorkJoinsBothHandles() async {
+        let refresh = CancellationProbe()
+        let processing = CancellationProbe()
+        var refreshStarts = refresh.starts.makeAsyncIterator()
+        var processingStarts = processing.starts.makeAsyncIterator()
+        var refreshCancellations = refresh.cancellations.makeAsyncIterator()
+        var processingCancellations = processing.cancellations.makeAsyncIterator()
+        let coordinator = BackgroundSyncCoordinator(
+            onAppRefreshWork: { await refresh.run() },
+            onProcessingWork: { await processing.run() }
+        )
+
+        coordinator.startActiveWorkForTesting()
+        _ = await refreshStarts.next()
+        _ = await processingStarts.next()
+        #expect(coordinator.activeWorkCountForTesting == 2)
+
+        await coordinator.cancelActiveWork()
+
+        #expect(await refreshCancellations.next() != nil)
+        #expect(await processingCancellations.next() != nil)
+        #expect(coordinator.activeWorkCountForTesting == 0)
+
+        await coordinator.cancelActiveWork()
+        #expect(coordinator.activeWorkCountForTesting == 0)
     }
 
     // MARK: - Scheduling / registration safety

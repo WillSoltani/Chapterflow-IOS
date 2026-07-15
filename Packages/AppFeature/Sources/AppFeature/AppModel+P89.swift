@@ -1,58 +1,76 @@
 import Foundation
-import CoreKit
+import OSLog
 import Persistence
+
+private let ownerlessControlArtifactLog = Logger(
+    subsystem: "com.chapterflow",
+    category: "ownerless-app-group"
+)
 
 // MARK: - P8.9: Control Center controls
 
 extension AppModel {
 
-    /// Reads the pending navigation action written by P8.9 control intents
+    /// Detects the pending navigation action written by P8.9 control intents
     /// (``StartReadingControlIntent``, ``StartReviewControlIntent``) via App Group UserDefaults.
     ///
-    /// Call when the app becomes active (scenePhase → `.active`) so taps on
-    /// Control Center / Lock Screen controls navigate to the right screen.
+    /// Legacy actions have no account owner. Preserve them without navigation
+    /// until WP-ID-01B can attribute them safely.
     public func consumeControlIntentAction() {
-        let defaults = UserDefaults(suiteName: AppGroup.identifier)
-        guard let action = defaults?.string(forKey: IntentKeys.controlPendingAction),
-              !action.isEmpty else { return }
-        defaults?.removeObject(forKey: IntentKeys.controlPendingAction)
-        switch action {
-        case "startReading":
-            let snapshot = SharedStateReader().load()
-            if let bookId = snapshot.continueBookId, let chapter = snapshot.continueChapterNumber {
-                handle(deepLink: .chapter(bookId: bookId, chapter: chapter))
-            } else {
-                handle(deepLink: .library)
-            }
-        case "startReview":
-            handle(deepLink: .review)
-        default:
-            break
+        Self.preserveOwnerlessControlIntentAction(
+            in: UserDefaults(suiteName: AppGroup.identifier)
+        )
+    }
+
+    static func preserveOwnerlessControlIntentAction(in defaults: UserDefaults?) {
+        guard defaults?.object(forKey: IntentKeys.controlPendingAction) != nil else {
+            return
         }
+        ownerlessControlArtifactLog.notice(
+            "Ownerless navigation control action preserved for WP-ID-01B attribution"
+        )
     }
 
-    /// Writes the current audio playing state to the App Group so the
-    /// ``AudioPlaybackControl`` toggle reflects the live value.
+    /// Preserves the legacy ownerless App Group playback state.
     ///
-    /// Call whenever `audioPlayerModel.isPlaying` changes.
+    /// Publishing account-private playback into an ownerless key could overwrite
+    /// another account's state. WP-ID-01B must introduce ownership first.
     public func publishAudioPlayingState(_ isPlaying: Bool) {
-        let defaults = UserDefaults(suiteName: AppGroup.identifier)
-        defaults?.set(isPlaying, forKey: IntentKeys.isAudioPlaying)
+        Self.preserveOwnerlessAudioPlayingState(
+            isPlaying,
+            in: UserDefaults(suiteName: AppGroup.identifier)
+        )
     }
 
-    /// Reads accumulated offline reading minutes written by ``LogDailyReadingIntent``,
-    /// adds them to today's goal progress in the App Group snapshot, and publishes.
+    static func preserveOwnerlessAudioPlayingState(
+        _ proposedValue: Bool,
+        in defaults: UserDefaults?
+    ) {
+        _ = proposedValue
+        guard defaults?.object(forKey: IntentKeys.isAudioPlaying) != nil else {
+            return
+        }
+        ownerlessControlArtifactLog.notice(
+            "Ownerless audio playback state preserved for WP-ID-01B attribution"
+        )
+    }
+
+    /// Detects accumulated reading minutes written by ``LogDailyReadingIntent``.
     ///
-    /// Call when the app becomes active so the goal-ring widget reflects minutes
-    /// logged via Siri since the last foreground session.
+    /// The pending minutes have no account owner. Preserve them without crediting
+    /// the current account until WP-ID-01B can attribute them safely.
     public func consumePendingReadingMinutes() {
-        let defaults = UserDefaults(suiteName: AppGroup.identifier)
-        let pending = defaults?.integer(forKey: IntentKeys.pendingReadingMinutes) ?? 0
-        guard pending > 0 else { return }
-        defaults?.removeObject(forKey: IntentKeys.pendingReadingMinutes)
-        var updated = SharedStateReader().load()
-        updated.goalProgressMinutes += pending
-        updated.lastUpdated = Date()
-        Task { await SharedStateWriter.shared.publish(updated) }
+        Self.preserveOwnerlessPendingReadingMinutes(
+            in: UserDefaults(suiteName: AppGroup.identifier)
+        )
+    }
+
+    static func preserveOwnerlessPendingReadingMinutes(in defaults: UserDefaults?) {
+        guard defaults?.object(forKey: IntentKeys.pendingReadingMinutes) != nil else {
+            return
+        }
+        ownerlessControlArtifactLog.notice(
+            "Ownerless pending reading minutes preserved for WP-ID-01B attribution"
+        )
     }
 }

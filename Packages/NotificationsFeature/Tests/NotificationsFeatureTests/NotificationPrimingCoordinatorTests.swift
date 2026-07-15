@@ -12,8 +12,12 @@ final class MockNotificationAuthorizer: NotificationAuthorizerProtocol, @uncheck
 
     private(set) var requestAuthorizationCallCount = 0
     private(set) var requestProvisionalCallCount = 0
+    private(set) var currentStatusCallCount = 0
 
-    func currentStatus() async -> NotificationPermissionStatus { stubbedStatus }
+    func currentStatus() async -> NotificationPermissionStatus {
+        currentStatusCallCount += 1
+        return stubbedStatus
+    }
 
     func requestAuthorization() async -> NotificationAuthorizationOutcome {
         requestAuthorizationCallCount += 1

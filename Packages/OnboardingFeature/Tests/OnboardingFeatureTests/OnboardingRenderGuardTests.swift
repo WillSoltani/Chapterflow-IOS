@@ -9,6 +9,7 @@
 
 import SwiftUI
 import Testing
+import CoreKit
 import Persistence
 @testable import OnboardingFeature
 
@@ -59,7 +60,9 @@ struct OnboardingRenderGuardTests {
         assertMatrix("Onboarding (welcome)") {
             OnboardingFlowView(
                 preferences: AppPreferences(defaults: UserDefaults(suiteName: "cf.test.onboarding.render")),
-                repository: MockOnboardingRepository()
+                repository: MockOnboardingRepository(),
+                goalStore: DailyGoalStore(defaults: UserDefaults(suiteName: "cf.test.onboarding.render")),
+                workPermit: SessionWorkPermit()
             )
         }
     }

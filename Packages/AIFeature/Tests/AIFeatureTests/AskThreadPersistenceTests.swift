@@ -100,7 +100,7 @@ struct StoredAskMessageTests {
 
 // MARK: - AskThreadStore tests
 
-@Suite("AskThreadStore", .serialized)
+@Suite("Ask persistence", .serialized)
 @MainActor
 struct AskThreadStoreTests {
 
@@ -222,25 +222,62 @@ struct AskThreadStoreTests {
         #expect(bThreads.count == 1)
         #expect(aThreads[0].threadId != bThreads[0].threadId)
     }
-}
 
-// MARK: - AskTheBookModel persistence tests
+    // MARK: - AskTheBookModel persistence tests
 
-@Suite("AskTheBookModel persistence", .serialized)
-@MainActor
-struct AskTheBookModelPersistenceTests {
+    @Test("repository account authority keys A and B threads without a fallback identity")
+    func repositoryAccountAuthorityIsolatesThreads() async throws {
+        let ctx = try makeInMemoryContext()
+        let accountA = FakeAIRepository(delay: 0, accountID: "account-a")
+        let accountB = FakeAIRepository(delay: 0, accountID: "account-b")
+        let modelA = AskTheBookModel(
+            bookId: "b-shared",
+            repository: accountA,
+            modelContext: ctx
+        )
+        let modelB = AskTheBookModel(
+            bookId: "b-shared",
+            repository: accountB,
+            modelContext: ctx
+        )
 
-    private func makeInMemoryContext() throws -> ModelContext {
-        SharedAITestStore.freshContext()
+        #expect(modelA.accountID == "account-a")
+        #expect(modelB.accountID == "account-b")
+
+        modelA.inputText = "Question from A"
+        await modelA.sendQuestion()
+        modelB.inputText = "Question from B"
+        await modelB.sendQuestion()
+
+        let aMessages = AskThreadStore.loadMessages(
+            bookId: "b-shared",
+            userId: "account-a",
+            context: ctx
+        )
+        let bMessages = AskThreadStore.loadMessages(
+            bookId: "b-shared",
+            userId: "account-b",
+            context: ctx
+        )
+        #expect(aMessages.map(\.question) == ["Question from A"])
+        #expect(bMessages.map(\.question) == ["Question from B"])
+        #expect(AskThreadStore.loadMessages(
+            bookId: "b-shared",
+            userId: "local",
+            context: ctx
+        ).isEmpty)
     }
 
     @Test("sendQuestion persists the message to SwiftData")
     func sendQuestionPersists() async throws {
         let ctx = try makeInMemoryContext()
-        let repo = FakeAIRepository(response: FakeAIRepository.sampleResponse, delay: 0)
+        let repo = FakeAIRepository(
+            response: FakeAIRepository.sampleResponse,
+            delay: 0,
+            accountID: "u1"
+        )
         let model = AskTheBookModel(
             bookId: "b-habits",
-            userId: "u1",
             bookTitle: "Atomic Habits",
             repository: repo,
             modelContext: ctx
@@ -262,10 +299,9 @@ struct AskTheBookModelPersistenceTests {
         ]
         AskThreadStore.upsertThread(bookId: "b-habits", userId: "u1", bookTitle: nil, messages: prior, context: ctx)
 
-        let repo = FakeAIRepository(delay: 0)
+        let repo = FakeAIRepository(delay: 0, accountID: "u1")
         let model = AskTheBookModel(
             bookId: "b-habits",
-            userId: "u1",
             repository: repo,
             modelContext: ctx
         )
@@ -278,10 +314,13 @@ struct AskTheBookModelPersistenceTests {
     @Test("saveToNotebook marks message as pinned")
     func saveToNotebookMarksPinned() async throws {
         let ctx = try makeInMemoryContext()
-        let repo = FakeAIRepository(response: FakeAIRepository.sampleResponse, delay: 0)
+        let repo = FakeAIRepository(
+            response: FakeAIRepository.sampleResponse,
+            delay: 0,
+            accountID: "u1"
+        )
         let model = AskTheBookModel(
             bookId: "b-habits",
-            userId: "u1",
             repository: repo,
             modelContext: ctx
         )
@@ -299,10 +338,13 @@ struct AskTheBookModelPersistenceTests {
     @Test("saveToNotebook inserts a CachedNotebookEntry locally")
     func saveToNotebookInsertsEntry() async throws {
         let ctx = try makeInMemoryContext()
-        let repo = FakeAIRepository(response: FakeAIRepository.sampleResponse, delay: 0)
+        let repo = FakeAIRepository(
+            response: FakeAIRepository.sampleResponse,
+            delay: 0,
+            accountID: "u1"
+        )
         let model = AskTheBookModel(
             bookId: "b-habits",
-            userId: "u1",
             bookTitle: "Atomic Habits",
             repository: repo,
             modelContext: ctx
@@ -322,10 +364,13 @@ struct AskTheBookModelPersistenceTests {
     @Test("shareText includes book title and citation attribution")
     func shareTextAttribution() async throws {
         let ctx = try makeInMemoryContext()
-        let repo = FakeAIRepository(response: FakeAIRepository.sampleResponse, delay: 0)
+        let repo = FakeAIRepository(
+            response: FakeAIRepository.sampleResponse,
+            delay: 0,
+            accountID: "u1"
+        )
         let model = AskTheBookModel(
             bookId: "b-habits",
-            userId: "u1",
             bookTitle: "Atomic Habits",
             repository: repo,
             modelContext: ctx
@@ -344,10 +389,9 @@ struct AskTheBookModelPersistenceTests {
     @Test("sendQuestion includes conversation history on follow-up questions")
     func followUpIncludesHistory() async throws {
         let ctx = try makeInMemoryContext()
-        let capturingRepo = CapturingAIRepository()
+        let capturingRepo = CapturingAIRepository(accountID: "u1")
         let model = AskTheBookModel(
             bookId: "b-habits",
-            userId: "u1",
             repository: capturingRepo,
             modelContext: ctx
         )
@@ -366,10 +410,9 @@ struct AskTheBookModelPersistenceTests {
     @Test("first question has nil conversationHistory")
     func firstQuestionHasNilHistory() async throws {
         let ctx = try makeInMemoryContext()
-        let capturingRepo = CapturingAIRepository()
+        let capturingRepo = CapturingAIRepository(accountID: "u1")
         let model = AskTheBookModel(
             bookId: "b-habits",
-            userId: "u1",
             repository: capturingRepo,
             modelContext: ctx
         )
@@ -390,10 +433,13 @@ struct AskTheBookModelPersistenceTests {
         ]
         AskThreadStore.upsertThread(bookId: "b-habits", userId: "u1", bookTitle: nil, messages: prior, context: ctx)
 
-        let repo = FakeAIRepository(error: FakeAIRepository.rateLimitedError, delay: 0)
+        let repo = FakeAIRepository(
+            error: FakeAIRepository.rateLimitedError,
+            delay: 0,
+            accountID: "u1"
+        )
         let model = AskTheBookModel(
             bookId: "b-habits",
-            userId: "u1",
             repository: repo,
             modelContext: ctx
         )

@@ -39,6 +39,29 @@ struct AuthoritativeSessionIdentityTests {
         #expect(await client.signInCallCount == 1)
     }
 
+    @Test("an active A session must sign out before B sign-in begins")
+    func activeSessionRejectsReplacementSignIn() async throws {
+        let tokensA = makeSessionTokens(subject: subjectA, marker: "a")
+        let tokensB = makeSessionTokens(subject: subjectB, marker: "b")
+        let store = InMemoryTokenStore(tokens: tokensA)
+        let client = ScriptedCognitoSessionClient(
+            session: .init(isSignedIn: true, tokens: tokensB),
+            user: .init(userId: subjectB, username: "reader-b", email: nil)
+        )
+        let service = AuthService(config: makeAuthConfig(), tokenStore: store, sessionClient: client)
+        let identityA = try makeIdentity(subjectA)
+        let session = SessionManager(authService: service, testIdentity: identityA)
+
+        await #expect(throws: AppError.self) {
+            try await session.signIn(username: "reader-b", password: "password")
+        }
+
+        #expect(await client.signInCallCount == 0)
+        #expect(session.currentIdentity == identityA)
+        #expect(session.authState == .signedIn(identityA))
+        #expect(try store.load() == tokensA)
+    }
+
     @Test("reset-password next step preserves actionable sign-in guidance")
     func resetPasswordStepIsPreserved() async throws {
         let store = InMemoryTokenStore()

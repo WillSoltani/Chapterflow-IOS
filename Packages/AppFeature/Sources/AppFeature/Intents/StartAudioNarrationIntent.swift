@@ -1,36 +1,34 @@
 import AppIntents
 import CoreKit
-import Persistence
 
 // MARK: - StartAudioNarrationIntent
 
-/// "Read with ChapterFlow" — starts audio narration of the current chapter.
+/// Opens ChapterFlow's library so the user can choose audio in-app.
 ///
-/// Reads the App Group snapshot for the continue-reading context, then signals
-/// ``IntentActionStore`` which AppRootView observes to start ``AudioPlayerModel``.
+/// Continue-reading snapshots in the App Group are ownerless legacy state. Until
+/// WP-ID-01B binds that state to an account, this intent deliberately opens the
+/// neutral library and never turns that snapshot into an audio request.
 ///
-/// Audio control (pause/resume) during playback is handled by the P8.2
-/// ``PauseAudioIntent`` / ``ResumeAudioIntent`` Live Activity buttons.
 public struct StartAudioNarrationIntent: AppIntent {
-    public static let title: LocalizedStringResource = "Read with ChapterFlow"
+    public static let title: LocalizedStringResource = "Browse audio in ChapterFlow"
     public static let description = IntentDescription(
-        "Starts audio narration of your current chapter.",
+        "Opens your library so you can choose a book to listen to.",
         categoryName: "Reading"
     )
     public static let openAppWhenRun = true
 
     public init() {}
 
+    @MainActor
+    static func prepareNeutralLibraryNavigation(in store: IntentActionStore) {
+        store.pendingAudioPlay = nil
+        store.pendingDeepLink = .library
+    }
+
     public func perform() async throws -> some IntentResult {
-        let snapshot = SharedStateReader().load()
-        guard let bookId = snapshot.continueBookId,
-              let chapter = snapshot.continueChapterNumber else {
-            await MainActor.run { IntentActionStore.shared.pendingDeepLink = .library }
-            return .result(dialog: "Opening your library. Select a book to listen to.")
+        await MainActor.run {
+            Self.prepareNeutralLibraryNavigation(in: .shared)
         }
-        let request = AudioPlayRequest(bookId: bookId, chapterNumber: chapter)
-        await MainActor.run { IntentActionStore.shared.pendingAudioPlay = request }
-        let title = snapshot.continueBookTitle ?? "your current chapter"
-        return .result(dialog: "Starting narration of \(title).")
+        return .result(dialog: "Opening your library. Select a book to listen to.")
     }
 }

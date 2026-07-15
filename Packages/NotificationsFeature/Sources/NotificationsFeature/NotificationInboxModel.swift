@@ -34,6 +34,7 @@ public final class NotificationInboxModel {
     // MARK: - Private
 
     private let repository: any NotificationInboxRepository
+    private var lifecycleGeneration = 0
 
     // MARK: - Init
 
@@ -46,21 +47,29 @@ public final class NotificationInboxModel {
     /// Fetches the notification inbox, falling back to cached data on error.
     public func fetch() async {
         guard !isLoading else { return }
+        let generation = lifecycleGeneration
         isLoading = true
         error = nil
-        defer { isLoading = false }
+        defer {
+            if lifecycleGeneration == generation {
+                isLoading = false
+            }
+        }
 
         do {
             let response = try await repository.fetchNotifications()
+            guard lifecycleGeneration == generation, !Task.isCancelled else { return }
             notifications = response.notifications
             unreadCount = response.unreadCount
             isOffline = false
         } catch let appError as AppError {
+            guard lifecycleGeneration == generation, !Task.isCancelled else { return }
             if notifications.isEmpty {
                 error = appError
             }
             isOffline = !notifications.isEmpty
         } catch {
+            guard lifecycleGeneration == generation, !Task.isCancelled else { return }
             if notifications.isEmpty {
                 self.error = .offline
             }
@@ -72,6 +81,7 @@ public final class NotificationInboxModel {
     /// Rolls back on failure.
     public func markAllRead() async {
         guard unreadCount > 0 else { return }
+        let generation = lifecycleGeneration
 
         // Optimistic update
         let previousNotifications = notifications
@@ -91,16 +101,29 @@ public final class NotificationInboxModel {
 
         do {
             try await repository.markAllRead()
+            guard lifecycleGeneration == generation, !Task.isCancelled else { return }
         } catch let appError as AppError {
+            guard lifecycleGeneration == generation, !Task.isCancelled else { return }
             // Roll back on failure
             notifications = previousNotifications
             unreadCount = previousUnreadCount
             error = appError
         } catch {
+            guard lifecycleGeneration == generation, !Task.isCancelled else { return }
             notifications = previousNotifications
             unreadCount = previousUnreadCount
             self.error = .offline
         }
+    }
+
+    /// Invalidates in-flight results and clears every account-private value.
+    public func cancelAndReset() {
+        lifecycleGeneration &+= 1
+        notifications = []
+        unreadCount = 0
+        isLoading = false
+        error = nil
+        isOffline = false
     }
 
     // MARK: - Deep-link routing

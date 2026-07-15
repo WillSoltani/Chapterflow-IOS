@@ -10,6 +10,7 @@
 
 import SwiftUI
 import Testing
+import Persistence
 @testable import LibraryFeature
 
 // MARK: - Shared render-guard harness
@@ -64,7 +65,9 @@ struct LibraryRenderGuardTests {
         assertMatrix("Library (loaded)") {
             LibraryView(
                 repository: PreviewData.loadedRepo,
-                bookDetailRepository: PreviewData.bookDetailInProgress
+                bookDetailRepository: PreviewData.bookDetailInProgress,
+                preferences: AppPreferences(keyPrefix: "test.library-render."),
+                store: KeyValueStore(keyPrefix: "test.library-render.")
             )
         }
     }
@@ -74,7 +77,9 @@ struct LibraryRenderGuardTests {
         assertMatrix("Library (free-locked)") {
             LibraryView(
                 repository: PreviewData.loadedRepo,
-                bookDetailRepository: PreviewData.bookDetailFreeLocked
+                bookDetailRepository: PreviewData.bookDetailFreeLocked,
+                preferences: AppPreferences(keyPrefix: "test.library-render."),
+                store: KeyValueStore(keyPrefix: "test.library-render.")
             )
         }
     }

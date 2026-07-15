@@ -3,80 +3,21 @@ import SwiftData
 import Models
 import Networking
 import Persistence
+import CoreKit
 import os
 
-// MARK: - Background URLSession download bridge
+// MARK: - DownloadManager
 
-/// A `URLSessionDownloadDelegate`-based session bridge that converts completion
-/// callbacks into Swift async continuations.  Audio segment files are moved to
-/// their final `FileStore` location inside the delegate method so the temp file
-/// is never deleted before it can be read.
-private final class SegmentDownloadSession: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
-    typealias SegmentContinuation = CheckedContinuation<Void, any Error>
-
-    private struct PendingTask {
-        let continuation: SegmentContinuation
-        let destURL: URL
-    }
-
-    nonisolated(unsafe) private var pending: [Int: PendingTask] = [:]
-    private let lock = NSLock()
-
-    lazy var urlSession: URLSession = {
-        let id = "com.chapterflow.ios.audio-segment-dl"
-        var config = URLSessionConfiguration.background(withIdentifier: id)
-        config.networkServiceType = .responsiveAV
-        config.waitsForConnectivity = true
-        config.isDiscretionary = false
-        return URLSession(configuration: config, delegate: self, delegateQueue: nil)
-    }()
-
-    /// Downloads `url` and atomically moves the result to `destURL`.
-    func download(from url: URL, to destURL: URL) async throws {
-        try await withCheckedThrowingContinuation { (continuation: SegmentContinuation) in
-            let task = urlSession.downloadTask(with: url)
-            lock.lock()
-            pending[task.taskIdentifier] = PendingTask(continuation: continuation, destURL: destURL)
-            lock.unlock()
-            task.resume()
-        }
-    }
-
-    nonisolated func urlSession(
-        _ session: URLSession,
-        downloadTask: URLSessionDownloadTask,
-        didFinishDownloadingTo location: URL
-    ) {
-        lock.lock()
-        let entry = pending.removeValue(forKey: downloadTask.taskIdentifier)
-        lock.unlock()
-        guard let entry else { return }
-        do {
-            let fm = FileManager.default
-            if fm.fileExists(atPath: entry.destURL.path) {
-                try fm.removeItem(at: entry.destURL)
-            }
-            try fm.moveItem(at: location, to: entry.destURL)
-            entry.continuation.resume()
-        } catch {
-            entry.continuation.resume(throwing: error)
-        }
-    }
-
-    nonisolated func urlSession(
-        _ session: URLSession,
-        task: URLSessionTask,
-        didCompleteWithError error: (any Error)?
-    ) {
-        guard let error else { return }
-        lock.lock()
-        let entry = pending.removeValue(forKey: task.taskIdentifier)
-        lock.unlock()
-        entry?.continuation.resume(throwing: error)
-    }
+enum DownloadManagerLifecycleState: Sendable, Equatable {
+    case active
+    case paused
+    case invalidated
 }
 
-// MARK: - DownloadManager
+struct DownloadManagerLifecycleSnapshot: Sendable, Equatable {
+    let state: DownloadManagerLifecycleState
+    let activeTaskCount: Int
+}
 
 /// An actor that manages book downloads: fetches manifests, chapters, quizzes,
 /// and audio segments; stores them in SwiftData / FileStore; tracks progress via
@@ -86,17 +27,34 @@ private final class SegmentDownloadSession: NSObject, URLSessionDownloadDelegate
 /// delete downloads without taking a dependency on the full actor.
 public actor DownloadManager: DownloadInfoProviding {
 
+    typealias DownloadOperation = @Sendable (
+        _ bookID: String,
+        _ userID: String,
+        _ continuation: AsyncStream<DownloadProgress>.Continuation
+    ) async throws -> Void
+
     // MARK: - Dependencies
 
     let container: ModelContainer
     let fileStore: FileStore
     let apiClient: any APIClientProtocol
     let preferences: AppPreferences
-    private let segmentSession: SegmentDownloadSession
+    private let workPermit: SessionWorkPermit
+    private let segmentSession: any SegmentDownloading
+    private let downloadOperation: DownloadOperation?
+    private let beforeDeleteCommit: (@Sendable () async -> Void)?
+    private let deleteCommitObserver: (@Sendable () -> Void)?
+
+    /// Privacy-safe identifier for the account-bound background URLSession.
+    public nonisolated let backgroundSessionIdentifier: String
 
     // MARK: - Active task registry
 
     var activeTasks: [String: Task<Void, Never>] = [:]
+    private var activeTaskIDs: [String: UUID] = [:]
+    private var lifecycleState: DownloadManagerLifecycleState = .active
+
+    var acceptsNewWork: Bool { lifecycleState == .active }
 
     // MARK: - Logger
 
@@ -105,16 +63,84 @@ public actor DownloadManager: DownloadInfoProviding {
     // MARK: - Init
 
     public init(
-        container: ModelContainer,
-        fileStore: FileStore,
+        resources: AccountPersistenceResources,
         apiClient: any APIClientProtocol,
-        preferences: AppPreferences
+        preferences: AppPreferences,
+        workPermit: SessionWorkPermit = SessionWorkPermit()
     ) {
-        self.container = container
-        self.fileStore = fileStore
+        let segmentSession = SegmentDownloadSession(
+            accountNamespace: resources.storageNamespace
+        )
+        self.container = resources.controller.container
+        self.fileStore = resources.downloadFileStore
         self.apiClient = apiClient
         self.preferences = preferences
-        self.segmentSession = SegmentDownloadSession()
+        self.workPermit = workPermit
+        self.segmentSession = segmentSession
+        self.downloadOperation = nil
+        self.beforeDeleteCommit = nil
+        self.deleteCommitObserver = nil
+        self.backgroundSessionIdentifier = segmentSession.sessionIdentifier
+    }
+
+    init(
+        resources: AccountPersistenceResources,
+        apiClient: any APIClientProtocol,
+        preferences: AppPreferences,
+        segmentSession: any SegmentDownloading,
+        downloadOperation: DownloadOperation?,
+        beforeDeleteCommit: (@Sendable () async -> Void)? = nil,
+        deleteCommitObserver: (@Sendable () -> Void)? = nil,
+        workPermit: SessionWorkPermit = SessionWorkPermit()
+    ) {
+        self.container = resources.controller.container
+        self.fileStore = resources.downloadFileStore
+        self.apiClient = apiClient
+        self.preferences = preferences
+        self.segmentSession = segmentSession
+        self.downloadOperation = downloadOperation
+        self.beforeDeleteCommit = beforeDeleteCommit
+        self.deleteCommitObserver = deleteCommitObserver
+        self.workPermit = workPermit
+        self.backgroundSessionIdentifier = segmentSession.sessionIdentifier
+    }
+
+    var lifecycleSnapshotForTesting: DownloadManagerLifecycleSnapshot {
+        DownloadManagerLifecycleSnapshot(
+            state: lifecycleState,
+            activeTaskCount: activeTasks.count
+        )
+    }
+
+    // MARK: - Account lifetime
+
+    /// Cancels and awaits every tracked download while continuing to accept future work.
+    public func cancelAll() async {
+        guard lifecycleState != .invalidated else { return }
+        await cancelAndAwaitActiveTasks(invalidateSegmentSession: false)
+    }
+
+    /// Quiesces this account's downloads. Durable records and files are retained.
+    public func pause() async {
+        guard lifecycleState == .active else { return }
+        lifecycleState = .paused
+        workPermit.quiesce()
+        await cancelAndAwaitActiveTasks(invalidateSegmentSession: false)
+    }
+
+    /// Resumes this same account's manager after a reversible pause.
+    public func resume() {
+        guard lifecycleState == .paused else { return }
+        workPermit.resume()
+        lifecycleState = .active
+    }
+
+    /// Permanently invalidates this account manager and rejects all future work.
+    public func invalidate() async {
+        guard lifecycleState != .invalidated else { return }
+        lifecycleState = .invalidated
+        workPermit.invalidate()
+        await cancelAndAwaitActiveTasks(invalidateSegmentSession: true)
     }
 
     // MARK: - Public API
@@ -123,81 +149,146 @@ public actor DownloadManager: DownloadInfoProviding {
     ///
     /// If a download is already in progress for this book, the existing task is
     /// cancelled and a new one replaces it.
-    public func downloadBook(bookId: String, userId: String) -> AsyncStream<DownloadProgress> {
-        activeTasks[bookId]?.cancel()
+    public func downloadBook(bookId: String, userId: String) async -> AsyncStream<DownloadProgress> {
+        guard lifecycleState == .active else {
+            return inactiveProgressStream(bookId: bookId)
+        }
 
-        return AsyncStream { [weak self] continuation in
-            guard let self else { return }
-            let task: Task<Void, Never> = Task { [weak self] in
-                guard let self else { return }
-                do {
+        if let existing = activeTasks.removeValue(forKey: bookId) {
+            activeTaskIDs.removeValue(forKey: bookId)
+            existing.cancel()
+            await existing.value
+        }
+
+        let stream = AsyncStream<DownloadProgress>.makeStream()
+        let taskID = UUID()
+        let operation = downloadOperation
+        let task: Task<Void, Never> = Task { [weak self] in
+            guard let self else {
+                stream.continuation.finish()
+                return
+            }
+            do {
+                if let operation {
+                    try await operation(bookId, userId, stream.continuation)
+                } else {
                     try await self.performDownload(
                         bookId: bookId,
                         userId: userId,
-                        continuation: continuation
+                        continuation: stream.continuation
                     )
-                    continuation.finish()
-                } catch is CancellationError {
-                    continuation.finish()
-                } catch {
-                    continuation.yield(DownloadProgress(
-                        bookId: bookId,
-                        phase: .failed(error.localizedDescription),
-                        fractionCompleted: 0
-                    ))
-                    continuation.finish()
                 }
+                stream.continuation.finish()
+            } catch is CancellationError {
+                stream.continuation.finish()
+            } catch {
+                stream.continuation.yield(DownloadProgress(
+                    bookId: bookId,
+                    phase: .failed(error.localizedDescription),
+                    fractionCompleted: 0
+                ))
+                stream.continuation.finish()
             }
-            Task { [weak self] in
-                await self?.storeTask(task, for: bookId)
-            }
-            continuation.onTermination = { [weak self] _ in
-                Task { await self?.cancelDownload(bookId: bookId, userId: userId) }
-            }
+            await self.downloadTaskDidFinish(bookId: bookId, taskID: taskID)
         }
-    }
-
-    private func storeTask(_ task: Task<Void, Never>, for bookId: String) {
         activeTasks[bookId] = task
+        activeTaskIDs[bookId] = taskID
+        stream.continuation.onTermination = { [weak self] termination in
+            guard case .cancelled = termination else { return }
+            Task { await self?.cancelDownload(bookId: bookId, userId: userId) }
+        }
+        return stream.stream
     }
 
     /// Cancels an in-progress download and marks it failed in the store.
     public func cancelDownload(bookId: String, userId: String) async {
-        activeTasks[bookId]?.cancel()
-        activeTasks.removeValue(forKey: bookId)
+        let task = activeTasks.removeValue(forKey: bookId)
+        activeTaskIDs.removeValue(forKey: bookId)
+        task?.cancel()
+        await task?.value
+        guard lifecycleState == .active else { return }
         let bg = BackgroundStore(modelContainer: container)
         try? await bg.markDownloadFailed(bookId: bookId, userId: userId, message: "Cancelled")
+    }
+
+    private func cancelAndAwaitActiveTasks(invalidateSegmentSession: Bool) async {
+        let retainedTasks = Array(activeTasks.values)
+        activeTasks.removeAll()
+        activeTaskIDs.removeAll()
+        retainedTasks.forEach { $0.cancel() }
+
+        if invalidateSegmentSession {
+            await segmentSession.invalidate()
+        } else {
+            await segmentSession.cancelAll()
+        }
+
+        for task in retainedTasks {
+            await task.value
+        }
+    }
+
+    private func downloadTaskDidFinish(bookId: String, taskID: UUID) {
+        guard activeTaskIDs[bookId] == taskID else { return }
+        activeTaskIDs.removeValue(forKey: bookId)
+        activeTasks.removeValue(forKey: bookId)
+    }
+
+    private func inactiveProgressStream(bookId: String) -> AsyncStream<DownloadProgress> {
+        AsyncStream { continuation in
+            continuation.yield(DownloadProgress(
+                bookId: bookId,
+                phase: .failed(DownloadError.inactive.localizedDescription),
+                fractionCompleted: 0
+            ))
+            continuation.finish()
+        }
     }
 
     // MARK: - DownloadInfoProviding
 
     public func downloadedBooks(userId: String) async -> [DownloadedBookInfo] {
+        guard lifecycleState == .active else { return [] }
         let bg = BackgroundStore(modelContainer: container)
         return (try? await bg.fetchDownloadedBooks(userId: userId)) ?? []
     }
 
     public func totalUsedBytes(userId: String) async -> Int64 {
+        guard lifecycleState == .active else { return 0 }
         let bg = BackgroundStore(modelContainer: container)
         return (try? await bg.totalDownloadBytes(userId: userId)) ?? 0
     }
 
     public func isDownloaded(bookId: String, userId: String) async -> Bool {
+        guard lifecycleState == .active else { return false }
         let bg = BackgroundStore(modelContainer: container)
         return (try? await bg.isDownloaded(bookId: bookId, userId: userId)) ?? false
     }
 
     public func deleteBookDownload(bookId: String, userId: String) async throws {
-        activeTasks[bookId]?.cancel()
-        activeTasks.removeValue(forKey: bookId)
+        guard lifecycleState == .active else { throw DownloadError.inactive }
+        let ticket = try workPermit.begin()
+        let task = activeTasks.removeValue(forKey: bookId)
+        activeTaskIDs.removeValue(forKey: bookId)
+        task?.cancel()
+        await task?.value
         let bg = BackgroundStore(modelContainer: container)
         let segmentIds = try await bg.segmentIds(bookId: bookId, userId: userId)
-        for segId in segmentIds {
-            try? fileStore.remove(named: CachedDownloadedSegment.fileStoreKey(segmentId: segId))
+        await beforeDeleteCommit?()
+        try workPermit.commit(ticket) {
+            guard lifecycleState == .active else { throw DownloadError.inactive }
+            deleteCommitObserver?()
+            for segmentID in segmentIds {
+                try? fileStore.remove(
+                    named: CachedDownloadedSegment.fileStoreKey(segmentId: segmentID)
+                )
+            }
+            try deleteBookDownloadRecords(bookId: bookId, userId: userId)
         }
-        try await bg.deleteBookDownloadRecords(bookId: bookId, userId: userId)
     }
 
     public func deleteAllBookDownloads(userId: String) async throws {
+        guard lifecycleState == .active else { throw DownloadError.inactive }
         let bg = BackgroundStore(modelContainer: container)
         let books = (try? await bg.fetchDownloadedBooks(userId: userId)) ?? []
         for book in books {
@@ -205,10 +296,34 @@ public actor DownloadManager: DownloadInfoProviding {
         }
     }
 
+    private func deleteBookDownloadRecords(bookId: String, userId: String) throws {
+        let context = ModelContext(container)
+        do {
+            let uid = userId
+            let bid = bookId
+            try context.delete(
+                model: CachedDownloadedSegment.self,
+                where: #Predicate { $0.bookId == bid && $0.userId == uid }
+            )
+            let rowID = CachedBookDownload.makeRowId(userId: userId, bookId: bookId)
+            let descriptor = FetchDescriptor<CachedBookDownload>(
+                predicate: #Predicate { $0.rowId == rowID }
+            )
+            if let record = try context.fetch(descriptor).first {
+                context.delete(record)
+            }
+            try context.save()
+        } catch {
+            context.rollback()
+            throw error
+        }
+    }
+
     // MARK: - Storage accounting + eviction
 
     /// Enforces the storage cap by evicting the oldest completed downloads (LRU).
     public func enforceStorageCap(userId: String) async {
+        guard lifecycleState == .active else { return }
         guard let limitBytes = await MainActor.run(body: { preferences.downloadStorageLimitBytes })
         else { return }
         let total = await totalUsedBytes(userId: userId)
@@ -251,6 +366,7 @@ public actor DownloadManager: DownloadInfoProviding {
         let manifest: BookManifest = try await apiClient.send(
             Endpoints.getManifestForDownload(bookId: bookId)
         )
+        try Task.checkCancellation()
         let bg = BackgroundStore(modelContainer: container)
         try await bg.upsertManifest(manifest, userId: userId)
 
@@ -361,6 +477,7 @@ public actor DownloadManager: DownloadInfoProviding {
         let response: ChapterResponse = try await apiClient.send(
             Endpoints.getChapterForDownload(bookId: bookId, chapterNumber: chapterNumber)
         )
+        try Task.checkCancellation()
         try await bg.upsertChapter(response.chapter, userId: userId, bookId: bookId)
 
         // Quiz
@@ -368,9 +485,12 @@ public actor DownloadManager: DownloadInfoProviding {
             let quizResponse: QuizResponse = try await apiClient.send(
                 Endpoints.getQuizForDownload(bookId: bookId, chapterNumber: chapterNumber)
             )
+            try Task.checkCancellation()
             try await bg.upsertQuiz(
                 quizResponse.quiz, userId: userId, bookId: bookId, chapterNumber: chapterNumber
             )
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             // Quiz may not exist for every chapter — log and continue
             logger.info("No quiz for chapter \(chapterNumber) of \(bookId): \(error)")
@@ -391,6 +511,7 @@ public actor DownloadManager: DownloadInfoProviding {
         let fileKey = CachedDownloadedSegment.fileStoreKey(segmentId: segment.segmentId)
         let destURL = fileStore.url(for: fileKey)
         try await segmentSession.download(from: segment.url, to: destURL)
+        try Task.checkCancellation()
         let fileSize = (try? FileManager.default.attributesOfItem(atPath: destURL.path)[.size] as? Int64) ?? 0
         try await bg.insertDownloadedSegment(
             segmentId: segment.segmentId,
@@ -405,13 +526,16 @@ public actor DownloadManager: DownloadInfoProviding {
 
 // MARK: - Download errors
 
-public enum DownloadError: LocalizedError {
+public enum DownloadError: LocalizedError, Sendable {
     case wifiRequired
+    case inactive
 
     public var errorDescription: String? {
         switch self {
         case .wifiRequired:
             return "Download over Wi-Fi required. Connect to Wi-Fi or disable the Wi-Fi-only setting."
+        case .inactive:
+            return "Downloads are unavailable for this session."
         }
     }
 }

@@ -22,6 +22,34 @@ private let sampleNotifications: [AppNotification] = [
     ),
 ]
 
+private actor SuspendedNotificationInboxRepository: NotificationInboxRepository {
+    private var fetchContinuation: CheckedContinuation<NotificationsResponse, Never>?
+    private var startWaiters: [CheckedContinuation<Void, Never>] = []
+
+    func fetchNotifications() async throws -> NotificationsResponse {
+        await withCheckedContinuation { continuation in
+            fetchContinuation = continuation
+            let waiters = startWaiters
+            startWaiters.removeAll()
+            waiters.forEach { $0.resume() }
+        }
+    }
+
+    func markAllRead() async throws {}
+
+    func waitUntilFetchStarts() async {
+        if fetchContinuation != nil { return }
+        await withCheckedContinuation { continuation in
+            startWaiters.append(continuation)
+        }
+    }
+
+    func resumeFetch(with response: NotificationsResponse) {
+        fetchContinuation?.resume(returning: response)
+        fetchContinuation = nil
+    }
+}
+
 @Suite("NotificationInboxModel — fetch")
 struct NotificationInboxModelFetchTests {
 
@@ -66,6 +94,27 @@ struct NotificationInboxModelFetchTests {
         await model.fetch()
         #expect(model.notifications.count == 2)
         #expect(model.isOffline == true)
+    }
+
+    @Test("cancelAndReset blocks a late fetch result from publishing")
+    @MainActor
+    func resetRejectsLateFetch() async {
+        let repo = SuspendedNotificationInboxRepository()
+        let model = NotificationInboxModel(repository: repo)
+        let fetchTask = Task { await model.fetch() }
+        await repo.waitUntilFetchStarts()
+
+        model.cancelAndReset()
+        await repo.resumeFetch(
+            with: NotificationsResponse(notifications: sampleNotifications, unreadCount: 1)
+        )
+        await fetchTask.value
+
+        #expect(model.notifications.isEmpty)
+        #expect(model.unreadCount == 0)
+        #expect(model.isLoading == false)
+        #expect(model.error == nil)
+        #expect(model.isOffline == false)
     }
 }
 

@@ -4,15 +4,6 @@ import SwiftUI
 import Models
 import Persistence
 
-/// Phase of the audio player presented to the UI.
-public enum AudioPlayerPhase: Sendable, Equatable {
-    case idle
-    case loading
-    case ready
-    case recovering
-    case error(String)
-}
-
 /// `@MainActor @Observable` model that drives the audio player UI.
 ///
 /// Owns the ``AudioPlayer`` actor and translates its `AsyncStream` of
@@ -56,6 +47,22 @@ public final class AudioPlayerModel {
     private var sessionId: String?
     private var listeningStartTime: Double = 0
     private var sessionHeartbeatTask: Task<Void, Never>?
+    private var playerUpdatesTask: Task<Void, Never>?
+    private var audioSessionSetupTask: Task<Void, Never>?
+    private var interruptionTask: Task<Void, Never>?
+    private var routeChangeTask: Task<Void, Never>?
+    private var prefetchTask: Task<Void, Never>?
+    private var sessionEventTasks: [UUID: Task<Void, Never>] = [:]
+    private var remoteCommandTargets: [(command: MPRemoteCommand, target: Any)] = []
+    private var lifecycleGeneration: UInt64 = 0
+    private var isPausedForSessionBoundary = false
+    private var isStoppedForSessionBoundary = false
+    @ObservationIgnored
+    var beforeResumeActivationForTest: (@MainActor @Sendable () async -> Void)?
+
+    private var acceptsSessionWork: Bool {
+        !isPausedForSessionBoundary && !isStoppedForSessionBoundary
+    }
 
     // MARK: - Init
 
@@ -63,10 +70,15 @@ public final class AudioPlayerModel {
         self.player = player
         self.preferences = preferences
         self.rate = Float(preferences.audioSpeed)
-        Task { await self.setupAudioSession() }
-        Task { await self.observePlayerUpdates() }
-        Task { await self.setupRemoteCommands() }
-        Task { await self.setupInterruptionObservers() }
+        audioSessionSetupTask = Task { @MainActor [weak self] in
+            guard !Task.isCancelled, let self, self.acceptsSessionWork else { return }
+            self.setupAudioSession()
+        }
+        playerUpdatesTask = Task { [weak self] in
+            await self?.observePlayerUpdates()
+        }
+        setupRemoteCommands()
+        setupInterruptionObservers()
     }
 
     // MARK: - Public API
@@ -83,6 +95,8 @@ public final class AudioPlayerModel {
         offlineDirectory: URL? = nil,
         startAt: Double = 0
     ) async {
+        guard acceptsSessionWork else { return }
+        let generation = lifecycleGeneration
         self.offlineDirectory = offlineDirectory
         phase = .loading
         sessionId = UUID().uuidString
@@ -93,17 +107,31 @@ public final class AudioPlayerModel {
                 offlineDirectory: offlineDirectory,
                 startAt: startAt
             )
+            guard generation == lifecycleGeneration, acceptsSessionWork else {
+                throw CancellationError()
+            }
             await player.setRate(rate)
+            guard generation == lifecycleGeneration, acceptsSessionWork else {
+                throw CancellationError()
+            }
             await player.play()
+            guard generation == lifecycleGeneration, acceptsSessionWork else {
+                throw CancellationError()
+            }
             postSessionEvent("start", seconds: nil)
             startHeartbeat()
-            Task { await player.prefetchNextChapter() }
+            prefetchTask?.cancel()
+            prefetchTask = Task { [player] in await player.prefetchNextChapter() }
         } catch {
-            phase = .error(error.localizedDescription)
+            if generation == lifecycleGeneration, acceptsSessionWork,
+               !(error is CancellationError) {
+                phase = .error(error.localizedDescription)
+            }
         }
     }
 
     public func togglePlayPause() async {
+        guard acceptsSessionWork else { return }
         if isPlaying {
             await player.pause()
             postSessionEvent("pause", seconds: currentGlobalTime - listeningStartTime)
@@ -115,19 +143,29 @@ public final class AudioPlayerModel {
     }
 
     public func seek(to globalTime: Double) async {
+        guard acceptsSessionWork else { return }
         await player.seek(to: globalTime)
     }
 
-    public func skipForward() async { await player.skipForward() }
-    public func skipBackward() async { await player.skipBackward() }
+    public func skipForward() async {
+        guard acceptsSessionWork else { return }
+        await player.skipForward()
+    }
+
+    public func skipBackward() async {
+        guard acceptsSessionWork else { return }
+        await player.skipBackward()
+    }
 
     public func setRate(_ newRate: Float) async {
+        guard acceptsSessionWork else { return }
         rate = newRate
         preferences.audioSpeed = Double(newRate)
         await player.setRate(newRate)
     }
 
     public func setSleepTimer(_ option: SleepTimerOption) async {
+        guard acceptsSessionWork else { return }
         sleepTimer = option
         await player.setSleepTimer(option)
     }
@@ -139,13 +177,155 @@ public final class AudioPlayerModel {
         to directory: URL,
         progress: (@Sendable (Double) -> Void)? = nil
     ) async throws {
+        guard acceptsSessionWork else { throw CancellationError() }
+        let generation = lifecycleGeneration
         try await player.downloadChapter(
             bookId: bookId,
             chapterNumber: chapterNumber,
             to: directory,
             progress: progress
         )
+        guard generation == lifecycleGeneration, acceptsSessionWork else {
+            throw CancellationError()
+        }
         isDownloaded = true
+    }
+
+    /// Reversibly quiesces all playback entry points and joins the retained
+    /// account work owned by this model. The loaded plan remains isolated in
+    /// this scope so a failed sign-out can resume it.
+    @discardableResult
+    public func pauseForSessionBoundary() async -> Bool {
+        guard !isStoppedForSessionBoundary else { return false }
+        guard !isPausedForSessionBoundary else { return false }
+
+        lifecycleGeneration &+= 1
+        isPausedForSessionBoundary = true
+        stopHeartbeat()
+
+        var tasks: [Task<Void, Never>] = []
+        if let task = playerUpdatesTask { tasks.append(task) }
+        if let task = audioSessionSetupTask { tasks.append(task) }
+        if let task = interruptionTask { tasks.append(task) }
+        if let task = routeChangeTask { tasks.append(task) }
+        if let task = prefetchTask { tasks.append(task) }
+        tasks.append(contentsOf: sessionEventTasks.values)
+        tasks.forEach { $0.cancel() }
+
+        playerUpdatesTask = nil
+        audioSessionSetupTask = nil
+        interruptionTask = nil
+        routeChangeTask = nil
+        prefetchTask = nil
+        sessionEventTasks.removeAll(keepingCapacity: false)
+        detachRemoteCommands()
+
+        let shouldResumePlayback = await player.pauseForSessionBoundary()
+        for task in tasks { await task.value }
+
+        isPlaying = false
+        updateNowPlayingPlayingState(false)
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        return shouldResumePlayback
+    }
+
+    /// Restores the same isolated account scope after a cancelled sign-out.
+    public func resumeAfterSessionBoundary(shouldResumePlayback: Bool) async {
+        guard !isStoppedForSessionBoundary, isPausedForSessionBoundary else { return }
+
+        let pausedGeneration = lifecycleGeneration
+        await player.resumeAfterSessionBoundary()
+        await beforeResumeActivationForTest?()
+        guard pausedGeneration == lifecycleGeneration,
+              !isStoppedForSessionBoundary,
+              isPausedForSessionBoundary
+        else { return }
+
+        lifecycleGeneration &+= 1
+        isPausedForSessionBoundary = false
+        let resumedGeneration = lifecycleGeneration
+
+        audioSessionSetupTask = Task { @MainActor [weak self] in
+            guard !Task.isCancelled, let self, self.acceptsSessionWork else { return }
+            self.setupAudioSession()
+        }
+        playerUpdatesTask = Task { [weak self] in
+            await self?.observePlayerUpdates()
+        }
+        setupRemoteCommands()
+        setupInterruptionObservers()
+
+        await player.setRate(rate)
+        guard resumedGeneration == lifecycleGeneration, acceptsSessionWork else { return }
+        await player.setSleepTimer(sleepTimer)
+        guard resumedGeneration == lifecycleGeneration, acceptsSessionWork else { return }
+        if let plan {
+            updateNowPlaying(plan: plan, time: currentGlobalTime, timeline: timeline)
+        }
+        if shouldResumePlayback {
+            await player.play()
+            guard resumedGeneration == lifecycleGeneration, acceptsSessionWork else { return }
+            isPlaying = true
+            updateNowPlayingPlayingState(true)
+            listeningStartTime = currentGlobalTime
+            startHeartbeat()
+        }
+    }
+
+    /// Irreversibly stops this account's playback work and clears all state
+    /// that could otherwise remain visible after an account transition.
+    ///
+    /// A failed sign-out must use a reversible pause path instead. This method
+    /// is reserved for a finalized session boundary and is safe to call more
+    /// than once.
+    public func stopForSessionBoundary() async {
+        lifecycleGeneration &+= 1
+        isPausedForSessionBoundary = true
+        isStoppedForSessionBoundary = true
+
+        var tasks: [Task<Void, Never>] = []
+        if let task = sessionHeartbeatTask { tasks.append(task) }
+        if let task = playerUpdatesTask { tasks.append(task) }
+        if let task = audioSessionSetupTask { tasks.append(task) }
+        if let task = interruptionTask { tasks.append(task) }
+        if let task = routeChangeTask { tasks.append(task) }
+        if let task = prefetchTask { tasks.append(task) }
+        tasks.append(contentsOf: sessionEventTasks.values)
+        tasks.forEach { $0.cancel() }
+
+        sessionHeartbeatTask = nil
+        playerUpdatesTask = nil
+        audioSessionSetupTask = nil
+        interruptionTask = nil
+        routeChangeTask = nil
+        prefetchTask = nil
+        sessionEventTasks.removeAll(keepingCapacity: false)
+
+        detachRemoteCommands()
+
+        await player.stopForSessionBoundary()
+        for task in tasks { await task.value }
+
+        phase = .idle
+        currentGlobalTime = 0
+        timeline = .init(durations: [])
+        currentSegmentIndex = 0
+        isPlaying = false
+        plan = nil
+        sleepTimer = .off
+        isDownloaded = false
+        rate = 1.0
+        offlineDirectory = nil
+        sessionId = nil
+        listeningStartTime = 0
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+
+        #if canImport(UIKit)
+        try? AVAudioSession.sharedInstance().setActive(
+            false,
+            options: .notifyOthersOnDeactivation
+        )
+        #endif
     }
 
     // MARK: - Observer loop
@@ -156,7 +336,8 @@ public final class AudioPlayerModel {
         }
     }
 
-    private func handle(_ update: AudioPlaybackUpdate) {
+    func handle(_ update: AudioPlaybackUpdate) {
+        guard acceptsSessionWork else { return }
         switch update {
         case .planLoaded(let newPlan, let newTimeline):
             plan = newPlan
@@ -201,7 +382,7 @@ public final class AudioPlayerModel {
         sessionHeartbeatTask = Task {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(30))
-                guard !Task.isCancelled else { break }
+                guard !Task.isCancelled, self.acceptsSessionWork else { break }
                 let elapsed = self.currentGlobalTime - self.listeningStartTime
                 self.postSessionEvent("heartbeat", seconds: elapsed)
                 self.listeningStartTime = self.currentGlobalTime
@@ -215,70 +396,58 @@ public final class AudioPlayerModel {
     }
 
     private func postSessionEvent(_ event: String, seconds: Double?) {
-        Task {
+        guard acceptsSessionWork else { return }
+        let taskID = UUID()
+        sessionEventTasks[taskID] = Task { @MainActor [weak self, player, sessionId] in
             await player.postListeningSession(
                 event: event,
                 sessionId: sessionId,
                 listeningSeconds: seconds
             )
+            self?.sessionEventTasks.removeValue(forKey: taskID)
         }
-    }
-
-    // MARK: - AVAudioSession
-
-    private func setupAudioSession() async {
-        #if canImport(UIKit)
-        do {
-            try AVAudioSession.sharedInstance().setCategory(
-                .playback,
-                mode: .spokenAudio,
-                options: []
-            )
-            try AVAudioSession.sharedInstance().setActive(true)
-        } catch {
-            // Non-fatal: audio still works but won't respect background audio best practices.
-        }
-        #endif
     }
 
     // MARK: - Interruption / route change
 
-    private func setupInterruptionObservers() async {
+    private func setupInterruptionObservers() {
         #if canImport(UIKit)
         // Interruptions (phone calls etc.)
-        Task {
+        interruptionTask = Task { [weak self] in
             for await notification in NotificationCenter.default.notifications(
                 named: AVAudioSession.interruptionNotification
             ) {
+                guard let self, self.acceptsSessionWork else { break }
                 guard let info = notification.userInfo,
                       let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
                       let type = AVAudioSession.InterruptionType(rawValue: typeValue)
                 else { continue }
 
                 if type == .began {
-                    await player.pause()
+                    await self.player.pause()
                 } else if type == .ended {
                     let optionsValue = info[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
                     let opts = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
                     if opts.contains(.shouldResume) {
-                        await player.play()
+                        await self.player.play()
                     }
                 }
             }
         }
 
         // Route changes (headphones unplugged → pause)
-        Task {
+        routeChangeTask = Task { [weak self] in
             for await notification in NotificationCenter.default.notifications(
                 named: AVAudioSession.routeChangeNotification
             ) {
+                guard let self, self.acceptsSessionWork else { break }
                 guard let info = notification.userInfo,
                       let reasonValue = info[AVAudioSessionRouteChangeReasonKey] as? UInt,
                       let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue)
                 else { continue }
 
                 if reason == .oldDeviceUnavailable {
-                    await player.pause()
+                    await self.player.pause()
                 }
             }
         }
@@ -322,87 +491,103 @@ public final class AudioPlayerModel {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 
-    // MARK: - Artwork rendering
-
-    #if canImport(UIKit)
-    @MainActor
-    private func makeArtworkImage(emoji: String?, colorHex: String?) -> UIImage? {
-        let resolvedEmoji = emoji ?? "📚"
-        let color = Color(hex: colorHex ?? "#3B82F6")
-        let view = AudioArtworkView(emoji: resolvedEmoji, color: color)
-            .frame(width: 600, height: 600)
-        let renderer = ImageRenderer(content: view)
-        renderer.scale = 2.0
-        return renderer.uiImage
-    }
-    #endif
-
     // MARK: - MPRemoteCommandCenter
 
-    private func setupRemoteCommands() async {
+    private func setupRemoteCommands() {
+        guard acceptsSessionWork, remoteCommandTargets.isEmpty else { return }
         let center = MPRemoteCommandCenter.shared()
 
-        center.playCommand.addTarget { [weak self] _ in
+        let playTarget = center.playCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
-            Task { @MainActor in await self.player.play() }
+            Task { @MainActor [weak self] in
+                guard let self, self.acceptsSessionWork else { return }
+                await self.player.play()
+            }
             return .success
         }
+        remoteCommandTargets.append((center.playCommand, playTarget))
 
-        center.pauseCommand.addTarget { [weak self] _ in
+        let pauseTarget = center.pauseCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
-            Task { @MainActor in await self.player.pause() }
+            Task { @MainActor [weak self] in
+                guard let self, self.acceptsSessionWork else { return }
+                await self.player.pause()
+            }
             return .success
         }
+        remoteCommandTargets.append((center.pauseCommand, pauseTarget))
 
-        center.togglePlayPauseCommand.addTarget { [weak self] _ in
+        let toggleTarget = center.togglePlayPauseCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
-            Task { @MainActor in await self.togglePlayPause() }
+            Task { @MainActor [weak self] in
+                guard let self, self.acceptsSessionWork else { return }
+                await self.togglePlayPause()
+            }
             return .success
         }
+        remoteCommandTargets.append((center.togglePlayPauseCommand, toggleTarget))
 
         center.skipForwardCommand.preferredIntervals = [15]
-        center.skipForwardCommand.addTarget { [weak self] _ in
+        let skipForwardTarget = center.skipForwardCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
-            Task { @MainActor in await self.skipForward() }
+            Task { @MainActor [weak self] in
+                guard let self, self.acceptsSessionWork else { return }
+                await self.skipForward()
+            }
             return .success
         }
+        remoteCommandTargets.append((center.skipForwardCommand, skipForwardTarget))
 
         center.skipBackwardCommand.preferredIntervals = [15]
-        center.skipBackwardCommand.addTarget { [weak self] _ in
+        let skipBackwardTarget = center.skipBackwardCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
-            Task { @MainActor in await self.skipBackward() }
+            Task { @MainActor [weak self] in
+                guard let self, self.acceptsSessionWork else { return }
+                await self.skipBackward()
+            }
             return .success
         }
+        remoteCommandTargets.append((center.skipBackwardCommand, skipBackwardTarget))
 
-        center.changePlaybackPositionCommand.addTarget { [weak self] event in
+        let positionTarget = center.changePlaybackPositionCommand.addTarget { [weak self] event in
             guard let self, let e = event as? MPChangePlaybackPositionCommandEvent else {
                 return .commandFailed
             }
-            Task { @MainActor in await self.seek(to: e.positionTime) }
+            Task { @MainActor [weak self] in
+                guard let self, self.acceptsSessionWork else { return }
+                await self.seek(to: e.positionTime)
+            }
             return .success
         }
+        remoteCommandTargets.append((center.changePlaybackPositionCommand, positionTarget))
 
         center.changePlaybackRateCommand.supportedPlaybackRates = [0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
-        center.changePlaybackRateCommand.addTarget { [weak self] event in
+        let rateTarget = center.changePlaybackRateCommand.addTarget { [weak self] event in
             guard let self, let e = event as? MPChangePlaybackRateCommandEvent else {
                 return .commandFailed
             }
-            Task { @MainActor in await self.setRate(Float(e.playbackRate)) }
+            Task { @MainActor [weak self] in
+                guard let self, self.acceptsSessionWork else { return }
+                await self.setRate(Float(e.playbackRate))
+            }
             return .success
         }
+        remoteCommandTargets.append((center.changePlaybackRateCommand, rateTarget))
     }
-}
 
-// MARK: - Color hex helper
+    private func detachRemoteCommands() {
+        for entry in remoteCommandTargets {
+            entry.command.removeTarget(entry.target)
+        }
+        remoteCommandTargets.removeAll(keepingCapacity: false)
+    }
 
-private extension Color {
-    init(hex: String) {
-        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-        var int: UInt64 = 0
-        Scanner(string: hex).scanHexInt64(&int)
-        let r = Double((int >> 16) & 0xFF) / 255
-        let g = Double((int >> 8) & 0xFF) / 255
-        let b = Double(int & 0xFF) / 255
-        self.init(red: r, green: g, blue: b)
+    /// Deterministic package-test evidence that every retained lifecycle task
+    /// and command target has been detached.
+    var hasRetainedSessionWorkForTest: Bool {
+        sessionHeartbeatTask != nil || playerUpdatesTask != nil ||
+            audioSessionSetupTask != nil || interruptionTask != nil ||
+            routeChangeTask != nil || prefetchTask != nil ||
+            !sessionEventTasks.isEmpty || !remoteCommandTargets.isEmpty
     }
 }

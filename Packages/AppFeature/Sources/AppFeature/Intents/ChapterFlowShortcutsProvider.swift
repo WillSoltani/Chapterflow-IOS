@@ -15,12 +15,10 @@ struct ChapterFlowShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: StartDailyReadingIntent(),
             phrases: [
-                "Start my daily reading with \(.applicationName)",
-                "Open my reading in \(.applicationName)",
-                "Continue reading in \(.applicationName)",
-                "Resume my book in \(.applicationName)",
+                "Open my library in \(.applicationName)",
+                "Browse my books in \(.applicationName)",
             ],
-            shortTitle: "Start Reading",
+            shortTitle: "Open Library",
             systemImageName: "book.fill"
         )
         AppShortcut(
@@ -36,23 +34,11 @@ struct ChapterFlowShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: StartAudioNarrationIntent(),
             phrases: [
-                "Read with \(.applicationName)",
-                "Listen to my book with \(.applicationName)",
-                "Start narration with \(.applicationName)",
-                "Play audio in \(.applicationName)",
+                "Browse audio in \(.applicationName)",
+                "Open audio books in \(.applicationName)",
             ],
-            shortTitle: "Listen to Chapter",
+            shortTitle: "Browse Audio",
             systemImageName: "headphones"
-        )
-        AppShortcut(
-            intent: LogDailyReadingIntent(),
-            phrases: [
-                "Log my reading in \(.applicationName)",
-                "Log today's reading with \(.applicationName)",
-                "Record reading time in \(.applicationName)",
-            ],
-            shortTitle: "Log Reading",
-            systemImageName: "checkmark.circle.fill"
         )
     }
 }
@@ -72,7 +58,7 @@ public enum IntentDonationManager {
 
 // MARK: - Preview
 
-/// Design-review aid: shows the four Siri shortcut tiles so we can verify
+/// Design-review aid: shows the registered Siri shortcut tiles so we can verify
 /// icons, titles, and descriptions without launching the Shortcuts app.
 private struct ShortcutsPreviewView: View {
     private struct ShortcutTile: Identifiable {
@@ -84,14 +70,12 @@ private struct ShortcutsPreviewView: View {
     }
 
     private let tiles: [ShortcutTile] = [
-        .init(title: "Start Reading", subtitle: "Opens ChapterFlow at your last chapter",
+        .init(title: "Open Library", subtitle: "Opens your ChapterFlow library",
               icon: "book.fill", accent: .cfAccent),
         .init(title: "Review Now", subtitle: "Opens a spaced-repetition review session",
               icon: "star.fill", accent: .yellow),
-        .init(title: "Listen to Chapter", subtitle: "Starts audio narration of your chapter",
+        .init(title: "Browse Audio", subtitle: "Opens your library to choose audio",
               icon: "headphones", accent: .purple),
-        .init(title: "Log Reading", subtitle: "Records reading minutes for today",
-              icon: "checkmark.circle.fill", accent: .green),
     ]
 
     var body: some View {

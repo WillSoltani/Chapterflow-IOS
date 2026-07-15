@@ -1,13 +1,12 @@
 import AppIntents
-import Foundation
 
 // MARK: - AudioPlaybackIntents
 //
 // Compiled by BOTH the ChapterFlow app target AND the ChapterflowWidgets
-// extension target. Lets Live Activity buttons invoke audio playback actions.
-// P8.3 wires the perform() bodies; this file provides the shared types.
+// extension target. Buttons are no longer rendered, but the types remain so a
+// cached Activity can fail closed without emitting an ownerless command.
 
-/// Pauses audio narration playback. Invoked from Dynamic Island buttons.
+/// Legacy cached pause action. It cannot prove the owning account.
 public struct PauseAudioIntent: LiveActivityIntent {
     public static let title: LocalizedStringResource = "Pause audio"
     public static let isDiscoverable = false
@@ -15,17 +14,13 @@ public struct PauseAudioIntent: LiveActivityIntent {
     public init() {}
 
     public func perform() async throws -> some IntentResult {
-        // P8.3 AudioIntents implementation will post a notification or use
-        // the App Group to signal the AudioPlayerModel to pause.
-        let appGroupID = "group.com.chapterflow"
-        if let defaults = UserDefaults(suiteName: appGroupID) {
-            defaults.set("pause", forKey: "audioControlCommand")
-        }
-        return .result()
+        return .result(
+            dialog: "Audio can’t be controlled from this activity. Open ChapterFlow."
+        )
     }
 }
 
-/// Resumes audio narration playback. Invoked from Dynamic Island buttons.
+/// Legacy cached resume action. It cannot prove the owning account.
 public struct ResumeAudioIntent: LiveActivityIntent {
     public static let title: LocalizedStringResource = "Resume audio"
     public static let isDiscoverable = false
@@ -33,10 +28,8 @@ public struct ResumeAudioIntent: LiveActivityIntent {
     public init() {}
 
     public func perform() async throws -> some IntentResult {
-        let appGroupID = "group.com.chapterflow"
-        if let defaults = UserDefaults(suiteName: appGroupID) {
-            defaults.set("play", forKey: "audioControlCommand")
-        }
-        return .result()
+        return .result(
+            dialog: "Audio can’t be controlled from this activity. Open ChapterFlow."
+        )
     }
 }

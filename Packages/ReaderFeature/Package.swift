@@ -30,7 +30,9 @@ let package = Package(
             name: "ReaderFeatureTests",
             dependencies: [
                 "ReaderFeature",
+                .product(name: "CoreKit", package: "CoreKit"),
                 .product(name: "Models", package: "Models"),
+                .product(name: "Networking", package: "Networking"),
                 .product(name: "Persistence", package: "Persistence"),
             ]
         ),

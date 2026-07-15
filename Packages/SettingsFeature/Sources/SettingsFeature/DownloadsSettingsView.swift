@@ -1,4 +1,5 @@
 import SwiftUI
+import AuthKit
 import DesignSystem
 import CoreKit
 import Persistence
@@ -14,12 +15,12 @@ public struct DownloadsSettingsView: View {
     public init(
         downloadInfo: (any DownloadInfoProviding)?,
         preferences: AppPreferences,
-        userId: String
+        accountContext: AccountContext
     ) {
         _model = State(initialValue: DownloadsSettingsModel(
             downloadInfo: downloadInfo,
             preferences: preferences,
-            userId: userId
+            accountContext: accountContext
         ))
     }
 
@@ -167,7 +168,7 @@ final class DownloadsSettingsModel {
 
     private let downloadInfo: (any DownloadInfoProviding)?
     private let preferences: AppPreferences
-    private let userId: String
+    private let accountContext: AccountContext
 
     private(set) var books: [DownloadedBookInfo] = []
     private(set) var totalBytes: Int64 = 0
@@ -203,19 +204,20 @@ final class DownloadsSettingsModel {
     init(
         downloadInfo: (any DownloadInfoProviding)?,
         preferences: AppPreferences,
-        userId: String
+        accountContext: AccountContext
     ) {
         self.downloadInfo = downloadInfo
         self.preferences = preferences
-        self.userId = userId
+        self.accountContext = accountContext
     }
 
     func load() async {
         guard let info = downloadInfo else { return }
         isLoading = true
         defer { isLoading = false }
-        async let booksFetch = info.downloadedBooks(userId: userId)
-        async let bytesFetch = info.totalUsedBytes(userId: userId)
+        let accountID = accountContext.accountID
+        async let booksFetch = info.downloadedBooks(userId: accountID)
+        async let bytesFetch = info.totalUsedBytes(userId: accountID)
         let (fetchedBooks, fetchedBytes) = await (booksFetch, bytesFetch)
         books = fetchedBooks.sorted { $0.title < $1.title }
         totalBytes = fetchedBytes
@@ -223,14 +225,15 @@ final class DownloadsSettingsModel {
 
     func deleteBook(_ book: DownloadedBookInfo) async {
         guard let info = downloadInfo else { return }
-        try? await info.deleteBookDownload(bookId: book.bookId, userId: userId)
+        let accountID = accountContext.accountID
+        try? await info.deleteBookDownload(bookId: book.bookId, userId: accountID)
         books.removeAll { $0.bookId == book.bookId }
-        totalBytes = await info.totalUsedBytes(userId: userId)
+        totalBytes = await info.totalUsedBytes(userId: accountID)
     }
 
     func deleteAll() async {
         guard let info = downloadInfo else { return }
-        try? await info.deleteAllBookDownloads(userId: userId)
+        try? await info.deleteAllBookDownloads(userId: accountContext.accountID)
         books = []
         totalBytes = 0
     }
@@ -238,12 +241,14 @@ final class DownloadsSettingsModel {
 
 // MARK: - Previews
 
+#if DEBUG
+
 #Preview("Downloads Settings") {
     NavigationStack {
         DownloadsSettingsView(
             downloadInfo: nil,
             preferences: AppPreferences(defaults: UserDefaults(suiteName: "preview.downloads")!),
-            userId: "preview-user"
+            accountContext: makeSettingsPreviewAccountContext()
         )
     }
 }
@@ -253,8 +258,10 @@ final class DownloadsSettingsModel {
         DownloadsSettingsView(
             downloadInfo: nil,
             preferences: AppPreferences(defaults: UserDefaults(suiteName: "preview.downloads.dark")!),
-            userId: "preview-user"
+            accountContext: makeSettingsPreviewAccountContext()
         )
     }
     .preferredColorScheme(.dark)
 }
+
+#endif

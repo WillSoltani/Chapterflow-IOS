@@ -63,7 +63,7 @@ struct AnalyticsClientTests {
         #expect(await spy.lastBatchEventCount() == 2)
     }
 
-    @Test("a failing transport never throws and drops the batch")
+    @Test("a failing transport never throws and retains the batch")
     func nonThrowingOnFailure() async {
         let spy = SpyTransport(failure: AppError.offline)
         let client = DefaultAnalyticsClient(transport: spy, batchSize: 1, now: fixedNow)
@@ -74,7 +74,7 @@ struct AnalyticsClientTests {
         await client.deliverBeacon(name: "app_will_terminate", properties: [:])
 
         #expect(await spy.isEmpty)          // failing transport recorded nothing
-        #expect(await client.bufferedCount == 0) // batch was dropped, not requeued
+        #expect(await client.bufferedCount == 1) // retained for a later delivery attempt
     }
 
     @Test("beacons post immediately to the beacon path")
@@ -82,9 +82,16 @@ struct AnalyticsClientTests {
         let spy = SpyTransport()
         let client = DefaultAnalyticsClient(transport: spy, now: fixedNow)
 
-        await client.deliverBeacon(name: "app_will_terminate", properties: ["reason": "background"])
+        await client.deliverBeacon(
+            name: "app_will_terminate",
+            properties: ["reason": "background"]
+        )
         #expect(await spy.count == 1)
         #expect(await spy.sent.last?.path == DefaultAnalyticsClient.Path.beacon)
+        let payload = await spy.sent.last?.payload
+        let object = try? JSONSerialization.jsonObject(with: payload!) as? [String: Any]
+        #expect(object?["name"] as? String == "app_will_terminate")
+        #expect(object?["id"] == nil)
     }
 
     @Test("opting out discards buffered events and drops new ones")
@@ -118,12 +125,103 @@ struct AnalyticsClientTests {
         #expect(delivered)
     }
 
+    @Test("overlapping flushes serialize and cannot consume an unsent tail")
+    func overlappingFlushesPreserveTail() async {
+        let transport = BlockingFirstAnalyticsTransport()
+        let client = DefaultAnalyticsClient(
+            transport: transport,
+            batchSize: 100,
+            now: fixedNow
+        )
+
+        await client.record(.appOpen)
+        let firstFlush = Task { await client.flush() }
+        await transport.waitUntilFirstSendStarts()
+
+        await client.record(.signIn(method: "cognito"))
+        let overlappingFlush = Task { await client.flush() }
+        while !(await client.hasPendingFlushForTest) {
+            await Task.yield()
+        }
+
+        await transport.releaseFirstSend()
+        await firstFlush.value
+        await overlappingFlush.value
+
+        #expect(await transport.batchSizes == [1, 1])
+        #expect(await client.bufferedCount == 0)
+    }
+
+    @Test("an old flush cannot remove an event recorded after opt-out and re-opt-in")
+    func oldFlushCannotRemoveReoptedTail() async {
+        let transport = BlockingFirstAnalyticsTransport()
+        let client = DefaultAnalyticsClient(
+            transport: transport,
+            batchSize: 100,
+            now: fixedNow
+        )
+
+        await client.record(.appOpen)
+        let oldFlush = Task { await client.flush() }
+        await transport.waitUntilFirstSendStarts()
+
+        await client.setOptedOut(true)
+        await client.setOptedOut(false)
+        await client.record(.signIn(method: "new-session"))
+
+        await transport.releaseFirstSend()
+        await oldFlush.value
+        #expect(await client.bufferedCount == 1)
+
+        await client.flush()
+        #expect(await transport.batchSizes == [1, 1])
+        #expect(await client.bufferedCount == 0)
+    }
+
     @Test("NoopAnalyticsClient does nothing and never throws")
     func noop() async {
         let client = NoopAnalyticsClient()
         client.track(.appOpen)
         client.beacon("x")
         await client.flush()
+    }
+}
+
+private actor BlockingFirstAnalyticsTransport: AnalyticsTransport {
+    private(set) var batchSizes: [Int] = []
+    private var firstSendStarted = false
+    private var startWaiters: [CheckedContinuation<Void, Never>] = []
+    private var firstSendRelease: CheckedContinuation<Void, Never>?
+    private var isFirstSendReleased = false
+
+    func send(path: String, payload: Data) async throws {
+        let object = try JSONSerialization.jsonObject(with: payload) as? [String: Any]
+        let count = (object?["events"] as? [Any])?.count ?? 0
+        batchSizes.append(count)
+
+        guard batchSizes.count == 1 else { return }
+        firstSendStarted = true
+        let waiters = startWaiters
+        startWaiters.removeAll(keepingCapacity: false)
+        waiters.forEach { $0.resume() }
+        if !isFirstSendReleased {
+            await withCheckedContinuation { continuation in
+                firstSendRelease = continuation
+            }
+        }
+    }
+
+    func waitUntilFirstSendStarts() async {
+        if firstSendStarted { return }
+        await withCheckedContinuation { continuation in
+            startWaiters.append(continuation)
+        }
+    }
+
+    func releaseFirstSend() {
+        isFirstSendReleased = true
+        firstSendRelease?.resume()
+        firstSendRelease = nil
     }
 }
 
