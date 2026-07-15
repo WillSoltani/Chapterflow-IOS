@@ -122,7 +122,8 @@ enum TestFactory {
     /// An APIClient with instant backoff, backed by the stubbed session.
     static func client(
         token: String? = "initial-token",
-        maxRetries: Int = 3
+        maxRetries: Int = 3,
+        sleeper: @escaping @Sendable (Duration) async throws -> Void = { _ in }
     ) -> (APIClient, FakeTokenProvider) {
         let provider = FakeTokenProvider(token: token)
         let client = APIClient(
@@ -130,7 +131,8 @@ enum TestFactory {
             tokenProvider: provider,
             session: session(),
             maxRetries: maxRetries,
-            retryBaseDelay: .zero
+            retryBaseDelay: .zero,
+            sleeper: sleeper
         )
         return (client, provider)
     }
@@ -140,6 +142,7 @@ enum TestFactory {
         observer: any APIClientObserver,
         token: String? = "initial-token",
         maxRetries: Int = 0,
+        sleeper: @escaping @Sendable (Duration) async throws -> Void = { _ in },
         observationNow: @escaping @Sendable () -> ContinuousClock.Instant = {
             ContinuousClock().now
         }
@@ -152,6 +155,7 @@ enum TestFactory {
             observer: observer,
             maxRetries: maxRetries,
             retryBaseDelay: .zero,
+            sleeper: sleeper,
             observationNow: observationNow
         )
         return (client, provider)
@@ -177,8 +181,15 @@ enum TestFactory {
 final class SpyAPIClientObserver: APIClientObserver, @unchecked Sendable {
     private let lock = NSLock()
     private var _events: [APIRequestObservation] = []
+    private var _captureCount = 0
 
     var events: [APIRequestObservation] { lock.withLock { _events } }
+    var captureCount: Int { lock.withLock { _captureCount } }
+
+    func captureContext() -> APIObservationContext {
+        lock.withLock { _captureCount += 1 }
+        return APIObservationContext()
+    }
 
     func record(_ event: APIRequestObservation) {
         lock.withLock { _events.append(event) }

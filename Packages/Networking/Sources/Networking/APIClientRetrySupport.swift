@@ -18,6 +18,26 @@ enum APIClientTransportAttemptResult {
     case retry(nextBackoffAttempt: Int)
 }
 
+enum APIClientTerminalTransportFailurePolicy {
+    case mapToOffline
+    case preserveURLError
+}
+
+struct APIClientTransportRetryPlan {
+    let backoffAttempt: Int
+    let retryLimit: Int
+    let terminalFailurePolicy: APIClientTerminalTransportFailurePolicy
+}
+
+struct APIClientSuccessfulHTTPAttempt {
+    let data: Data
+    let response: HTTPURLResponse
+    let request: URLRequest
+    let observation: APIClientObservationAttempt
+}
+
+struct APIClientEmptyResponseBodyError: Error {}
+
 enum APIClientRetryPreparation {
     case refreshToken
     case stepUp
@@ -34,6 +54,40 @@ struct APIClientFailedHTTPAttempt {
 }
 
 extension APIClient {
+    static func retryAfter(from response: HTTPURLResponse) -> TimeInterval? {
+        guard let value = response.value(forHTTPHeaderField: "Retry-After") else {
+            return nil
+        }
+        guard let seconds = TimeInterval(value.trimmingCharacters(in: .whitespaces)),
+              seconds.isFinite,
+              seconds >= 0 else {
+            return nil
+        }
+        return seconds
+    }
+
+    static func serverDate(from response: HTTPURLResponse) -> Date? {
+        guard let value = response.value(forHTTPHeaderField: "Date") else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss zzz"
+        formatter.timeZone = TimeZone(identifier: "GMT")
+        return formatter.date(from: value)
+    }
+
+    static func isTransient(_ error: URLError) -> Bool {
+        switch error.code {
+        case .timedOut,
+             .networkConnectionLost,
+             .cannotConnectToHost,
+             .cannotFindHost,
+             .dnsLookupFailed:
+            return true
+        default:
+            return false
+        }
+    }
+
     func elapsedSince(_ started: ContinuousClock.Instant) -> Duration {
         started.duration(to: observationNow())
     }

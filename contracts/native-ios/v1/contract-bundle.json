@@ -3,19 +3,19 @@
   "contractVersion": "1",
   "provenance": {
     "backendRepository": "WillSoltani/ChapterFlow",
-    "sourceRevision": "6a792cf2572f585e56ce5dbb181307955c1896a8",
-    "behaviorSourceRevision": "968ff67ecafbed7e8e1d4c7b77badf507cfc5aee",
-    "behaviorSourceTimestamp": "2026-07-11T22:16:03-03:00",
+    "sourceRevision": "efea6adc09707c203bf5c2b5bce1bd8ab2104cb0",
+    "behaviorSourceRevision": "6a792cf2572f585e56ce5dbb181307955c1896a8",
+    "behaviorSourceTimestamp": "2026-07-13T23:19:13-03:00",
     "sourceRevisionPhase": "merged_backend",
-    "generatedAt": "2026-07-13T02:27:09-03:00",
+    "generatedAt": "2026-07-15T03:48:02-03:00",
     "generatorVersion": "chapterflow-native-contract-generator-v1",
-    "generatorTreeDigest": "50c49dff44d58fc2cc0c36cd58826987e5370953a6db4f9c388a92b563d4b056",
+    "generatorTreeDigest": "d75b219de8bde81dede11d65d83192038533df883fc0978fef36280e7261aeea",
     "committedInputTree": {
-      "sha256": "2f9caf4485a4f7af52dcbeaebe0b00100a458bdcfcfa285d839955a916c5bf98",
-      "inputPathCount": 120,
+      "sha256": "57af6cda54479dfd9d4d30eb7e93400976094ff1b4237090b5672af566d0cdad",
+      "inputPathCount": 121,
       "expectedMissingPathCount": 7,
       "trustedMainRef": "refs/remotes/origin/main",
-      "trustedMainRevision": "6a792cf2572f585e56ce5dbb181307955c1896a8"
+      "trustedMainRevision": "efea6adc09707c203bf5c2b5bce1bd8ab2104cb0"
     },
     "syntheticDataOnly": true,
     "deployedRevision": null,
@@ -9327,7 +9327,7 @@
           {
             "path": "app/app/api/book/me/books/[bookId]/state/route.ts",
             "role": "route",
-            "sourceSha256": "d2e4228b17accaab8055e93693645e47701c95eedb08c4616b53575c2bc1e40d"
+            "sourceSha256": "9d3631350995bdae3e62911db33c2a393dc22585474e607c324f51f40a3d75f6"
           },
           {
             "path": "app/app/api/book/_lib/http.ts",
@@ -16014,7 +16014,7 @@
         "decoders": [
           "Decodable<BookStateResponse|BookStateResponseEnvelope|BookUserBookState>"
         ],
-        "optionality": "Exact optionality is source-fenced; additive unknown fields are allowed.",
+        "optionality": "stateStatus is required on canonical GET success; older deployed responses may omit it until this additive contract is deployed.",
         "pagination": "none",
         "versionSemantics": "No explicit API contract version is emitted.",
         "assetSemantics": "No external asset semantics."
@@ -16022,6 +16022,7 @@
       "authority": {
         "classification": "private_data",
         "expectedRequiredPointers": [
+          "/stateStatus",
           "/state/bookId",
           "/state/unlockedChapterIds"
         ],
@@ -16034,7 +16035,7 @@
           "productionConsumerTestIds": [],
           "productionConsumerEvidence": [],
           "gaps": [
-            "No executed production iOS decoder/mapper deletion test is registered for /state/bookId, /state/unlockedChapterIds."
+            "No executed production iOS decoder/mapper deletion test is registered for /stateStatus, /state/bookId, /state/unlockedChapterIds."
           ]
         }
       },
@@ -16055,10 +16056,6 @@
       "coverage": "partial",
       "gaps": [
         {
-          "kind": "response_path_execution",
-          "reason": "The response path has no exported hermetic serializer seam."
-        },
-        {
           "kind": "route_specific_error_coverage",
           "reason": "Documented error fixtures are representative, not an exhaustive route-specific status/code/header contract."
         },
@@ -16076,7 +16073,7 @@
         },
         {
           "kind": "native_authority_consumer_proof",
-          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /state/bookId, /state/unlockedChapterIds.",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /stateStatus, /state/bookId, /state/unlockedChapterIds.",
           "owner": "ios",
           "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
@@ -16122,6 +16119,7 @@
           "payload": {
             "kind": "json",
             "value": {
+              "stateStatus": "started",
               "state": {
                 "bookId": "book-synthetic",
                 "completedChapterIds": [],
@@ -16138,6 +16136,7 @@
             }
           },
           "requiredAuthorityFields": [
+            "/stateStatus",
             "/state/bookId",
             "/state/unlockedChapterIds"
           ]
@@ -16167,6 +16166,30 @@
                 "requestId": "req_synthetic_book_state_get"
               }
             }
+          },
+          {
+            "status": 404,
+            "code": "book_not_found",
+            "headers": [],
+            "body": {
+              "error": {
+                "code": "book_not_found",
+                "message": "Published book not found.",
+                "requestId": "req_synthetic_book_state_get_missing_book"
+              }
+            }
+          },
+          {
+            "status": 404,
+            "code": "book_version_not_found",
+            "headers": [],
+            "body": {
+              "error": {
+                "code": "book_version_not_found",
+                "message": "Published version not found.",
+                "requestId": "req_synthetic_book_state_get_missing_version"
+              }
+            }
           }
         ]
       },
@@ -16178,7 +16201,7 @@
           {
             "path": "app/app/api/book/me/books/[bookId]/state/route.ts",
             "role": "route",
-            "sourceSha256": "d2e4228b17accaab8055e93693645e47701c95eedb08c4616b53575c2bc1e40d"
+            "sourceSha256": "9d3631350995bdae3e62911db33c2a393dc22585474e607c324f51f40a3d75f6"
           },
           {
             "path": "app/app/api/book/_lib/http.ts",
@@ -16189,6 +16212,16 @@
             "path": "app/app/api/book/_lib/account-guard.ts",
             "role": "auth",
             "sourceSha256": "ddddf2b5fbb416b8d24dd6c1de4215e08534878318b83f1cb8e7b10bde9ec33a"
+          },
+          {
+            "path": "app/app/api/book/_lib/book-state-status-core.ts",
+            "role": "response_builder",
+            "sourceSha256": "380cb8d8355cf80e3c1936324bd4ae4eba8c0595dadd69fede49aefdbe50e9f7"
+          },
+          {
+            "path": "app/app/api/book/_lib/content-service.ts",
+            "role": "response_builder",
+            "sourceSha256": "2ece7426ab1f93a668c009ec24c0736fdada7b10073203e554d7d47f37390b17"
           },
           {
             "path": "app/app/api/book/_lib/repo.ts",
@@ -16207,8 +16240,10 @@
           }
         ],
         "serializerProof": {
-          "kind": "source_fenced",
-          "reason": "The response path has no exported hermetic serializer seam."
+          "kind": "executed_pure_builder",
+          "module": "app/app/api/book/_lib/book-state-status-core.ts",
+          "exportedSymbol": "buildBookStateGetResponse",
+          "fixtureId": "book-state.get:success"
         }
       }
     },

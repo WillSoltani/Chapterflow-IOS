@@ -121,7 +121,8 @@ enum PreviewData {
     // MARK: - Book states
 
     /// In-progress: ch.1 completed (score 100), ch.2 unlocked and current.
-    static let atomicHabitsState = BookStateResponse(
+    static let atomicHabitsState = BookStateGetResponse(
+        stateStatus: .started,
         state: BookUserBookState(
             currentChapterId: "ch-ah-2",
             completedChapterIds: ["ch-ah-1"],
@@ -135,7 +136,8 @@ enum PreviewData {
     )
 
     /// Completed: all 5 chapters done.
-    static let atomicHabitsCompletedState = BookStateResponse(
+    static let atomicHabitsCompletedState = BookStateGetResponse(
+        stateStatus: .started,
         state: BookUserBookState(
             currentChapterId: "ch-ah-5",
             completedChapterIds: ["ch-ah-1", "ch-ah-2", "ch-ah-3", "ch-ah-4", "ch-ah-5"],
@@ -155,6 +157,28 @@ enum PreviewData {
             "ch-ah-1": .applied, "ch-ah-2": .applied,
             "ch-ah-3": .committed, "ch-ah-4": .committed, "ch-ah-5": .none,
         ]
+    )
+
+    /// The backend still supplies a synthesized state for a genuinely new user;
+    /// `stateStatus`, not the fallback fields, is authoritative.
+    static let atomicHabitsNotStartedState = BookStateGetResponse(
+        stateStatus: .notStarted,
+        state: BookUserBookState(
+            currentChapterId: "ch-ah-1",
+            completedChapterIds: [],
+            unlockedChapterIds: ["ch-ah-1"],
+            chapterScores: [:],
+            chapterCompletedAt: [:],
+            lastReadChapterId: nil,
+            lastOpenedAt: nil
+        ),
+        applicationStates: [:]
+    )
+
+    static let atomicHabitsCompatibilityState = BookStateGetResponse(
+        stateStatus: nil,
+        state: atomicHabitsNotStartedState.state,
+        applicationStates: [:]
     )
 
     // MARK: - Entitlements
@@ -205,8 +229,7 @@ enum PreviewData {
     static var bookDetailFreeLocked: FakeBookDetailRepository {
         FakeBookDetailRepository(
             manifest: atomicHabitsManifest,
-            state: nil,
-            stateError: .notFound,
+            state: atomicHabitsNotStartedState,
             entitlement: freeLockedEntitlement
         )
     }
@@ -225,6 +248,22 @@ enum PreviewData {
         FakeBookDetailRepository(
             manifest: atomicHabitsManifest,
             state: atomicHabitsCompletedState,
+            entitlement: proEntitlement
+        )
+    }
+
+    static var bookDetailCompatibilityUnknown: FakeBookDetailRepository {
+        FakeBookDetailRepository(
+            manifest: atomicHabitsManifest,
+            state: atomicHabitsCompatibilityState,
+            entitlement: proEntitlement
+        )
+    }
+
+    static var bookDetailStateUnavailable: FakeBookDetailRepository {
+        FakeBookDetailRepository(
+            manifest: atomicHabitsManifest,
+            stateError: .offline,
             entitlement: proEntitlement
         )
     }

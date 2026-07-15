@@ -128,6 +128,42 @@ struct FsrsCardStateEvolutionTests {
     }
 }
 
+// MARK: - BookStateStatus tolerance
+
+@Suite("BookStateStatus server evolution")
+struct BookStateStatusEvolutionTests {
+    private let state = #"{"currentChapterId":"ch-1","completedChapterIds":[],"unlockedChapterIds":["ch-1"],"chapterScores":{},"chapterCompletedAt":{},"lastReadChapterId":null,"lastOpenedAt":null}"#
+
+    @Test("known statuses decode exactly", arguments: [
+        ("started", BookStateStatus.started),
+        ("not_started", BookStateStatus.notStarted),
+    ])
+    func knownStatus(raw: String, expected: BookStateStatus) throws {
+        let data = json(#"{"stateStatus":"\#(raw)","state":\#(state),"applicationStates":{}}"#)
+        let response = try JSONDecoder.chapterFlow.decode(BookStateGetResponse.self, from: data)
+        #expect(response.stateStatus == expected)
+    }
+
+    @Test("unknown status is preserved rather than guessed")
+    func unknownStatus() throws {
+        let data = json(#"{"stateStatus":"paused","state":\#(state),"applicationStates":{}}"#)
+        let response = try JSONDecoder.chapterFlow.decode(BookStateGetResponse.self, from: data)
+        #expect(response.stateStatus == .unknown("paused"))
+    }
+
+    @Test("missing additive status remains compatibility-unknown")
+    func missingStatus() throws {
+        let data = json(#"{"state":\#(state),"applicationStates":{}}"#)
+        let response = try JSONDecoder.chapterFlow.decode(BookStateGetResponse.self, from: data)
+        #expect(response.stateStatus == nil)
+    }
+
+    @Test("allCases includes only known statuses")
+    func allCasesKnownOnly() {
+        #expect(BookStateStatus.allCases == [.started, .notStarted])
+    }
+}
+
 // MARK: - ChapterApplicationState tolerance
 
 @Suite("ChapterApplicationState server evolution")

@@ -380,7 +380,8 @@ struct DeployedBookStateShapeTests {
           "createdAt":"2026-06-01T00:00:00Z","updatedAt":"2026-07-09T10:00:00Z"},
          "applicationStates":{"atomic-habits-ch01":"committed"}}
         """#
-        let response = try decode(BookStateResponse.self, payload)
+        let response = try decode(BookStateGetResponse.self, payload)
+        #expect(response.stateStatus == nil)
         #expect(response.state.completedChapterIds.count == 2)
         #expect(response.applicationStates?["atomic-habits-ch01"] == .committed)
     }

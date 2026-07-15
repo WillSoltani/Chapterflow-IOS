@@ -15,7 +15,7 @@ public actor LiveBookDetailRepository: BookDetailRepository {
         try await client.send(Endpoints.getBook(id: id))
     }
 
-    public func getBookState(id: String) async throws -> BookStateResponse {
+    public func getBookState(id: String) async throws -> BookStateGetResponse {
         try await client.send(Endpoints.getBookState(bookId: id))
     }
 

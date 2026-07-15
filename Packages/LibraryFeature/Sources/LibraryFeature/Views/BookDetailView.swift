@@ -28,6 +28,7 @@ public struct BookDetailView: View {
     private let preferences: AppPreferences
     private let store: KeyValueStore
     private let preferencesRepository: (any BookPreferencesRepository)?
+    private let automaticallyFetch: Bool
 
     public init(
         bookId: String,
@@ -52,6 +53,17 @@ public struct BookDetailView: View {
         self.preferences = preferences
         self.store = store
         self.preferencesRepository = preferencesRepository
+        self.automaticallyFetch = true
+    }
+
+    /// Deterministic render-guard seam for an already-loaded model.
+    init(model: BookDetailModel, automaticallyFetch: Bool = false) {
+        _model = State(initialValue: model)
+        self.aiRepository = nil
+        self.preferences = AppPreferences()
+        self.store = KeyValueStore()
+        self.preferencesRepository = nil
+        self.automaticallyFetch = automaticallyFetch
     }
 
     public var body: some View {
@@ -81,7 +93,10 @@ public struct BookDetailView: View {
                     .presentationDragIndicator(.visible)
                 }
             }
-            .task { await model.fetch() }
+            .task {
+                guard automaticallyFetch else { return }
+                await model.fetch()
+            }
             .task(id: model.bookId) { await model.refreshDownloadState() }
     }
 
@@ -108,14 +123,17 @@ public struct BookDetailView: View {
                 statsSection
                     .padding(.horizontal, .cfSpacing16)
                     .padding(.top, .cfSpacing16)
+                privateDataNotice
+                    .padding(.horizontal, .cfSpacing16)
+                    .padding(.top, .cfSpacing16)
                 primaryActionSection
                     .padding(.top, .cfSpacing20)
                 if let error = model.startError {
-                    Text(error)
-                        .font(.cfCaption)
-                        .foregroundStyle(Color.red)
-                        .padding(.horizontal, .cfSpacing16)
-                        .padding(.top, .cfSpacing8)
+                    inlineErrorNotice(error) {
+                        Task { await model.performPrimaryAction() }
+                    }
+                    .padding(.horizontal, .cfSpacing16)
+                    .padding(.top, .cfSpacing12)
                 }
                 downloadSection
                     .padding(.horizontal, .cfSpacing16)
@@ -174,17 +192,7 @@ public struct BookDetailView: View {
 
     private var statsSection: some View {
         HStack(spacing: .cfSpacing20) {
-            HStack(spacing: .cfSpacing8) {
-                ProgressRingView(progress: model.progressFraction, size: 36, lineWidth: 3.5)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(model.completedChapterCount) of \(model.totalChapters)")
-                        .font(.cfSubheadline)
-                        .foregroundStyle(Color.cfLabel)
-                    Text("chapters")
-                        .font(.cfCaption2)
-                        .foregroundStyle(Color.cfSecondaryLabel)
-                }
-            }
+            progressSummary
 
             Divider().frame(height: 32)
 
@@ -207,9 +215,51 @@ public struct BookDetailView: View {
         .accessibilityLabel(statsAccessibilityLabel)
     }
 
+    @ViewBuilder
+    private var progressSummary: some View {
+        if model.hasAuthoritativeProgress {
+            HStack(spacing: .cfSpacing8) {
+                ProgressRingView(progress: model.progressFraction, size: 36, lineWidth: 3.5)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("\(model.completedChapterCount) of \(model.totalChapters)")
+                        .font(.cfSubheadline)
+                        .foregroundStyle(Color.cfLabel)
+                    Text("chapters")
+                        .font(.cfCaption2)
+                        .foregroundStyle(Color.cfSecondaryLabel)
+                }
+            }
+        } else {
+            HStack(spacing: .cfSpacing8) {
+                Image(systemName: "ellipsis.circle")
+                    .font(.title3)
+                    .foregroundStyle(Color.cfSecondaryLabel)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(progressUnavailableLabel)
+                        .font(.cfSubheadline)
+                        .foregroundStyle(Color.cfLabel)
+                    Text("reading progress")
+                        .font(.cfCaption2)
+                        .foregroundStyle(Color.cfSecondaryLabel)
+                }
+            }
+        }
+    }
+
+    private var progressUnavailableLabel: String {
+        if case .loading = model.privateState { return "Loading"
+        }
+        return "Unavailable"
+    }
+
     private var statsAccessibilityLabel: String {
-        "\(model.completedChapterCount) of \(model.totalChapters) chapters completed. " +
-        "\(model.totalReadingMinutes) minutes total reading time."
+        if model.hasAuthoritativeProgress {
+            return "\(model.completedChapterCount) of \(model.totalChapters) chapters completed. " +
+                "\(model.totalReadingMinutes) minutes total reading time."
+        }
+        return "Reading progress \(progressUnavailableLabel.lowercased()). " +
+            "\(model.totalReadingMinutes) minutes total reading time."
     }
 
     // MARK: - Primary action
@@ -235,7 +285,7 @@ public struct BookDetailView: View {
             .background(primaryActionBackground, in: RoundedRectangle(cornerRadius: .cfRadius12, style: .continuous))
             .foregroundStyle(primaryActionForeground)
         }
-        .disabled((model.primaryAction == .disabled && !model.isGuest) || model.isStarting)
+        .disabled(model.primaryAction == .disabled || model.isStarting)
         .padding(.horizontal, .cfSpacing16)
         .accessibilityLabel(primaryActionLabel)
     }
@@ -246,7 +296,27 @@ public struct BookDetailView: View {
         case .continueReading: return "Continue Reading"
         case .showPaywall:     return "Unlock Book"
         case .signInRequired:  return "Sign in to Read"
-        case .disabled:        return "Loading…"
+        case .disabled:        return disabledPrimaryActionLabel
+        }
+    }
+
+    private var disabledPrimaryActionLabel: String {
+        switch model.privateState {
+        case .loading:
+            return "Loading Reading Status…"
+        case .unavailable, .compatibilityUnknown:
+            return "Reading Status Unavailable"
+        case .notStarted:
+            switch model.entitlementState {
+            case .loading:
+                return "Checking Access…"
+            case .unavailable:
+                return "Access Unavailable"
+            case .available, .notRequired:
+                return "Reading Unavailable"
+            }
+        case .started:
+            return "Reading Unavailable"
         }
     }
 
@@ -270,10 +340,82 @@ public struct BookDetailView: View {
     private var downloadSection: some View {
         BookDownloadButton(
             state: model.downloadState,
+            canStartDownload: model.hasAuthoritativeStartedState,
             onDownload: { model.startDownload() },
             onCancel: { model.cancelDownload() },
             onDelete: { model.deleteDownload() }
         )
+    }
+
+    // MARK: - Private data notice
+
+    @ViewBuilder
+    private var privateDataNotice: some View {
+        if !model.isGuest {
+            switch model.privateState {
+            case .unavailable(let error):
+                inlineErrorNotice(error) {
+                    Task { await model.retryPrivateState() }
+                }
+            case .compatibilityUnknown:
+                inlineErrorNotice(.compatibility) {
+                    Task { await model.retryPrivateState() }
+                }
+            case .notStarted:
+                if case .unavailable(let error) = model.entitlementState {
+                    inlineErrorNotice(error) {
+                        Task { await model.retryEntitlement() }
+                    }
+                }
+            case .loading, .started:
+                EmptyView()
+            }
+        }
+    }
+
+    private func inlineErrorNotice(
+        _ error: UserFacingError,
+        onRetry: @escaping () -> Void
+    ) -> some View {
+        VStack(alignment: .leading, spacing: .cfSpacing12) {
+            HStack(alignment: .firstTextBaseline, spacing: .cfSpacing8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(Color.orange)
+                    .accessibilityHidden(true)
+                Text(error.title)
+                    .font(.cfHeadline)
+                    .foregroundStyle(Color.cfLabel)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityIdentifier("book-detail-private-state-heading")
+            }
+
+            Text(error.message)
+                .font(.cfCallout)
+                .foregroundStyle(Color.cfSecondaryLabel)
+
+            VStack(alignment: .leading, spacing: .cfSpacing2) {
+                Text("Support code: \(error.supportCode.rawValue)")
+                if let requestId = error.requestId {
+                    Text("Request reference: \(requestId)")
+                }
+            }
+            .font(.cfFootnote.monospaced())
+            .foregroundStyle(Color.cfSecondaryLabel)
+            .textSelection(.enabled)
+            .accessibilityIdentifier("book-detail-private-state-support")
+
+            if error.recovery == .retry {
+                Button("Try Again", action: onRetry)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .tint(Color.cfAccent)
+                    .accessibilityHint("Retries only the unavailable account-backed information")
+                    .accessibilityIdentifier("book-detail-private-state-retry")
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.cfSpacing16)
+        .background(Color.cfSecondaryFill, in: RoundedRectangle(cornerRadius: .cfRadius12))
     }
 
     // MARK: - Depth & Tone entry point
@@ -322,22 +464,69 @@ public struct BookDetailView: View {
             if let chapters = model.manifest?.chapters {
                 ForEach(chapters) { chapter in
                     Divider().padding(.leading, .cfSpacing16)
-                    ChapterRowView(
-                        chapter: chapter,
-                        isUnlocked: model.isUnlocked(chapter),
-                        isCompleted: model.isCompleted(chapter),
-                        score: model.score(chapter),
-                        applicationState: model.applicationState(chapter),
-                        lockReason: model.lockReason(chapter),
-                        onTap: {
-                            triggerSelectionHaptic()
-                            model.tapChapter(chapter)
-                        }
-                    )
-                    .padding(.horizontal, .cfSpacing16)
+                    if model.hasAuthoritativeStartedState {
+                        ChapterRowView(
+                            chapter: chapter,
+                            isUnlocked: model.isUnlocked(chapter),
+                            isCompleted: model.isCompleted(chapter),
+                            score: model.score(chapter),
+                            applicationState: model.applicationState(chapter),
+                            lockReason: model.lockReason(chapter),
+                            onTap: {
+                                triggerSelectionHaptic()
+                                model.tapChapter(chapter)
+                            }
+                        )
+                        .padding(.horizontal, .cfSpacing16)
+                    } else {
+                        chapterOutlineRow(chapter)
+                            .padding(.horizontal, .cfSpacing16)
+                    }
                 }
                 Divider().padding(.leading, .cfSpacing16)
             }
+        }
+    }
+
+    private func chapterOutlineRow(_ chapter: BookManifestChapter) -> some View {
+        HStack(alignment: .top, spacing: .cfSpacing12) {
+            Text("\(chapter.number)")
+                .font(.cfCaption)
+                .foregroundStyle(Color.cfSecondaryLabel)
+                .frame(width: 28, height: 28)
+                .background(Color.cfSecondaryFill, in: Circle())
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: .cfSpacing4) {
+                Text(chapter.title)
+                    .font(.cfSubheadline)
+                    .foregroundStyle(Color.cfLabel)
+                    .multilineTextAlignment(.leading)
+                Label("\(chapter.readingTimeMinutes) min", systemImage: "clock")
+                    .font(.cfCaption2)
+                    .foregroundStyle(Color.cfTertiaryLabel)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, .cfSpacing12)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "Chapter \(chapter.number): \(chapter.title). " +
+            "\(chapter.readingTimeMinutes) minutes. \(chapterOutlineStatus)"
+        )
+    }
+
+    private var chapterOutlineStatus: String {
+        if model.isGuest { return "Sign in to check access." }
+        switch model.privateState {
+        case .notStarted:
+            return "Start this book to check access."
+        case .loading:
+            return "Reading status is loading."
+        case .unavailable, .compatibilityUnknown:
+            return "Reading status is unavailable."
+        case .started:
+            return ""
         }
     }
 
@@ -356,15 +545,24 @@ public struct BookDetailView: View {
 
     // MARK: - Error
 
-    private func errorView(_ message: String) -> some View {
+    private func errorView(_ error: UserFacingError) -> some View {
         ContentUnavailableView {
-            Label("Couldn't Load", systemImage: "exclamationmark.triangle")
+            Label(error.title, systemImage: "exclamationmark.triangle")
         } description: {
-            Text(message)
+            VStack(spacing: .cfSpacing8) {
+                Text(error.message)
+                Text("Support code: \(error.supportCode.rawValue)")
+                    .font(.cfFootnote.monospaced())
+                if let requestId = error.requestId {
+                    Text("Request reference: \(requestId)")
+                        .font(.cfFootnote.monospaced())
+                }
+            }
         } actions: {
             Button("Try Again") { Task { await model.fetch() } }
                 .buttonStyle(.borderedProminent)
                 .tint(Color.cfAccent)
+                .accessibilityHint("Retries loading this book")
         }
     }
 
@@ -399,118 +597,4 @@ public struct BookDetailView: View {
         showAskSheet = true
     }
 
-    // MARK: - Haptics
-
-    private func triggerHaptic() {
-        #if canImport(UIKit)
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        #endif
-    }
-
-    private func triggerSelectionHaptic() {
-        #if canImport(UIKit)
-        UISelectionFeedbackGenerator().selectionChanged()
-        #endif
-    }
 }
-
-// MARK: - VariantFamily display
-
-private extension VariantFamily {
-    var displayName: String {
-        switch self {
-        case .emh: return "Easy · Medium · Hard"
-        case .pbc: return "Precise · Balanced · Challenging"
-        case .unknown: return "Custom"
-        }
-    }
-}
-
-// MARK: - cfSpacing14 helper
-
-private extension CGFloat {
-    static let cfSpacing14: CGFloat = 14
-}
-
-// MARK: - Previews
-
-#if DEBUG
-#Preview("Guest — browsing (sign in to read)") {
-    NavigationStack {
-        BookDetailView(
-            bookId: "b-atomic-habits",
-            repository: PreviewData.bookDetailFreeLocked,
-            isGuest: true
-        )
-    }
-}
-
-#Preview("Guest — dark mode") {
-    NavigationStack {
-        BookDetailView(
-            bookId: "b-atomic-habits",
-            repository: PreviewData.bookDetailFreeLocked,
-            isGuest: true
-        )
-    }
-    .preferredColorScheme(.dark)
-}
-
-#Preview("Guest — XXL text") {
-    NavigationStack {
-        BookDetailView(
-            bookId: "b-atomic-habits",
-            repository: PreviewData.bookDetailFreeLocked,
-            isGuest: true
-        )
-    }
-    .dynamicTypeSize(.accessibility3)
-}
-
-#Preview("Free — locked (paywall)") {
-    NavigationStack {
-        BookDetailView(
-            bookId: "b-atomic-habits",
-            repository: PreviewData.bookDetailFreeLocked
-        )
-    }
-}
-
-#Preview("In-progress") {
-    NavigationStack {
-        BookDetailView(
-            bookId: "b-atomic-habits",
-            repository: PreviewData.bookDetailInProgress
-        )
-    }
-}
-
-#Preview("Completed") {
-    NavigationStack {
-        BookDetailView(
-            bookId: "b-atomic-habits",
-            repository: PreviewData.bookDetailCompleted
-        )
-    }
-}
-
-#Preview("Dark mode — in-progress") {
-    NavigationStack {
-        BookDetailView(
-            bookId: "b-atomic-habits",
-            repository: PreviewData.bookDetailInProgress
-        )
-    }
-    .preferredColorScheme(.dark)
-}
-
-#Preview("XXL text") {
-    NavigationStack {
-        BookDetailView(
-            bookId: "b-atomic-habits",
-            repository: PreviewData.bookDetailInProgress
-        )
-    }
-    .dynamicTypeSize(.accessibility3)
-}
-#endif

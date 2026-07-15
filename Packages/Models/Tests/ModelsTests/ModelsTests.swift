@@ -310,7 +310,8 @@ struct BookStateDecodingTests {
     @Test("decodes book user state with applicationStates")
     func bookState() throws {
         let data = try fixture(named: "book_state")
-        let resp = try JSONDecoder.chapterFlow.decode(BookStateResponseEnvelope.self, from: data)
+        let resp = try JSONDecoder.chapterFlow.decode(BookStateGetResponse.self, from: data)
+        #expect(resp.stateStatus == nil)
         #expect(resp.state.completedChapterIds == ["ch-ah-1"])
         #expect(resp.state.unlockedChapterIds.count == 2)
         #expect(resp.state.chapterScores["ch-ah-1"] == 100)

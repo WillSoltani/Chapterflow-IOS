@@ -19,6 +19,7 @@ public enum DownloadButtonState: Sendable, Equatable {
 /// - `failed`: shows a warning icon.
 struct BookDownloadButton: View {
     let state: DownloadButtonState
+    var canStartDownload = true
     let onDownload: () -> Void
     let onCancel: () -> Void
     let onDelete: () -> Void
@@ -32,6 +33,8 @@ struct BookDownloadButton: View {
                     .foregroundStyle(Color.cfAccent)
             }
             .buttonStyle(.plain)
+            .disabled(!canStartDownload)
+            .opacity(canStartDownload ? 1 : 0.55)
             .accessibilityLabel("Download book for offline reading")
 
         case .inProgress(let fraction):
@@ -78,6 +81,8 @@ struct BookDownloadButton: View {
                 }
             }
             .buttonStyle(.plain)
+            .disabled(!canStartDownload)
+            .opacity(canStartDownload ? 1 : 0.55)
             .accessibilityLabel("Download failed. Tap to retry.")
         }
     }

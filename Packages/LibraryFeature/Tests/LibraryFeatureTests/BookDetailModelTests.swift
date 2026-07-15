@@ -11,7 +11,23 @@ struct BookDetailModelTests {
     // MARK: - Fixture helpers
 
     static var manifest: BookManifest { Fixtures.bookManifest }
-    static var inProgressState: BookStateResponse { Fixtures.bookState }
+    static var inProgressState: BookStateGetResponse {
+        BookStateGetResponse(
+            stateStatus: .started,
+            state: Fixtures.bookState.state,
+            applicationStates: Fixtures.bookState.applicationStates
+        )
+    }
+
+    static var notStartedState: BookStateGetResponse {
+        // Deliberately carries a non-empty synthesized state. The status field,
+        // never the fallback state shape, selects the not-started branch.
+        BookStateGetResponse(
+            stateStatus: .notStarted,
+            state: Fixtures.bookState.state,
+            applicationStates: Fixtures.bookState.applicationStates
+        )
+    }
 
     static func proEntitlement() -> EntitlementResponse {
         EntitlementResponse(
@@ -72,18 +88,20 @@ struct BookDetailModelTests {
         }
     }
 
-    @Test("fetch treats notFound state as nil — book not yet started")
-    func fetchTreatsNotFoundAsNilState() async {
+    @Test("fetch uses authoritative not-started status even with synthesized state")
+    func fetchUsesAuthoritativeNotStartedStatus() async {
         let repo = FakeBookDetailRepository(
             manifest: Self.manifest,
-            state: nil,
-            stateError: .notFound,
+            state: Self.notStartedState,
             entitlement: Self.proEntitlement()
         )
         let model = BookDetailModel(bookId: "b-atomic-habits", repository: repo)
         await model.fetch()
 
         #expect(model.bookState == nil)
+        if case .notStarted = model.privateState { } else {
+            Issue.record("Expected authoritative .notStarted")
+        }
         if case .loaded = model.loadState { } else {
             Issue.record("Expected .loaded despite missing state, got \(model.loadState)")
         }
@@ -132,8 +150,7 @@ struct BookDetailModelTests {
     func primaryActionStartReadingProNoState() async {
         let repo = FakeBookDetailRepository(
             manifest: Self.manifest,
-            state: nil,
-            stateError: .notFound,
+            state: Self.notStartedState,
             entitlement: Self.proEntitlement()
         )
         let model = BookDetailModel(bookId: "b-atomic-habits", repository: repo)
@@ -145,8 +162,7 @@ struct BookDetailModelTests {
     func primaryActionStartReadingFreeWithSlot() async {
         let repo = FakeBookDetailRepository(
             manifest: Self.manifest,
-            state: nil,
-            stateError: .notFound,
+            state: Self.notStartedState,
             entitlement: Self.freeWithSlotEntitlement()
         )
         let model = BookDetailModel(bookId: "b-atomic-habits", repository: repo)
@@ -158,8 +174,7 @@ struct BookDetailModelTests {
     func primaryActionShowPaywallWhenLocked() async {
         let repo = FakeBookDetailRepository(
             manifest: Self.manifest,
-            state: nil,
-            stateError: .notFound,
+            state: Self.notStartedState,
             entitlement: Self.freeLockedEntitlement()
         )
         let model = BookDetailModel(bookId: "b-atomic-habits", repository: repo)
@@ -298,7 +313,8 @@ struct BookDetailModelTests {
     func lockReasonRequiresProWhenPriorCompleted() async {
         // State where ch-ah-1 and ch-ah-2 are BOTH completed,
         // but ch-ah-3 is NOT in unlockedChapterIds (server hasn't unlocked it).
-        let state = BookStateResponse(
+        let state = BookStateGetResponse(
+            stateStatus: .started,
             state: BookUserBookState(
                 currentChapterId: "ch-ah-2",
                 completedChapterIds: ["ch-ah-1", "ch-ah-2"],
@@ -343,8 +359,7 @@ struct BookDetailModelTests {
     func progressFractionZeroWithNoState() async {
         let repo = FakeBookDetailRepository(
             manifest: Self.manifest,
-            state: nil,
-            stateError: .notFound,
+            state: Self.notStartedState,
             entitlement: Self.proEntitlement()
         )
         let model = BookDetailModel(bookId: "b-atomic-habits", repository: repo)
@@ -371,8 +386,7 @@ struct BookDetailModelTests {
     func currentChapterNumberDefaultsToOne() async {
         let repo = FakeBookDetailRepository(
             manifest: Self.manifest,
-            state: nil,
-            stateError: .notFound,
+            state: Self.notStartedState,
             entitlement: Self.proEntitlement()
         )
         let model = BookDetailModel(bookId: "b-atomic-habits", repository: repo)
@@ -386,8 +400,7 @@ struct BookDetailModelTests {
     func totalReadingMinutesSum() async {
         let repo = FakeBookDetailRepository(
             manifest: Self.manifest,
-            state: nil,
-            stateError: .notFound,
+            state: Self.notStartedState,
             entitlement: Self.proEntitlement()
         )
         let model = BookDetailModel(bookId: "b-atomic-habits", repository: repo)
@@ -405,8 +418,7 @@ struct BookDetailModelTests {
     func performPaywallCallsCallback() async {
         let repo = FakeBookDetailRepository(
             manifest: Self.manifest,
-            state: nil,
-            stateError: .notFound,
+            state: Self.notStartedState,
             entitlement: Self.freeLockedEntitlement()
         )
         let model = BookDetailModel(bookId: "b-atomic-habits", repository: repo)
@@ -443,8 +455,7 @@ struct BookDetailModelTests {
     func performStartReadingCallsStartBookThenOpenReader() async {
         let repo = FakeBookDetailRepository(
             manifest: Self.manifest,
-            state: nil,
-            stateError: .notFound,
+            state: Self.notStartedState,
             entitlement: Self.proEntitlement()
         )
         let model = BookDetailModel(bookId: "b-atomic-habits", repository: repo)
@@ -534,8 +545,7 @@ struct BookDetailModelTests {
     func performStartReadingSetsStartErrorOnFailure() async {
         let repo = FakeBookDetailRepository(
             manifest: Self.manifest,
-            state: nil,
-            stateError: .notFound,
+            state: Self.notStartedState,
             entitlement: Self.proEntitlement(),
             error: nil
         )
@@ -543,8 +553,7 @@ struct BookDetailModelTests {
         // but we need a state that produces .startReading first. Use a special repo:
         let failRepo = FakeBookDetailRepository(
             manifest: Self.manifest,
-            state: nil,
-            stateError: .notFound,
+            state: Self.notStartedState,
             entitlement: Self.proEntitlement(),
             error: nil
         )
@@ -552,8 +561,7 @@ struct BookDetailModelTests {
         // Fetch with the good repo to set entitlement, then simulate failure:
         let goodRepo = FakeBookDetailRepository(
             manifest: Self.manifest,
-            state: nil,
-            stateError: .notFound,
+            state: Self.notStartedState,
             entitlement: Self.proEntitlement()
         )
         let model = BookDetailModel(bookId: "b-atomic-habits", repository: goodRepo)

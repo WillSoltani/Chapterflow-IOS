@@ -28,7 +28,7 @@ let backendOwnedModelCases: [ModelContractCase] = [
     modelCase("seasonal-event.get", ActiveEventResponse.self),
     modelCase("badges.get", BadgesResponse.self),
     modelCase("scenarios.get", ScenariosResponse.self),
-    modelCase("book-state.get", BookStateResponse.self),
+    modelCase("book-state.get", BookStateGetResponse.self),
     modelCase("commitments.get", CommitmentsResponse.self),
     modelCase("dashboard.get", DashboardResponse.self),
     modelCase("entitlements.get", EntitlementResponse.self),
@@ -61,6 +61,15 @@ let progressAuthorityContractCases: [ProgressAuthorityContractCase] = [
 
 @Suite("Backend-owned canonical model fixtures")
 struct BackendOwnedContractTests {
+    @Test("canonical book-state fixture carries authoritative started status")
+    func canonicalBookStateStatus() throws {
+        let operation = try #require(try ModelContractBundle.load().operation("book-state.get"))
+        let fixtures = try #require(operation.fixtures)
+        let payload = try fixtures.success.payload.data()
+        let response = try JSONDecoder.chapterFlow.decode(BookStateGetResponse.self, from: payload)
+        #expect(response.stateStatus == .started)
+    }
+
     @Test("canonical and deployed-compatible payloads decode and cache round-trip", arguments: backendOwnedModelCases)
     func decodesCanonicalAndAliases(_ contract: ModelContractCase) throws {
         let operation = try #require(try ModelContractBundle.load().operation(contract.operationID))
