@@ -78,7 +78,7 @@
         "Networking",
         "Persistence"
       ],
-      "manifest_sha256": "87b1a9eacfc686628470643ffa83b7896cfd5b3d32f1fc9586151667e21acda7"
+      "manifest_sha256": "dae3871a2c8e60fceb63c65bc38f70f9e59f9f4fd363c66ef32e6b79959b3c18"
     },
     "Models": {
       "dependencies": [],
@@ -95,9 +95,10 @@
         "CoreKit",
         "DesignSystem",
         "Models",
-        "Networking"
+        "Networking",
+        "Persistence"
       ],
-      "manifest_sha256": "68d50eff72a9d5effae4e31eb9cb49dddbc69120186a3022bbaa4d2c638bd871"
+      "manifest_sha256": "fd02951b344e955242a35259e60aec2b88a602576e1d56415160301ca9a6e5cb"
     },
     "OnboardingFeature": {
       "dependencies": [
@@ -133,7 +134,7 @@
         "Networking",
         "Persistence"
       ],
-      "manifest_sha256": "32002bf257bf0aa205298cb3c62eed3d108b1ab9b7881674e5dccaf85ec81d53"
+      "manifest_sha256": "6ffe2a4c2e54b951938ec4f554d17b34ce123cc229a1503011751197f363afdf"
     },
     "ReaderFeature": {
       "dependencies": [
@@ -143,7 +144,7 @@
         "Networking",
         "Persistence"
       ],
-      "manifest_sha256": "251aa18482246fea607029f04dbaaa9c0af2878757ab91179f85e1e1fed3599a"
+      "manifest_sha256": "669c91081cc8e5cc3cf4537f3596de4d85d9aa8ef7f05ff2b167f65f6ce6f113"
     },
     "SettingsFeature": {
       "dependencies": [
@@ -156,7 +157,7 @@
         "Persistence",
         "SyncEngine"
       ],
-      "manifest_sha256": "32dd0e3c71b60201a69948f437ae151d2ead7d9fa7d79309cfaa02a731234835"
+      "manifest_sha256": "255cb77d88710cd398df96abf2fb44a018fa86793c500a0dc21653d2a729dc19"
     },
     "SocialFeature": {
       "dependencies": [
