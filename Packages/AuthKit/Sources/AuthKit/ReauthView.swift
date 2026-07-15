@@ -1,21 +1,15 @@
 import SwiftUI
-import LocalAuthentication
-import CoreKit
 import Persistence
 
-/// A modal sheet presented when the server returns `reauth_required`.
+/// Truthful recovery surface for a server-required fresh authentication.
 ///
-/// The user can re-confirm their identity with a password (stub — real Cognito
-/// call wired in P1.5) or biometrics. On success, calls `sessionManager
-/// .stepUpCompleted(idToken:refreshToken:)`, which resumes all suspended API
-/// requests and returns the app to `.signedIn`. On cancel, calls
-/// `stepUpCancelled()`, which signs the user out.
+/// ChapterFlow does not yet have a supported in-session Cognito step-up
+/// challenge. Local biometrics and an unchecked password must not resume a
+/// server request, so this surface ends the current session and returns the
+/// user to the authoritative sign-in flow.
 public struct ReauthView: View {
     let sessionManager: SessionManager
-
-    @State private var password = ""
-    @State private var isAuthenticating = false
-    @State private var errorMessage: String?
+    @State private var isSigningOut = false
 
     public init(sessionManager: SessionManager) {
         self.sessionManager = sessionManager
@@ -24,128 +18,49 @@ public struct ReauthView: View {
     public var body: some View {
         NavigationStack {
             VStack(spacing: 28) {
+                Image(systemName: "lock.shield")
+                    .font(.system(size: 52))
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+
                 VStack(spacing: 12) {
-                    Image(systemName: "lock.shield")
-                        .font(.system(size: 52))
-                        .foregroundStyle(.secondary)
-                        .accessibilityHidden(true)
-
-                    Text("Verify It's You")
+                    Text("Sign In Again")
                         .font(.title2.weight(.semibold))
+                        .accessibilityAddTraits(.isHeader)
 
-                    Text("For your security, confirm your identity to continue.")
+                    Text("Your session needs fresh verification. Sign in again to continue securely.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
 
-                VStack(spacing: 16) {
-                    SecureField("Password", text: $password)
-                        .textContentType(.password)
-                        .padding()
-                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
-                        .accessibilityLabel("Password")
-
-                    if let error = errorMessage {
-                        Text(error)
-                            .font(.footnote)
-                            .foregroundStyle(.red)
-                            .accessibilityLabel("Error: \(error)")
-                    }
-
-                    Button {
-                        Task { await confirmWithPassword() }
-                    } label: {
-                        Group {
-                            if isAuthenticating {
-                                ProgressView()
-                            } else {
-                                Text("Confirm")
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 44)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(password.isEmpty || isAuthenticating)
-                    .accessibilityLabel("Confirm identity with password")
-                }
-
-                Divider()
-
                 Button {
-                    Task { await confirmWithBiometrics() }
+                    isSigningOut = true
+                    Task { await sessionManager.stepUpCancelled() }
                 } label: {
-                    Label("Use Face ID / Touch ID", systemImage: "faceid")
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
+                    Group {
+                        if isSigningOut {
+                            ProgressView()
+                        } else {
+                            Text("Sign In Again")
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 44)
                 }
-                .buttonStyle(.bordered)
-                .disabled(isAuthenticating)
-                .accessibilityLabel("Authenticate with Face ID or Touch ID")
+                .buttonStyle(.borderedProminent)
+                .disabled(isSigningOut)
+                .accessibilityHint("Ends this session and opens the secure sign-in flow")
 
                 Spacer()
             }
             .padding()
             .navigationTitle("Security Check")
             .toolbarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { sessionManager.stepUpCancelled() }
-                        .accessibilityLabel("Cancel and sign out")
-                }
-            }
-            .disabled(isAuthenticating)
-        }
-    }
-
-    private func confirmWithPassword() async {
-        guard !password.isEmpty else { return }
-        isAuthenticating = true
-        errorMessage = nil
-        defer { isAuthenticating = false }
-        // Full password re-verification is implemented in P1.5. For now, any
-        // non-empty password confirms identity so the flow can be exercised.
-        try? await Task.sleep(for: .milliseconds(400))
-        sessionManager.stepUpCompleted()
-    }
-
-    private func confirmWithBiometrics() async {
-        isAuthenticating = true
-        errorMessage = nil
-        defer { isAuthenticating = false }
-
-        let context = LAContext()
-        var nsError: NSError?
-        guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &nsError) else {
-            errorMessage = "Biometrics unavailable. Please enter your password."
-            return
-        }
-        do {
-            let success = try await context.evaluatePolicy(
-                .deviceOwnerAuthenticationWithBiometrics,
-                localizedReason: "Confirm it's you to continue"
-            )
-            if success {
-                sessionManager.stepUpCompleted()
-            } else {
-                errorMessage = "Authentication failed. Try again."
-            }
-        } catch let laError as LAError where laError.code == .userCancel {
-            // User cancelled — sheet stays visible.
-        } catch {
-            errorMessage = "Authentication failed. Try again."
         }
     }
 }
 
 #Preview("ReauthView") {
-    ReauthView(sessionManager: SessionManager(tokenStore: InMemoryTokenStore(
-        tokens: StoredTokens(
-            idToken: "tok",
-            accessToken: "acc",
-            refreshToken: "ref",
-            expiresAt: Date.distantFuture
-        )
-    )))
+    ReauthView(sessionManager: SessionManager(tokenStore: InMemoryTokenStore()))
 }

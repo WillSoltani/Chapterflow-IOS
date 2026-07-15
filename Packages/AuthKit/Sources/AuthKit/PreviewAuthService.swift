@@ -15,3 +15,12 @@ func previewAuthService() -> AuthService {
         cognitoClientID: "previewClientId"
     ))
 }
+
+@MainActor
+func previewAuthFlowModel() -> AuthFlowModel {
+    let service = previewAuthService()
+    return AuthFlowModel(
+        authService: service,
+        sessionManager: SessionManager(authService: service)
+    )
+}

@@ -8,16 +8,13 @@ import XCTest
 ///
 /// ## Usage
 /// ```bash
-/// CF_REAL_API=1 CF_API_TOKEN=<your_id_token> \
+/// CF_REAL_API=1 \
 ///   xcodebuild test \
 ///     -project ChapterFlow.xcodeproj \
 ///     -scheme ChapterFlow \
 ///     -destination 'platform=iOS Simulator,name=iPhone 16' \
 ///     -only-testing:ChapterFlowUITests/SmokeLaneTests
 /// ```
-///
-/// ``CF_API_TOKEN`` is your Cognito ``id_token`` obtained from the browser
-/// DevTools (Application → Storage → Cookies → ``id_token``).
 final class SmokeLaneTests: XCTestCase {
 
     // MARK: - Guard
@@ -30,31 +27,24 @@ final class SmokeLaneTests: XCTestCase {
 
     // MARK: - Tests
 
-    func testRealAPISessionEndpoint() throws {
+    func testRealAPIGuestShell() throws {
         try requireRealAPI()
 
         let app = XCUIApplication()
-        // Bypass auth via seeded token; do NOT enable the stub server.
-        if let token = ProcessInfo.processInfo.environment[TestEnv.apiToken], !token.isEmpty {
-            app.launchEnvironment[TestEnv.bypassAuth] = "1"
-        }
         app.launch()
         defer { app.terminate() }
 
-        let tabBar = app.tabBars.firstMatch
-        XCTAssert(tabBar.waitForExistence(timeout: 30),
-                  "Real API smoke: main shell should appear within 30 s")
+        enterGuestMode(in: app)
     }
 
     func testRealCatalogLoads() throws {
         try requireRealAPI()
 
         let app = XCUIApplication()
-        app.launchEnvironment[TestEnv.bypassAuth] = "1"
         app.launch()
         defer { app.terminate() }
 
-        _ = app.tabBars.firstMatch.waitForExistence(timeout: 30)
+        enterGuestMode(in: app)
 
         // Navigate to Library and verify at least one book card loads.
         let libraryTab = app.tabBars.buttons.matching(
@@ -65,5 +55,15 @@ final class SmokeLaneTests: XCTestCase {
         let cell = app.cells.firstMatch
         XCTAssert(cell.waitForExistence(timeout: 30),
                   "Real API smoke: library catalog should load at least one book")
+    }
+
+    private func enterGuestMode(in app: XCUIApplication) {
+        let browse = app.buttons["Continue browsing without creating an account"]
+        XCTAssertTrue(browse.waitForExistence(timeout: 30), "Real API smoke must begin from signed-out UI")
+        browse.tap()
+        XCTAssertTrue(
+            app.tabBars.firstMatch.waitForExistence(timeout: 30),
+            "Real API smoke: guest shell should appear within 30 seconds"
+        )
     }
 }

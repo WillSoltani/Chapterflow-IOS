@@ -1,5 +1,6 @@
 #if DEBUG
 import AppFeature
+import AuthKit
 import CoreKit
 import Foundation
 
@@ -10,8 +11,8 @@ import Foundation
 ///
 /// - `CF_STUB_SERVER=1` → registers ``CFStubURLProtocol`` so every URLSession
 ///   request in the app process is served by fixture-backed stubs.
-/// - `CF_UITEST_BYPASS_AUTH=1` → seeds the Keychain with a pre-built test JWT
-///   so the app presents as signed-in without performing a real Cognito handshake.
+/// - `CF_UITEST_BYPASS_AUTH=1` together with both hermetic flags → activates a
+///   fixed in-memory synthetic session without reading or writing Keychain.
 /// - `CF_HERMETIC_TEST_CONFIGURATION=1` together with `CF_STUB_SERVER=1` →
 ///   selects a typed, non-production API/Cognito configuration.
 /// - `CF_INVALID_TEST_CONFIGURATION=1` → selects committed-equivalent
@@ -38,11 +39,7 @@ enum CFAppLaunchSupport {
             URLProtocol.registerClass(CFStubURLProtocol.self)
         }
 
-        if env["CF_UITEST_BYPASS_AUTH"] == "1" {
-            // Seed tokens BEFORE AppModel / AuthService initialise so the
-            // auth state resolves as signed-in from the very first check.
-            CFUITestSessionSeeder.seedIfNeeded()
-
+        if SessionManager.isHermeticUITestBypass(environment: env) {
             // Mark first-run onboarding complete so the app lands directly in the
             // main tab UI. Otherwise AppRootView presents OnboardingFlowView as a
             // full-screen cover (gated on `!preferences.onboardingCompleted`),

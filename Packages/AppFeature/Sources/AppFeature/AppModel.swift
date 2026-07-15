@@ -623,13 +623,7 @@ public final class AppModel {
             displayName = profile.displayName
             return
         }
-        // 2. Display name persisted from Apple's first-sign-in disclosure.
-        if let stored = UserDefaults.standard.string(forKey: "chapterflow.displayName"),
-           !stored.isEmpty {
-            displayName = stored
-            return
-        }
-        // 3. Username from UserSummary (may be display name for SIWA path).
+        // 2. Optional display username from the verified Cognito identity.
         if case .signedIn(let user) = session.authState, !user.username.isEmpty {
             displayName = user.username
             return

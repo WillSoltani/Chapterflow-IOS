@@ -16,12 +16,39 @@ struct AuthKitModuleTests {
 // MARK: - SessionManager state transitions
 
 private func makeTokens(expiresIn: TimeInterval = 3_600) -> StoredTokens {
-    StoredTokens(
-        idToken: "test-id-token",
+    let payload = Data(
+        #"{"sub":"test-subject","exp":9999999999,"name":"Test Reader"}"#.utf8
+    )
+    .base64EncodedString()
+    .replacingOccurrences(of: "+", with: "-")
+    .replacingOccurrences(of: "/", with: "_")
+    .replacingOccurrences(of: "=", with: "")
+    return StoredTokens(
+        idToken: "eyJhbGciOiJub25lIn0.\(payload).signature",
         accessToken: "test-access-token",
         refreshToken: "test-refresh-token",
         expiresAt: Date().addingTimeInterval(expiresIn)
     )
+}
+
+private let testIdentity: SessionIdentity = {
+    guard let identity = SessionIdentity(
+        subject: "test-subject",
+        username: "test",
+        email: nil,
+        source: .cognitoUserPool
+    ) else {
+        preconditionFailure("Invalid fixed test identity")
+    }
+    return identity
+}()
+
+@MainActor
+private func makeAuthenticatedSession(
+    store: InMemoryTokenStore,
+    refresher: any TokenRefreshing = StubTokenRefresher()
+) -> SessionManager {
+    SessionManager(tokenStore: store, refresher: refresher, testIdentity: testIdentity)
 }
 
 private extension AuthState {
@@ -35,11 +62,11 @@ private extension AuthState {
 @MainActor
 struct SessionManagerTests {
 
-    @Test("initialises to .signedIn when valid tokens are stored")
-    func initSignedIn() {
+    @Test("stored tokens alone never establish authentication")
+    func storedTokensAloneStaySignedOut() {
         let store = InMemoryTokenStore(tokens: makeTokens())
         let session = SessionManager(tokenStore: store)
-        #expect(session.authState.isSignedIn)
+        #expect(session.authState == .signedOut)
     }
 
     @Test("initialises to .signedOut when no tokens are stored")
@@ -57,26 +84,32 @@ struct SessionManagerTests {
     }
 
     @Test("signOut clears tokens and transitions to .signedOut")
-    func signOutClearsTokens() async {
+    func signOutClearsTokens() async throws {
         let store = InMemoryTokenStore(tokens: makeTokens())
-        let session = SessionManager(tokenStore: store)
+        let session = makeAuthenticatedSession(store: store)
         await session.signOut()
         #expect(session.authState == .signedOut)
-        #expect(store.load() == nil)
+        #expect(try store.load() == nil)
     }
 
     @Test("refresh updates stored tokens on success")
     func refreshUpdatesTokens() async throws {
         let store = InMemoryTokenStore(tokens: makeTokens())
-        let session = SessionManager(tokenStore: store, refresher: StubTokenRefresher(shouldFail: false))
+        let session = makeAuthenticatedSession(
+            store: store,
+            refresher: StubTokenRefresher(shouldFail: false)
+        )
         try await session.refresh()
-        #expect(store.load()?.idToken == "stub-id-token")
+        #expect(try store.load()?.idToken == StubTokenRefresher.fixedIDToken)
     }
 
     @Test("refresh transitions to .signedOut when refresher fails")
     func refreshSignsOutOnFailure() async {
         let store = InMemoryTokenStore(tokens: makeTokens())
-        let session = SessionManager(tokenStore: store, refresher: StubTokenRefresher(shouldFail: true))
+        let session = makeAuthenticatedSession(
+            store: store,
+            refresher: StubTokenRefresher(shouldFail: true)
+        )
         await #expect(throws: (any Error).self) {
             try await session.refresh()
         }
@@ -86,24 +119,32 @@ struct SessionManagerTests {
     @Test("currentIdToken returns the stored id_token")
     func currentIdToken() {
         let store = InMemoryTokenStore(tokens: makeTokens())
-        let session = SessionManager(tokenStore: store)
-        #expect(session.currentIdToken() == "test-id-token")
+        let session = makeAuthenticatedSession(store: store)
+        #expect(session.currentIdToken() == makeTokens().idToken)
     }
 
     @Test("stepUpCancelled transitions to .signedOut")
     func stepUpCancelledSignsOut() async {
         let store = InMemoryTokenStore(tokens: makeTokens())
-        let session = SessionManager(tokenStore: store)
-        session.stepUpCancelled()
-        // stepUpCancelled calls Task { await signOut() }, give it a moment
-        try? await Task.sleep(for: .milliseconds(50))
+        let session = makeAuthenticatedSession(store: store)
+        await session.stepUpCancelled()
+        #expect(session.authState == .signedOut)
+    }
+
+    @Test("step-up completion cannot synthesize identity")
+    func stepUpCannotCreateIdentity() {
+        let session = SessionManager(tokenStore: InMemoryTokenStore())
+
+        session.stepUpCompleted()
+
         #expect(session.authState == .signedOut)
     }
 
     @Test("markReconnected is a no-op when not in .reconnecting state")
-    func markReconnectedNoOp() {
+    func markReconnectedRestoresIdentity() async {
         let store = InMemoryTokenStore(tokens: makeTokens())
-        let session = SessionManager(tokenStore: store)
+        let session = makeAuthenticatedSession(store: store)
+        await session.reportSessionError(.verifierUnavailable)
         session.markReconnected()
         #expect(session.authState.isSignedIn)
     }
@@ -113,33 +154,39 @@ struct SessionManagerTests {
     /// Verifies that the TokenStore mirror stays consistent with auth events:
     /// - After refresh, the mirror holds the new token.
     /// - After sign-out, the mirror is empty.
-    /// This ensures the single-writer invariant holds: only the auth service path
+    /// This ensures the single-writer invariant holds: only the session authority
     /// ever writes to the store, and sign-out wipes it completely.
     @Test("mirror consistency: refresh updates store, sign-out wipes it")
     func mirrorConsistency() async throws {
         let store = InMemoryTokenStore(tokens: makeTokens())
-        let session = SessionManager(tokenStore: store, refresher: StubTokenRefresher(shouldFail: false))
+        let session = makeAuthenticatedSession(
+            store: store,
+            refresher: StubTokenRefresher(shouldFail: false)
+        )
 
         // Initially the store has the pre-seeded tokens.
-        #expect(store.load() != nil)
+        #expect(try store.load() != nil)
 
         // Refresh writes the stub tokens through the single write path.
         try await session.refresh()
-        let afterRefresh = store.load()
-        #expect(afterRefresh?.idToken == "stub-id-token", "mirror must reflect refreshed token")
+        let afterRefresh = try store.load()
+        #expect(
+            afterRefresh?.idToken == StubTokenRefresher.fixedIDToken,
+            "mirror must reflect refreshed token"
+        )
 
         // Sign-out must clear the mirror completely.
         await session.signOut()
-        #expect(store.load() == nil, "sign-out must wipe the token mirror")
+        #expect(try store.load() == nil, "sign-out must wipe the token mirror")
         #expect(session.authState == .signedOut)
     }
 
     @Test("mirror consistency: fresh store means signedOut state")
-    func mirrorEmptyIsSignedOut() {
+    func mirrorEmptyIsSignedOut() throws {
         let store = InMemoryTokenStore()
         let session = SessionManager(tokenStore: store)
         #expect(session.authState == .signedOut)
-        #expect(store.load() == nil)
+        #expect(try store.load() == nil)
     }
 
     // MARK: validToken() — proactive refresh (RF: transparent Amplify refresh)
@@ -147,38 +194,46 @@ struct SessionManagerTests {
     @Test("validToken() returns the cached id_token when it is fresh")
     func validTokenReturnsCachedWhenFresh() async throws {
         let store = InMemoryTokenStore(tokens: makeTokens(expiresIn: 3_600))
-        let session = SessionManager(tokenStore: store, refresher: StubTokenRefresher(shouldFail: true))
+        let session = makeAuthenticatedSession(
+            store: store,
+            refresher: StubTokenRefresher(shouldFail: true)
+        )
         let token = try await session.validToken()
         // Fresh token — no refresh triggered despite a failing refresher.
-        #expect(token == "test-id-token")
+        #expect(token == makeTokens().idToken)
     }
 
     @Test("validToken() proactively refreshes when token is near-expiry (<5 min)")
     func validTokenProactivelyRefreshesNearExpiry() async throws {
         // 60 seconds left — well inside the 5-minute window.
         let store = InMemoryTokenStore(tokens: makeTokens(expiresIn: 60))
-        let session = SessionManager(tokenStore: store, refresher: StubTokenRefresher())
+        let session = makeAuthenticatedSession(store: store)
         let token = try await session.validToken()
-        #expect(token == "stub-id-token", "should return the refreshed token")
-        #expect(store.load()?.idToken == "stub-id-token", "store must hold the new token")
+        #expect(token == StubTokenRefresher.fixedIDToken, "should return the refreshed token")
+        #expect(
+            try store.load()?.idToken == StubTokenRefresher.fixedIDToken,
+            "store must hold the new token"
+        )
     }
 
     @Test("validToken() proactively refreshes an already-expired token")
     func validTokenRefreshesExpiredToken() async throws {
         let store = InMemoryTokenStore(tokens: makeTokens(expiresIn: -60))
-        let session = SessionManager(tokenStore: store, refresher: StubTokenRefresher())
+        let session = makeAuthenticatedSession(store: store)
         let token = try await session.validToken()
-        #expect(token == "stub-id-token")
+        #expect(token == StubTokenRefresher.fixedIDToken)
     }
 
-    @Test("validToken() falls back to stale token when proactive refresh fails")
-    func validTokenFallsBackOnRefreshFailure() async throws {
-        // 60 s left — refresh triggered but fails. Must return old token
-        // so the 401 retry path (server-side) can still drive refresh().
+    @Test("validToken() propagates proactive refresh failure without trusting stale mirror")
+    func validTokenPropagatesRefreshFailure() async {
         let store = InMemoryTokenStore(tokens: makeTokens(expiresIn: 60))
-        let session = SessionManager(tokenStore: store, refresher: StubTokenRefresher(shouldFail: true))
-        let token = try await session.validToken()
-        #expect(token == "test-id-token")
+        let session = makeAuthenticatedSession(
+            store: store,
+            refresher: StubTokenRefresher(shouldFail: true)
+        )
+        await #expect(throws: (any Error).self) {
+            try await session.validToken()
+        }
     }
 
     @Test("validToken() returns nil when no tokens are stored (unauthenticated)")
@@ -189,15 +244,24 @@ struct SessionManagerTests {
         #expect(token == nil)
     }
 
+    @Test("validToken() ignores a mirror without an authoritative session")
+    func validTokenIgnoresMirrorWithoutSession() async throws {
+        let session = SessionManager(
+            tokenStore: InMemoryTokenStore(tokens: makeTokens())
+        )
+
+        #expect(try await session.validToken() == nil)
+    }
+
     // MARK: Sign-out keychain cleanup (RF4)
 
     @Test("signOut clears TokenStore and authState — no credentials left behind")
-    func signOutLeavesEmptyKeychain() async {
+    func signOutLeavesEmptyKeychain() async throws {
         let store = InMemoryTokenStore(tokens: makeTokens())
-        let session = SessionManager(tokenStore: store)
-        #expect(store.load() != nil)
+        let session = makeAuthenticatedSession(store: store)
+        #expect(try store.load() != nil)
         await session.signOut()
-        #expect(store.load() == nil, "TokenStore must be empty after sign-out")
+        #expect(try store.load() == nil, "TokenStore must be empty after sign-out")
         #expect(session.authState == .signedOut)
     }
 }

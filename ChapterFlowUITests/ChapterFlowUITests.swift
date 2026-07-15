@@ -7,7 +7,7 @@ import XCTest
 enum TestEnv {
     /// Set to "1" to register ``CFStubURLProtocol`` and serve fixture JSON for all requests.
     static let stubServer  = "CF_STUB_SERVER"
-    /// Set to "1" to seed the Keychain with a test JWT (bypasses real Cognito auth).
+    /// Set with both hermetic flags to activate a fixed in-memory test session.
     static let bypassAuth  = "CF_UITEST_BYPASS_AUTH"
     /// Set with the stub server to select the explicit synthetic API/Cognito config.
     static let hermeticConfiguration = "CF_HERMETIC_TEST_CONFIGURATION"
@@ -23,8 +23,6 @@ enum TestEnv {
     static let failBootstrapSession = "CF_BOOTSTRAP_FAIL_SESSION"
     /// Set to "1" to enable the optional smoke lane (hits real prod API, non-blocking).
     static let realAPI     = "CF_REAL_API"
-    /// A real id_token for the smoke lane (injected via CI secrets).
-    static let apiToken    = "CF_API_TOKEN"
 }
 
 // MARK: - Bootstrap state machine
@@ -141,7 +139,7 @@ class CFUITestCase: XCTestCase {
     // XCUIApplication here is safe at runtime despite compiler actor warnings.
     private(set) var app: XCUIApplication! // swiftlint:disable:this implicitly_unwrapped_optional
 
-    /// Return `true` (default) to launch with a pre-seeded test session.
+    /// Return `true` (default) to launch with the triple-gated synthetic session.
     /// Return `false` to start the app in the unauthenticated state.
     var needsAuth: Bool { true }
 

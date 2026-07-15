@@ -158,17 +158,7 @@ public struct AppRootView: View {
 
     @ViewBuilder
     private var gatedContent: some View {
-        // DEBUG: pass `--demo-tab-shell` as a launch argument to skip auth
-        // and land directly on the tab shell (e.g. for simulator walkthroughs).
-        #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("--demo-tab-shell") {
-            mainTabView
-        } else {
-            authGatedContent
-        }
-        #else
         authGatedContent
-        #endif
     }
 
     @ViewBuilder
@@ -223,6 +213,7 @@ public struct AppRootView: View {
         #if os(iOS)
         AuthFlowView(
             authService: model.authService,
+            sessionManager: model.session,
             onBrowseAsGuest: { model.enterGuestMode() }
         )
         #else
@@ -243,6 +234,7 @@ public struct AppRootView: View {
             )) {
                 AuthGateSheet(
                     authService: model.authService,
+                    sessionManager: model.session,
                     intent: model.pendingAuthIntent
                 )
                 .presentationDetents([.large])

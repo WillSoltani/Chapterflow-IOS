@@ -57,7 +57,7 @@ public struct LogInView: View {
 
 #Preview("Log In") {
     NavigationStack {
-        LogInView(model: AuthFlowModel(authService: previewAuthService()))
+        LogInView(model: previewAuthFlowModel())
     }
 }
 #endif // os(iOS)

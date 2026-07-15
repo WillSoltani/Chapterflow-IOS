@@ -1,13 +1,10 @@
 #if os(iOS)
 import SwiftUI
-import AuthenticationServices
 
 /// The brand landing screen — the root of the `AuthFlowView` navigation stack.
 ///
-/// Three paths:
-///   - Continue with Apple → native SIWA sheet → Cognito token exchange
-///   - Create an account → `SignUpView`
-///   - Log in → `LogInView`
+/// Apple remains hidden until the signed provider path is proven in
+/// WP-AUTH-01B. The available paths share the authoritative email session.
 public struct WelcomeView: View {
     @Bindable var model: AuthFlowModel
 
@@ -46,30 +43,6 @@ public struct WelcomeView: View {
 
             // Sign-in actions
             VStack(spacing: 14) {
-                SignInWithAppleButton(.continue) { request in
-                    request.requestedScopes = [.fullName, .email]
-                } onCompletion: { result in
-                    model.performSignInWithApple(result)
-                }
-                .signInWithAppleButtonStyle(.black)
-                .frame(height: 50)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .disabled(model.isLoading)
-                .accessibilityLabel("Continue with Apple")
-
-                HStack {
-                    Rectangle()
-                        .frame(height: 0.5)
-                        .foregroundStyle(Color(uiColor: .quaternaryLabel))
-                    Text("or")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    Rectangle()
-                        .frame(height: 0.5)
-                        .foregroundStyle(Color(uiColor: .quaternaryLabel))
-                }
-                .padding(.vertical, 4)
-
                 CFPrimaryButton("Create an account") {
                     model.navigate(to: .signUp)
                 }
@@ -107,6 +80,6 @@ public struct WelcomeView: View {
 }
 
 #Preview("Welcome") {
-    WelcomeView(model: AuthFlowModel(authService: previewAuthService()))
+    WelcomeView(model: previewAuthFlowModel())
 }
 #endif // os(iOS)

@@ -74,7 +74,7 @@ public struct SignUpView: View {
 
 #Preview("Sign Up") {
     NavigationStack {
-        SignUpView(model: AuthFlowModel(authService: previewAuthService()))
+        SignUpView(model: previewAuthFlowModel())
     }
 }
 #endif // os(iOS)
