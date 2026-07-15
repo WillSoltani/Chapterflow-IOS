@@ -1,5 +1,6 @@
 // swiftlint:disable file_length
 import SwiftUI
+import Observation
 import CoreKit
 import Models
 import AuthKit
@@ -258,6 +259,10 @@ public final class AppModel {
     /// Retained so `makePaywallModel(context:)` can build `PaywallModel` without re-creating the client.
     private let apiClient: any APIClientProtocol
 
+    /// Internal only so composition/lifecycle tests can inject closed events.
+    /// Diagnostics consumers receive immutable snapshots through the public API.
+    let apiObservationHealthRecorder: APIObservationHealthRecorder
+
     /// Thread-safe store for the current user ID, readable cross-actor.
     /// Written on MainActor when sign-in completes; reads are safe because
     /// String is a value type and the only hazard is a brief sign-in/out race.
@@ -281,11 +286,6 @@ public final class AppModel {
         let sm = session
         self.session = session
 
-        let container = persistence.controller.container
-        let client = APIClient(config: config, tokenProvider: sm)
-        self.apiClient = client
-        self.appConfigService = AppConfigService(apiClient: client)
-
         let reporter = CrashReporterFactory.make(
             dsn: config.sentryDSN,
             environment: {
@@ -297,6 +297,19 @@ public final class AppModel {
             }()
         )
         self.crashReporter = reporter
+
+        let observationComposition = LiveAPIClientComposition(
+            config: config,
+            tokenProvider: sm,
+            reporter: reporter,
+            initialSessionState: Self.apiObservationSessionState(for: session.authState)
+        )
+        let client = observationComposition.client
+        self.apiObservationHealthRecorder = observationComposition.healthRecorder
+        self.apiClient = client
+        self.appConfigService = AppConfigService(apiClient: client)
+
+        let container = persistence.controller.container
 
         let analyticsBaseURL = URL(string: config.apiBaseURL) ?? URL(string: "https://api.chapterflow.ca")!
         let analyticsTransport = URLSessionAnalyticsTransport(
@@ -397,6 +410,7 @@ public final class AppModel {
         #if DEBUG
         applyLaunchArguments()
         #endif
+        observeAPIObservationSessionTransitions()
     }
 
     // MARK: - Lifecycle
@@ -446,12 +460,48 @@ public final class AppModel {
     /// Signs the user out, unregistering the APNs token from the backend first.
     /// Also removes all Spotlight index entries to honour auth state.
     public func signOut() async {
+        apiObservationHealthRecorder.transition(to: .signedOut)
         userIdBox.userId = nil
         await apnsManager.handleSignOut()
         await syncEngineInternal.stop()
         await session.signOut()
         isGuestMode = false
         await spotlightIndexer.removeAll()
+    }
+
+    /// Returns only bounded, already-sanitized API health for tests and a later
+    /// internal diagnostics surface. No account identifier is retained.
+    public func apiObservationHealthSnapshot() -> APIObservationHealthSnapshot {
+        apiObservationHealthRecorder.snapshot()
+    }
+
+    /// Clears synchronously in Observation's will-change callback, then rearms
+    /// against the new auth state on the main actor. Requests started before the
+    /// transition carry the older generation and are rejected on completion.
+    private func observeAPIObservationSessionTransitions() {
+        let recorder = apiObservationHealthRecorder
+        withObservationTracking {
+            _ = session.authState
+        } onChange: { [weak self, recorder] in
+            recorder.beginSessionTransition()
+            Task { @MainActor [weak self, recorder] in
+                guard let self else { return }
+                recorder.completeSessionTransition(
+                    to: Self.apiObservationSessionState(for: self.session.authState)
+                )
+                self.observeAPIObservationSessionTransitions()
+            }
+        }
+    }
+
+    private static func apiObservationSessionState(
+        for authState: AuthState
+    ) -> APIObservationSessionState {
+        if case .signedIn = authState {
+            .signedIn
+        } else {
+            .signedOut
+        }
     }
 
     // MARK: - Spotlight indexing

@@ -1,12 +1,55 @@
 import Foundation
 
+/// Opaque, ephemeral context captured when an API operation begins.
+///
+/// The value can contain only session-generation tokens supplied by observers.
+/// It never contains an account identifier or request data. `APIClient` carries
+/// it back to the same observer when an attempt completes so a bounded recorder
+/// can reject work that crossed a session transition.
+public struct APIObservationContext: Sendable {
+    let sessionGeneration: UInt64?
+    let childContexts: [APIObservationContext]?
+
+    /// An unscoped context used by observers that need no request-start state.
+    public init() {
+        sessionGeneration = nil
+        childContexts = nil
+    }
+
+    init(sessionGeneration: UInt64) {
+        self.sessionGeneration = sessionGeneration
+        childContexts = nil
+    }
+
+    init(childContexts: [APIObservationContext]) {
+        sessionGeneration = nil
+        self.childContexts = childContexts
+    }
+}
+
 /// A synchronous, nonthrowing hook called once for every actual API attempt.
 ///
 /// The only input is a closed, privacy-safe value. Implementations must remain
 /// bounded and must not perform JSON encoding, disk or network I/O, or create
 /// unbounded tasks. Observation is never allowed to change request behavior.
 public protocol APIClientObserver: Sendable {
+    /// Captures any ephemeral observer state before an API operation begins.
+    func captureContext() -> APIObservationContext
+
     func record(_ event: APIRequestObservation)
+
+    /// Records against the context captured at request start.
+    func record(_ event: APIRequestObservation, context: APIObservationContext)
+}
+
+public extension APIClientObserver {
+    func captureContext() -> APIObservationContext {
+        APIObservationContext()
+    }
+
+    func record(_ event: APIRequestObservation, context: APIObservationContext) {
+        record(event)
+    }
 }
 
 /// Bridges typed API observations into privacy-safe crash breadcrumbs.
@@ -73,7 +116,7 @@ public struct CrashBreadcrumbAPIObserver: APIClientObserver {
     }
 }
 
-/// A no-op observer for previews, tests, and composition deferred to WP-OBS-01B.
+/// A no-op observer for previews and tests that explicitly disable observation.
 public struct NoopAPIClientObserver: APIClientObserver {
     public init() {}
     public func record(_ event: APIRequestObservation) {}

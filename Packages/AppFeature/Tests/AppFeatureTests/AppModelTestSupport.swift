@@ -5,7 +5,7 @@ import Persistence
 @testable import AppFeature
 
 @MainActor
-func makeTestAppModel() -> AppModel {
+func makeTestAppModel(session injectedSession: SessionManager? = nil) -> AppModel {
     let config = AppConfig(
         apiBaseURL: "https://api.chapterflow.test",
         cognitoRegion: "us-east-1",
@@ -19,11 +19,12 @@ func makeTestAppModel() -> AppModel {
         do {
             let persistence = try makeTestPersistenceResources()
             let authService = AuthService(config: validated.value)
+            let session = injectedSession ?? SessionManager(authService: authService)
             return AppModel(
                 config: validated,
                 persistence: persistence,
                 authService: authService,
-                session: SessionManager(authService: authService)
+                session: session
             )
         } catch {
             preconditionFailure("Test persistence must initialize: \(error)")
