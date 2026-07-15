@@ -1,4 +1,4 @@
-import AuthKit
+@testable import AuthKit
 import CoreKit
 import Foundation
 import Networking
@@ -54,7 +54,7 @@ struct APIObservationCompositionTests {
     }
 
     @Test("AppModel clears before sign-out and isolates the next signed-in generation")
-    func appModelSessionLifecycle() async {
+    func appModelSessionLifecycle() async throws {
         let session = SessionManager(tokenStore: InMemoryTokenStore())
         let model = makeTestAppModel(session: session)
         let oldEvent = observation(statusCode: 299)
@@ -68,7 +68,21 @@ struct APIObservationCompositionTests {
         #expect(signedOut.sessionGeneration > before.sessionGeneration)
         #expect(!signedOut.events.contains(oldEvent))
 
-        session.stepUpCompleted()
+        let identity = try #require(SessionIdentity(
+            subject: "observation-test-subject",
+            username: "reader",
+            email: nil,
+            source: .cognitoUserPool
+        ))
+        try session.establishSessionForTesting(
+            identity: identity,
+            tokens: StoredTokens(
+                idToken: "test.header.payload",
+                accessToken: "test-access",
+                refreshToken: "test-refresh",
+                expiresAt: .distantFuture
+            )
+        )
         await waitForObservationState(.signedIn, model: model)
         model.apiObservationHealthRecorder.record(observation(statusCode: 201))
 

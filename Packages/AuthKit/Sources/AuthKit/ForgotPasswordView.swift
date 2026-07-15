@@ -110,12 +110,12 @@ public struct ForgotPasswordView: View {
 
 #Preview("Forgot Password — request") {
     NavigationStack {
-        ForgotPasswordView(model: AuthFlowModel(authService: previewAuthService()))
+        ForgotPasswordView(model: previewAuthFlowModel())
     }
 }
 
 #Preview("Forgot Password — reset") {
-    let m = AuthFlowModel(authService: previewAuthService())
+    let m = previewAuthFlowModel()
     NavigationStack {
         ForgotPasswordView(model: m)
             .onAppear {

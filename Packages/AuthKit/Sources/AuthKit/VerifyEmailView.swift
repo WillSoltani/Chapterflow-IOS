@@ -50,7 +50,7 @@ public struct VerifyEmailView: View {
 }
 
 #Preview("Verify Email") {
-    let m = AuthFlowModel(authService: previewAuthService())
+    let m = previewAuthFlowModel()
     NavigationStack {
         VerifyEmailView(model: m)
             .onAppear { m.pendingUsername = "you@example.com" }

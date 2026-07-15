@@ -10,6 +10,17 @@ public protocol TokenRefreshing: Sendable {
 /// Stub for use in previews and unit tests.
 /// Pass `shouldFail: true` to simulate a refresh failure.
 public struct StubTokenRefresher: TokenRefreshing {
+    public static let fixedIDToken: String = {
+        let payload = Data(
+            #"{"sub":"test-subject","exp":9999999999,"name":"Test Reader"}"#.utf8
+        )
+        .base64EncodedString()
+        .replacingOccurrences(of: "+", with: "-")
+        .replacingOccurrences(of: "/", with: "_")
+        .replacingOccurrences(of: "=", with: "")
+        return "eyJhbGciOiJub25lIn0.\(payload).signature"
+    }()
+
     private let shouldFail: Bool
     private let expiresIn: TimeInterval
 
@@ -21,7 +32,7 @@ public struct StubTokenRefresher: TokenRefreshing {
     public func performRefresh() async throws -> StoredTokens {
         if shouldFail { throw AppError.unauthenticated }
         return StoredTokens(
-            idToken: "stub-id-token",
+            idToken: Self.fixedIDToken,
             accessToken: "stub-access-token",
             refreshToken: "stub-refresh-token",
             expiresAt: Date().addingTimeInterval(expiresIn)

@@ -26,25 +26,15 @@ final class SignInFlowTests: CFUITestCase {
         freshApp.launch()
         defer { freshApp.terminate() }
 
-        // WelcomeView surfaces at least one of these elements.
+        let createAccount = freshApp.buttons["Create an account"]
         let appleButton = freshApp.buttons.matching(
             NSPredicate(format: "label CONTAINS[c] 'apple'")
         ).firstMatch
-        let logInButton = freshApp.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'log'")
-        ).firstMatch
-        let signUpButton = freshApp.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'sign up'")
-        ).firstMatch
+        let logInButton = freshApp.buttons["Already have an account? Log in"]
 
-        let authScreenVisible = appleButton.waitForExistence(timeout: 10)
-            || logInButton.waitForExistence(timeout: 3)
-            || signUpButton.waitForExistence(timeout: 3)
-
-        XCTAssert(
-            authScreenVisible,
-            "Auth screen (WelcomeView) must appear when the user is not signed in"
-        )
+        XCTAssertTrue(createAccount.waitForExistence(timeout: 10))
+        XCTAssertTrue(logInButton.waitForExistence(timeout: 3))
+        XCTAssertFalse(appleButton.exists, "Unavailable Apple sign-in must not expose a false-success control")
     }
 
     /// Navigate to the log-in form and verify the field layout.
@@ -62,11 +52,7 @@ final class SignInFlowTests: CFUITestCase {
             NSPredicate(format: "label CONTAINS[c] 'log in' OR label CONTAINS[c] 'sign in'")
         ).firstMatch
 
-        guard logInButton.waitForExistence(timeout: 10) else {
-            // Welcome screen not shown — auth may already be seeded.
-            // Skip gracefully rather than fail.
-            throw XCTSkip("Log-in button not found; app may be pre-authed")
-        }
+        XCTAssertTrue(logInButton.waitForExistence(timeout: 10), "Signed-out hermetic launch must show Log In")
         logInButton.tap()
 
         // The log-in form must contain an email field and a password field.
@@ -97,22 +83,12 @@ final class SignInFlowTests: CFUITestCase {
             NSPredicate(format: "label CONTAINS[c] 'log in' OR label CONTAINS[c] 'sign in'")
         ).firstMatch
 
-        guard logInButton.waitForExistence(timeout: 10) else {
-            throw XCTSkip("Log-in button not found")
-        }
+        XCTAssertTrue(logInButton.waitForExistence(timeout: 10), "Signed-out hermetic launch must show Log In")
         logInButton.tap()
 
-        // Find the "Sign in" submit button on the log-in form.
-        let submitButton = freshApp.buttons.matching(
-            NSPredicate(format: "label CONTAINS[c] 'sign in' OR label CONTAINS[c] 'log in'")
-        ).element(boundBy: 1) // skip the nav button, pick the form submit
-
-        if submitButton.waitForExistence(timeout: 5) {
-            // The button should be disabled when fields are empty.
-            // (Some UI variants hide it instead of disabling it — both are acceptable.)
-            let isDisabledOrAbsent = !submitButton.isEnabled || !submitButton.exists
-            _ = isDisabledOrAbsent // Informational; not a hard assertion (UI varies)
-        }
+        let submitButton = freshApp.buttons["Log In"]
+        XCTAssertTrue(submitButton.waitForExistence(timeout: 5))
+        XCTAssertFalse(submitButton.isEnabled, "Log In must remain disabled while credentials are empty")
     }
 
     // MARK: - Authenticated state (bypass)

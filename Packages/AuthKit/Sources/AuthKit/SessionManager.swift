@@ -1,275 +1,598 @@
-import Foundation
-import Observation
 import CoreKit
+import Foundation
 import Networking
+import Observation
 import Persistence
 
-/// Manages the Cognito session lifecycle for the entire app.
-///
-/// `SessionManager` is the single observable source of truth for `AuthState`.
-/// It wraps `AuthService` (Amplify operations) and adds:
-/// - Session init / sign-out
-/// - BGTask pre-refresh scheduling
-/// - Step-up re-authentication (suspends API requests until the user confirms)
-/// - Non-destructive `.reconnecting` state when the verifier is unavailable
-///
-/// **State machine:**
-/// - `.unknown`       → after `configure()` → `.signedOut` or `.signedIn(user)`
-/// - `.signedOut`     + sign-in success       → `.signedIn(user)`
-/// - `.signedIn`      + refresh fails          → `.signedOut`
-/// - `.signedIn`      + server reauthRequired → `.reauthRequired`
-/// - `.reauthRequired`+ user confirms          → `.signedIn(user)` (request retried)
-/// - `.reauthRequired`+ user cancels           → `.signedOut`
-/// - `.signedIn`      + verifier exhausted     → `.reconnecting`
-/// - `.reconnecting`  + refresh succeeds       → `.signedIn(user)`
+/// The single authority for Cognito session state and the token mirror.
 @Observable
 @MainActor
 public final class SessionManager {
-
-    // MARK: - Public state
-
     public private(set) var authState: AuthState
-
-    // MARK: - Internal (accessible to AuthTokenProvider and BGTask)
+    public private(set) var currentIdentity: SessionIdentity?
 
     let tokenStore: any TokenStoring
-
-    // MARK: - Live auth service
-
     let authService: AuthService?
 
-    // MARK: - Test-only refresh path
-
-    private let testRefresher: (any TokenRefreshing)?
-
-    // MARK: - Step-up reauth
-
-    private var reauthContinuations: [CheckedContinuation<Void, Error>] = []
-    private var isReauthInProgress = false
-    private var currentUser: UserSummary?
-
-    // MARK: - Event listener
-
-    // nonisolated(unsafe): Task.cancel() is safe from any thread.
-    // @Observable's macro expansion requires (unsafe) for mutable stored properties.
-    nonisolated(unsafe) private var authEventsTask: Task<Void, Never>?
-
-    // MARK: - Production init
+    @ObservationIgnored private let testRefresher: (any TokenRefreshing)?
+    @ObservationIgnored private var sessionGeneration: UInt64 = 0
+    @ObservationIgnored private var restorationTask: Task<Void, Never>?
+    @ObservationIgnored private var signInFlight: SignInFlight?
+    @ObservationIgnored private var refreshFlight: RefreshFlight?
+    @ObservationIgnored private var stepUpWaiters: [UUID: StepUpWaiter] = [:]
+    @ObservationIgnored private var isSigningOut = false
 
     public init(authService: AuthService) {
         self.authService = authService
         self.tokenStore = authService.tokenStore
         self.testRefresher = nil
-        // Start .unknown; configure() resolves to .signedIn or .signedOut via events.
         self.authState = .unknown
+        self.currentIdentity = nil
     }
-
-    // MARK: - Test init (no Amplify)
 
     public init(
         tokenStore: any TokenStoring,
         refresher: any TokenRefreshing = StubTokenRefresher()
     ) {
         self.authService = nil
-        self.testRefresher = refresher
         self.tokenStore = tokenStore
-        if let tokens = tokenStore.load(), !tokens.isExpired() {
-            let stub = UserSummary(userId: "", username: "test", email: nil)
-            self.authState = .signedIn(stub)
-            self.currentUser = stub
-        } else {
-            self.authState = .signedOut
+        self.testRefresher = refresher
+        self.authState = .signedOut
+        self.currentIdentity = nil
+    }
+
+    init(
+        tokenStore: any TokenStoring,
+        refresher: any TokenRefreshing,
+        testIdentity: SessionIdentity
+    ) {
+        self.authService = nil
+        self.tokenStore = tokenStore
+        self.testRefresher = refresher
+        self.authState = .signedIn(testIdentity)
+        self.currentIdentity = testIdentity
+    }
+
+    init(authService: AuthService, testIdentity: SessionIdentity) {
+        self.authService = authService
+        self.tokenStore = authService.tokenStore
+        self.testRefresher = nil
+        self.authState = .signedIn(testIdentity)
+        self.currentIdentity = testIdentity
+    }
+
+    func establishSessionForTesting(
+        identity: SessionIdentity,
+        tokens: StoredTokens
+    ) throws {
+        _ = beginNewGeneration()
+        try tokenStore.save(tokens)
+        currentIdentity = identity
+        authState = .signedIn(identity)
+    }
+
+    isolated deinit {
+        restorationTask?.cancel()
+        if let flight = refreshFlight {
+            flight.task?.cancel()
+            for continuation in flight.waiters.values {
+                continuation.resume(throwing: CancellationError())
+            }
+        }
+        for waiter in stepUpWaiters.values {
+            waiter.continuation.resume(throwing: CancellationError())
         }
     }
 
-    deinit {
-        authEventsTask?.cancel()
-    }
-
-    // MARK: - Lifecycle
-
-    /// Configures Amplify (production only) and starts listening to auth events.
-    /// Call once at app launch, from `AppModel.configure()`.
     public func configure() throws {
+        guard !isSigningOut else { throw AppError.unauthenticated }
+        #if DEBUG
+        if Self.isHermeticUITestBypass(environment: ProcessInfo.processInfo.environment) {
+            establishHermeticUITestSession()
+            return
+        }
+        #endif
+
         guard let authService else { return }
         try authService.configure()
-        // Capture the stream directly so the task doesn't hold `self` strongly
-        // between event arrivals. The `guard let self` inside the loop allows
-        // the task to exit cleanly if `SessionManager` is deallocated.
-        let eventsStream = authService.authEvents
-        authEventsTask = Task { [weak self] in
-            for await event in eventsStream {
-                guard let self else { return }
-                self.handleAuthEvent(event)
-            }
+        _ = startRestoration(using: authService)
+    }
+
+    func restoreSession() async {
+        guard let authService else {
+            transitionToSignedOut(clearMirror: true)
+            return
+        }
+        let task = startRestoration(using: authService)
+        await task.value
+    }
+
+    /// Routes email sign-in through the same verified session boundary used by
+    /// restoration and refresh.
+    public func signIn(username: String, password: String) async throws {
+        guard !isSigningOut, signInFlight == nil, let authService else {
+            throw AppError.unauthenticated
+        }
+        let generation = beginNewGeneration()
+        currentIdentity = nil
+        if authState != .signedOut { authState = .signedOut }
+
+        let flightID = UUID()
+        let task = Task { @MainActor [authService] in
+            try await authService.signIn(username: username, password: password)
+        }
+        signInFlight = SignInFlight(id: flightID, generation: generation, task: task)
+
+        do {
+            let candidate = try await task.value
+            clearSignInFlight(flightID)
+            guard generation == sessionGeneration else { throw CancellationError() }
+            try commit(candidate, generation: generation)
+        } catch {
+            clearSignInFlight(flightID)
+            guard generation == sessionGeneration else { throw CancellationError() }
+            await failClosed(generation: generation, using: authService)
+            throw error
         }
     }
 
-    private func handleAuthEvent(_ event: AuthEvent) {
-        switch event {
-        case .signedIn(let user):
-            currentUser = user
-            authState = .signedIn(user)
-        case .signedOut, .sessionExpired:
-            currentUser = nil
-            authState = .signedOut
-            failAllReauthContinuations()
-        case .tokenRefreshed:
-            if case .reconnecting = authState, let user = currentUser {
-                authState = .signedIn(user)
-            }
+    /// Invalidates in-flight work immediately, then reports signed out only
+    /// after Amplify confirms that its local Cognito session was cleared.
+    @discardableResult
+    public func signOut() async -> Bool {
+        guard !isSigningOut else { return false }
+        let previousIdentity = currentIdentity
+        let generation = beginNewGeneration()
+        isSigningOut = true
+        currentIdentity = nil
+        authState = .unknown
+
+        // Provider sign-in is a session-mutating operation. Let it settle before
+        // clearing Amplify so a late completion cannot recreate a restorable
+        // provider session after this sign-out reports success.
+        if let pendingSignIn = signInFlight?.task {
+            _ = await pendingSignIn.result
         }
-    }
 
-    // MARK: - Sign-out
-
-    public func signOut() async {
+        let outcome: CognitoSignOutOutcome
         if let authService {
-            await authService.signOut()
-            // authState updated via .signedOut event
+            outcome = await authService.signOut()
         } else {
+            outcome = .signedOutLocally
+        }
+
+        guard generation == sessionGeneration else {
+            isSigningOut = false
+            return false
+        }
+        isSigningOut = false
+        switch outcome {
+        case .signedOutLocally:
             try? tokenStore.delete()
-            currentUser = nil
             authState = .signedOut
-            failAllReauthContinuations()
+            return true
+        case .failedLocally:
+            if let previousIdentity {
+                currentIdentity = previousIdentity
+                authState = .signedIn(previousIdentity)
+            } else {
+                authState = .signedOut
+            }
+            return false
         }
     }
 
-    // MARK: - Step-up reauth (invoked from ReauthView)
-
-    /// Called after the user successfully completes the step-up challenge.
-    /// Resumes all suspended API requests and returns to `.signedIn`.
-    public func stepUpCompleted() {
-        let user = currentUser ?? UserSummary(userId: "", username: "", email: nil)
-        authState = .signedIn(user)
-        isReauthInProgress = false
-        resumeAllReauthContinuations()
+    private func clearSignInFlight(_ id: UUID) {
+        guard signInFlight?.id == id else { return }
+        signInFlight = nil
     }
 
-    /// Called when the user cancels the reauth sheet. Signs the user out.
-    public func stepUpCancelled() {
-        Task { await signOut() }
+    private func startRestoration(using service: AuthService) -> Task<Void, Never> {
+        guard !isSigningOut else { return Task {} }
+        let generation = beginNewGeneration()
+        currentIdentity = nil
+        authState = .unknown
+
+        let task = Task { [weak self, service] in
+            let result: Result<VerifiedSession?, Error>
+            do {
+                result = .success(try await service.restoreSession())
+            } catch {
+                result = .failure(error)
+            }
+            guard !Task.isCancelled else { return }
+            await self?.finishRestoration(result, generation: generation, service: service)
+        }
+        restorationTask = task
+        return task
     }
 
-    // MARK: - Reconnecting recovery
+    private func finishRestoration(
+        _ result: Result<VerifiedSession?, Error>,
+        generation: UInt64,
+        service: AuthService
+    ) async {
+        guard generation == sessionGeneration else { return }
+        restorationTask = nil
+
+        switch result {
+        case .success(.some(let candidate)):
+            do {
+                try commit(candidate, generation: generation)
+            } catch {
+                await failClosed(generation: generation, using: service)
+            }
+        case .success(.none), .failure:
+            await failClosed(generation: generation, using: service)
+        }
+    }
+
+    private func commit(_ candidate: VerifiedSession, generation: UInt64) throws {
+        guard generation == sessionGeneration else { throw CancellationError() }
+        try tokenStore.save(candidate.tokens)
+        guard generation == sessionGeneration else { throw CancellationError() }
+        currentIdentity = candidate.identity
+        authState = .signedIn(candidate.identity)
+    }
+
+    private func failClosed(generation: UInt64, using service: AuthService) async {
+        guard generation == sessionGeneration, !isSigningOut else { return }
+        let closingGeneration = beginNewGeneration()
+        isSigningOut = true
+        try? tokenStore.delete()
+        currentIdentity = nil
+        authState = .signedOut
+        _ = await service.signOut()
+        isSigningOut = false
+        guard closingGeneration == sessionGeneration else { return }
+        authState = .signedOut
+    }
+
+    private func transitionToSignedOut(clearMirror: Bool) {
+        _ = beginNewGeneration()
+        currentIdentity = nil
+        authState = .signedOut
+        if clearMirror { try? tokenStore.delete() }
+    }
+
+    @discardableResult
+    private func beginNewGeneration() -> UInt64 {
+        sessionGeneration &+= 1
+        restorationTask?.cancel()
+        restorationTask = nil
+        invalidateRefreshFlight(with: AppError.unauthenticated)
+        failAllStepUpWaiters(with: AppError.unauthenticated)
+        return sessionGeneration
+    }
+
+    // MARK: - Refresh single-flight
+
+    public func performRefresh() async throws -> StoredTokens {
+        try Task.checkCancellation()
+        let waiterID = UUID()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                registerRefreshWaiter(waiterID, continuation: continuation)
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.cancelRefreshWaiter(waiterID)
+            }
+        }
+    }
+
+    private func registerRefreshWaiter(
+        _ waiterID: UUID,
+        continuation: CheckedContinuation<StoredTokens, Error>
+    ) {
+        guard !Task.isCancelled, let identity = currentIdentity,
+              authState != .signedOut, authState != .unknown else {
+            continuation.resume(throwing: Task.isCancelled ? CancellationError() : AppError.unauthenticated)
+            return
+        }
+
+        if var flight = refreshFlight,
+           flight.generation == sessionGeneration,
+           flight.identity.subject == identity.subject {
+            flight.waiters[waiterID] = continuation
+            refreshFlight = flight
+            return
+        }
+
+        guard authService != nil || testRefresher != nil else {
+            continuation.resume(throwing: AppError.unauthenticated)
+            return
+        }
+
+        let flightID = UUID()
+        let generation = sessionGeneration
+        var flight = RefreshFlight(
+            id: flightID,
+            generation: generation,
+            identity: identity,
+            waiters: [waiterID: continuation],
+            task: nil
+        )
+
+        let service = authService
+        let refresher = testRefresher
+        let task = Task { [weak self, service, refresher] in
+            let result: Result<VerifiedSession, Error>
+            do {
+                if let service {
+                    result = .success(try await service.refreshSession())
+                } else if let refresher {
+                    let tokens = try await refresher.performRefresh()
+                    result = .success(VerifiedSession(identity: identity, tokens: tokens))
+                } else {
+                    result = .failure(AppError.unauthenticated)
+                }
+            } catch {
+                result = .failure(error)
+            }
+            await self?.finishRefresh(result, flightID: flightID)
+        }
+        flight.task = task
+        refreshFlight = flight
+    }
+
+    private func finishRefresh(
+        _ result: Result<VerifiedSession, Error>,
+        flightID: UUID
+    ) async {
+        guard let flight = refreshFlight, flight.id == flightID else { return }
+        refreshFlight = nil
+
+        guard flight.generation == sessionGeneration,
+              let currentIdentity,
+              currentIdentity.subject == flight.identity.subject else {
+            resumeRefreshWaiters(flight.waiters, with: .failure(CancellationError()))
+            return
+        }
+
+        switch result {
+        case .success(let candidate):
+            guard candidate.identity.subject == flight.identity.subject,
+                  candidate.identity.source == flight.identity.source else {
+                await failRefreshClosed(
+                    flight,
+                    error: AppError.unauthenticated
+                )
+                return
+            }
+            do {
+                try tokenStore.save(candidate.tokens)
+                guard flight.generation == sessionGeneration else {
+                    resumeRefreshWaiters(flight.waiters, with: .failure(CancellationError()))
+                    return
+                }
+                if case .reconnecting = authState {
+                    authState = .signedIn(flight.identity)
+                }
+                resumeRefreshWaiters(flight.waiters, with: .success(candidate.tokens))
+            } catch {
+                await failRefreshClosed(flight, error: error)
+            }
+        case .failure(let error):
+            if Self.isUnrecoverableAuthFailure(error) {
+                await failRefreshClosed(flight, error: error)
+            } else {
+                resumeRefreshWaiters(flight.waiters, with: .failure(error))
+            }
+        }
+    }
+
+    private func failRefreshClosed(_ flight: RefreshFlight, error: Error) async {
+        if let authService {
+            await failClosed(generation: flight.generation, using: authService)
+        } else {
+            transitionToSignedOut(clearMirror: true)
+        }
+        resumeRefreshWaiters(flight.waiters, with: .failure(error))
+    }
+
+    private static func isUnrecoverableAuthFailure(_ error: Error) -> Bool {
+        (error as? AppError)?.isAuthenticationFailure == true
+    }
+
+    private func cancelRefreshWaiter(_ waiterID: UUID) {
+        guard var flight = refreshFlight,
+              let continuation = flight.waiters.removeValue(forKey: waiterID) else {
+            return
+        }
+        continuation.resume(throwing: CancellationError())
+        if flight.waiters.isEmpty {
+            refreshFlight = nil
+            flight.task?.cancel()
+        } else {
+            refreshFlight = flight
+        }
+    }
+
+    private func invalidateRefreshFlight(with error: Error) {
+        guard let flight = refreshFlight else { return }
+        refreshFlight = nil
+        flight.task?.cancel()
+        resumeRefreshWaiters(flight.waiters, with: .failure(error))
+    }
+
+    private func resumeRefreshWaiters(
+        _ waiters: [UUID: CheckedContinuation<StoredTokens, Error>],
+        with result: Result<StoredTokens, Error>
+    ) {
+        for continuation in waiters.values {
+            continuation.resume(with: result)
+        }
+    }
+
+    var refreshWaiterCount: Int { refreshFlight?.waiters.count ?? 0 }
+
+    // MARK: - Step-up
+
+    public func stepUp() async throws {
+        try Task.checkCancellation()
+        let waiterID = UUID()
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                registerStepUpWaiter(waiterID, continuation: continuation)
+            }
+        } onCancel: {
+            Task { @MainActor [weak self] in
+                self?.cancelStepUpWaiter(waiterID)
+            }
+        }
+    }
+
+    private func registerStepUpWaiter(
+        _ waiterID: UUID,
+        continuation: CheckedContinuation<Void, Error>
+    ) {
+        guard !Task.isCancelled, let identity = currentIdentity else {
+            continuation.resume(throwing: Task.isCancelled ? CancellationError() : AppError.unauthenticated)
+            return
+        }
+        switch authState {
+        case .signedIn, .reauthRequired:
+            stepUpWaiters[waiterID] = StepUpWaiter(
+                generation: sessionGeneration,
+                identity: identity,
+                continuation: continuation
+            )
+            authState = .reauthRequired
+        case .unknown, .signedOut, .reconnecting:
+            continuation.resume(throwing: AppError.unauthenticated)
+        }
+    }
+
+    /// Internal until a real Cognito step-up challenge can supply a
+    /// generation-bound proof. The current UI never calls this method.
+    func stepUpCompleted() {
+        guard case .reauthRequired = authState,
+              let identity = currentIdentity,
+              !stepUpWaiters.isEmpty,
+              stepUpWaiters.values.allSatisfy({
+                  $0.generation == sessionGeneration && $0.identity == identity
+              }) else {
+            return
+        }
+        let waiters = stepUpWaiters
+        stepUpWaiters.removeAll()
+        authState = .signedIn(identity)
+        for waiter in waiters.values { waiter.continuation.resume() }
+    }
+
+    public func stepUpCancelled() async {
+        await signOut()
+    }
+
+    private func cancelStepUpWaiter(_ waiterID: UUID) {
+        guard let waiter = stepUpWaiters.removeValue(forKey: waiterID) else { return }
+        waiter.continuation.resume(throwing: CancellationError())
+        if stepUpWaiters.isEmpty,
+           case .reauthRequired = authState,
+           let currentIdentity {
+            authState = .signedIn(currentIdentity)
+        }
+    }
+
+    private func failAllStepUpWaiters(with error: Error) {
+        let waiters = stepUpWaiters
+        stepUpWaiters.removeAll()
+        for waiter in waiters.values { waiter.continuation.resume(throwing: error) }
+    }
+
+    var stepUpWaiterCount: Int { stepUpWaiters.count }
+
+    // MARK: - Session recovery and mirror reads
 
     public func markReconnected() {
-        if case .reconnecting = authState, let user = currentUser {
-            authState = .signedIn(user)
+        if case .reconnecting = authState, let currentIdentity {
+            authState = .signedIn(currentIdentity)
         }
     }
 
-    /// Returns the cached Cognito id_token, or `nil` if none is stored.
-    /// Used by `AppModel` to extract display-name JWT claims on sign-in.
     public func currentIdToken() -> String? {
-        tokenStore.load()?.idToken
-    }
-
-    // MARK: - Continuation management
-
-    private func failAllReauthContinuations() {
-        let continuations = reauthContinuations
-        reauthContinuations = []
-        isReauthInProgress = false
-        for c in continuations { c.resume(throwing: AppError.unauthenticated) }
-    }
-
-    private func resumeAllReauthContinuations() {
-        let continuations = reauthContinuations
-        reauthContinuations = []
-        for c in continuations { c.resume() }
-    }
-}
-
-// MARK: - TokenRefreshing (used by AuthTokenProvider + BGTask)
-
-extension SessionManager: TokenRefreshing {
-    public func performRefresh() async throws -> StoredTokens {
-        if let authService {
-            // Production path: Amplify performs the refresh and AuthService writes to
-            // the TokenStore. This is the single production write path for token storage.
-            return try await authService.performRefresh()
-        } else if let testRefresher {
-            // Test-only path (authService == nil): no Amplify is available, so we write
-            // the stub tokens ourselves. This branch is unreachable in production.
-            let tokens = try await testRefresher.performRefresh()
-            try? tokenStore.save(tokens)
-            return tokens
-        }
-        throw AppError.unauthenticated
-    }
-}
-
-// MARK: - TokenProviding (wired into APIClient)
-
-extension SessionManager: TokenProviding {
-
-    #if DEBUG
-    /// A structurally-valid but unsigned JWT used only in XCUITest bypass mode.
-    /// The stub server never verifies signatures, so this satisfies the
-    /// `Authorization: Bearer` header for fixture-backed requests.
-    static let uitestFakeIDToken =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9." +
-        "eyJzdWIiOiJ1aXRlc3QtdXNlci0xMjMiLCJuYW1lIjoiVGVzdCBVc2VyIiwiZXhwIjo5OTk5OTk5OTk5fQ." +
-        "uitestfakesignature"
-    #endif
-
-    public func validToken() async throws -> String? {
         #if DEBUG
-        // UITest bypass: the stub server (CFStubURLProtocol) accepts any bearer
-        // token, and the auth state is forced signed-in in AuthService.syncAuthState().
-        // Return a fixed fake token here so authed requests carry an Authorization
-        // header WITHOUT depending on a Keychain write — the keychain access-group
-        // write is unreliable in the unsigned XCUITest host app.
-        if ProcessInfo.processInfo.environment["CF_UITEST_BYPASS_AUTH"] == "1" {
+        if currentIdentity == Self.hermeticUITestIdentity,
+           Self.isHermeticUITestBypass(environment: ProcessInfo.processInfo.environment) {
             return Self.uitestFakeIDToken
         }
         #endif
-        guard let tokens = tokenStore.load() else { return nil }
-        // Proactively refresh when within 5 minutes of expiry to avoid a
-        // predictable 401 round-trip. On failure, fall through and return
-        // the existing token — the server's 401 will still drive refresh().
+        guard let currentIdentity else { return nil }
+        do {
+            guard let tokens = try tokenStore.load(),
+                  UserProfile.from(idToken: tokens.idToken)?.sub == currentIdentity.subject else {
+                return nil
+            }
+            return tokens.idToken
+        } catch {
+            return nil
+        }
+    }
+
+    public func validToken() async throws -> String? {
+        #if DEBUG
+        if currentIdentity == Self.hermeticUITestIdentity,
+           Self.isHermeticUITestBypass(environment: ProcessInfo.processInfo.environment) {
+            return Self.uitestFakeIDToken
+        }
+        #endif
+
+        guard let identity = currentIdentity else { return nil }
+        let tokens: StoredTokens?
+        do {
+            tokens = try tokenStore.load()
+        } catch {
+            return try await performRefresh().idToken
+        }
+        guard let tokens else { return try await performRefresh().idToken }
+        guard UserProfile.from(idToken: tokens.idToken)?.sub == identity.subject else {
+            await signOut()
+            throw AppError.unauthenticated
+        }
         if tokens.isNearlyExpired() {
-            do { return try await performRefresh().idToken } catch {}
+            return try await performRefresh().idToken
         }
         return tokens.idToken
     }
 
     public func refresh() async throws {
-        do {
-            _ = try await performRefresh()
-        } catch {
-            await signOut()
-            throw AppError.unauthenticated
-        }
-    }
-
-    public nonisolated func stepUp() async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            Task { @MainActor [weak self] in
-                guard let self else {
-                    continuation.resume(throwing: CancellationError())
-                    return
-                }
-                guard case .signedIn = authState else {
-                    continuation.resume(throwing: AppError.unauthenticated)
-                    return
-                }
-                reauthContinuations.append(continuation)
-                if !isReauthInProgress {
-                    isReauthInProgress = true
-                    authState = .reauthRequired
-                }
-            }
-        }
+        _ = try await performRefresh()
     }
 
     public func reportSessionError(_ error: AppError) async {
-        switch error {
-        case .verifierUnavailable:
-            if case .signedIn = authState { authState = .reconnecting }
-        default:
-            break
+        if case .verifierUnavailable = error, case .signedIn = authState {
+            authState = .reconnecting
         }
     }
+
+    #if DEBUG
+    private func establishHermeticUITestSession() {
+        _ = beginNewGeneration()
+        currentIdentity = Self.hermeticUITestIdentity
+        authState = .signedIn(Self.hermeticUITestIdentity)
+    }
+    #endif
+}
+
+extension SessionManager: TokenRefreshing, TokenProviding {}
+
+private struct RefreshFlight {
+    let id: UUID
+    let generation: UInt64
+    let identity: SessionIdentity
+    var waiters: [UUID: CheckedContinuation<StoredTokens, Error>]
+    var task: Task<Void, Never>?
+}
+
+private struct SignInFlight {
+    let id: UUID
+    let generation: UInt64
+    let task: Task<VerifiedSession, Error>
+}
+
+private struct StepUpWaiter {
+    let generation: UInt64
+    let identity: SessionIdentity
+    let continuation: CheckedContinuation<Void, Error>
 }

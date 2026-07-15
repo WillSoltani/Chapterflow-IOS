@@ -55,21 +55,21 @@ struct TokenStoreTests {
         let store = makeStore()
 
         // Empty to start.
-        #expect(store.load() == nil)
+        #expect(try store.load() == nil)
 
         // Save then load returns the same triple.
         try store.save(sample)
-        #expect(store.load() == sample)
+        #expect(try store.load() == sample)
 
         // Delete removes everything.
         try store.delete()
-        #expect(store.load() == nil)
+        #expect(try store.load() == nil)
     }
 
     @Test("load returns nil on a fresh store")
-    func freshStoreReturnsNil() {
+    func freshStoreReturnsNil() throws {
         let store = makeStore()
-        #expect(store.load() == nil)
+        #expect(try store.load() == nil)
     }
 
     @Test("overwrites an existing token")
@@ -85,7 +85,7 @@ struct TokenStoreTests {
         )
         try store.save(updated)
 
-        #expect(store.load() == updated)
+        #expect(try store.load() == updated)
         try store.delete()
     }
 
@@ -104,6 +104,14 @@ struct TokenStoreTests {
         )
         #expect(!fresh.isExpired())
         #expect(!fresh.isNearlyExpired())
+    }
+
+    @Test("token reflection redacts every credential")
+    func tokenReflectionIsRedacted() {
+        let reflected = String(reflecting: sample)
+        #expect(!reflected.contains("id-123"))
+        #expect(!reflected.contains("access-456"))
+        #expect(!reflected.contains("refresh-789"))
     }
 }
 

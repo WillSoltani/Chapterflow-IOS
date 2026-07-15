@@ -4,7 +4,8 @@ import Security
 // MARK: - StoredTokens
 
 /// Tokens persisted to the Keychain after a successful Cognito auth operation.
-public struct StoredTokens: Sendable, Codable, Equatable {
+public struct StoredTokens: Sendable, Codable, Equatable,
+    CustomStringConvertible, CustomDebugStringConvertible, CustomReflectable {
     public let idToken: String
     public let accessToken: String
     public let refreshToken: String
@@ -31,6 +32,13 @@ public struct StoredTokens: Sendable, Codable, Equatable {
     public func isNearlyExpired(at date: Date = Date()) -> Bool {
         date.addingTimeInterval(300) >= expiresAt
     }
+
+    /// Token values are secrets and must never enter logs or debugger reflection.
+    public var description: String { "StoredTokens(redacted)" }
+    public var debugDescription: String { description }
+    public var customMirror: Mirror {
+        Mirror(self, children: ["contents": "redacted"])
+    }
 }
 
 // MARK: - TokenStoring
@@ -38,7 +46,7 @@ public struct StoredTokens: Sendable, Codable, Equatable {
 /// Abstraction over token persistence, enabling in-memory fakes in tests.
 public protocol TokenStoring: Sendable {
     func save(_ tokens: StoredTokens) throws
-    func load() -> StoredTokens?
+    func load() throws -> StoredTokens?
     func delete() throws
 }
 
@@ -48,9 +56,9 @@ public protocol TokenStoring: Sendable {
 ///
 /// ## Token Ownership
 /// `TokenStore` is a **read-mostly mirror** of the Amplify session. In production,
-/// the ONLY component that writes to this store is `AuthService`, which does so after
-/// every Amplify auth event: sign-in, token refresh, and sign-out. No other code path
-/// may call `save(_:)` in production.
+/// the AuthKit `SessionManager` lifecycle authority is the only component that writes
+/// to this store, after it has verified sign-in, restoration, or refresh through the
+/// active Amplify/Cognito session. No other production path may call `save(_:)`.
 ///
 /// Extensions must NOT call `save(_:)` or `delete()` — they read only the cached
 /// `idToken` via `load()` for authenticated requests.
@@ -90,9 +98,13 @@ public struct TokenStore: TokenStoring, Sendable {
         try keychain.set(data, for: account)
     }
 
-    public func load() -> StoredTokens? {
-        guard let data = try? keychain.data(for: account) else { return nil }
-        return try? JSONDecoder().decode(StoredTokens.self, from: data)
+    public func load() throws -> StoredTokens? {
+        guard let data = try keychain.data(for: account) else { return nil }
+        do {
+            return try JSONDecoder().decode(StoredTokens.self, from: data)
+        } catch {
+            throw PersistenceError.invalidTokenData
+        }
     }
 
     public func delete() throws {
@@ -118,7 +130,7 @@ public final class InMemoryTokenStore: TokenStoring, @unchecked Sendable {
         lock.withLock { _tokens = tokens }
     }
 
-    public func load() -> StoredTokens? {
+    public func load() throws -> StoredTokens? {
         lock.withLock { _tokens }
     }
 

@@ -11,10 +11,15 @@ import DesignSystem
 /// `authState` transitions to `.signedIn`.
 struct AuthGateSheet: View {
     let authService: AuthService
+    let sessionManager: SessionManager
     let intent: AuthGateIntent
 
     var body: some View {
-        AuthFlowView(authService: authService, gateContext: intent.gateContext)
+        AuthFlowView(
+            authService: authService,
+            sessionManager: sessionManager,
+            gateContext: intent.gateContext
+        )
     }
 }
 
@@ -33,20 +38,24 @@ private func makePreviewAuthService() -> AuthService {
 // MARK: - Previews
 
 #Preview("Auth gate — start book") {
+    let service = makePreviewAuthService()
     Color.clear
         .sheet(isPresented: .constant(true)) {
             AuthGateSheet(
-                authService: makePreviewAuthService(),
+                authService: service,
+                sessionManager: SessionManager(authService: service),
                 intent: .startBook(bookId: "b-test", variantFamily: .emh)
             )
         }
 }
 
 #Preview("Auth gate — generic") {
+    let service = makePreviewAuthService()
     Color.clear
         .sheet(isPresented: .constant(true)) {
             AuthGateSheet(
-                authService: makePreviewAuthService(),
+                authService: service,
+                sessionManager: SessionManager(authService: service),
                 intent: .none
             )
         }

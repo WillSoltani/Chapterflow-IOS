@@ -30,4 +30,6 @@ public enum PersistenceError: Error, Equatable, Sendable {
     case keychain(OSStatus)
     /// A requested file or record was not found.
     case notFound
+    /// The stored authentication mirror could not be decoded safely.
+    case invalidTokenData
 }

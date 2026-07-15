@@ -1,5 +1,4 @@
 import SwiftUI
-import AuthenticationServices
 import CoreKit
 import Observation
 
@@ -64,9 +63,8 @@ public struct PasswordStrength: Equatable, Sendable {
 
 /// Navigation and form state for the auth flow.
 ///
-/// `AuthFlowModel` is intentionally decoupled from `SessionManager` — it only
-/// knows about `AuthService` (Amplify operations). `SessionManager` observes
-/// the same `authEvents` stream and updates `authState` independently.
+/// Sign-up/reset operations use `AuthService`; every sign-in is committed by
+/// the one shared `SessionManager`.
 @Observable
 @MainActor
 public final class AuthFlowModel {
@@ -118,9 +116,15 @@ public final class AuthFlowModel {
     public var isResetCodeSent = false
 
     private let authService: AuthService
+    private let sessionManager: SessionManager
 
-    public init(authService: AuthService, gateContext: String? = nil) {
+    public init(
+        authService: AuthService,
+        sessionManager: SessionManager,
+        gateContext: String? = nil
+    ) {
         self.authService = authService
+        self.sessionManager = sessionManager
         self.gateContext = gateContext
     }
 
@@ -157,7 +161,7 @@ public final class AuthFlowModel {
                 navigationPath.append(.verifyEmail)
             case .done:
                 // Auto sign-in if pool skips verification
-                try await authService.signIn(username: signUpEmail, password: signUpPassword)
+                try await sessionManager.signIn(username: signUpEmail, password: signUpPassword)
             }
         } catch {
             showToast(userMessage(for: error), isError: true)
@@ -177,7 +181,7 @@ public final class AuthFlowModel {
         do {
             try await authService.confirmSignUp(username: pendingUsername, code: verifyCode)
             // Auto sign-in after verification so the user lands directly in the app.
-            try await authService.signIn(username: pendingUsername, password: signUpPassword)
+            try await sessionManager.signIn(username: pendingUsername, password: signUpPassword)
         } catch {
             showToast(userMessage(for: error), isError: true)
         }
@@ -207,8 +211,7 @@ public final class AuthFlowModel {
         isLoading = true
         defer { isLoading = false }
         do {
-            try await authService.signIn(username: logInEmail, password: logInPassword)
-            // On success, authService emits .signedIn → SessionManager → AppRootView switches.
+            try await sessionManager.signIn(username: logInEmail, password: logInPassword)
         } catch {
             showToast(userMessage(for: error), isError: true)
         }
@@ -246,50 +249,6 @@ public final class AuthFlowModel {
                 // Navigate to log-in with email pre-filled
                 logInEmail = forgotEmail
                 navigate(to: .logIn)
-            } catch {
-                showToast(userMessage(for: error), isError: true)
-            }
-        }
-    }
-
-    // MARK: - Sign in with Apple
-
-    public func performSignInWithApple(_ result: Result<ASAuthorization, Error>) {
-        Task { await _signInWithApple(result) }
-    }
-
-    private func _signInWithApple(_ result: Result<ASAuthorization, Error>) async {
-        switch result {
-        case .failure(let error):
-            if let authError = error as? ASAuthorizationError, authError.code == .canceled { return }
-            showToast("Sign in failed. Please try again.", isError: true)
-
-        case .success(let auth):
-            guard
-                let credential = auth.credential as? ASAuthorizationAppleIDCredential,
-                let authCodeData = credential.authorizationCode
-            else {
-                showToast("Could not complete sign in. Please try again.", isError: true)
-                return
-            }
-
-            // Persist name on first sign-in (Apple only discloses once).
-            if let comps = credential.fullName {
-                let name = PersonNameComponentsFormatter()
-                    .string(from: comps)
-                    .trimmingCharacters(in: .whitespaces)
-                if !name.isEmpty {
-                    UserDefaults.standard.set(name, forKey: "chapterflow.displayName")
-                }
-            }
-
-            isLoading = true
-            defer { isLoading = false }
-            do {
-                try await authService.signInWithApple(
-                    authorizationCode: authCodeData,
-                    name: credential.fullName
-                )
             } catch {
                 showToast(userMessage(for: error), isError: true)
             }

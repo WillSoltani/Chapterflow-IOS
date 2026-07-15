@@ -12,10 +12,15 @@ public struct AuthFlowView: View {
 
     public init(
         authService: AuthService,
+        sessionManager: SessionManager,
         gateContext: String? = nil,
         onBrowseAsGuest: (() -> Void)? = nil
     ) {
-        var m = AuthFlowModel(authService: authService, gateContext: gateContext)
+        var m = AuthFlowModel(
+            authService: authService,
+            sessionManager: sessionManager,
+            gateContext: gateContext
+        )
         m.onBrowseAsGuest = onBrowseAsGuest
         _model = State(wrappedValue: m)
     }
@@ -41,6 +46,7 @@ public struct AuthFlowView: View {
 }
 
 #Preview("Auth flow") {
-    AuthFlowView(authService: previewAuthService())
+    let service = previewAuthService()
+    AuthFlowView(authService: service, sessionManager: SessionManager(authService: service))
 }
 #endif // os(iOS)
