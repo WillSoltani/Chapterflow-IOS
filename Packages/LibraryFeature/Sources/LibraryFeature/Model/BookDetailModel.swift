@@ -28,6 +28,27 @@ public enum ChapterLockReason: Equatable {
     case requiresPro
 }
 
+/// Server-authoritative private reading state for Book Detail.
+public enum BookDetailPrivateState: Sendable {
+    case loading
+    case started(
+        state: BookUserBookState,
+        applicationStates: [String: ChapterApplicationState]
+    )
+    case notStarted
+    case unavailable(UserFacingError)
+    case compatibilityUnknown
+}
+
+/// Account entitlement state is tracked independently from public metadata and
+/// book-state authority so one private request cannot erase a valid book outline.
+public enum BookDetailEntitlementState: Sendable {
+    case loading
+    case available(Entitlement)
+    case unavailable(UserFacingError)
+    case notRequired
+}
+
 // MARK: - BookDetailModel
 
 /// Observable model driving ``BookDetailView``.
@@ -43,20 +64,19 @@ public final class BookDetailModel {
         case idle
         case loading
         case loaded
-        case error(String)
+        case error(UserFacingError)
     }
 
     // MARK: - Published state
 
     public private(set) var loadState: LoadState = .idle
     public private(set) var manifest: BookManifest?
-    public private(set) var bookState: BookUserBookState?
-    public private(set) var applicationStates: [String: ChapterApplicationState] = [:]
-    public private(set) var entitlement: Entitlement?
+    public private(set) var privateState: BookDetailPrivateState = .loading
+    public private(set) var entitlementState: BookDetailEntitlementState = .loading
     /// `true` while `startBook` is in flight.
     public private(set) var isStarting = false
     /// Non-nil when a start action failed.
-    public private(set) var startError: String?
+    public private(set) var startError: UserFacingError?
 
     /// The server's depth recommendation for this book.
     ///
@@ -104,6 +124,9 @@ public final class BookDetailModel {
     @MainActor private var recommendationTask: Task<Void, Never>?
     private var downloadTask: Task<Void, Never>?
     private var downloadManager: DownloadManager?
+    private var fetchGeneration = 0
+    private var privateStateGeneration = 0
+    private var entitlementGeneration = 0
     var userId: String = ""
 
     // MARK: - Init
@@ -123,6 +146,35 @@ public final class BookDetailModel {
     }
 
     // MARK: - Derived: overview
+
+    public var bookState: BookUserBookState? {
+        guard case .started(let state, _) = privateState else { return nil }
+        return state
+    }
+
+    public var applicationStates: [String: ChapterApplicationState] {
+        guard case .started(_, let states) = privateState else { return [:] }
+        return states
+    }
+
+    public var entitlement: Entitlement? {
+        guard case .available(let entitlement) = entitlementState else { return nil }
+        return entitlement
+    }
+
+    public var hasAuthoritativeStartedState: Bool {
+        if case .started = privateState { return true }
+        return false
+    }
+
+    public var hasAuthoritativeProgress: Bool {
+        switch privateState {
+        case .started, .notStarted:
+            return true
+        case .loading, .unavailable, .compatibilityUnknown:
+            return false
+        }
+    }
 
     public var totalChapters: Int { manifest?.chapters.count ?? 0 }
 
@@ -146,11 +198,21 @@ public final class BookDetailModel {
     public var primaryAction: BookDetailPrimaryAction {
         // Guests see the metadata but must sign in before starting.
         if isGuest { return manifest != nil ? .signInRequired : .disabled }
-        guard let entitlement else { return .disabled }
-        if bookState != nil { return .continueReading }
-        return evaluator.canStart(bookId: bookId, entitlement: entitlement)
-            ? .startReading
-            : .showPaywall
+        guard manifest != nil else { return .disabled }
+
+        switch privateState {
+        case .started:
+            return .continueReading
+        case .notStarted:
+            guard case .available(let entitlement) = entitlementState else {
+                return .disabled
+            }
+            return evaluator.canStart(bookId: bookId, entitlement: entitlement)
+                ? .startReading
+                : .showPaywall
+        case .loading, .unavailable, .compatibilityUnknown:
+            return .disabled
+        }
     }
 
     /// The chapter number the reader should open at (1-based).
@@ -186,6 +248,7 @@ public final class BookDetailModel {
 
     /// Why a locked chapter is inaccessible. Returns `nil` for unlocked chapters.
     public func lockReason(_ chapter: BookManifestChapter) -> ChapterLockReason? {
+        guard hasAuthoritativeStartedState else { return nil }
         guard !isUnlocked(chapter) else { return nil }
         guard let chapters = manifest?.chapters else { return .requiresPro }
         // Chapter 1 should never be locked once the book is started;
@@ -201,45 +264,196 @@ public final class BookDetailModel {
 
     // MARK: - Actions
 
-    /// Loads manifest, state, and entitlements concurrently.
-    /// Gracefully handles a `.notFound` on the state endpoint (book not yet started).
+    /// Loads public metadata independently from private state and entitlement.
     /// When `isGuest == true`, only the public manifest is fetched.
     public func fetch() async {
+        fetchGeneration &+= 1
+        privateStateGeneration &+= 1
+        entitlementGeneration &+= 1
+        let fetchID = fetchGeneration
+        let stateID = privateStateGeneration
+        let entitlementID = entitlementGeneration
+
         loadState = .loading
+        privateState = .loading
+        entitlementState = isGuest ? .notRequired : .loading
+
+        if isGuest {
+            let outcome = await fetchManifestOutcome()
+            guard fetchID == fetchGeneration, !Task.isCancelled else { return }
+            applyManifest(outcome)
+            return
+        }
+
+        async let manifestOutcome = fetchManifestOutcome()
+        async let stateOutcome = fetchPrivateStateOutcome()
+        async let entitlementOutcome = fetchEntitlementOutcome()
+
+        let resolvedManifest = await manifestOutcome
+        if fetchID == fetchGeneration, !Task.isCancelled {
+            applyManifest(resolvedManifest)
+        }
+
+        let resolvedState = await stateOutcome
+        if fetchID == fetchGeneration,
+           stateID == privateStateGeneration,
+           !Task.isCancelled {
+            applyPrivateState(resolvedState)
+        }
+
+        let resolvedEntitlement = await entitlementOutcome
+        if fetchID == fetchGeneration,
+           entitlementID == entitlementGeneration,
+           !Task.isCancelled {
+            applyEntitlement(resolvedEntitlement)
+        }
+    }
+
+    /// Retries only the private book-state request. Public metadata and a valid
+    /// entitlement remain untouched.
+    public func retryPrivateState() async {
+        guard !isGuest else { return }
+        switch privateState {
+        case .unavailable, .compatibilityUnknown:
+            break
+        case .loading, .started, .notStarted:
+            return
+        }
+
+        let previousState = privateState
+        privateStateGeneration &+= 1
+        let generation = privateStateGeneration
+        privateState = .loading
+
+        let outcome = await fetchPrivateStateOutcome()
+        guard generation == privateStateGeneration else { return }
+        if Task.isCancelled {
+            privateState = previousState
+            return
+        }
+        if case .cancelled = outcome {
+            privateState = previousState
+            return
+        }
+        applyPrivateState(outcome)
+    }
+
+    /// Retries only a failed entitlement request. Public metadata and book state
+    /// remain untouched.
+    public func retryEntitlement() async {
+        guard !isGuest, case .unavailable = entitlementState else { return }
+
+        let previousState = entitlementState
+        entitlementGeneration &+= 1
+        let generation = entitlementGeneration
+        entitlementState = .loading
+
+        let outcome = await fetchEntitlementOutcome()
+        guard generation == entitlementGeneration else { return }
+        if Task.isCancelled {
+            entitlementState = previousState
+            return
+        }
+        if case .cancelled = outcome {
+            entitlementState = previousState
+            return
+        }
+        applyEntitlement(outcome)
+    }
+
+    private enum ManifestOutcome: Sendable {
+        case value(BookManifest)
+        case failure(UserFacingError)
+        case cancelled
+    }
+
+    private enum PrivateStateOutcome: Sendable {
+        case value(BookStateGetResponse)
+        case failure(UserFacingError)
+        case cancelled
+    }
+
+    private enum EntitlementOutcome: Sendable {
+        case value(Entitlement)
+        case failure(UserFacingError)
+        case cancelled
+    }
+
+    private func fetchManifestOutcome() async -> ManifestOutcome {
         do {
-            if isGuest {
-                // Guests only see public metadata — no auth-gated calls.
-                let fetchedManifest = try await repository.getBook(id: bookId)
-                self.manifest = fetchedManifest
-                self.loadState = .loaded
-            } else {
-                async let manifestTask = repository.getBook(id: bookId)
-                async let entitlementTask = repository.getEntitlements()
-                let (fetchedManifest, entitlementResponse) = try await (manifestTask, entitlementTask)
-
-                // State returns .notFound for books the user hasn't started — treat as nil.
-                let stateResponse: BookStateResponse?
-                do {
-                    stateResponse = try await repository.getBookState(id: bookId)
-                } catch AppError.notFound {
-                    stateResponse = nil
-                } catch {
-                    stateResponse = nil
-                }
-
-                self.manifest = fetchedManifest
-                self.entitlement = entitlementResponse.entitlement
-                self.bookState = stateResponse?.state
-                self.applicationStates = stateResponse?.applicationStates ?? [:]
-                self.loadState = .loaded
-
-                // Fire depth recommendation fetch (best-effort, non-blocking).
-                loadDepthRecommendation()
-            }
-        } catch let appErr as AppError {
-            loadState = .error(appErr.errorDescription ?? appErr.code)
+            return .value(try await repository.getBook(id: bookId))
+        } catch is CancellationError {
+            return .cancelled
         } catch {
-            loadState = .error(error.localizedDescription)
+            return .failure(UserFacingError.mapping(error)
+                ?? UserFacingError(category: .serviceUnavailable))
+        }
+    }
+
+    private func fetchPrivateStateOutcome() async -> PrivateStateOutcome {
+        do {
+            return .value(try await repository.getBookState(id: bookId))
+        } catch is CancellationError {
+            return .cancelled
+        } catch {
+            return .failure(UserFacingError.mapping(error)
+                ?? UserFacingError(category: .serviceUnavailable))
+        }
+    }
+
+    private func fetchEntitlementOutcome() async -> EntitlementOutcome {
+        do {
+            return .value(try await repository.getEntitlements().entitlement)
+        } catch is CancellationError {
+            return .cancelled
+        } catch {
+            return .failure(UserFacingError.mapping(error)
+                ?? UserFacingError(category: .serviceUnavailable))
+        }
+    }
+
+    private func applyManifest(_ outcome: ManifestOutcome) {
+        switch outcome {
+        case .value(let manifest):
+            self.manifest = manifest
+            loadState = .loaded
+            loadDepthRecommendation()
+        case .failure(let error):
+            loadState = .error(error)
+        case .cancelled:
+            break
+        }
+    }
+
+    private func applyPrivateState(_ outcome: PrivateStateOutcome) {
+        switch outcome {
+        case .value(let response):
+            switch response.stateStatus {
+            case .started?:
+                privateState = .started(
+                    state: response.state,
+                    applicationStates: response.applicationStates ?? [:]
+                )
+            case .notStarted?:
+                privateState = .notStarted
+            case .unknown?, nil:
+                privateState = .compatibilityUnknown
+            }
+        case .failure(let error):
+            privateState = .unavailable(error)
+        case .cancelled:
+            break
+        }
+    }
+
+    private func applyEntitlement(_ outcome: EntitlementOutcome) {
+        switch outcome {
+        case .value(let entitlement):
+            entitlementState = .available(entitlement)
+        case .failure(let error):
+            entitlementState = .unavailable(error)
+        case .cancelled:
+            break
         }
     }
 
@@ -278,20 +492,27 @@ public final class BookDetailModel {
             onOpenReader?(bookId, currentChapterNumber, manifest?.variantFamily ?? .emh)
 
         case .startReading:
+            guard !isStarting else { return }
             isStarting = true
             startError = nil
             defer { isStarting = false }
+            privateStateGeneration &+= 1
+            let generation = privateStateGeneration
             do {
                 let stateResponse = try await repository.startBook(id: bookId)
-                bookState = stateResponse.state
-                applicationStates = stateResponse.applicationStates ?? [:]
+                guard !Task.isCancelled, generation == privateStateGeneration else { return }
+                privateState = .started(
+                    state: stateResponse.state,
+                    applicationStates: stateResponse.applicationStates ?? [:]
+                )
                 analytics.track(.bookStarted(bookId: bookId))
                 // Navigate to the first unlocked chapter (typically ch. 1).
                 onOpenReader?(bookId, currentChapterNumber, manifest?.variantFamily ?? .emh)
-            } catch let appErr as AppError {
-                startError = appErr.errorDescription ?? appErr.code
+            } catch is CancellationError {
+                return
             } catch {
-                startError = error.localizedDescription
+                guard generation == privateStateGeneration else { return }
+                startError = UserFacingError.mapping(error)
             }
 
         case .disabled:
@@ -316,7 +537,9 @@ public final class BookDetailModel {
 
     /// Begins or resumes a download, updating `downloadState` as events arrive.
     public func startDownload() {
-        guard let manager = downloadManager, !userId.isEmpty else { return }
+        guard hasAuthoritativeStartedState,
+              let manager = downloadManager,
+              !userId.isEmpty else { return }
         downloadTask?.cancel()
         let bid = bookId
         let uid = userId

@@ -78,4 +78,34 @@ struct LibraryRenderGuardTests {
             )
         }
     }
+
+    @Test("BookDetailView keeps metadata visible when private state is unavailable")
+    func bookDetailPrivateFailureMatrix() async {
+        let model = BookDetailModel(
+            bookId: "b-atomic-habits",
+            repository: PreviewData.bookDetailStateUnavailable
+        )
+        await model.fetch()
+
+        assertMatrix("Book Detail (private state unavailable)") {
+            NavigationStack {
+                BookDetailView(model: model)
+            }
+        }
+    }
+
+    @Test("BookDetailView renders compatibility-unknown state across the matrix")
+    func bookDetailCompatibilityMatrix() async {
+        let model = BookDetailModel(
+            bookId: "b-atomic-habits",
+            repository: PreviewData.bookDetailCompatibilityUnknown
+        )
+        await model.fetch()
+
+        assertMatrix("Book Detail (compatibility unknown)") {
+            NavigationStack {
+                BookDetailView(model: model)
+            }
+        }
+    }
 }

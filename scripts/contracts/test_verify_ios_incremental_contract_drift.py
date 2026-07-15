@@ -2071,7 +2071,8 @@ class IOSIncrementalContractDriftCanaries(unittest.TestCase):
             )
             with self.assertRaisesRegex(
                 inventory.InventoryError,
-                "relevant worktree input differs",
+                r"(?:production Swift path set differs from selected revision"
+                r"|relevant worktree input differs from selected revision)",
             ):
                 inventory.assert_worktree_matches_revision(
                     clone,

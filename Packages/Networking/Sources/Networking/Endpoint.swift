@@ -27,6 +27,9 @@ public struct Endpoint: Sendable, Equatable {
     public let httpBody: Data?
     /// Whether the request must carry `Authorization: Bearer <id_token>`.
     public let requiresAuth: Bool
+    /// An explicit reliability override. Existing endpoint factories leave this
+    /// unset so the conservative HTTP-method default remains authoritative.
+    var reliabilityPolicyOverride: EndpointReliabilityPolicy? = nil
 
     /// Creates an endpoint with an already-encoded (or absent) body.
     public init(

@@ -24,8 +24,7 @@ struct BookDetailModelFreeStartsTests {
     func freeStartsLeftFromFreeEntitlement() async {
         let repo = FakeBookDetailRepository(
             manifest: BookDetailModelTests.manifest,
-            state: nil,
-            stateError: .notFound,
+            state: BookDetailModelTests.notStartedState,
             entitlement: BookDetailModelTests.freeWithSlotEntitlement()
         )
         let model = BookDetailModel(bookId: "b-atomic-habits", repository: repo)
@@ -37,8 +36,7 @@ struct BookDetailModelFreeStartsTests {
     func freeStartsLeftZeroForLockedUser() async {
         let repo = FakeBookDetailRepository(
             manifest: BookDetailModelTests.manifest,
-            state: nil,
-            stateError: .notFound,
+            state: BookDetailModelTests.notStartedState,
             entitlement: BookDetailModelTests.freeLockedEntitlement()
         )
         let model = BookDetailModel(bookId: "b-atomic-habits", repository: repo)
@@ -50,8 +48,7 @@ struct BookDetailModelFreeStartsTests {
     func freeStartsLeftZeroForProUser() async {
         let repo = FakeBookDetailRepository(
             manifest: BookDetailModelTests.manifest,
-            state: nil,
-            stateError: .notFound,
+            state: BookDetailModelTests.notStartedState,
             entitlement: BookDetailModelTests.proEntitlement()
         )
         let model = BookDetailModel(bookId: "b-atomic-habits", repository: repo)

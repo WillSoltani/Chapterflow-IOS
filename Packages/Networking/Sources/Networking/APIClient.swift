@@ -42,9 +42,10 @@ public extension APIClientProtocol {
 /// - Decode a 2xx body **directly** into the requested `Decodable` (the success
 ///   envelope is the raw JSON object), or decode the error envelope on non-2xx
 ///   and throw a mapped `AppError`.
-/// - Resilience: one automatic token refresh + retry on `401 unauthenticated`;
-///   exponential backoff (up to `maxRetries`) on `.verifierUnavailable` and
-///   transient `URLError`s; surface `Retry-After` on `429`.
+/// - Resilience: safe GETs may perform one token refresh or step-up retry;
+///   writes never replay automatically, including after auth failures. Safe
+///   GETs may also use bounded backoff for `.verifierUnavailable` and transient
+///   `URLError`s; `Retry-After` is surfaced on `429`.
 /// - Observability: emits one typed, privacy-safe event for every actual network
 ///   attempt, after its outcome is known (never bodies, tokens, queries, or errors).
 ///
@@ -58,6 +59,7 @@ public actor APIClient: APIClientProtocol {
     let observer: any APIClientObserver
     private let maxRetries: Int
     private let retryBaseDelay: Duration
+    private let sleeper: @Sendable (Duration) async throws -> Void
     let observationNow: @Sendable () -> ContinuousClock.Instant
 
     /// Designated initializer.
@@ -69,6 +71,7 @@ public actor APIClient: APIClientProtocol {
     ///   - observer: optional observer for breadcrumbs / tracing (no PII).
     ///   - maxRetries: max backoff retries for transient failures.
     ///   - retryBaseDelay: base delay for exponential backoff (tests pass `.zero`).
+    ///   - sleeper: cancellable delay implementation (injectable for deterministic tests).
     ///   - observationNow: monotonic time source for deterministic attempt timing.
     public init(
         baseURL: URL,
@@ -78,6 +81,9 @@ public actor APIClient: APIClientProtocol {
         observer: (any APIClientObserver)? = nil,
         maxRetries: Int = 3,
         retryBaseDelay: Duration = .milliseconds(300),
+        sleeper: @escaping @Sendable (Duration) async throws -> Void = { duration in
+            try await Task.sleep(for: duration)
+        },
         observationNow: @escaping @Sendable () -> ContinuousClock.Instant = {
             ContinuousClock().now
         }
@@ -89,6 +95,7 @@ public actor APIClient: APIClientProtocol {
         self.observer = observer ?? NoopAPIClientObserver()
         self.maxRetries = maxRetries
         self.retryBaseDelay = retryBaseDelay
+        self.sleeper = sleeper
         self.observationNow = observationNow
     }
 
@@ -101,6 +108,9 @@ public actor APIClient: APIClientProtocol {
         observer: (any APIClientObserver)? = nil,
         maxRetries: Int = 3,
         retryBaseDelay: Duration = .milliseconds(300),
+        sleeper: @escaping @Sendable (Duration) async throws -> Void = { duration in
+            try await Task.sleep(for: duration)
+        },
         observationNow: @escaping @Sendable () -> ContinuousClock.Instant = {
             ContinuousClock().now
         }
@@ -116,6 +126,7 @@ public actor APIClient: APIClientProtocol {
             observer: observer,
             maxRetries: maxRetries,
             retryBaseDelay: retryBaseDelay,
+            sleeper: sleeper,
             observationNow: observationNow
         )
     }
@@ -123,99 +134,53 @@ public actor APIClient: APIClientProtocol {
     // MARK: - APIClientProtocol
 
     public func send<T: Decodable & Sendable>(_ endpoint: Endpoint) async throws -> T {
-        let (result, _): (T, HTTPURLResponse) = try await performRequest(endpoint)
+        let successfulAttempt = try await performRequest(
+            endpoint,
+            terminalTransportFailurePolicy: .mapToOffline
+        )
+        let (result, _): (T, HTTPURLResponse) = try decodeSuccessfulResponse(
+            successfulAttempt,
+            policy: endpoint.reliabilityPolicy
+        )
         return result
     }
 
     public func sendWithServerDate<T: Decodable & Sendable>(_ endpoint: Endpoint) async throws -> (T, Date?) {
-        let (result, http): (T, HTTPURLResponse) = try await performRequest(endpoint)
+        let successfulAttempt = try await performRequest(
+            endpoint,
+            terminalTransportFailurePolicy: .mapToOffline
+        )
+        let (result, http): (T, HTTPURLResponse) = try decodeSuccessfulResponse(
+            successfulAttempt,
+            policy: endpoint.reliabilityPolicy
+        )
         return (result, Self.serverDate(from: http))
     }
 
     public func sendData(_ endpoint: Endpoint) async throws -> Data {
-        let observation = APIClientObservationAttempt(
-            number: 1,
-            started: observationNow(),
-            context: observer.captureContext()
+        let successfulAttempt = try await performRequest(
+            endpoint,
+            terminalTransportFailurePolicy: .preserveURLError
         )
-        let request = try await makeRequest(for: endpoint)
-
-        let data: Data
-        let response: URLResponse
-        do {
-            (data, response) = try await session.data(for: request)
-        } catch is CancellationError {
-            recordObservation(
-                request: request,
-                observation: observation,
-                outcome: .cancellation
-            )
-            throw CancellationError()
-        } catch let urlError as URLError {
-            if urlError.code == .cancelled {
-                recordObservation(
-                    request: request,
-                    observation: observation,
-                    outcome: .cancellation
-                )
-                throw CancellationError()
-            }
-            recordObservation(
-                request: request,
-                observation: observation,
-                outcome: .networkFailure
-            )
-            // Preserve sendData's existing transport error behavior.
-            throw urlError
-        } catch {
-            recordObservation(
-                request: request,
-                observation: observation,
-                outcome: .networkFailure
-            )
-            throw error
-        }
-
-        guard let http = response as? HTTPURLResponse else {
-            recordObservation(
-                request: request,
-                observation: observation,
-                outcome: .networkFailure
-            )
-            throw AppError.offline
-        }
-        guard (200..<300).contains(http.statusCode) else {
-            let error = ErrorMapper.map(
-                status: http.statusCode,
-                data: data,
-                retryAfter: Self.retryAfter(from: http)
-            )
-            recordObservation(
-                request: request,
-                observation: observation,
-                outcome: .httpFailure,
-                statusCode: http.statusCode,
-                requestId: extractRequestId(from: data)
-            )
-            throw error
-        }
-        recordObservation(
-            request: request,
-            observation: observation,
-            outcome: .success,
-            statusCode: http.statusCode
+        return try dataFromSuccessfulResponse(
+            successfulAttempt,
+            policy: endpoint.reliabilityPolicy
         )
-        return data
     }
 
     // MARK: - Core request loop
 
-    /// Runs the full retry/refresh loop and returns the decoded value plus the
-    /// final `HTTPURLResponse` (for callers that want response headers).
-    private func performRequest<T: Decodable & Sendable>(_ endpoint: Endpoint) async throws -> (T, HTTPURLResponse) {
+    /// Runs the full retry/refresh loop and returns the accepted final attempt.
+    /// The caller records success only after validating or decoding its body.
+    private func performRequest(
+        _ endpoint: Endpoint,
+        terminalTransportFailurePolicy: APIClientTerminalTransportFailurePolicy
+    ) async throws -> APIClientSuccessfulHTTPAttempt {
         let observationContext = observer.captureContext()
         var retryState = APIClientRetryState()
         var attemptNumber = 0
+        let policy = endpoint.reliabilityPolicy
+        let transientRetryLimit = maximumTransientRetryCount(for: endpoint, policy: policy)
 
         while true {
             try Task.checkCancellation()
@@ -231,14 +196,18 @@ public actor APIClient: APIClientProtocol {
             switch try await performTransportAttempt(
                 request,
                 observation: observation,
-                backoffAttempt: retryState.backoffAttempt
+                retryPlan: APIClientTransportRetryPlan(
+                    backoffAttempt: retryState.backoffAttempt,
+                    retryLimit: transientRetryLimit,
+                    terminalFailurePolicy: terminalTransportFailurePolicy
+                )
             ) {
             case let .retry(nextBackoffAttempt):
                 retryState.backoffAttempt = nextBackoffAttempt
             case let .response(data, http):
-                if (200..<300).contains(http.statusCode) {
-                    return try decodeSuccessfulResponse(
-                        data,
+                if policy.successStatusPolicy.accepts(http.statusCode) {
+                    return APIClientSuccessfulHTTPAttempt(
+                        data: data,
                         response: http,
                         request: request,
                         observation: observation
@@ -266,7 +235,7 @@ public actor APIClient: APIClientProtocol {
     private func performTransportAttempt(
         _ request: URLRequest,
         observation: APIClientObservationAttempt,
-        backoffAttempt: Int
+        retryPlan: APIClientTransportRetryPlan
     ) async throws -> APIClientTransportAttemptResult {
         let result: (Data, URLResponse)
         do {
@@ -283,7 +252,7 @@ public actor APIClient: APIClientProtocol {
                 urlError,
                 request: request,
                 observation: observation,
-                backoffAttempt: backoffAttempt
+                retryPlan: retryPlan
             )
         } catch {
             recordObservation(
@@ -310,7 +279,7 @@ public actor APIClient: APIClientProtocol {
         _ urlError: URLError,
         request: URLRequest,
         observation: APIClientObservationAttempt,
-        backoffAttempt: Int
+        retryPlan: APIClientTransportRetryPlan
     ) async throws -> APIClientTransportAttemptResult {
         logger?.logFailure(urlError, for: request)
         if urlError.code == .cancelled {
@@ -323,7 +292,7 @@ public actor APIClient: APIClientProtocol {
         }
 
         let elapsed = elapsedSince(observation.started)
-        guard Self.isTransient(urlError), backoffAttempt < maxRetries else {
+        guard Self.isTransient(urlError), retryPlan.backoffAttempt < retryPlan.retryLimit else {
             recordObservation(
                 request: request,
                 attempt: observation.number,
@@ -331,12 +300,35 @@ public actor APIClient: APIClientProtocol {
                 outcome: .networkFailure,
                 context: observation.context
             )
-            throw AppError.offline
+            switch retryPlan.terminalFailurePolicy {
+            case .mapToOffline:
+                throw AppError.offline
+            case .preserveURLError:
+                throw urlError
+            }
         }
 
-        let nextBackoffAttempt = backoffAttempt + 1
+        let nextBackoffAttempt = retryPlan.backoffAttempt + 1
         do {
             try await backoff(nextBackoffAttempt)
+        } catch is CancellationError {
+            recordObservation(
+                request: request,
+                attempt: observation.number,
+                elapsed: elapsed,
+                outcome: .networkFailure,
+                context: observation.context
+            )
+            throw CancellationError()
+        } catch let error as URLError where error.code == .cancelled {
+            recordObservation(
+                request: request,
+                attempt: observation.number,
+                elapsed: elapsed,
+                outcome: .networkFailure,
+                context: observation.context
+            )
+            throw CancellationError()
         } catch {
             recordObservation(
                 request: request,
@@ -359,29 +351,58 @@ public actor APIClient: APIClientProtocol {
     }
 
     private func decodeSuccessfulResponse<T: Decodable & Sendable>(
-        _ data: Data,
-        response: HTTPURLResponse,
-        request: URLRequest,
-        observation: APIClientObservationAttempt
+        _ successfulAttempt: APIClientSuccessfulHTTPAttempt,
+        policy: EndpointReliabilityPolicy
     ) throws -> (T, HTTPURLResponse) {
         do {
-            let decoded: T = try decode(data)
+            let body: Data
+            if successfulAttempt.data.isEmpty {
+                guard policy.emptyBodyPolicy == .allowed else {
+                    throw AppError.decoding(APIClientEmptyResponseBodyError())
+                }
+                body = Data("{}".utf8)
+            } else {
+                body = successfulAttempt.data
+            }
+            let decoded: T = try decode(body)
             recordObservation(
-                request: request,
-                observation: observation,
+                request: successfulAttempt.request,
+                observation: successfulAttempt.observation,
                 outcome: .success,
-                statusCode: response.statusCode
+                statusCode: successfulAttempt.response.statusCode
             )
-            return (decoded, response)
+            return (decoded, successfulAttempt.response)
         } catch {
             recordObservation(
-                request: request,
-                observation: observation,
+                request: successfulAttempt.request,
+                observation: successfulAttempt.observation,
                 outcome: .decodingFailure,
-                statusCode: response.statusCode
+                statusCode: successfulAttempt.response.statusCode
             )
             throw error
         }
+    }
+
+    private func dataFromSuccessfulResponse(
+        _ successfulAttempt: APIClientSuccessfulHTTPAttempt,
+        policy: EndpointReliabilityPolicy
+    ) throws -> Data {
+        if successfulAttempt.data.isEmpty, policy.emptyBodyPolicy == .disallowed {
+            recordObservation(
+                request: successfulAttempt.request,
+                observation: successfulAttempt.observation,
+                outcome: .decodingFailure,
+                statusCode: successfulAttempt.response.statusCode
+            )
+            throw AppError.decoding(APIClientEmptyResponseBodyError())
+        }
+        recordObservation(
+            request: successfulAttempt.request,
+            observation: successfulAttempt.observation,
+            outcome: .success,
+            statusCode: successfulAttempt.response.statusCode
+        )
+        return successfulAttempt.data
     }
 
     private func retryStateAfterHTTPFailure(
@@ -398,6 +419,7 @@ public actor APIClient: APIClientProtocol {
         )
         if case .unauthenticated = mappedError,
            endpoint.requiresAuth,
+           endpoint.method == .get,
            !currentState.didRefreshToken {
             var nextState = currentState
             nextState.didRefreshToken = true
@@ -409,6 +431,7 @@ public actor APIClient: APIClientProtocol {
         }
         if case .reauthRequired = mappedError,
            endpoint.requiresAuth,
+           endpoint.method == .get,
            !currentState.didStepUp {
             var nextState = currentState
             nextState.didStepUp = true
@@ -419,7 +442,11 @@ public actor APIClient: APIClientProtocol {
             return nextState
         }
         if case .verifierUnavailable = mappedError,
-           currentState.backoffAttempt < maxRetries {
+           endpoint.method == .get,
+           currentState.backoffAttempt < maximumTransientRetryCount(
+               for: endpoint,
+               policy: endpoint.reliabilityPolicy
+           ) {
             var nextState = currentState
             nextState.backoffAttempt += 1
             try await prepareRetry(
@@ -449,6 +476,13 @@ public actor APIClient: APIClientProtocol {
             case let .backoff(attempt):
                 try await backoff(attempt)
             }
+            try Task.checkCancellation()
+        } catch is CancellationError {
+            recordHTTPFailure(failedAttempt)
+            throw CancellationError()
+        } catch let error as URLError where error.code == .cancelled {
+            recordHTTPFailure(failedAttempt)
+            throw CancellationError()
         } catch {
             recordHTTPFailure(failedAttempt)
             throw error
@@ -494,6 +528,7 @@ public actor APIClient: APIClientProtocol {
         }
 
         var request = URLRequest(url: url)
+        request.timeoutInterval = endpoint.reliabilityPolicy.timeout
         request.httpMethod = endpoint.method.rawValue
         if let body = endpoint.httpBody {
             request.httpBody = body
@@ -524,42 +559,20 @@ public actor APIClient: APIClientProtocol {
 
     // MARK: - Retry helpers
 
+    private func maximumTransientRetryCount(
+        for endpoint: Endpoint,
+        policy: EndpointReliabilityPolicy
+    ) -> Int {
+        guard endpoint.method == .get else { return 0 }
+        return min(max(0, maxRetries), policy.retryPolicy.maximumRetryCount)
+    }
+
     private func backoff(_ attempt: Int) async throws {
         // Exponential: base * 2^(attempt-1). `attempt` is 1-based.
         let factor = 1 << (attempt - 1)
-        try await Task.sleep(for: retryBaseDelay * factor)
+        try Task.checkCancellation()
+        try await sleeper(retryBaseDelay * factor)
+        try Task.checkCancellation()
     }
 
-    private static func retryAfter(from response: HTTPURLResponse) -> TimeInterval? {
-        guard let value = response.value(forHTTPHeaderField: "Retry-After") else {
-            return nil
-        }
-        // The header may be a number of seconds or an HTTP date; we support the
-        // (far more common) seconds form.
-        return TimeInterval(value.trimmingCharacters(in: .whitespaces))
-    }
-
-    /// Parses the RFC 1123 `Date` header from an HTTP response.
-    /// Returns `nil` when the header is absent or unparseable.
-    private static func serverDate(from response: HTTPURLResponse) -> Date? {
-        guard let value = response.value(forHTTPHeaderField: "Date") else { return nil }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss zzz"
-        formatter.timeZone = TimeZone(identifier: "GMT")
-        return formatter.date(from: value)
-    }
-
-    private static func isTransient(_ error: URLError) -> Bool {
-        switch error.code {
-        case .timedOut,
-             .networkConnectionLost,
-             .cannotConnectToHost,
-             .cannotFindHost,
-             .dnsLookupFailed:
-            return true
-        default:
-            return false
-        }
-    }
 }

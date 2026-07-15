@@ -10,10 +10,9 @@ public protocol BookDetailRepository: Sendable {
     /// Maps to `GET /book/books/{bookId}`.
     func getBook(id: String) async throws -> BookManifest
 
-    /// Per-chapter reading state for the current user.
+    /// Per-chapter reading state and authoritative started status for the current user.
     /// Maps to `GET /book/me/books/{bookId}/state`.
-    /// Throws `.notFound` when the book hasn't been started yet.
-    func getBookState(id: String) async throws -> BookStateResponse
+    func getBookState(id: String) async throws -> BookStateGetResponse
 
     /// Starts (or re-opens) a book for the current user, consuming a free slot.
     /// Maps to `POST /book/me/books/{bookId}/start`.
