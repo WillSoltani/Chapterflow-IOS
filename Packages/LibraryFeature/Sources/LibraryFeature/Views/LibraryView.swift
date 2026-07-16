@@ -19,7 +19,7 @@ import UIKit
 public struct LibraryView: View {
 
     @State private var model: LibraryModel
-    @State private var router = Router()
+    private let router: Router
 
     private let repository: any LibraryRepository
     private let bookDetailRepository: any BookDetailRepository
@@ -39,6 +39,7 @@ public struct LibraryView: View {
     public init(
         repository: any LibraryRepository,
         bookDetailRepository: any BookDetailRepository,
+        router: Router? = nil,
         aiRepository: (any AIRepository)? = nil,
         preferences: AppPreferences,
         store: KeyValueStore,
@@ -53,6 +54,9 @@ public struct LibraryView: View {
         onSignInRequired: ((String, VariantFamily) -> Void)? = nil
     ) {
         _model = State(initialValue: LibraryModel(repository: repository))
+        // App composition injects AppModel.libraryRouter. The fallback exists
+        // only for isolated previews and render tests.
+        self.router = router ?? Router()
         self.repository = repository
         self.bookDetailRepository = bookDetailRepository
         self.aiRepository = aiRepository
@@ -70,6 +74,7 @@ public struct LibraryView: View {
     }
 
     public var body: some View {
+        @Bindable var router = router
         NavigationStack(path: $router.path) {
             content
                 .navigationTitle("Library")

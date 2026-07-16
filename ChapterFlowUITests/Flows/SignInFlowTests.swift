@@ -245,3 +245,65 @@ final class GuestBrowsingFlowTests: CFUITestCase {
         )
     }
 }
+
+/// WP-NAV-01A proves real URL delivery through one continuous, hermetic app
+/// process. The extra flag enables a DEBUG-only in-memory auth transition; the
+/// base class already supplies the stub server and hermetic configuration.
+final class ExactNavigationFlowTests: CFUITestCase {
+    override var needsAuth: Bool { false }
+    override var extraLaunchEnvironment: [String: String] {
+        ["CF_UITEST_DEFERRED_AUTH": "1"]
+    }
+
+    func testSignedOutChapterLinkReplaysExactReaderAfterHermeticSignIn() {
+        assertExists(
+            app.buttons["Create an account"],
+            message: "The route must begin from a settled signed-out launch"
+        )
+
+        app.open(URL(string: "chapterflow://book/b-atomic-habits/chapter/1")!)
+
+        let completeSignIn = app.buttons["hermetic-auth-complete"]
+        assertExists(
+            completeSignIn,
+            message: "A private chapter link must preserve its request behind the auth gate"
+        )
+        XCTAssertFalse(app.buttons["Close reader"].exists)
+        completeSignIn.tap()
+
+        assertExists(
+            app.buttons["Close reader"],
+            message: "The exact pending chapter must open only after scope activation",
+            timeout: 60
+        )
+        assertExists(
+            app.staticTexts["The Surprising Power of Atomic Habits"],
+            message: "Chapter 1 from the requested book must be visible",
+            timeout: 60
+        )
+    }
+
+    func testGuestBookLinkOpensExactPublicDetailWithoutPrivateReader() {
+        let browse = app.buttons["Continue browsing without creating an account"]
+        assertExists(browse)
+        browse.tap()
+        assertExists(app.tabBars.firstMatch, timeout: 20)
+
+        app.open(URL(string: "chapterflow://book/b-atomic-habits")!)
+
+        assertExists(
+            app.navigationBars["Atomic Habits"],
+            message: "The exact public Book Detail must replace the guest Library stack",
+            timeout: 60
+        )
+        assertExists(
+            app.buttons["Sign in to Read"],
+            message: "Guest detail must retain the public sign-in boundary",
+            timeout: 30
+        )
+        XCTAssertFalse(
+            app.buttons["Close reader"].exists,
+            "A public guest route must not create a private reader shell"
+        )
+    }
+}

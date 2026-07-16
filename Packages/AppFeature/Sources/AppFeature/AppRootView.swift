@@ -96,8 +96,10 @@ public struct AppRootView: View {
                     readingFlow = nil
                     return
                 }
-                guard !model.pendingAuthIntent.isNone else { return }
-                Task { await model.replayPendingIntent { readingFlow = $0 } }
+                model.replayPendingNavigationRequest()
+                if !model.pendingAuthIntent.isNone {
+                    Task { await model.replayPendingIntent { readingFlow = $0 } }
+                }
             }
             .onChange(of: model.activeScopeInstanceID) { oldScopeID, newScopeID in
                 guard oldScopeID != newScopeID else { return }
@@ -138,7 +140,7 @@ public struct AppRootView: View {
                     readingFlow = nil
                     return
                 }
-                readingFlow = flow
+                if readingFlow != flow { readingFlow = flow }
             }
             .onChange(of: model.syncStatus?.pendingCount) { oldCount, newCount in
                 guard !model.reachability.isConnected else { return }
@@ -270,14 +272,19 @@ public struct AppRootView: View {
             #if os(iOS)
             .sheet(isPresented: Binding(
                 get: { model.showAuthGate },
-                set: { model.showAuthGate = $0 }
+                set: { isPresented in
+                    if isPresented {
+                        model.showAuthGate = true
+                    } else {
+                        if model.session.authState == .signedOut {
+                            model.cancelPendingAuthNavigation()
+                        } else {
+                            model.showAuthGate = false
+                        }
+                    }
+                }
             )) {
-                AuthGateSheet(
-                    authService: model.authService,
-                    sessionManager: model.session,
-                    intent: model.pendingAuthIntent
-                )
-                .presentationDetents([.large])
+                authGateSheetContent
             }
             #endif
     }
@@ -391,6 +398,16 @@ public struct AppRootView: View {
                 )
             }
         }
+        // Referral links activate the existing referral flow directly rather
+        // than leaving the exact code behind an unselected NavigationLink.
+        .sheet(isPresented: Binding(
+            get: { !model.pendingReferralCode.isEmpty },
+            set: { if !$0 { model.pendingReferralCode = "" } }
+        )) {
+            if !model.pendingReferralCode.isEmpty {
+                referralSheetContent
+            }
+        }
         // Subscription management sheet — full billing lifecycle detail and CTAs.
         .sheet(isPresented: Binding(
             get: { model.showSubscriptionManagement },
@@ -483,6 +500,7 @@ public struct AppRootView: View {
             LibraryView(
                 repository: model.libraryRepository,
                 bookDetailRepository: model.bookDetailRepository,
+                router: model.libraryRouter,
                 aiRepository: model.aiRepository,
                 preferences: model.preferences,
                 store: model.keyValueStore,

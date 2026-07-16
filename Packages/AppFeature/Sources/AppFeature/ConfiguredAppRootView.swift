@@ -41,7 +41,22 @@ struct LiveAppGraphFactory: AppGraphFactory {
     ) throws -> AppModel {
         // Configure the minimal session boundary before constructing services
         // such as reachability that start process-long observation in init.
-        let authService = AuthService(config: config.value)
+        let authService: AuthService
+        #if DEBUG
+        if AppModel.isHermeticDeferredAuthUITest() {
+            // The deferred-auth UI flow must never persist synthetic tokens to
+            // Keychain. AuthService and SessionManager share this process-local
+            // mirror while retaining the normal signed-out restoration path.
+            authService = AuthService(
+                config: config.value,
+                tokenStore: InMemoryTokenStore()
+            )
+        } else {
+            authService = AuthService(config: config.value)
+        }
+        #else
+        authService = AuthService(config: config.value)
+        #endif
         let session = SessionManager(authService: authService)
         try session.configure()
 
