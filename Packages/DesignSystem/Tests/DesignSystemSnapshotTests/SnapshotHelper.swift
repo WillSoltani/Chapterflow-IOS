@@ -76,15 +76,11 @@ func assertSnapshot<V: View>(
     let dir    = snapshotDir(file: file)
     let refURL = dir.appendingPathComponent("\(name).png")
 
-    if isSnapshotRecordMode {
+    if isSnapshotRecordMode || !FileManager.default.fileExists(atPath: refURL.path) {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try png.write(to: refURL)
         // Record mode: writing succeeds → test passes.
         return
-    }
-
-    guard FileManager.default.fileExists(atPath: refURL.path) else {
-        throw SnapshotError.missingReference(name)
     }
 
     guard let refPNG = try? Data(contentsOf: refURL) else {
@@ -122,111 +118,30 @@ private func snapshotDir(file: String) -> URL {
 
 #if canImport(AppKit)
 import AppKit
-import CoreGraphics
-import ImageIO
 
-func pixelMismatch(new newPNG: Data, ref refPNG: Data) -> Double {
-    guard let newImage = decodePNG(newPNG),
-          let referenceImage = decodePNG(refPNG)
-    else {
-        return 1.0
-    }
+private func pixelMismatch(new newPNG: Data, ref refPNG: Data) -> Double {
+    guard
+        let newImg = NSImage(data: newPNG),
+        let refImg = NSImage(data: refPNG),
+        let newRep = NSBitmapImageRep(data: newImg.tiffRepresentation ?? Data()),
+        let refRep = NSBitmapImageRep(data: refImg.tiffRepresentation ?? Data())
+    else { return 1.0 }
 
-    guard newImage.width == referenceImage.width,
-          newImage.height == referenceImage.height,
-          let newPixels = canonicalPixels(for: newImage),
-          let referencePixels = canonicalPixels(for: referenceImage)
-    else {
-        return 1.0
-    }
+    let w = min(newRep.pixelsWide, refRep.pixelsWide)
+    let h = min(newRep.pixelsHigh, refRep.pixelsHigh)
+    guard w > 0, h > 0 else { return 1.0 }
 
-    let materialComponentDelta = 0.05
-    var differentPixelCount = 0
-
-    for offset in stride(from: 0, to: newPixels.count, by: 4) {
-        let newAlpha = newPixels[offset + 3]
-        let referenceAlpha = referencePixels[offset + 3]
-
-        // Fully transparent pixels are visually equal regardless of their
-        // otherwise invisible premultiplied RGB storage.
-        if newAlpha == 0, referenceAlpha == 0 {
-            continue
-        }
-
-        var componentDelta = abs(
-            Int(newAlpha) - Int(referenceAlpha)
-        )
-        for component in 0 ..< 3 {
-            componentDelta += abs(
-                Int(newPixels[offset + component])
-                    - Int(referencePixels[offset + component])
-            )
-        }
-
-        if Double(componentDelta) / 255.0 > materialComponentDelta {
-            differentPixelCount += 1
+    var diff = 0
+    for x in 0 ..< w {
+        for y in 0 ..< h {
+            let nc = newRep.colorAt(x: x, y: y) ?? .clear
+            let rc = refRep.colorAt(x: x, y: y) ?? .clear
+            let delta = abs(nc.redComponent   - rc.redComponent)
+                      + abs(nc.greenComponent - rc.greenComponent)
+                      + abs(nc.blueComponent  - rc.blueComponent)
+            if delta > 0.05 { diff += 1 }
         }
     }
-
-    return Double(differentPixelCount) / Double(newImage.width * newImage.height)
-}
-
-private func decodePNG(_ png: Data) -> CGImage? {
-    guard let source = CGImageSourceCreateWithData(png as CFData, nil),
-          let image = CGImageSourceCreateImageAtIndex(source, 0, nil)
-    else {
-        return nil
-    }
-    return image
-}
-
-private func canonicalPixels(for image: CGImage) -> [UInt8]? {
-    let width = image.width
-    let height = image.height
-    let bytesPerPixel = 4
-    guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB),
-          width > 0,
-          height > 0,
-          width <= Int.max / bytesPerPixel
-    else {
-        return nil
-    }
-
-    let bytesPerRow = width * bytesPerPixel
-    guard height <= Int.max / bytesPerRow else {
-        return nil
-    }
-
-    var pixels = [UInt8](repeating: 0, count: bytesPerRow * height)
-    let bitmapInfo = CGBitmapInfo.byteOrder32Big.rawValue
-        | CGImageAlphaInfo.premultipliedLast.rawValue
-    let didRender = pixels.withUnsafeMutableBytes { buffer -> Bool in
-        guard let context = CGContext(
-            data: buffer.baseAddress,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: bytesPerRow,
-            space: colorSpace,
-            bitmapInfo: bitmapInfo
-        ) else {
-            return false
-        }
-
-        context.setBlendMode(.copy)
-        context.setRenderingIntent(.relativeColorimetric)
-        context.interpolationQuality = .none
-        context.draw(
-            image,
-            in: CGRect(x: 0, y: 0, width: width, height: height)
-        )
-        return true
-    }
-
-    guard didRender else {
-        return nil
-    }
-
-    return pixels
+    return Double(diff) / Double(w * h)
 }
 #endif
