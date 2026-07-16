@@ -1,6 +1,8 @@
 import AuthKit
 import CoreKit
 import Foundation
+import Observation
+import os
 import Persistence
 import Testing
 @testable import AppFeature
@@ -8,6 +10,32 @@ import Testing
 @Suite("Guest public work permit")
 @MainActor
 struct GuestWorkPermitTests {
+    @Test("settled signed-out reconciliation does not start account teardown")
+    func settledSignedOutReconciliationIsNoOp() async {
+        let session = SessionManager(tokenStore: InMemoryTokenStore())
+        let probe = GuestScopeProbe()
+        let model = makeModel(session: session, probe: probe)
+        let phaseDidChange = OSAllocatedUnfairLock(initialState: false)
+
+        #expect(model.canPresentSignedOutEntry)
+        #expect(model.sessionScopePhase == .none)
+        #expect(model.activeSessionScope == nil)
+
+        withObservationTracking {
+            _ = model.sessionScopePhase
+        } onChange: {
+            phaseDidChange.withLock { $0 = true }
+        }
+
+        await model.reconcileCurrentSession()
+
+        #expect(!phaseDidChange.withLock { $0 })
+        #expect(model.sessionScopePhase == .none)
+        #expect(model.activeSessionScope == nil)
+        #expect(model.canPresentSignedOutEntry)
+        #expect(await probe.constructedAccounts.isEmpty)
+    }
+
     @Test("guest mode exposes an active public permit without constructing a private scope")
     func guestModeExposesPublicPermit() async {
         let session = SessionManager(tokenStore: InMemoryTokenStore())

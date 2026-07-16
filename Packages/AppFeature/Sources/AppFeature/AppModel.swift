@@ -574,6 +574,12 @@ public final class AppModel {
             }
             target = .signedIn(identity)
         case .signedOut:
+            if canPresentSignedOutEntry,
+               sessionTransitionTask == nil,
+               sessionTransitionTarget == nil,
+               sessionTransitionID == nil {
+                return
+            }
             target = .signedOut
         case .unknown, .reauthRequired, .reconnecting:
             return
