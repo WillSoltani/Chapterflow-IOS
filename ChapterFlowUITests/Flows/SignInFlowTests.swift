@@ -198,6 +198,14 @@ final class GuestBrowsingFlowTests: CFUITestCase {
 
     /// Signed-out guest entry must reach public Home and Library without creating an account scope.
     func testGuestBrowsingReachesPublicHomeAndLibrary() {
+        let signedOutTransition = app.activityIndicators["Signing you out"]
+        if signedOutTransition.waitForExistence(timeout: 2) {
+            XCTAssertTrue(
+                signedOutTransition.waitForNonExistence(timeout: 30),
+                "Signed-out account teardown must finish before guest entry is presented"
+            )
+        }
+
         let browseButton = app.buttons[
             "Continue browsing without creating an account"
         ]
