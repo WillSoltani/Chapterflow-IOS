@@ -1,7 +1,10 @@
 import AuthKit
 import CoreKit
+import EngagementFeature
 import Foundation
+import Networking
 import Persistence
+import SettingsFeature
 @testable import AppFeature
 
 @MainActor
@@ -42,7 +45,8 @@ func makeTestValidatedConfig() -> ValidatedAppConfig {
 @MainActor
 func makeTestAppModel(
     session: SessionManager,
-    scopeBuilder: @escaping @MainActor (AccountContext) async throws -> SessionScope
+    scopeBuilder: @escaping @MainActor (AccountContext) async throws -> SessionScope,
+    sessionFeatureModelsBuilder: (@MainActor (SessionScope, AppModel) -> SessionFeatureModels)? = nil
 ) -> AppModel {
     let validated = makeTestValidatedConfig()
     do {
@@ -58,11 +62,40 @@ func makeTestAppModel(
             authService: authService,
             session: session,
             accountPersistenceLoader: loader,
-            scopeBuilder: scopeBuilder
+            scopeBuilder: scopeBuilder,
+            sessionFeatureModelsBuilder: sessionFeatureModelsBuilder ?? makeTestSessionFeatureModels
         )
     } catch {
         preconditionFailure("Test persistence must initialize: \(error)")
     }
+}
+
+@MainActor
+func makeTestSessionFeatureModels(
+    scope: SessionScope,
+    model: AppModel
+) -> SessionFeatureModels {
+    let stores = SessionPresentationStores.account(
+        context: scope.context,
+        defaults: UserDefaults(suiteName: "cf-session-models-\(scope.context.instanceID.uuidString)")
+    )
+    return SessionFeatureModels(
+        scopeID: scope.context.instanceID,
+        reviews: ReviewsModel(
+            repository: ReviewsRepository(
+                apiClient: MockAPIClient(),
+                workPermit: scope.permit
+            ),
+            workPermit: scope.permit
+        ),
+        settings: SettingsModel(
+            repository: FakeSettingsRepository(),
+            preferences: stores.preferences,
+            onSignOut: { [weak model] in await model?.signOut() },
+            accountContext: scope.context,
+            workPermit: scope.permit
+        )
+    )
 }
 
 func makeTestPersistenceResources() throws -> AppPersistenceResources {

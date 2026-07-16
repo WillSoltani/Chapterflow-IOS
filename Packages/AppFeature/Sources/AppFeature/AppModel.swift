@@ -318,8 +318,11 @@ public final class AppModel {
     private let processAnalytics: any AnalyticsClient
     private let backgroundWorkBroker: SessionBackgroundWorkBroker
     private let scopeBuilder: @MainActor (AccountContext) async throws -> SessionScope
+    private let sessionFeatureModelsBuilder:
+        @MainActor (SessionScope, AppModel) -> SessionFeatureModels
 
     private(set) var activeSessionScope: SessionScope?
+    private var sessionFeatureModelsStorage: SessionFeatureModels?
     private(set) var sessionScopePhase: SessionScopePhase = .none
     private var sessionTransitionTask: Task<Void, Never>?
     private var sessionTransitionTarget: SessionTransitionTarget?
@@ -357,7 +360,8 @@ public final class AppModel {
             authService: authService,
             session: session,
             accountPersistenceLoader: DefaultAccountPersistenceLoader(),
-            scopeBuilder: nil
+            scopeBuilder: nil,
+            sessionFeatureModelsBuilder: nil
         )
     }
 
@@ -367,7 +371,9 @@ public final class AppModel {
         authService: AuthService,
         session: SessionManager,
         accountPersistenceLoader: any AccountPersistenceLoading,
-        scopeBuilder injectedScopeBuilder: (@MainActor (AccountContext) async throws -> SessionScope)?
+        scopeBuilder injectedScopeBuilder: (@MainActor (AccountContext) async throws -> SessionScope)?,
+        sessionFeatureModelsBuilder injectedSessionFeatureModelsBuilder:
+            (@MainActor (SessionScope, AppModel) -> SessionFeatureModels)? = nil
     ) {
         let config = validatedConfig.value
         self.validatedConfig = validatedConfig
@@ -428,6 +434,16 @@ public final class AppModel {
         scopeBuilder = injectedScopeBuilder ?? { context in
             try await factory.make(context: context)
         }
+        sessionFeatureModelsBuilder = injectedSessionFeatureModelsBuilder ?? { scope, model in
+            guard let graph = scope.graph else {
+                preconditionFailure("Active production scope must publish its private graph")
+            }
+            return SessionFeatureModels(
+                scopeID: scope.context.instanceID,
+                graph: graph,
+                onSignOut: { [weak model] in await model?.signOut() }
+            )
+        }
 
         #if os(iOS)
         metricKitSubscriber = MetricKitCrashSubscriber(
@@ -473,6 +489,7 @@ public final class AppModel {
     public func signOut() async {
         if session.authState == .signedOut, activeSessionScope == nil,
            sessionTransitionTask == nil {
+            sessionFeatureModelsStorage = nil
             showsSignOutFailure = false
             apiObservationHealthRecorder.transition(to: .signedOut)
             return
@@ -507,6 +524,7 @@ public final class AppModel {
         let succeeded = await session.signOut()
         if succeeded {
             apiObservationHealthRecorder.transition(to: .signedOut)
+            sessionFeatureModelsStorage = nil
             if let scope { await scope.invalidate() }
             activeSessionScope = nil
             sessionScopePhase = .none
@@ -569,6 +587,7 @@ public final class AppModel {
                activeMatchingScope.context.accountID == context.accountID,
                activeMatchingScope.context.environmentNamespace == context.environmentNamespace,
                sessionTransitionTask == nil {
+                installSessionFeatureModels(for: activeMatchingScope)
                 sessionScopePhase = .active
                 return
             }
@@ -627,6 +646,7 @@ public final class AppModel {
            activeSessionScope.context.environmentNamespace == context.environmentNamespace,
            activeSessionScope.state == .active,
            sessionCanPublish(context, generation: generation) {
+            installSessionFeatureModels(for: activeSessionScope)
             sessionScopePhase = .active
             return
         }
@@ -634,6 +654,7 @@ public final class AppModel {
         if let oldScope = activeSessionScope {
             sessionScopePhase = .quiescing
             activeSessionScope = nil
+            sessionFeatureModelsStorage = nil
             await cancelSpotlightIndexingAndRemoveAll()
             await cancelAccountBackgroundWork()
             await oldScope.invalidate()
@@ -672,6 +693,7 @@ public final class AppModel {
                 return
             }
             activeSessionScope = scope
+            installSessionFeatureModels(for: scope)
             sessionScopePhase = .active
             hydrateDisplayName()
             showAuthGate = false
@@ -685,6 +707,7 @@ public final class AppModel {
         } catch {
             if generation == sessionPreparationGeneration {
                 activeSessionScope = nil
+                sessionFeatureModelsStorage = nil
                 clearAccountPresentationState()
                 sessionScopePhase = .failure
             }
@@ -718,6 +741,7 @@ public final class AppModel {
     private func tearDownForAuthoritativeSignedOut() async {
         let scope = activeSessionScope
         activeSessionScope = nil
+        sessionFeatureModelsStorage = nil
         sessionScopePhase = .quiescing
         await cancelSpotlightIndexingAndRemoveAll()
         await cancelAccountBackgroundWork()
@@ -805,6 +829,30 @@ public final class AppModel {
 
     var activeScopeInstanceID: UUID? {
         activeMatchingScope?.context.instanceID
+    }
+
+    /// The active scope's stable feature-model owner, or `nil` when private
+    /// presentation authority is closed or the stored generation is stale.
+    var activeSessionFeatureModels: SessionFeatureModels? {
+        guard let activeScopeInstanceID,
+              sessionFeatureModelsStorage?.scopeID == activeScopeInstanceID else {
+            return nil
+        }
+        return sessionFeatureModelsStorage
+    }
+
+    var requiredSessionFeatureModels: SessionFeatureModels {
+        guard let activeSessionFeatureModels else {
+            preconditionFailure(
+                "Session feature model requested without an active matching session scope"
+            )
+        }
+        return activeSessionFeatureModels
+    }
+
+    private func installSessionFeatureModels(for scope: SessionScope) {
+        guard sessionFeatureModelsStorage?.scopeID != scope.context.instanceID else { return }
+        sessionFeatureModelsStorage = sessionFeatureModelsBuilder(scope, self)
     }
 
     private var requiredGraph: SessionPrivateGraph {

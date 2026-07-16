@@ -451,7 +451,7 @@ public struct AppRootView: View {
 
     @ViewBuilder
     // swiftlint:disable:next function_body_length
-    private func tabContent(for tab: AppTab) -> some View {
+    func tabContent(for tab: AppTab) -> some View {
         switch tab {
         case .home:
             HomeView(
@@ -509,11 +509,7 @@ public struct AppRootView: View {
                 pendingReferralCode: $model.pendingReferralCode
             )
         case .reviews:
-            ReviewsView(model: ReviewsModel(
-                repository: model.reviewsRepository,
-                workPermit: model.workPermit,
-                analytics: model.analytics
-            ))
+            ReviewsView(model: model.requiredSessionFeatureModels.reviews)
         case .settings:
             SettingsView(
                 isPro: model.entitlementService.isPro,
@@ -537,14 +533,7 @@ public struct AppRootView: View {
                     #endif
                 },
                 notificationSettingsModel: model.notificationSettingsModel,
-                settingsModel: SettingsModel(
-                    repository: model.settingsRepository,
-                    preferences: model.preferences,
-                    onSignOut: { await model.signOut() },
-                    downloadInfoProvider: model.downloadInfoProvider,
-                    accountContext: model.activeAccountContext,
-                    workPermit: model.workPermit
-                ),
+                settingsModel: model.requiredSessionFeatureModels.settings,
                 syncStatus: model.syncStatus,
                 userEmail: model.displayName.isEmpty ? nil : {
                     if let token = model.session.currentIdToken(),
