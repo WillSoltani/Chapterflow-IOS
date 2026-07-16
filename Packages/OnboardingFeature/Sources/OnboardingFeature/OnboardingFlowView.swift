@@ -16,11 +16,15 @@ public struct OnboardingFlowView: View {
     public init(
         preferences: AppPreferences,
         repository: any OnboardingRepository,
+        goalStore: DailyGoalStore,
+        workPermit: SessionWorkPermit,
         analytics: any AnalyticsClient = NoopAnalyticsClient()
     ) {
         _model = State(initialValue: OnboardingModel(
             preferences: preferences,
             repository: repository,
+            goalStore: goalStore,
+            workPermit: workPermit,
             analytics: analytics
         ))
     }
@@ -169,7 +173,12 @@ struct OnboardingFlowPreviewContainer: View {
     var body: some View {
         let prefs = AppPreferences(defaults: UserDefaults(suiteName: "preview-onboarding")!)
         let repo = MockOnboardingRepository()
-        let container = OnboardingFlowView(preferences: prefs, repository: repo)
+        let container = OnboardingFlowView(
+            preferences: prefs,
+            repository: repo,
+            goalStore: DailyGoalStore(defaults: UserDefaults(suiteName: "preview-onboarding")!),
+            workPermit: SessionWorkPermit()
+        )
         container
     }
 }

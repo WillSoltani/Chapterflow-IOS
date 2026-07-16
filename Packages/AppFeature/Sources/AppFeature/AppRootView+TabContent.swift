@@ -36,8 +36,11 @@ extension AppRootView {
             HomeView(
                 repository: model.libraryRepository,
                 bookDetailRepository: model.bookDetailRepository,
-                aiRepository: model.aiRepository,
+                aiRepository: nil,
+                preferences: model.guestPreferences,
+                store: model.guestKeyValueStore,
                 isGuest: true,
+                workPermit: model.workPermit,
                 onOpenReader: nil, // guests can't open the reader
                 onShowPaywall: nil,
                 onRequireAuth: requireAuthClosure,
@@ -47,8 +50,11 @@ extension AppRootView {
             LibraryView(
                 repository: model.libraryRepository,
                 bookDetailRepository: model.bookDetailRepository,
-                aiRepository: model.aiRepository,
+                aiRepository: nil,
+                preferences: model.guestPreferences,
+                store: model.guestKeyValueStore,
                 isGuest: true,
+                workPermit: model.workPermit,
                 onOpenReader: nil,
                 onShowPaywall: nil,
                 onRequireAuth: requireAuthClosure,

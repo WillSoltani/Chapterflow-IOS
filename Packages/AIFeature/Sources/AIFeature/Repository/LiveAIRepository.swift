@@ -6,9 +6,11 @@ import CoreKit
 public actor LiveAIRepository: AIRepository {
 
     private let client: any APIClientProtocol
+    public nonisolated let accountID: String
 
-    public init(client: any APIClientProtocol) {
+    public init(client: any APIClientProtocol, accountID: String) {
         self.client = client
+        self.accountID = accountID
     }
 
     public func askBook(

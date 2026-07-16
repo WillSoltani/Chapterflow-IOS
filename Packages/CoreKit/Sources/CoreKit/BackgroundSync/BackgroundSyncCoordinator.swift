@@ -64,6 +64,8 @@ public final class BackgroundSyncCoordinator {
 
     private var appRefreshHandle: Task<Void, Never>?
     private var processingHandle: Task<Void, Never>?
+    private var appRefreshOperationID: UUID?
+    private var processingOperationID: UUID?
 
     // MARK: - Logger
 
@@ -170,11 +172,32 @@ public final class BackgroundSyncCoordinator {
         }
         let work = onAppRefreshWork
         appRefreshHandle?.cancel()
+        let operationID = UUID()
+        appRefreshOperationID = operationID
         appRefreshHandle = Task { [weak self] in
             self?.logger.info("BackgroundSync: foreground sync started")
             await work()
-            self?.appRefreshHandle = nil
+            self?.finishAppRefresh(operationID: operationID)
         }
+    }
+
+    /// Cancels and joins every retained background-work task.
+    ///
+    /// This is the account-lifetime teardown boundary. Both handles are detached
+    /// before suspension so a re-entrant call cannot mistake old work for a new
+    /// account's task, and repeated calls are harmless.
+    public func cancelActiveWork() async {
+        let appRefresh = appRefreshHandle
+        let processing = processingHandle
+        appRefreshHandle = nil
+        processingHandle = nil
+        appRefreshOperationID = nil
+        processingOperationID = nil
+
+        appRefresh?.cancel()
+        processing?.cancel()
+        await appRefresh?.value
+        await processing?.value
     }
 
     // MARK: - Work-permission gate
@@ -200,11 +223,13 @@ public final class BackgroundSyncCoordinator {
 
         appRefreshHandle?.cancel()
         let work = onAppRefreshWork
+        let operationID = UUID()
+        appRefreshOperationID = operationID
         let handle = Task { [weak self] in
             self?.logger.info("BackgroundSync: BGAppRefresh started")
             await work()
             task.setTaskCompleted(success: true)
-            self?.appRefreshHandle = nil
+            self?.finishAppRefresh(operationID: operationID)
         }
         appRefreshHandle = handle
         task.expirationHandler = {
@@ -228,11 +253,13 @@ public final class BackgroundSyncCoordinator {
 
         processingHandle?.cancel()
         let work = onProcessingWork
+        let operationID = UUID()
+        processingOperationID = operationID
         let handle = Task { [weak self] in
             self?.logger.info("BackgroundSync: BGProcessing started")
             await work()
             task.setTaskCompleted(success: true)
-            self?.processingHandle = nil
+            self?.finishProcessing(operationID: operationID)
         }
         processingHandle = handle
         task.expirationHandler = {
@@ -241,5 +268,45 @@ public final class BackgroundSyncCoordinator {
         }
         await handle.value
     }
+
+    private func finishAppRefresh(operationID: UUID) {
+        guard appRefreshOperationID == operationID else { return }
+        appRefreshOperationID = nil
+        appRefreshHandle = nil
+    }
+
+    private func finishProcessing(operationID: UUID) {
+        guard processingOperationID == operationID else { return }
+        processingOperationID = nil
+        processingHandle = nil
+    }
+
+    #if DEBUG
+    /// Starts both work classes without BGTaskScheduler so cancellation is deterministic in tests.
+    func startActiveWorkForTesting() {
+        appRefreshHandle?.cancel()
+        processingHandle?.cancel()
+
+        let refreshID = UUID()
+        appRefreshOperationID = refreshID
+        let refreshWork = onAppRefreshWork
+        appRefreshHandle = Task { [weak self] in
+            await refreshWork()
+            self?.finishAppRefresh(operationID: refreshID)
+        }
+
+        let processingID = UUID()
+        processingOperationID = processingID
+        let processingWork = onProcessingWork
+        processingHandle = Task { [weak self] in
+            await processingWork()
+            self?.finishProcessing(operationID: processingID)
+        }
+    }
+
+    var activeWorkCountForTesting: Int {
+        (appRefreshHandle == nil ? 0 : 1) + (processingHandle == nil ? 0 : 1)
+    }
+    #endif
 }
 #endif

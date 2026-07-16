@@ -35,6 +35,7 @@ public struct QuizView: View {
         chapterNumber: Int,
         tone: ToneKey? = nil,
         repository: any QuizRepository,
+        workPermit: SessionWorkPermit = SessionWorkPermit(),
         analytics: any AnalyticsClient = NoopAnalyticsClient(),
         onContinue: @escaping () -> Void,
         onQuizPassed: @escaping () -> Void = {}
@@ -44,6 +45,7 @@ public struct QuizView: View {
             chapterNumber: chapterNumber,
             tone: tone,
             repository: repository,
+            workPermit: workPermit,
             analytics: analytics
         ))
         self.onContinue = onContinue

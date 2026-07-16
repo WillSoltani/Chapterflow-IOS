@@ -1,5 +1,4 @@
 import AppIntents
-import Foundation
 
 // MARK: - ControlWidgetIntents
 //
@@ -9,19 +8,16 @@ import Foundation
 // routes on activation (consumeControlIntentAction). The audio toggle uses the
 // existing audioControlCommand key already consumed by consumeAudioControlCommand().
 
-private let cfAppGroupID = "group.com.chapterflow"
-
 // MARK: - StartReadingControlIntent
 
 /// "Start reading" control — opens ChapterFlow at the continue-reading chapter.
 ///
-/// Writes `"startReading"` to `controlIntent.pendingAction` in the App Group.
-/// `AppModel.consumeControlIntentAction()` reads this on scene activation and
-/// routes to the correct chapter via `handle(deepLink:)`.
+/// Cached legacy control. Account ownership is unavailable in the extension,
+/// so it opens the app without emitting a cross-account routing command.
 struct StartReadingControlIntent: AppIntent {
     static let title: LocalizedStringResource = "Start Reading"
     static let description = IntentDescription(
-        "Opens ChapterFlow at your current chapter.",
+        "Opens ChapterFlow so you can choose a book.",
         categoryName: "Reading"
     )
     // The app opens; AppModel handles routing via the App Group signal.
@@ -30,9 +26,7 @@ struct StartReadingControlIntent: AppIntent {
     init() {}
 
     func perform() async throws -> some IntentResult {
-        UserDefaults(suiteName: cfAppGroupID)?
-            .set("startReading", forKey: "controlIntent.pendingAction")
-        return .result(dialog: "Opening your reading session.")
+        return .result(dialog: "Opening ChapterFlow. Choose a book to continue.")
     }
 }
 
@@ -40,11 +34,11 @@ struct StartReadingControlIntent: AppIntent {
 
 /// "Review now" control — opens ChapterFlow's spaced-repetition review session.
 ///
-/// Writes `"startReview"` to `controlIntent.pendingAction` in the App Group.
+/// Cached legacy control that opens the app without ownerless routing state.
 struct StartReviewControlIntent: AppIntent {
     static let title: LocalizedStringResource = "Review Now"
     static let description = IntentDescription(
-        "Opens a spaced-repetition review session in ChapterFlow.",
+        "Opens ChapterFlow so you can choose Reviews.",
         categoryName: "Reviews"
     )
     static let openAppWhenRun = true
@@ -52,9 +46,7 @@ struct StartReviewControlIntent: AppIntent {
     init() {}
 
     func perform() async throws -> some IntentResult {
-        UserDefaults(suiteName: cfAppGroupID)?
-            .set("startReview", forKey: "controlIntent.pendingAction")
-        return .result(dialog: "Opening your review session.")
+        return .result(dialog: "Opening ChapterFlow. Choose Reviews to continue.")
     }
 }
 
@@ -69,6 +61,10 @@ struct StartReviewControlIntent: AppIntent {
 /// reflect the optimistic new state immediately.
 struct ToggleAudioControlIntent: SetValueIntent {
     static let title: LocalizedStringResource = "Toggle Audio Narration"
+    static let description = IntentDescription(
+        "Audio controls are unavailable until ChapterFlow can verify the active account.",
+        categoryName: "Reading"
+    )
     // Runs inline so the toggle flips without launching the app.
     static let openAppWhenRun = false
 
@@ -78,11 +74,10 @@ struct ToggleAudioControlIntent: SetValueIntent {
     init() {}
 
     func perform() async throws -> some IntentResult {
-        let defaults = UserDefaults(suiteName: cfAppGroupID)
-        // Reuses the key already observed by AppModel.consumeAudioControlCommand()
-        defaults?.set(value ? "play" : "pause", forKey: "audioControlCommand")
-        // Optimistic state for AudioPlaybackControl.Provider
-        defaults?.set(value, forKey: "controlIntent.isAudioPlaying")
-        return .result()
+        // Cached controls cannot prove which account owns the active player.
+        // Preserve all legacy App Group values and make no playback mutation.
+        return .result(
+            dialog: "Audio can’t be controlled here yet. Open ChapterFlow to continue."
+        )
     }
 }

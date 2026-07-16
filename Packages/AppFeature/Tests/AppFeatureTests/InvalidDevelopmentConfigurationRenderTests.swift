@@ -1,4 +1,5 @@
 import CoreKit
+import Foundation
 import SwiftUI
 import Testing
 @testable import AppFeature
@@ -49,6 +50,59 @@ struct InvalidConfigRenderTests {
             )
             .preferredColorScheme(.dark)
         )
+    }
+
+    @Test("account-scope recovery renders in light appearance")
+    func accountScopeRecoveryLight() {
+        assertRenders(SessionScopeRecoveryView(onRetry: {}, onSignOut: {}))
+    }
+
+    @Test("account-scope recovery renders in dark appearance")
+    func accountScopeRecoveryDark() {
+        assertRenders(
+            SessionScopeRecoveryView(onRetry: {}, onSignOut: {})
+                .preferredColorScheme(.dark)
+        )
+    }
+
+    @Test("account-scope recovery renders at AX5 with motion disabled")
+    func accountScopeRecoveryAX5() {
+        assertRenders(
+            SessionScopeRecoveryView(onRetry: {}, onSignOut: {})
+                .environment(\.dynamicTypeSize, .accessibility5)
+                .transaction {
+                    $0.animation = nil
+                    $0.disablesAnimations = true
+                }
+        )
+    }
+
+    @Test("account-scope recovery copy is generic and actions follow VoiceOver order")
+    func accountScopeRecoverySemantics() {
+        let copy = SessionScopeRecoveryContent.heading + " " + SessionScopeRecoveryContent.message
+        #expect(SessionScopeRecoveryContent.orderedActions == ["Try Again", "Sign Out"])
+        #expect(!copy.localizedCaseInsensitiveContains("subject"))
+        #expect(!copy.localizedCaseInsensitiveContains("account id"))
+        #expect(!copy.localizedCaseInsensitiveContains("/Users/"))
+        #expect(!copy.localizedCaseInsensitiveContains("error:"))
+    }
+
+    @Test("session transition copy distinguishes preparation, switching, and sign-out")
+    func sessionTransitionSemantics() {
+        #expect(SessionTransitionKind.preparing.visibleLabel == "Preparing your library…")
+        #expect(SessionTransitionKind.switchingAccounts.visibleLabel == "Switching accounts…")
+        #expect(SessionTransitionKind.signingOut.visibleLabel == "Signing you out…")
+        #expect(SessionTransitionKind.signingOut.accessibilityLabel == "Signing you out")
+    }
+
+    @Test("sign-out failure is actionable and privacy safe")
+    func signOutFailureSemantics() {
+        let copy = SignOutFailureContent.heading + " " + SignOutFailureContent.message
+        #expect(SignOutFailureContent.orderedActions == ["Try Again", "Stay Signed In"])
+        #expect(!copy.localizedCaseInsensitiveContains("subject"))
+        #expect(!copy.localizedCaseInsensitiveContains("account id"))
+        #expect(!copy.localizedCaseInsensitiveContains("/Users/"))
+        #expect(!copy.localizedCaseInsensitiveContains("error:"))
     }
 
     @Test("storage recovery renders at AX5 with motion disabled")

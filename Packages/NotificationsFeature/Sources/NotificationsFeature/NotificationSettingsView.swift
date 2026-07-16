@@ -1,5 +1,6 @@
 import SwiftUI
 import DesignSystem
+import Persistence
 
 /// Full-screen notification preferences editor.
 ///
@@ -248,7 +249,7 @@ public struct NotificationSettingsView: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(Color.orange)
                     .accessibilityHidden(true)
-                Text("Couldn't save preferences. Changes will retry when you're back online.")
+                Text("Changes are saved on this device but need recovery before they can sync.")
                     .font(.cfFootnote)
                     .foregroundStyle(Color.cfSecondaryLabel)
             }
@@ -312,7 +313,8 @@ public struct NotificationSettingsView: View {
         NotificationSettingsView(
             model: NotificationSettingsModel(
                 repository: FakeNotificationPreferencesRepository(),
-                authorizer: PreviewNotificationAuthorizer()
+                authorizer: PreviewNotificationAuthorizer(),
+                pendingStore: KeyValueStore()
             )
         )
     }
@@ -331,7 +333,11 @@ public struct NotificationSettingsView: View {
     let auth = PreviewNotificationAuthorizer(status: .denied)
     NavigationStack {
         NotificationSettingsView(
-            model: NotificationSettingsModel(repository: repo, authorizer: auth)
+            model: NotificationSettingsModel(
+                repository: repo,
+                authorizer: auth,
+                pendingStore: KeyValueStore()
+            )
         )
     }
     .preferredColorScheme(.dark)
@@ -342,7 +348,8 @@ public struct NotificationSettingsView: View {
         NotificationSettingsView(
             model: NotificationSettingsModel(
                 repository: FakeNotificationPreferencesRepository(),
-                authorizer: PreviewNotificationAuthorizer()
+                authorizer: PreviewNotificationAuthorizer(),
+                pendingStore: KeyValueStore()
             )
         )
     }

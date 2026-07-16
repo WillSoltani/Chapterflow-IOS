@@ -1,4 +1,5 @@
 import Foundation
+import CoreKit
 import Models
 import Networking
 import os
@@ -11,12 +12,21 @@ public actor LiveSocialRepository: SocialRepository {
 
     private let client: any APIClientProtocol
     private let outbox: ReflectionOutbox
+    private let workPermit: SessionWorkPermit
     private let logger = Logger(subsystem: "com.chapterflow.ios", category: "LiveSocialRepo")
     private var cachedBlockedUserIds: Set<String> = []
 
-    public init(client: any APIClientProtocol) {
+    public init(
+        client: any APIClientProtocol,
+        storageNamespace: String,
+        workPermit: SessionWorkPermit = SessionWorkPermit()
+    ) throws {
         self.client = client
-        self.outbox = ReflectionOutbox()
+        self.workPermit = workPermit
+        self.outbox = try ReflectionOutbox(
+            storageNamespace: storageNamespace,
+            workPermit: workPermit
+        )
     }
 
     // MARK: - Own profile
@@ -126,21 +136,29 @@ public actor LiveSocialRepository: SocialRepository {
         await outbox.all(bookId: bookId, chapterN: chapterN)
     }
 
-    public func postReflection(bookId: String, chapterN: Int, text: String) async -> PendingReflectionItem {
-        var item = PendingReflectionItem(bookId: bookId, chapterN: chapterN, text: text)
-        await outbox.append(item)
+    public func postReflection(
+        bookId: String,
+        chapterN: Int,
+        text: String
+    ) async throws -> PendingReflectionItem {
+        let ticket = try workPermit.begin()
+        let pendingItem = PendingReflectionItem(bookId: bookId, chapterN: chapterN, text: text)
+        try await outbox.append(pendingItem, ticket: ticket)
 
         do {
             let endpoint = try Endpoints.postReflection(bookId: bookId, chapterN: chapterN, text: text)
             let response: PostReflectionResponse = try await client.send(endpoint)
-            item.syncState = .synced
-            item.serverReflectionId = response.reflection.reflectionId
-            await outbox.update(item)
+            var syncedItem = pendingItem
+            syncedItem.syncState = .synced
+            syncedItem.serverReflectionId = response.reflection.reflectionId
+            try await outbox.update(syncedItem, ticket: ticket)
+            return syncedItem
+        } catch is CancellationError {
+            throw CancellationError()
         } catch {
             logger.warning("Reflection upload failed, queued for retry: \(error.localizedDescription)")
+            return pendingItem
         }
-
-        return item
     }
 
     public func requestFeedback(
@@ -157,8 +175,9 @@ public actor LiveSocialRepository: SocialRepository {
         return response.feedbackText
     }
 
-    public func queueFeedbackForPending(localId: String) async -> PendingReflectionItem? {
-        await outbox.markFeedbackPending(localId: localId)
+    public func queueFeedbackForPending(localId: String) async throws -> PendingReflectionItem? {
+        let ticket = try workPermit.begin()
+        try await outbox.markFeedbackPending(localId: localId, ticket: ticket)
         // Return updated item from outbox.
         // We can't easily look up by localId in one call; traverse pending items.
         // Using a workaround: markFeedbackPending returns nothing; we'll do a lookup
@@ -169,13 +188,19 @@ public actor LiveSocialRepository: SocialRepository {
     // MARK: - Safety
 
     public func blockUser(userId: String) async throws {
+        let ticket = try workPermit.begin()
         let _: BlockActionResponse = try await client.send(try Endpoints.blockUser(userId: userId))
-        cachedBlockedUserIds.insert(userId)
+        try workPermit.commit(ticket) {
+            cachedBlockedUserIds.insert(userId)
+        }
     }
 
     public func unblockUser(userId: String) async throws {
+        let ticket = try workPermit.begin()
         let _: BlockActionResponse = try await client.send(Endpoints.unblockUser(userId: userId))
-        cachedBlockedUserIds.remove(userId)
+        try workPermit.commit(ticket) {
+            cachedBlockedUserIds.remove(userId)
+        }
     }
 
     public func isBlocked(userId: String) async -> Bool {
@@ -183,8 +208,11 @@ public actor LiveSocialRepository: SocialRepository {
     }
 
     public func refreshBlockedUsers() async throws -> [BlockedUser] {
+        let ticket = try workPermit.begin()
         let response: BlockedUsersResponse = try await client.send(Endpoints.getBlockedUsers())
-        cachedBlockedUserIds = Set(response.blockedUsers.map(\.userId))
+        try workPermit.commit(ticket) {
+            cachedBlockedUserIds = Set(response.blockedUsers.map(\.userId))
+        }
         return response.blockedUsers
     }
 
@@ -218,7 +246,11 @@ public actor LiveSocialRepository: SocialRepository {
         return response.result
     }
 
-    public func syncPendingReflections(bookId: String, chapterN: Int) async -> [PendingReflectionItem] {
+    public func syncPendingReflections(
+        bookId: String,
+        chapterN: Int
+    ) async throws -> [PendingReflectionItem] {
+        let ticket = try workPermit.begin()
         let pending = await outbox.all(bookId: bookId, chapterN: chapterN)
         for item in pending where item.syncState == .pending {
             var updated = item
@@ -231,7 +263,7 @@ public actor LiveSocialRepository: SocialRepository {
                 let response: PostReflectionResponse = try await client.send(endpoint)
                 updated.syncState = .synced
                 updated.serverReflectionId = response.reflection.reflectionId
-                await outbox.update(updated)
+                try await outbox.update(updated, ticket: ticket)
 
                 // Auto-fetch feedback if it was queued before the reflection synced.
                 if updated.feedbackState == .pending, let serverId = updated.serverReflectionId {
@@ -242,11 +274,19 @@ public actor LiveSocialRepository: SocialRepository {
                             reflectionId: serverId
                         )
                         let fbResponse: ReflectionFeedbackResponse = try await client.send(fbEndpoint)
-                        await outbox.markFeedbackReceived(localId: item.localId, feedbackText: fbResponse.feedbackText)
+                        try await outbox.markFeedbackReceived(
+                            localId: item.localId,
+                            feedbackText: fbResponse.feedbackText,
+                            ticket: ticket
+                        )
+                    } catch is CancellationError {
+                        throw CancellationError()
                     } catch {
                         logger.warning("Feedback fetch failed for \(item.localId): \(error.localizedDescription)")
                     }
                 }
+            } catch is CancellationError {
+                throw CancellationError()
             } catch {
                 logger.warning("Sync failed for pending reflection \(item.localId): \(error.localizedDescription)")
             }

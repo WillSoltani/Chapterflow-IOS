@@ -8,22 +8,18 @@ private let log = Logger(subsystem: "com.chapterflow", category: "extensions")
 
 extension AppModel {
 
-    /// Drains the App Group extension outbox and shows a confirmation banner when
-    /// the Share or Action extension has saved items since the last foreground cycle.
+    /// Preserves the legacy ownerless extension outbox for WP-ID-01B attribution.
     ///
     /// Call when `scenePhase` transitions to `.active`.
     ///
-    /// **RF4**: Only App Group `UserDefaults` is accessed here — the main SwiftData
-    /// store is not opened. Items are stored by the extension and read here.
+    /// 01A must not guess that an ownerless item belongs to the active account and
+    /// must not clear it as though import succeeded.
     public func drainExtensionOutbox() {
         let outbox = ExtensionOutbox()
         let items = outbox.readAll()
         guard !items.isEmpty else { return }
-
-        log.info("Extension outbox: draining \(items.count) item(s)")
-        outbox.clear()
-
-        extensionInboxCount = items.count
-        showExtensionInboxBanner = true
+        log.notice("Extension outbox contains ownerless legacy items; preserving for account attribution")
+        extensionInboxCount = 0
+        showExtensionInboxBanner = false
     }
 }

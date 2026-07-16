@@ -20,40 +20,56 @@ public actor LiveQuizRepository: QuizRepository {
     private let client: any APIClientProtocol
     private let container: ModelContainer?
     private let reachability: ReachabilityService
-    private let userId: @Sendable () -> String?
+    private let accountID: String
+    private let workPermit: SessionWorkPermit
 
     public init(
         client: any APIClientProtocol,
         container: ModelContainer? = nil,
         reachability: ReachabilityService,
-        userId: @Sendable @escaping () -> String?
+        accountID: String,
+        workPermit: SessionWorkPermit = SessionWorkPermit()
     ) {
         self.client = client
         self.container = container
         self.reachability = reachability
-        self.userId = userId
+        self.accountID = accountID
+        self.workPermit = workPermit
     }
 
     // MARK: - Quiz loading
 
     public func getQuiz(bookId: String, n: Int, tone: ToneKey?) async throws -> QuizResponse {
+        let ticket = try workPermit.begin()
         // Cache-first: serve any cached ready/pending session immediately.
         if let cached = try loadCachedQuiz(bookId: bookId, chapterNumber: n) {
             // Background refresh when online (picks up any server-side changes).
             if reachability.isConnectedSync {
-                Task { try? await fetchAndCacheQuiz(bookId: bookId, n: n, tone: tone) }
+                Task {
+                    try? await fetchAndCacheQuiz(
+                        bookId: bookId,
+                        n: n,
+                        tone: tone,
+                        ticket: ticket
+                    )
+                }
             }
             return cached
         }
         guard reachability.isConnectedSync else { throw AppError.offline }
-        return try await fetchAndCacheQuiz(bookId: bookId, n: n, tone: tone)
+        return try await fetchAndCacheQuiz(bookId: bookId, n: n, tone: tone, ticket: ticket)
     }
 
     private func loadCachedQuiz(bookId: String, chapterNumber: Int) throws -> QuizResponse? {
         guard let container else { return nil }
         let ctx = ModelContext(container)
+        let rowId = CachedQuizState.makeRowId(
+            userId: accountID,
+            bookId: bookId,
+            chapterNumber: chapterNumber
+        )
         let descriptor = FetchDescriptor<CachedQuizState>(
-            predicate: #Predicate { $0.bookId == bookId && $0.chapterNumber == chapterNumber }
+            predicate: #Predicate { $0.rowId == rowId }
         )
         guard let row = try ctx.fetch(descriptor).first else { return nil }
         let session = try row.toDomain()
@@ -61,12 +77,19 @@ public actor LiveQuizRepository: QuizRepository {
     }
 
     @discardableResult
-    private func fetchAndCacheQuiz(bookId: String, n: Int, tone: ToneKey?) async throws -> QuizResponse {
+    private func fetchAndCacheQuiz(
+        bookId: String,
+        n: Int,
+        tone: ToneKey?,
+        ticket: UInt64
+    ) async throws -> QuizResponse {
         let response: QuizResponse = try await client.send(
             Endpoints.getQuiz(bookId: bookId, n: n, tone: tone?.rawValue)
         )
         if let container {
-            try cacheQuizSession(response.quiz, bookId: bookId, chapterNumber: n, in: container)
+            try workPermit.commit(ticket) {
+                try cacheQuizSession(response.quiz, bookId: bookId, chapterNumber: n, in: container)
+            }
         }
         return response
     }
@@ -78,7 +101,7 @@ public actor LiveQuizRepository: QuizRepository {
         in container: ModelContainer
     ) throws {
         let ctx = ModelContext(container)
-        let uid = userId() ?? "anon"
+        let uid = accountID
         let rowId = CachedQuizState.makeRowId(userId: uid, bookId: bookId, chapterNumber: chapterNumber)
         let descriptor = FetchDescriptor<CachedQuizState>(
             predicate: #Predicate { $0.rowId == rowId }
@@ -107,12 +130,17 @@ public actor LiveQuizRepository: QuizRepository {
     // MARK: - Submit
 
     public func submit(bookId: String, n: Int, answers: [QuizAnswerSubmission]) async throws -> QuizAttemptResult {
+        let ticket = try workPermit.begin()
         if !reachability.isConnectedSync {
-            try enqueueOfflineSubmit(bookId: bookId, chapterNumber: n, answers: answers)
+            try workPermit.commit(ticket) {
+                try enqueueOfflineSubmit(bookId: bookId, chapterNumber: n, answers: answers)
+            }
             throw QuizSubmissionError.pendingGrading
         }
         let endpoint = try Endpoints.submitQuiz(bookId: bookId, n: n, answers: answers)
-        return try await client.send(endpoint)
+        let result: QuizAttemptResult = try await client.send(endpoint)
+        try workPermit.validate(ticket)
+        return result
     }
 
     private func enqueueOfflineSubmit(
@@ -122,7 +150,7 @@ public actor LiveQuizRepository: QuizRepository {
     ) throws {
         guard let container else { return }
         let ctx = ModelContext(container)
-        let uid = userId() ?? "anon"
+        let uid = accountID
 
         struct SubmitPayload: Codable {
             let bookId: String

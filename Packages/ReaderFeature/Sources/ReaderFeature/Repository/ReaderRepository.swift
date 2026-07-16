@@ -33,9 +33,11 @@ public protocol ReaderRepository: Sendable {
 
     /// Persists the reading position (block index) locally so it can be
     /// restored on the next open — even after changing font or theme.
+    @MainActor
     func saveScrollPosition(bookId: String, chapterNumber: Int, blockIndex: Int)
 
     /// Returns the previously saved block index for a chapter, or `nil` if none.
+    @MainActor
     func loadScrollPosition(bookId: String, chapterNumber: Int) -> Int?
 
     /// Fetches the full book manifest (chapter list + metadata) from the server.

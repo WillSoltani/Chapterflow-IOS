@@ -52,6 +52,7 @@ public final class OnboardingModel {
     @ObservationIgnored private let repository: any OnboardingRepository
     @ObservationIgnored private let preferences: AppPreferences
     @ObservationIgnored private let goalStore: DailyGoalStore
+    @ObservationIgnored private let workPermit: SessionWorkPermit
     @ObservationIgnored private let analytics: any AnalyticsClient
 
     // MARK: Init
@@ -59,17 +60,19 @@ public final class OnboardingModel {
     public init(
         preferences: AppPreferences,
         repository: any OnboardingRepository,
-        goalStore: DailyGoalStore? = nil,
+        goalStore: DailyGoalStore,
+        workPermit: SessionWorkPermit,
         analytics: any AnalyticsClient = NoopAnalyticsClient()
     ) {
         self.preferences = preferences
         self.repository = repository
-        self.goalStore = goalStore ?? DailyGoalStore.shared
+        self.goalStore = goalStore
+        self.workPermit = workPermit
         self.analytics = analytics
 
         // Seed from persisted stores so the user sees their last-saved values.
         self.readingTone = preferences.readingTone
-        self.dailyGoalMinutes = (goalStore ?? DailyGoalStore.shared).dailyGoalMinutes
+        self.dailyGoalMinutes = goalStore.dailyGoalMinutes
         self.reminderHour = preferences.reminderHour
         self.reminderMinute = preferences.reminderMinute
         self.selectedInterestIds = Set(preferences.interestIds)
@@ -80,24 +83,32 @@ public final class OnboardingModel {
     /// Fetches the server's progress record and resumes from the saved step.
     /// Non-fatal: a network failure silently starts the flow from `.welcome`.
     public func loadProgress() async {
+        guard let ticket = try? workPermit.begin() else { return }
         isLoading = true
-        defer { isLoading = false }
+        defer {
+            if (try? workPermit.validate(ticket)) != nil {
+                isLoading = false
+            }
+        }
 
         do {
             guard let progress = try await repository.fetchProgress() else { return }
+            try workPermit.commit(ticket) {
+                if progress.completed {
+                    preferences.onboardingCompleted = true
+                    return
+                }
 
-            if progress.completed {
-                preferences.onboardingCompleted = true
-                return
+                if let ids = progress.interests { selectedInterestIds = Set(ids) }
+                if let c = progress.chapterOrder { chapterOrder = ChapterOrder(rawValue: c) ?? .summaryFirst }
+                if let t = progress.tone { readingTone = ReadingTone(rawValue: t) ?? .direct }
+                if let g = progress.dailyGoal, DailyGoalStore.tiers.contains(g) { dailyGoalMinutes = g }
+                if let h = progress.reminderHour { reminderHour = h }
+                if let m = progress.reminderMinute { reminderMinute = m }
+                if let step = OnboardingStep(rawValue: progress.step) { currentStep = step }
             }
-
-            if let ids = progress.interests { selectedInterestIds = Set(ids) }
-            if let c = progress.chapterOrder { chapterOrder = ChapterOrder(rawValue: c) ?? .summaryFirst }
-            if let t = progress.tone { readingTone = ReadingTone(rawValue: t) ?? .direct }
-            if let g = progress.dailyGoal, DailyGoalStore.tiers.contains(g) { dailyGoalMinutes = g }
-            if let h = progress.reminderHour { reminderHour = h }
-            if let m = progress.reminderMinute { reminderMinute = m }
-            if let step = OnboardingStep(rawValue: progress.step) { currentStep = step }
+        } catch is CancellationError {
+            return
         } catch {
             // Non-fatal: start from the beginning.
         }
@@ -107,51 +118,69 @@ public final class OnboardingModel {
 
     /// Advances to the next step, saving progress to the server.
     public func advance() async {
+        guard let ticket = try? workPermit.begin() else { return }
         switch currentStep {
         case .welcome:
-            moveToStep(.interests)
+            moveToStep(.interests, ticket: ticket)
         case .interests:
-            await saveProgressAndMove(to: .readingPrefs)
+            await saveProgressAndMove(to: .readingPrefs, ticket: ticket)
         case .readingPrefs:
-            await saveProgressAndMove(to: .dailyGoal)
+            await saveProgressAndMove(to: .dailyGoal, ticket: ticket)
         case .dailyGoal:
-            await saveProgressAndMove(to: .notifications)
+            await saveProgressAndMove(to: .notifications, ticket: ticket)
         case .notifications, .completed:
-            await completeOnboarding()
+            await completeOnboarding(ticket: ticket)
         }
     }
 
     /// Skips the remaining steps and marks onboarding complete.
     public func skip() async {
-        await completeOnboarding()
+        guard let ticket = try? workPermit.begin() else { return }
+        await completeOnboarding(ticket: ticket)
     }
 
     /// Requests iOS notification authorization and then advances.
     /// Must be called from the Notifications step.
     public func requestNotificationsAndAdvance() async {
+        guard let ticket = try? workPermit.begin() else { return }
         do {
             let center = UNUserNotificationCenter.current()
             _ = try await center.requestAuthorization(options: [.alert, .badge, .sound])
+        } catch is CancellationError {
+            return
         } catch {
             // Non-fatal: proceed regardless.
         }
-        await completeOnboarding()
+        guard (try? workPermit.validate(ticket)) != nil else { return }
+        await completeOnboarding(ticket: ticket)
     }
 
     // MARK: Private helpers
 
-    private func moveToStep(_ step: OnboardingStep) {
-        analytics.track(.onboardingStep(index: OnboardingStep.allCases.firstIndex(of: step) ?? 0))
-        withAnimation(.easeInOut(duration: 0.35)) {
-            currentStep = step
+    private func moveToStep(_ step: OnboardingStep, ticket: UInt64) {
+        try? workPermit.commit(ticket) {
+            analytics.track(.onboardingStep(index: OnboardingStep.allCases.firstIndex(of: step) ?? 0))
+            withAnimation(.easeInOut(duration: 0.35)) {
+                currentStep = step
+            }
         }
     }
 
-    private func saveProgressAndMove(to step: OnboardingStep) async {
+    private func saveProgressAndMove(to step: OnboardingStep, ticket: UInt64) async {
         isLoading = true
-        defer { isLoading = false }
+        defer {
+            if (try? workPermit.validate(ticket)) != nil {
+                isLoading = false
+            }
+        }
 
-        applyChoicesToStores()
+        do {
+            try applyChoicesToStores(ticket: ticket)
+        } catch is CancellationError {
+            return
+        } catch {
+            return
+        }
 
         let body = OnboardingProgressBody(
             step: step.rawValue,
@@ -164,21 +193,28 @@ public final class OnboardingModel {
         )
         do {
             try await repository.saveProgress(body)
+        } catch is CancellationError {
+            return
         } catch {
             // Non-fatal: local stores are already written above.
         }
 
-        analytics.track(.onboardingStep(index: OnboardingStep.allCases.firstIndex(of: step) ?? 0))
-        withAnimation(.easeInOut(duration: 0.35)) {
-            currentStep = step
-        }
+        moveToStep(step, ticket: ticket)
     }
 
-    private func completeOnboarding() async {
+    private func completeOnboarding(ticket: UInt64) async {
         isLoading = true
-        defer { isLoading = false }
+        defer {
+            if (try? workPermit.validate(ticket)) != nil {
+                isLoading = false
+            }
+        }
 
-        applyChoicesToStores()
+        do {
+            try applyChoicesToStores(ticket: ticket)
+        } catch {
+            return
+        }
 
         let body = OnboardingCompleteBody(
             interests: Array(selectedInterestIds),
@@ -190,19 +226,27 @@ public final class OnboardingModel {
         )
         do {
             try await repository.complete(body)
+        } catch is CancellationError {
+            return
         } catch {
-            // Non-fatal: mark complete locally regardless.
+            // The server is authoritative for completion. Keep the flow visible
+            // so a retry cannot become a false local success.
+            return
         }
 
         // Setting this flag on AppPreferences dismisses the fullScreenCover in AppRootView.
-        preferences.onboardingCompleted = true
+        try? workPermit.commit(ticket) {
+            preferences.onboardingCompleted = true
+        }
     }
 
-    private func applyChoicesToStores() {
-        preferences.readingTone = readingTone
-        preferences.reminderHour = reminderHour
-        preferences.reminderMinute = reminderMinute
-        preferences.interestIds = Array(selectedInterestIds)
-        goalStore.dailyGoalMinutes = dailyGoalMinutes
+    private func applyChoicesToStores(ticket: UInt64) throws {
+        try workPermit.commit(ticket) {
+            preferences.readingTone = readingTone
+            preferences.reminderHour = reminderHour
+            preferences.reminderMinute = reminderMinute
+            preferences.interestIds = Array(selectedInterestIds)
+            goalStore.dailyGoalMinutes = dailyGoalMinutes
+        }
     }
 }

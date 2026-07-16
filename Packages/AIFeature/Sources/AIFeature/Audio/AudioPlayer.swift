@@ -2,51 +2,6 @@
 import Foundation
 import Models
 
-// MARK: - Public types
-
-/// Point-in-time snapshot of ``AudioPlayer`` state for UI hydration.
-public struct AudioPlayerSnapshot: Sendable {
-    public let globalTime: Double
-    public let timeline: AudioTimeline
-    public let segmentIndex: Int
-    public let isPlaying: Bool
-    public let rate: Float
-    public let plan: AudioNarrationPlan?
-}
-
-/// Playback phase broadcast by ``AudioPlayer`` via its `AsyncStream`.
-public enum AudioPlaybackUpdate: Sendable {
-    case planLoaded(AudioNarrationPlan, AudioTimeline)
-    case timeUpdated(globalTime: Double, segmentIndex: Int)
-    case playingChanged(Bool)
-    case rateChanged(Float)
-    case segmentChanged(Int)
-    case chapterEnded(bookId: String, chapterNumber: Int)
-    case error(String)
-    case recovering
-}
-
-/// Sleep-timer option presented in the UI and stored in ``AudioPlayerModel``.
-public enum SleepTimerOption: Sendable, Equatable, CaseIterable, Hashable {
-    case off
-    case endOfChapter
-    case minutes(Int)
-
-    public static let allCases: [SleepTimerOption] = [
-        .off, .endOfChapter,
-        .minutes(5), .minutes(10), .minutes(15), .minutes(20),
-        .minutes(30), .minutes(45), .minutes(60)
-    ]
-
-    public var displayName: String {
-        switch self {
-        case .off:             return "Off"
-        case .endOfChapter:    return "End of chapter"
-        case .minutes(let m):  return "\(m) min"
-        }
-    }
-}
-
 // MARK: - AudioPlayer
 
 /// Swift `actor` that drives an `AVQueuePlayer` for gapless multi-segment audio narration.
@@ -101,9 +56,30 @@ public actor AudioPlayer {
 
     /// Whether we're in the middle of an expiry-recovery cycle (prevents recursion).
     private var isRecovering: Bool = false
+    /// Actor-authoritative playback intent. AVPlayer's status can be `.waiting`
+    /// while playback is legitimately requested, and the model mirror is async.
+    private var isPlaybackRequested = false
 
     /// Whether all segments in the plan have finished.
     private var chapterEndReported: Bool = false
+
+    /// Invalidates late async completions when the owning account scope ends.
+    private var lifecycleGeneration: UInt64 = 0
+    private var isInvalidated = false
+    private var isPausedForSessionBoundary = false
+
+    private var acceptsSessionWork: Bool {
+        !isInvalidated && !isPausedForSessionBoundary
+    }
+
+    var remoteRepository: any AudioRepository { repository }
+    var remoteGeneration: UInt64 { lifecycleGeneration }
+    var remoteListeningContext: (bookId: String, chapterNumber: Int)? {
+        currentBookId.isEmpty ? nil : (currentBookId, currentChapterNumber)
+    }
+    func acceptsRemoteWork(_ generation: UInt64? = nil) -> Bool {
+        acceptsSessionWork && (generation.map { $0 == lifecycleGeneration } ?? true)
+    }
 
     // MARK: - AsyncStream output
 
@@ -153,6 +129,10 @@ public actor AudioPlayer {
     }
 
     private func addContinuation(_ c: AsyncStream<AudioPlaybackUpdate>.Continuation, id: UUID) {
+        guard !isInvalidated else {
+            c.finish()
+            return
+        }
         continuations[id] = c
     }
 
@@ -179,17 +159,23 @@ public actor AudioPlayer {
         offlineDirectory: URL? = nil,
         startAt: Double = 0
     ) async throws {
+        guard acceptsSessionWork else { throw CancellationError() }
+        let generation = lifecycleGeneration
         currentBookId = bookId
         currentChapterNumber = chapterNumber
         self.offlineDirectory = offlineDirectory
         chapterEndReported = false
 
         let fetchedPlan = try await repository.fetchPlan(bookId: bookId, chapterNumber: chapterNumber)
+        try Task.checkCancellation()
+        guard generation == lifecycleGeneration else { throw CancellationError() }
         await applyPlan(fetchedPlan, startAt: startAt)
+        guard generation == lifecycleGeneration else { throw CancellationError() }
     }
 
     /// Applies a (possibly refreshed) plan to the queue, rebuilding from `startAt`.
     private func applyPlan(_ newPlan: AudioNarrationPlan, startAt: Double = 0) async {
+        guard acceptsSessionWork else { return }
         plan = newPlan
 
         // Build timeline from server hints (updated with real durations as assets load).
@@ -197,10 +183,12 @@ public actor AudioPlayer {
         timeline = AudioTimeline(durations: hints)
 
         await rebuildQueue(from: 0, localOffset: 0)
+        guard acceptsSessionWork else { return }
 
         // Now seek to desired start position.
         if startAt > 0 {
             await seekInternal(to: startAt)
+            guard acceptsSessionWork else { return }
         }
 
         // Bind time observer once (it is stable across rebuilds because the player is stable).
@@ -217,7 +205,7 @@ public actor AudioPlayer {
     /// Rebuilds the AVQueuePlayer queue starting from `segmentStartIndex`.
     /// Creates fresh AVPlayerItems from the plan's URLs (or local overrides).
     private func rebuildQueue(from segmentStartIndex: Int, localOffset: Double) async {
-        guard let plan else { return }
+        guard acceptsSessionWork, let plan else { return }
 
         player.pause()
         player.removeAllItems()
@@ -236,6 +224,7 @@ public actor AudioPlayer {
         if localOffset > 0 {
             let cmTime = CMTime(seconds: localOffset, preferredTimescale: 1000)
             await player.seek(to: cmTime, toleranceBefore: .zero, toleranceAfter: .zero)
+            guard acceptsSessionWork else { return }
         }
 
         chapterEndReported = false
@@ -253,26 +242,111 @@ public actor AudioPlayer {
     // MARK: - Playback controls
 
     public func play() {
+        guard acceptsSessionWork else { return }
+        isPlaybackRequested = true
         player.play()
         emit(.playingChanged(true))
     }
 
     public func pause() {
+        guard acceptsSessionWork else { return }
+        isPlaybackRequested = false
         player.pause()
         emit(.playingChanged(false))
     }
 
+    /// Stops playback and irreversibly clears all account-owned playback state.
+    ///
+    /// The operation is idempotent. Incrementing `lifecycleGeneration` before
+    /// clearing state ensures a plan fetch, expiry recovery, prefetch, or
+    /// download that completes late cannot repopulate the stopped scope.
+    public func stopForSessionBoundary() {
+        lifecycleGeneration &+= 1
+        isInvalidated = true
+        isPausedForSessionBoundary = true
+        isPlaybackRequested = false
+
+        sleepTimerTask?.cancel()
+        sleepTimerTask = nil
+        notificationTask?.cancel()
+        notificationTask = nil
+
+        player.pause()
+        player.removeAllItems()
+        if let token = timeObserverToken {
+            player.removeTimeObserver(token)
+            timeObserverToken = nil
+        }
+
+        plan = nil
+        segmentIndex.removeAll(keepingCapacity: false)
+        queueStartSegmentIndex = 0
+        timeline = .init(durations: [])
+        currentGlobalTime = 0
+        offlineDirectory = nil
+        currentBookId = ""
+        currentChapterNumber = 0
+        nextChapterPlan = nil
+        isRecovering = false
+        chapterEndReported = false
+
+        emit(.playingChanged(false))
+        for continuation in continuations.values {
+            continuation.finish()
+        }
+        continuations.removeAll(keepingCapacity: false)
+    }
+
+    /// Reversibly quiesces this scope. Any fetch or recovery that began before
+    /// the boundary is generation-invalidated, while already loaded playback
+    /// state is retained so a failed sign-out can resume the same account.
+    public func pauseForSessionBoundary() async -> Bool {
+        guard !isInvalidated, !isPausedForSessionBoundary else { return false }
+        let shouldResumePlayback = isPlaybackRequested
+        lifecycleGeneration &+= 1
+        isPausedForSessionBoundary = true
+        isPlaybackRequested = false
+
+        let sleepTask = sleepTimerTask
+        sleepTimerTask = nil
+        sleepTask?.cancel()
+        let observerTask = notificationTask
+        notificationTask = nil
+        observerTask?.cancel()
+
+        player.pause()
+        emit(.playingChanged(false))
+
+        await sleepTask?.value
+        await observerTask?.value
+        return shouldResumePlayback
+    }
+
+    /// Reactivates a reversibly quiesced scope. Playback itself is resumed by
+    /// `AudioPlayerModel` only when it was playing before the boundary.
+    public func resumeAfterSessionBoundary() {
+        guard !isInvalidated, isPausedForSessionBoundary else { return }
+        lifecycleGeneration &+= 1
+        isPausedForSessionBoundary = false
+        if plan != nil {
+            startNotificationObservers()
+        }
+    }
+
     public func setRate(_ rate: Float) {
+        guard acceptsSessionWork else { return }
         player.rate = rate
         emit(.rateChanged(rate))
     }
 
     /// Seeks to an exact global chapter time, crossing segment boundaries as needed.
     public func seek(to globalTime: Double) async {
+        guard acceptsSessionWork else { return }
         await seekInternal(to: globalTime)
     }
 
     private func seekInternal(to globalTime: Double) async {
+        guard acceptsSessionWork else { return }
         let (targetSeg, localOffset) = timeline.position(at: globalTime)
         let currentSeg = currentSegmentIndex()
 
@@ -280,10 +354,12 @@ public actor AudioPlayer {
             // Seek within the current segment.
             let cmTime = CMTime(seconds: localOffset, preferredTimescale: 1000)
             await player.seek(to: cmTime, toleranceBefore: .zero, toleranceAfter: .zero)
+            guard acceptsSessionWork else { return }
         } else {
             // Target is a different segment — rebuild from there.
             let wasPlaying = player.timeControlStatus == .playing
             await rebuildQueue(from: targetSeg, localOffset: localOffset)
+            guard acceptsSessionWork else { return }
             if wasPlaying { player.play() }
         }
         currentGlobalTime = globalTime
@@ -292,12 +368,14 @@ public actor AudioPlayer {
 
     /// Skips forward by 15 seconds (crosses segment boundaries transparently).
     public func skipForward() async {
+        guard acceptsSessionWork else { return }
         let newTime = Swift.min(currentGlobalTime + 15, timeline.totalDuration)
         await seek(to: newTime)
     }
 
     /// Skips backward by 15 seconds (crosses segment boundaries transparently).
     public func skipBackward() async {
+        guard acceptsSessionWork else { return }
         let newTime = Swift.max(currentGlobalTime - 15, 0)
         await seek(to: newTime)
     }
@@ -305,6 +383,7 @@ public actor AudioPlayer {
     // MARK: - Sleep timer
 
     public func setSleepTimer(_ option: SleepTimerOption) {
+        guard acceptsSessionWork else { return }
         sleepTimerTask?.cancel()
         sleepTimerTask = nil
         guard option != .off else { return }
@@ -320,7 +399,7 @@ public actor AudioPlayer {
             sleepTimerTask = Task {
                 try? await Task.sleep(for: .seconds(Double(m) * 60))
                 if !Task.isCancelled {
-                    await self.pause()
+                    self.pause()
                 }
             }
         }
@@ -331,20 +410,26 @@ public actor AudioPlayer {
     /// Prefetches the next chapter's plan so auto-advance is seamless.
     /// Called by ``AudioPlayerModel`` after the current chapter loads successfully.
     public func prefetchNextChapter() async {
-        guard let plan else { return }
+        guard acceptsSessionWork, let plan else { return }
+        let generation = lifecycleGeneration
         let next = plan.chapterNumber + 1
         do {
-            nextChapterPlan = try await repository.fetchPlan(
+            let fetchedPlan = try await repository.fetchPlan(
                 bookId: plan.bookId,
                 chapterNumber: next
             )
+            guard generation == lifecycleGeneration, !Task.isCancelled else { return }
+            nextChapterPlan = fetchedPlan
         } catch {
-            nextChapterPlan = nil
+            if generation == lifecycleGeneration {
+                nextChapterPlan = nil
+            }
         }
     }
 
     private func handleChapterEnd() async {
-        guard !chapterEndReported else { return }
+        guard acceptsSessionWork, !chapterEndReported else { return }
+        let generation = lifecycleGeneration
         chapterEndReported = true
         sleepTimerTask?.cancel()
         emit(.chapterEnded(bookId: currentBookId, chapterNumber: currentChapterNumber))
@@ -357,6 +442,7 @@ public actor AudioPlayer {
             let hints = next.segments.map { $0.durationSeconds ?? 60.0 }
             timeline = AudioTimeline(durations: hints)
             await rebuildQueue(from: 0, localOffset: 0)
+            guard generation == lifecycleGeneration, acceptsSessionWork else { return }
             emit(.planLoaded(next, timeline))
             player.play()
             // Schedule next-next prefetch so the chain continues.
@@ -366,33 +452,11 @@ public actor AudioPlayer {
         }
     }
 
-    // MARK: - Offline download
-
-    /// Downloads all segments of the current plan to `directory` for offline playback.
-    /// Re-fetches a fresh plan first to refresh the presigned URLs.
-    public func downloadChapter(
-        bookId: String,
-        chapterNumber: Int,
-        to directory: URL,
-        progress: (@Sendable (Double) -> Void)? = nil
-    ) async throws {
-        let freshPlan = try await repository.fetchPlan(bookId: bookId, chapterNumber: chapterNumber)
-        let total = Double(freshPlan.segments.count)
-        for (i, segment) in freshPlan.segments.enumerated() {
-            _ = try await repository.downloadSegment(
-                remoteURL: segment.url,
-                segmentId: segment.segmentId,
-                to: directory
-            )
-            progress?(Double(i + 1) / total)
-        }
-    }
-
     // MARK: - Expiry recovery
 
     /// Called when an `AVPlayerItem` fails — checks for expiry and recovers.
     private func handleItemFailure(_ item: AVPlayerItem) async {
-        guard !isRecovering else { return }
+        guard acceptsSessionWork, !isRecovering else { return }
         let error = item.error as NSError?
 
         // Detect likely presigned-URL expiry (HTTP 403 surfaces as a URL error).
@@ -404,39 +468,31 @@ public actor AudioPlayer {
         isRecovering = true
         emit(.recovering)
 
+        let generation = lifecycleGeneration
         let savedTime = currentGlobalTime
         do {
             let freshPlan = try await repository.fetchPlan(
                 bookId: currentBookId,
                 chapterNumber: currentChapterNumber
             )
+            guard generation == lifecycleGeneration, !Task.isCancelled else { return }
             plan = freshPlan
             let hints = freshPlan.segments.map { $0.durationSeconds ?? 60.0 }
             timeline = AudioTimeline(durations: hints)
             await rebuildQueue(from: 0, localOffset: 0)
+            guard generation == lifecycleGeneration, acceptsSessionWork else { return }
             await seekInternal(to: savedTime)
+            guard generation == lifecycleGeneration, acceptsSessionWork else { return }
             player.play()
             emit(.planLoaded(freshPlan, timeline))
         } catch {
-            emit(.error("Could not refresh audio: \(error.localizedDescription)"))
+            if generation == lifecycleGeneration {
+                emit(.error("Could not refresh audio: \(error.localizedDescription)"))
+            }
         }
-        isRecovering = false
-    }
-
-    /// Heuristic: is this error likely a presigned URL expiry (HTTP 403)?
-    internal func isLikelyExpiry(_ error: NSError?) -> Bool {
-        guard let error else { return false }
-        let ns = error as NSError
-        // AVFoundation wraps HTTP errors; 403 can appear as bad server response.
-        if ns.domain == NSURLErrorDomain {
-            return true
+        if generation == lifecycleGeneration {
+            isRecovering = false
         }
-        // Check for underlying network error.
-        if let underlying = ns.userInfo[NSUnderlyingErrorKey] as? NSError,
-           underlying.domain == NSURLErrorDomain {
-            return true
-        }
-        return false
     }
 
     // MARK: - Segment tracking
@@ -461,6 +517,7 @@ public actor AudioPlayer {
     }
 
     private func handleTimeUpdate(_ localTime: Double) async {
+        guard acceptsSessionWork else { return }
         let segIdx = currentSegmentIndex()
         let globalTime = timeline.globalTime(segmentIndex: segIdx, localOffset: localTime)
         currentGlobalTime = globalTime
@@ -498,6 +555,7 @@ public actor AudioPlayer {
     }
 
     private func handleItemDidFinish(_ item: AVPlayerItem) async {
+        guard acceptsSessionWork else { return }
         // Check if this was the last segment.
         guard let plan else { return }
         let idx = segmentIndex[ObjectIdentifier(item)] ?? 0
@@ -507,23 +565,6 @@ public actor AudioPlayer {
             let nextIdx = idx + 1
             emit(.segmentChanged(nextIdx))
         }
-    }
-
-    // MARK: - Session tracking
-
-    public func postListeningSession(
-        event: String,
-        sessionId: String?,
-        listeningSeconds: Double?
-    ) async {
-        guard !currentBookId.isEmpty else { return }
-        try? await repository.postAudioSessionEvent(
-            event: event,
-            bookId: currentBookId,
-            chapterNumber: currentChapterNumber,
-            sessionId: sessionId,
-            listeningSeconds: listeningSeconds
-        )
     }
 
     // MARK: - Snapshot for UI
@@ -543,4 +584,13 @@ public actor AudioPlayer {
 
     /// Saves the current global time — used by tests to verify recovery position.
     public var savedGlobalTimeForTest: Double { currentGlobalTime }
+
+    /// Deterministic teardown evidence for package tests.
+    var hasAccountPlaybackStateForTest: Bool {
+        plan != nil || !currentBookId.isEmpty || currentChapterNumber != 0 ||
+            currentGlobalTime != 0 || sleepTimerTask != nil || notificationTask != nil ||
+            timeObserverToken != nil || !continuations.isEmpty
+    }
+
+    var isPlaybackRequestedForTest: Bool { isPlaybackRequested }
 }

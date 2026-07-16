@@ -3,6 +3,57 @@ import Foundation
 @testable import NotificationsFeature
 import Models
 
+@Suite("NotificationInboxCache — account isolation", .serialized)
+struct NotificationInboxCacheIsolationTests {
+    private static let legacyKey = "cf.notifications.inbox"
+
+    private func response(id: String) -> NotificationsResponse {
+        NotificationsResponse(
+            notifications: [
+                AppNotification(
+                    notificationId: id,
+                    type: .reviewDue,
+                    title: "Review",
+                    body: "Ready",
+                    isRead: false,
+                    createdAt: "2026-07-15T12:00:00Z"
+                ),
+            ],
+            unreadCount: 1
+        )
+    }
+
+    @Test("account A and B caches never share inbox data")
+    func accountCachesAreIsolated() throws {
+        let suiteName = "test-inbox-account-isolation"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        let cacheA = NotificationInboxCache(storageNamespace: "account-a", defaults: defaults)
+        let cacheB = NotificationInboxCache(storageNamespace: "account-b", defaults: defaults)
+
+        cacheA.store(response(id: "a-notification"))
+        #expect(cacheA.load()?.notifications.first?.notificationId == "a-notification")
+        #expect(cacheB.load() == nil)
+
+        cacheB.store(response(id: "b-notification"))
+        #expect(cacheA.load()?.notifications.first?.notificationId == "a-notification")
+        #expect(cacheB.load()?.notifications.first?.notificationId == "b-notification")
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    @Test("legacy global cache is ignored and preserved")
+    func legacyCacheIsQuarantined() throws {
+        let suiteName = "test-inbox-legacy-isolation"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        let legacyData = try JSONEncoder().encode(response(id: "legacy-notification"))
+        defaults.set(legacyData, forKey: Self.legacyKey)
+        let cache = NotificationInboxCache(storageNamespace: "account-a", defaults: defaults)
+
+        #expect(cache.load() == nil)
+        #expect(defaults.data(forKey: Self.legacyKey) == legacyData)
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+}
+
 // MARK: - Decoding tests (RF2)
 
 @Suite("NotificationInbox — decoding")

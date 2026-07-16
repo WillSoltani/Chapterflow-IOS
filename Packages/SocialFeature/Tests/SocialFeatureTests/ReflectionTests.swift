@@ -155,9 +155,9 @@ struct FakeSocialRepositoryReflectionTests {
     }
 
     @Test("postReflection auto-syncs in fake and appends to server list")
-    func postReflectionAutoSyncs() async {
+    func postReflectionAutoSyncs() async throws {
         let repo = FakeSocialRepository()
-        let item = await repo.postReflection(bookId: "bk", chapterN: 1, text: "My thought")
+        let item = try await repo.postReflection(bookId: "bk", chapterN: 1, text: "My thought")
         #expect(item.syncState == .synced)
         #expect(item.serverReflectionId != nil)
 
@@ -167,10 +167,10 @@ struct FakeSocialRepositoryReflectionTests {
     }
 
     @Test("getPendingReflections returns only items for matching book/chapter")
-    func getPendingFiltersCorrectly() async {
+    func getPendingFiltersCorrectly() async throws {
         let repo = FakeSocialRepository()
-        _ = await repo.postReflection(bookId: "bk", chapterN: 1, text: "Chapter 1 thought")
-        _ = await repo.postReflection(bookId: "bk", chapterN: 2, text: "Chapter 2 thought")
+        _ = try await repo.postReflection(bookId: "bk", chapterN: 1, text: "Chapter 1 thought")
+        _ = try await repo.postReflection(bookId: "bk", chapterN: 2, text: "Chapter 2 thought")
 
         let ch1Pending = await repo.getPendingReflections(bookId: "bk", chapterN: 1)
         let ch2Pending = await repo.getPendingReflections(bookId: "bk", chapterN: 2)
@@ -204,18 +204,18 @@ struct FakeSocialRepositoryReflectionTests {
     }
 
     @Test("queueFeedbackForPending marks item feedbackState as pending")
-    func queueFeedbackMarksPending() async {
+    func queueFeedbackMarksPending() async throws {
         let repo = FakeSocialRepository()
-        let posted = await repo.postReflection(bookId: "bk", chapterN: 1, text: "Insight")
-        let updated = await repo.queueFeedbackForPending(localId: posted.localId)
+        let posted = try await repo.postReflection(bookId: "bk", chapterN: 1, text: "Insight")
+        let updated = try await repo.queueFeedbackForPending(localId: posted.localId)
         #expect(updated?.feedbackState == .pending)
     }
 
     @Test("syncPendingReflections returns current pending list")
-    func syncPendingReflectionsReturns() async {
+    func syncPendingReflectionsReturns() async throws {
         let repo = FakeSocialRepository()
-        _ = await repo.postReflection(bookId: "bk", chapterN: 3, text: "To sync")
-        let result = await repo.syncPendingReflections(bookId: "bk", chapterN: 3)
+        _ = try await repo.postReflection(bookId: "bk", chapterN: 3, text: "To sync")
+        let result = try await repo.syncPendingReflections(bookId: "bk", chapterN: 3)
         #expect(!result.isEmpty)
     }
 }
@@ -225,19 +225,24 @@ struct FakeSocialRepositoryReflectionTests {
 @Suite("ReflectionOutbox")
 struct ReflectionOutboxTests {
 
+    private let accountA = "account-v1-" + String(repeating: "a", count: 64)
+    private let accountB = "account-v1-" + String(repeating: "b", count: 64)
+
     // Each test gets its own temp file so tests are hermetic and don't touch real app storage.
-    private func makeOutbox() -> ReflectionOutbox {
+    private func makeOutbox() -> (outbox: ReflectionOutbox, permit: SessionWorkPermit) {
         let tmpFile = FileManager.default.temporaryDirectory
             .appending(path: "test_outbox_\(UUID().uuidString).json")
-        return ReflectionOutbox(fileURL: tmpFile)
+        let permit = SessionWorkPermit()
+        return (ReflectionOutbox(fileURL: tmpFile, workPermit: permit), permit)
     }
 
     @Test("append and query by bookId/chapterN")
-    func appendAndQuery() async {
-        let outbox = makeOutbox()
+    func appendAndQuery() async throws {
+        let (outbox, permit) = makeOutbox()
+        let ticket = try permit.begin()
         let id = UUID().uuidString
         let item = PendingReflectionItem(localId: id, bookId: "bk", chapterN: 4, text: "Test")
-        await outbox.append(item)
+        try await outbox.append(item, ticket: ticket)
 
         let fetched = await outbox.all(bookId: "bk", chapterN: 4)
         let match = fetched.first { $0.localId == id }
@@ -246,14 +251,15 @@ struct ReflectionOutboxTests {
     }
 
     @Test("update replaces item with matching localId")
-    func updateReplacesItem() async {
-        let outbox = makeOutbox()
+    func updateReplacesItem() async throws {
+        let (outbox, permit) = makeOutbox()
+        let ticket = try permit.begin()
         var item = PendingReflectionItem(localId: "u-1", bookId: "bk", chapterN: 4, text: "Initial")
-        await outbox.append(item)
+        try await outbox.append(item, ticket: ticket)
 
         item.syncState = .synced
         item.serverReflectionId = "server-1"
-        await outbox.update(item)
+        try await outbox.update(item, ticket: ticket)
 
         let fetched = await outbox.all(bookId: "bk", chapterN: 4)
         let match = fetched.first { $0.localId == "u-1" }
@@ -262,11 +268,12 @@ struct ReflectionOutboxTests {
     }
 
     @Test("markFeedbackPending sets feedbackState")
-    func markFeedbackPendingSetsState() async {
-        let outbox = makeOutbox()
+    func markFeedbackPendingSetsState() async throws {
+        let (outbox, permit) = makeOutbox()
+        let ticket = try permit.begin()
         let item = PendingReflectionItem(localId: "fb-1", bookId: "bk", chapterN: 4, text: "Hi")
-        await outbox.append(item)
-        await outbox.markFeedbackPending(localId: "fb-1")
+        try await outbox.append(item, ticket: ticket)
+        try await outbox.markFeedbackPending(localId: "fb-1", ticket: ticket)
 
         let fetched = await outbox.all(bookId: "bk", chapterN: 4)
         let match = fetched.first { $0.localId == "fb-1" }
@@ -274,11 +281,16 @@ struct ReflectionOutboxTests {
     }
 
     @Test("markFeedbackReceived stores feedback text")
-    func markFeedbackReceivedStoresText() async {
-        let outbox = makeOutbox()
+    func markFeedbackReceivedStoresText() async throws {
+        let (outbox, permit) = makeOutbox()
+        let ticket = try permit.begin()
         let item = PendingReflectionItem(localId: "fb-2", bookId: "bk", chapterN: 4, text: "Hi")
-        await outbox.append(item)
-        await outbox.markFeedbackReceived(localId: "fb-2", feedbackText: "Great work!")
+        try await outbox.append(item, ticket: ticket)
+        try await outbox.markFeedbackReceived(
+            localId: "fb-2",
+            feedbackText: "Great work!",
+            ticket: ticket
+        )
 
         let fetched = await outbox.all(bookId: "bk", chapterN: 4)
         let match = fetched.first { $0.localId == "fb-2" }
@@ -287,22 +299,33 @@ struct ReflectionOutboxTests {
     }
 
     @Test("remove deletes item with matching localId")
-    func removeDeletesItem() async {
-        let outbox = makeOutbox()
+    func removeDeletesItem() async throws {
+        let (outbox, permit) = makeOutbox()
+        let ticket = try permit.begin()
         let item = PendingReflectionItem(localId: "del-1", bookId: "bk", chapterN: 4, text: "Gone")
-        await outbox.append(item)
-        await outbox.remove(localId: "del-1")
+        try await outbox.append(item, ticket: ticket)
+        try await outbox.remove(localId: "del-1", ticket: ticket)
 
         let fetched = await outbox.all(bookId: "bk", chapterN: 4)
         #expect(fetched.allSatisfy { $0.localId != "del-1" })
     }
 
     @Test("all filters by bookId and chapterN")
-    func allFiltersByBookAndChapter() async {
-        let outbox = makeOutbox()
-        await outbox.append(PendingReflectionItem(localId: "a1", bookId: "bk1", chapterN: 1, text: "A"))
-        await outbox.append(PendingReflectionItem(localId: "a2", bookId: "bk1", chapterN: 2, text: "B"))
-        await outbox.append(PendingReflectionItem(localId: "a3", bookId: "bk2", chapterN: 1, text: "C"))
+    func allFiltersByBookAndChapter() async throws {
+        let (outbox, permit) = makeOutbox()
+        let ticket = try permit.begin()
+        try await outbox.append(
+            PendingReflectionItem(localId: "a1", bookId: "bk1", chapterN: 1, text: "A"),
+            ticket: ticket
+        )
+        try await outbox.append(
+            PendingReflectionItem(localId: "a2", bookId: "bk1", chapterN: 2, text: "B"),
+            ticket: ticket
+        )
+        try await outbox.append(
+            PendingReflectionItem(localId: "a3", bookId: "bk2", chapterN: 1, text: "C"),
+            ticket: ticket
+        )
 
         let ch1 = await outbox.all(bookId: "bk1", chapterN: 1)
         let ch2 = await outbox.all(bookId: "bk1", chapterN: 2)
@@ -312,6 +335,106 @@ struct ReflectionOutboxTests {
         #expect(!ch1.contains { $0.localId == "a2" })
         #expect(ch2.contains { $0.localId == "a2" })
         #expect(bk2.contains { $0.localId == "a3" })
+    }
+
+    @Test("account B cannot read or drain account A pending reflections")
+    func accountOutboxesAreIsolated() async throws {
+        let applicationSupport = FileManager.default.temporaryDirectory
+            .appending(path: "ReflectionAccountIsolation-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: applicationSupport) }
+        let permitA = SessionWorkPermit()
+        let outboxA = try ReflectionOutbox(
+            storageNamespace: accountA,
+            applicationSupportDirectory: applicationSupport,
+            workPermit: permitA
+        )
+        let outboxB = try ReflectionOutbox(
+            storageNamespace: accountB,
+            applicationSupportDirectory: applicationSupport
+        )
+        let pending = PendingReflectionItem(
+            localId: "owned-by-a",
+            bookId: "book-a",
+            chapterN: 1,
+            text: "Synthetic account A reflection",
+            createdAt: Date(timeIntervalSince1970: 1_700_000_000)
+        )
+
+        try await outboxA.append(pending, ticket: permitA.begin())
+
+        #expect(await outboxB.all(bookId: "book-a", chapterN: 1).isEmpty)
+        let relaunchedA = try ReflectionOutbox(
+            storageNamespace: accountA,
+            applicationSupportDirectory: applicationSupport
+        )
+        #expect(await relaunchedA.all(bookId: "book-a", chapterN: 1) == [pending])
+    }
+
+    @Test("legacy unknown-owner outbox remains untouched and unattributed")
+    func legacyOutboxIsPreserved() async throws {
+        let applicationSupport = FileManager.default.temporaryDirectory
+            .appending(path: "ReflectionLegacyPreservation-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: applicationSupport) }
+        let legacyDirectory = applicationSupport
+            .appending(path: "ChapterFlow", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: legacyDirectory, withIntermediateDirectories: true)
+        let legacyURL = legacyDirectory.appending(path: "pending_reflections.json")
+        let legacyData = Data("legacy-unknown-owner".utf8)
+        try legacyData.write(to: legacyURL)
+
+        let outboxA = try ReflectionOutbox(
+            storageNamespace: accountA,
+            applicationSupportDirectory: applicationSupport
+        )
+        let outboxB = try ReflectionOutbox(
+            storageNamespace: accountB,
+            applicationSupportDirectory: applicationSupport
+        )
+
+        #expect(await outboxA.all(bookId: "book", chapterN: 1).isEmpty)
+        #expect(await outboxB.all(bookId: "book", chapterN: 1).isEmpty)
+        #expect(try Data(contentsOf: legacyURL) == legacyData)
+    }
+
+    @Test("invalid namespace fails with a value-free error and creates no path")
+    func invalidNamespaceFailsClosedAndRedacted() {
+        let applicationSupport = FileManager.default.temporaryDirectory
+            .appending(path: "ReflectionInvalidNamespace-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: applicationSupport) }
+        let rawValue = "../private-account@example.test"
+
+        #expect(throws: SocialPrivateStorageFailure.invalidStorageNamespace) {
+            _ = try ReflectionOutbox(
+                storageNamespace: rawValue,
+                applicationSupportDirectory: applicationSupport
+            )
+        }
+        #expect(!FileManager.default.fileExists(atPath: applicationSupport.path))
+        let error = SocialPrivateStorageFailure.invalidStorageNamespace
+        #expect(!String(describing: error).contains(rawValue))
+        #expect(Mirror(reflecting: error).children.isEmpty)
+    }
+
+    @Test("corrupt account outbox fails closed instead of appearing empty")
+    func corruptScopedOutboxFailsClosed() throws {
+        let applicationSupport = FileManager.default.temporaryDirectory
+            .appending(path: "ReflectionCorruptOutbox-\(UUID().uuidString)", directoryHint: .isDirectory)
+        defer { try? FileManager.default.removeItem(at: applicationSupport) }
+        let accountDirectory = applicationSupport
+            .appending(path: "com.chapterflow", directoryHint: .isDirectory)
+            .appending(path: "accounts", directoryHint: .isDirectory)
+            .appending(path: accountA, directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: accountDirectory, withIntermediateDirectories: true)
+        try Data("not-json".utf8).write(
+            to: accountDirectory.appending(path: "pending_reflections.json")
+        )
+
+        #expect(throws: SocialPrivateStorageFailure.unreadableReflectionOutbox) {
+            _ = try ReflectionOutbox(
+                storageNamespace: accountA,
+                applicationSupportDirectory: applicationSupport
+            )
+        }
     }
 }
 

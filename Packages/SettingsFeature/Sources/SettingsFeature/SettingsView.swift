@@ -404,7 +404,7 @@ public struct SettingsView: View {
                     DownloadsSettingsView(
                         downloadInfo: model.downloadInfoProvider,
                         preferences: model.preferences,
-                        userId: model.userId
+                        accountContext: model.accountContext
                     )
                 } label: {
                     HStack {

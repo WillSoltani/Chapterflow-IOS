@@ -3,7 +3,6 @@ import Foundation
 import Networking
 import Observation
 import Persistence
-
 /// The single authority for Cognito session state and the token mirror.
 @Observable
 @MainActor
@@ -15,6 +14,7 @@ public final class SessionManager {
     let authService: AuthService?
 
     @ObservationIgnored private let testRefresher: (any TokenRefreshing)?
+    @ObservationIgnored var hermeticSignOut: (@MainActor @Sendable () async -> Bool)? = nil
     @ObservationIgnored private var sessionGeneration: UInt64 = 0
     @ObservationIgnored private var restorationTask: Task<Void, Never>?
     @ObservationIgnored private var signInFlight: SignInFlight?
@@ -95,10 +95,14 @@ public final class SessionManager {
 
         guard let authService else { return }
         try authService.configure()
+        // Configuration may be called defensively more than once. Never let a
+        // restoration task replace an already-authoritative live identity.
+        guard currentIdentity == nil else { return }
         _ = startRestoration(using: authService)
     }
 
     func restoreSession() async {
+        guard currentIdentity == nil else { return }
         guard let authService else {
             transitionToSignedOut(clearMirror: true)
             return
@@ -110,7 +114,15 @@ public final class SessionManager {
     /// Routes email sign-in through the same verified session boundary used by
     /// restoration and refresh.
     public func signIn(username: String, password: String) async throws {
-        guard !isSigningOut, signInFlight == nil, let authService else {
+        // Cognito/Amplify does not support replacing one active user in place.
+        // More importantly, A-owned teardown (including APNs unregister) needs
+        // A's bearer token. Require the app's existing deterministic sign-out
+        // transaction to finish before any B sign-in may begin.
+        guard !isSigningOut,
+              signInFlight == nil,
+              currentIdentity == nil,
+              authState == .unknown || authState == .signedOut,
+              let authService else {
             throw AppError.unauthenticated
         }
         let generation = beginNewGeneration()
@@ -155,7 +167,9 @@ public final class SessionManager {
         }
 
         let outcome: CognitoSignOutOutcome
-        if let authService {
+        if let hermeticSignOut {
+            outcome = await hermeticSignOut() ? .signedOutLocally : .failedLocally
+        } else if let authService {
             outcome = await authService.signOut()
         } else {
             outcome = .signedOutLocally
@@ -268,11 +282,19 @@ public final class SessionManager {
     // MARK: - Refresh single-flight
 
     public func performRefresh() async throws -> StoredTokens {
+        try await performRefresh(expectedAccountID: nil)
+    }
+
+    func performRefresh(expectedAccountID: String?) async throws -> StoredTokens {
         try Task.checkCancellation()
         let waiterID = UUID()
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
-                registerRefreshWaiter(waiterID, continuation: continuation)
+                registerRefreshWaiter(
+                    waiterID,
+                    expectedAccountID: expectedAccountID,
+                    continuation: continuation
+                )
             }
         } onCancel: {
             Task { @MainActor [weak self] in
@@ -283,9 +305,11 @@ public final class SessionManager {
 
     private func registerRefreshWaiter(
         _ waiterID: UUID,
+        expectedAccountID: String?,
         continuation: CheckedContinuation<StoredTokens, Error>
     ) {
         guard !Task.isCancelled, let identity = currentIdentity,
+              expectedAccountID == nil || identity.subject == expectedAccountID,
               authState != .signedOut, authState != .unknown else {
             continuation.resume(throwing: Task.isCancelled ? CancellationError() : AppError.unauthenticated)
             return
@@ -430,11 +454,19 @@ public final class SessionManager {
     // MARK: - Step-up
 
     public func stepUp() async throws {
+        try await stepUp(expectedAccountID: nil)
+    }
+
+    func stepUp(expectedAccountID: String?) async throws {
         try Task.checkCancellation()
         let waiterID = UUID()
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
-                registerStepUpWaiter(waiterID, continuation: continuation)
+                registerStepUpWaiter(
+                    waiterID,
+                    expectedAccountID: expectedAccountID,
+                    continuation: continuation
+                )
             }
         } onCancel: {
             Task { @MainActor [weak self] in
@@ -445,9 +477,11 @@ public final class SessionManager {
 
     private func registerStepUpWaiter(
         _ waiterID: UUID,
+        expectedAccountID: String?,
         continuation: CheckedContinuation<Void, Error>
     ) {
-        guard !Task.isCancelled, let identity = currentIdentity else {
+        guard !Task.isCancelled, let identity = currentIdentity,
+              expectedAccountID == nil || identity.subject == expectedAccountID else {
             continuation.resume(throwing: Task.isCancelled ? CancellationError() : AppError.unauthenticated)
             return
         }
@@ -511,56 +545,16 @@ public final class SessionManager {
         }
     }
 
-    public func currentIdToken() -> String? {
-        #if DEBUG
-        if currentIdentity == Self.hermeticUITestIdentity,
-           Self.isHermeticUITestBypass(environment: ProcessInfo.processInfo.environment) {
-            return Self.uitestFakeIDToken
-        }
-        #endif
-        guard let currentIdentity else { return nil }
-        do {
-            guard let tokens = try tokenStore.load(),
-                  UserProfile.from(idToken: tokens.idToken)?.sub == currentIdentity.subject else {
-                return nil
-            }
-            return tokens.idToken
-        } catch {
-            return nil
-        }
-    }
-
-    public func validToken() async throws -> String? {
-        #if DEBUG
-        if currentIdentity == Self.hermeticUITestIdentity,
-           Self.isHermeticUITestBypass(environment: ProcessInfo.processInfo.environment) {
-            return Self.uitestFakeIDToken
-        }
-        #endif
-
-        guard let identity = currentIdentity else { return nil }
-        let tokens: StoredTokens?
-        do {
-            tokens = try tokenStore.load()
-        } catch {
-            return try await performRefresh().idToken
-        }
-        guard let tokens else { return try await performRefresh().idToken }
-        guard UserProfile.from(idToken: tokens.idToken)?.sub == identity.subject else {
-            await signOut()
-            throw AppError.unauthenticated
-        }
-        if tokens.isNearlyExpired() {
-            return try await performRefresh().idToken
-        }
-        return tokens.idToken
-    }
-
-    public func refresh() async throws {
-        _ = try await performRefresh()
-    }
-
     public func reportSessionError(_ error: AppError) async {
+        if case .verifierUnavailable = error, case .signedIn = authState {
+            authState = .reconnecting
+        }
+    }
+
+    /// Applies a persistent session error only to the account whose request
+    /// produced it. A stale A request cannot move B into reconnecting state.
+    public func reportSessionError(_ error: AppError, forAccountID accountID: String) async {
+        guard currentIdentity?.subject == accountID else { return }
         if case .verifierUnavailable = error, case .signedIn = authState {
             authState = .reconnecting
         }
@@ -574,8 +568,6 @@ public final class SessionManager {
     }
     #endif
 }
-
-extension SessionManager: TokenRefreshing, TokenProviding {}
 
 private struct RefreshFlight {
     let id: UUID

@@ -21,6 +21,8 @@ public final class ReviewsModel {
 
     private let repository: ReviewsRepository
     private let analytics: any AnalyticsClient
+    private let workPermit: SessionWorkPermit
+    @ObservationIgnored private var gradeTask: Task<Void, Never>?
 
     // MARK: Load state
 
@@ -75,11 +77,18 @@ public final class ReviewsModel {
     // MARK: Offline pending badge
 
     public private(set) var pendingGradeCount: Int = 0
+    public private(set) var isGrading = false
+    public private(set) var gradeError: AppError?
 
     // MARK: Init
 
-    public init(repository: ReviewsRepository, analytics: any AnalyticsClient = NoopAnalyticsClient()) {
+    public init(
+        repository: ReviewsRepository,
+        workPermit: SessionWorkPermit = SessionWorkPermit(),
+        analytics: any AnalyticsClient = NoopAnalyticsClient()
+    ) {
         self.repository = repository
+        self.workPermit = workPermit
         self.analytics = analytics
     }
 
@@ -88,15 +97,19 @@ public final class ReviewsModel {
     /// Loads the due-card count for the hub view.
     public func load() {
         guard case .idle = loadState else { return }
-        Task { await fetch() }
+        guard let ticket = try? workPermit.begin() else { return }
+        Task { await fetch(ticket: ticket) }
     }
 
     public func refresh() async {
-        await fetch(forceRefresh: true)
+        guard let ticket = try? workPermit.begin() else { return }
+        await fetch(forceRefresh: true, ticket: ticket)
     }
 
-    private func fetch(forceRefresh: Bool = false) async {
-        loadState = .loading
+    private func fetch(forceRefresh: Bool = false, ticket: UInt64) async {
+        try? workPermit.commit(ticket) {
+            loadState = .loading
+        }
         do {
             let resp = try await repository.fetchDueCards(forceRefresh: forceRefresh)
             let nextDue = resp.cards
@@ -104,10 +117,17 @@ public final class ReviewsModel {
                 .filter { $0 > Date() }
                 .sorted()
                 .first
-            loadState = .loaded(dueCount: resp.dueCount, nextDue: nextDue)
-            pendingGradeCount = await repository.pendingGradeCount()
+            let pendingCount = await repository.pendingGradeCount()
+            try workPermit.commit(ticket) {
+                loadState = .loaded(dueCount: resp.dueCount, nextDue: nextDue)
+                pendingGradeCount = pendingCount
+            }
+        } catch is CancellationError {
+            return
         } catch {
-            loadState = .error(AppError(from: error))
+            try? workPermit.commit(ticket) {
+                loadState = .error(AppError(from: error))
+            }
         }
     }
 
@@ -115,19 +135,28 @@ public final class ReviewsModel {
 
     /// Starts a review session with the currently cached due cards.
     public func startSession() {
+        guard let ticket = try? workPermit.begin() else { return }
         Task {
             do {
                 let resp = try await repository.fetchDueCards()
                 let due  = resp.cards.filter { $0.isDue() }
                 guard !due.isEmpty else {
-                    sessionState = .done(reviewed: 0)
+                    try workPermit.commit(ticket) {
+                        sessionState = .done(reviewed: 0)
+                    }
                     return
                 }
-                sessionCards = due
-                sessionIndex = 0
-                sessionState = .front
+                try workPermit.commit(ticket) {
+                    sessionCards = due
+                    sessionIndex = 0
+                    sessionState = .front
+                }
+            } catch is CancellationError {
+                return
             } catch {
-                loadState = .error(AppError(from: error))
+                try? workPermit.commit(ticket) {
+                    loadState = .error(AppError(from: error))
+                }
             }
         }
     }
@@ -144,31 +173,39 @@ public final class ReviewsModel {
     /// background task so the session never blocks on the network.
     public func grade(_ gradeValue: FSRSGrade) {
         guard case .back = sessionState,
-              let card = sessionCards[safe: sessionIndex] else { return }
+              let card = sessionCards[safe: sessionIndex],
+              !isGrading,
+              let ticket = try? workPermit.begin() else { return }
 
         let capturedCard  = card
         let capturedGrade = gradeValue
-
-        // Advance the UI immediately — do NOT await the network call first.
-        advanceSession()
-
-        // Fire-and-forget: the repository handles offline outbox on failure.
-        Task {
+        isGrading = true
+        gradeError = nil
+        gradeTask = Task { [weak self] in
+            guard let self else { return }
             do {
                 _ = try await repository.gradeCard(capturedCard, grade: capturedGrade)
+                try workPermit.commit(ticket) {
+                    isGrading = false
+                    advanceSession(ticket: ticket)
+                }
+            } catch is CancellationError {
+                return
             } catch {
-                // Offline grades are queued in the SwiftData outbox inside the
-                // repository; non-retryable errors are logged there.
+                try? workPermit.commit(ticket) {
+                    isGrading = false
+                    gradeError = AppError(from: error)
+                }
             }
         }
     }
 
-    private func advanceSession() {
+    private func advanceSession(ticket: UInt64) {
         sessionIndex += 1
         if sessionIndex >= sessionCards.count {
             analytics.track(.reviewCompleted(reviewed: sessionCards.count))
             sessionState = .done(reviewed: sessionCards.count)
-            Task { await fetch(forceRefresh: true) }
+            Task { await fetch(forceRefresh: true, ticket: ticket) }
         } else {
             sessionState = .front
         }
@@ -176,9 +213,16 @@ public final class ReviewsModel {
 
     /// Ends the session and returns to the hub.
     public func endSession() {
-        sessionState = .inactive
-        sessionCards = []
-        sessionIndex = 0
+        gradeTask?.cancel()
+        gradeTask = nil
+        guard let ticket = try? workPermit.begin() else { return }
+        try? workPermit.commit(ticket) {
+            sessionState = .inactive
+            sessionCards = []
+            sessionIndex = 0
+            isGrading = false
+            gradeError = nil
+        }
     }
 }
 

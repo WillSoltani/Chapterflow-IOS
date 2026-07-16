@@ -28,7 +28,7 @@ public struct AudioPlayRequest: Sendable, Equatable {
 @MainActor
 public final class IntentActionStore {
     public static let shared = IntentActionStore()
-    private init() {}
+    init() {}
 
     /// A deep link to navigate to. Cleared by AppRootView after routing.
     public var pendingDeepLink: DeepLink?

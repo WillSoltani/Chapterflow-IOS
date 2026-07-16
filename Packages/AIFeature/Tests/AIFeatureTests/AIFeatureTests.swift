@@ -304,6 +304,7 @@ private struct AskBody: Decodable {
 // MARK: - Capturing fake for argument inspection
 
 actor CapturingAIRepository: AIRepository {
+    nonisolated let accountID: String
     struct Call {
         let bookId: String
         let question: String
@@ -312,6 +313,10 @@ actor CapturingAIRepository: AIRepository {
         let conversationHistory: [AIConversationTurn]?
     }
     private(set) var lastCall: Call?
+
+    init(accountID: String = "capturing-test-user") {
+        self.accountID = accountID
+    }
 
     func askBook(
         bookId: String,

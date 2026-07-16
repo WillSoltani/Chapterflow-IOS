@@ -1,52 +1,22 @@
 import Foundation
-import SwiftData
 import CoreKit
-import Networking
-import Persistence
-import LibraryFeature
-import PaywallFeature
-import SyncEngine
 
 // MARK: - BGSync factory helpers + foreground/background hooks
 
 extension AppModel {
 
-    // MARK: - Factory: DownloadManager
-
-    static func makeDownloadManager(
-        container: ModelContainer,
-        fileStore: FileStore,
-        apiClient: any APIClientProtocol
-    ) -> DownloadManager {
-        DownloadManager(
-            container: container,
-            fileStore: fileStore,
-            apiClient: apiClient,
-            preferences: AppPreferences()
-        )
-    }
-
     // MARK: - Factory: BackgroundSyncCoordinator
 
     #if os(iOS)
     static func makeCoordinator(
-        box: UserIdBox,
-        engine: SyncEngine,
-        downloadManager: DownloadManager,
-        entitlementService: EntitlementService
+        broker: SessionBackgroundWorkBroker
     ) -> BackgroundSyncCoordinator {
         BackgroundSyncCoordinator(
-            onAppRefreshWork: { @Sendable [box, engine, entitlementService] in
-                guard let uid = box.userId else { return }
-                await engine.drainAndWait(userId: uid)
-                await entitlementService.refresh()
+            onAppRefreshWork: { @Sendable [broker] in
+                await broker.runRefresh()
             },
-            onProcessingWork: { @Sendable [box, downloadManager] in
-                guard let uid = box.userId else { return }
-                await downloadManager.resumeInterruptedDownloads(userId: uid)
-                if !Task.isCancelled {
-                    await downloadManager.prefetchNextChapters(userId: uid)
-                }
+            onProcessingWork: { @Sendable [broker] in
+                await broker.runProcessing()
             }
         )
     }

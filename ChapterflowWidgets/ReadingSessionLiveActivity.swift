@@ -83,11 +83,6 @@ struct ReadingSessionLockScreenView: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-
-            // Audio controls
-            if context.attributes.sessionKind == .audio {
-                audioControlButton(context: context)
-            }
         }
         .padding(16)
         .activityBackgroundTint(context.attributes.sessionKind == .audio
@@ -96,30 +91,6 @@ struct ReadingSessionLockScreenView: View {
         .activitySystemActionForegroundColor(.primary)
     }
 
-    @ViewBuilder
-    private func audioControlButton(
-        context: ActivityViewContext<ReadingSessionAttributes>
-    ) -> some View {
-        if context.state.isPlaying {
-            Button(intent: PauseAudioIntent()) {
-                Image(systemName: "pause.fill")
-                    .font(.title3)
-                    .foregroundStyle(.primary)
-                    .frame(width: 44, height: 44)
-                    .background(Circle().fill(.ultraThinMaterial))
-            }
-            .buttonStyle(.plain)
-        } else {
-            Button(intent: ResumeAudioIntent()) {
-                Image(systemName: "play.fill")
-                    .font(.title3)
-                    .foregroundStyle(.primary)
-                    .frame(width: 44, height: 44)
-                    .background(Circle().fill(.ultraThinMaterial))
-            }
-            .buttonStyle(.plain)
-        }
-    }
 }
 
 // MARK: - Dynamic Island: Compact Leading
@@ -214,38 +185,18 @@ struct ReadingExpandedView: View {
             }
             .frame(maxWidth: .infinity)
 
-            // Trailing region: elapsed time (+ audio controls)
+            // Trailing region: elapsed time. Account-bound audio controls are
+            // deferred until the Live Activity has explicit owner identity.
             VStack(spacing: 6) {
                 Text(context.state.elapsedString)
                     .font(.system(size: 13, weight: .semibold, design: .monospaced))
                     .foregroundStyle(.primary)
-                if context.attributes.sessionKind == .audio {
-                    audioControls
-                }
             }
             .frame(maxWidth: .infinity)
         }
         .padding(.horizontal, 12)
     }
 
-    @ViewBuilder
-    private var audioControls: some View {
-        if context.state.isPlaying {
-            Button(intent: PauseAudioIntent()) {
-                Image(systemName: "pause.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(Color.cfAccent)
-            }
-            .buttonStyle(.plain)
-        } else {
-            Button(intent: ResumeAudioIntent()) {
-                Image(systemName: "play.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(Color.cfAccent)
-            }
-            .buttonStyle(.plain)
-        }
-    }
 }
 
 // MARK: - ActivityConfiguration Widget
@@ -275,21 +226,9 @@ struct ReadingSessionActivity: Widget {
                         Text(context.state.elapsedString)
                             .font(.system(size: 14, weight: .semibold, design: .monospaced))
                         if context.attributes.sessionKind == .audio {
-                            if context.state.isPlaying {
-                                Button(intent: PauseAudioIntent()) {
-                                    Image(systemName: "pause.circle.fill")
-                                        .font(.title3)
-                                        .foregroundStyle(Color.cfAccent)
-                                }
-                                .buttonStyle(.plain)
-                            } else {
-                                Button(intent: ResumeAudioIntent()) {
-                                    Image(systemName: "play.circle.fill")
-                                        .font(.title3)
-                                        .foregroundStyle(Color.cfAccent)
-                                }
-                                .buttonStyle(.plain)
-                            }
+                            Text(context.state.isPlaying ? "Playing" : "Paused")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }

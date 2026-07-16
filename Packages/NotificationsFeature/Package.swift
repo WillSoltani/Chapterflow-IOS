@@ -17,6 +17,7 @@ let package = Package(
         .package(path: "../DesignSystem"),
         .package(path: "../Models"),
         .package(path: "../Networking"),
+        .package(path: "../Persistence"),
     ],
     targets: [
         // Pure Foundation — no UIKit / UserNotifications — testable on macOS.
@@ -32,6 +33,7 @@ let package = Package(
                 .product(name: "DesignSystem", package: "DesignSystem"),
                 .product(name: "Models", package: "Models"),
                 .product(name: "Networking", package: "Networking"),
+                .product(name: "Persistence", package: "Persistence"),
             ]
         ),
         .testTarget(
@@ -41,6 +43,7 @@ let package = Package(
                 .product(name: "CoreKit", package: "CoreKit"),
                 .product(name: "Models", package: "Models"),
                 .product(name: "Networking", package: "Networking"),
+                .product(name: "Persistence", package: "Persistence"),
             ]
         ),
     ]

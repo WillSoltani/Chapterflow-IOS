@@ -143,6 +143,7 @@ public final class ReaderModel {
     @ObservationIgnored private let annotationRepository: (any AnnotationRepository)?
     @ObservationIgnored private let preferences: AppPreferences
     @ObservationIgnored private let store: KeyValueStore
+    @ObservationIgnored private let workPermit: SessionWorkPermit
     @ObservationIgnored private let analytics: any AnalyticsClient
 
     /// The chapter number of the last successful cursor PATCH sent to the server.
@@ -195,6 +196,7 @@ public final class ReaderModel {
         repository: any ReaderRepository,
         preferences: AppPreferences,
         store: KeyValueStore = KeyValueStore(),
+        workPermit: SessionWorkPermit = SessionWorkPermit(),
         annotationRepository: (any AnnotationRepository)? = nil,
         analytics: any AnalyticsClient = NoopAnalyticsClient()
     ) {
@@ -204,6 +206,7 @@ public final class ReaderModel {
         self.repository = repository
         self.preferences = preferences
         self.store = store
+        self.workPermit = workPermit
         self.annotationRepository = annotationRepository
         self.analytics = analytics
     }
@@ -213,21 +216,24 @@ public final class ReaderModel {
     /// Fetches the chapter and constructs the controls model.
     /// Always resets to `.loading` — safe for retry on error.
     public func load() {
+        guard let ticket = try? workPermit.begin() else { return }
         loadTask?.cancel()
         bookStateTask?.cancel()
         recommendationTask?.cancel()
         navTask?.cancel()
-        phase = .loading
-        readPercent = 0
-        isAtChapterEnd = false
-        showQuizCTA = false
-        isLoopComplete = false
-        isKnowledgeComplete = false
-        applicationState = .none
-        navModel = nil
+        try? workPermit.commit(ticket) {
+            phase = .loading
+            readPercent = 0
+            isAtChapterEnd = false
+            showQuizCTA = false
+            isLoopComplete = false
+            isKnowledgeComplete = false
+            applicationState = .none
+            navModel = nil
+        }
         loadTask = Task { [weak self] in
             guard let self else { return }
-            await self.performLoad()
+            await self.performLoad(ticket: ticket)
         }
     }
 
@@ -241,14 +247,16 @@ public final class ReaderModel {
         recommendationTask?.cancel()
         navTask?.cancel()
         if case .loaded(let controlsModel) = phase {
+            guard let ticket = try? workPermit.begin() else { return }
             let chapterId = controlsModel.resolvedChapter.chapterId
             let bId = bookId
             let repo = repository
             let sid = sessionId
             Task {
+                guard (try? self.workPermit.validate(ticket)) != nil else { return }
                 await repo.endReadingSession(bookId: bId, chapterId: chapterId, sessionId: sid)
             }
-            patchCursorIfNeeded(chapterId: chapterId)
+            patchCursorIfNeeded(chapterId: chapterId, ticket: ticket)
         }
     }
 
@@ -277,14 +285,16 @@ public final class ReaderModel {
         let chNum = chapterNumber
         let repo = repository
         let delay = scrollSaveDelay
+        guard let ticket = try? workPermit.begin() else { return }
         scrollSaveTask = Task {
             try? await Task.sleep(for: delay)
             guard !Task.isCancelled else { return }
+            guard (try? self.workPermit.validate(ticket)) != nil else { return }
             repo.saveScrollPosition(bookId: bId, chapterNumber: chNum, blockIndex: blockIndex)
         }
 
         if isAtChapterEnd {
-            patchCursorIfNeeded(chapterId: chapterId)
+            patchCursorIfNeeded(chapterId: chapterId, ticket: ticket)
         }
     }
 
@@ -335,7 +345,7 @@ public final class ReaderModel {
 
     // MARK: - Private
 
-    private func performLoad() async {
+    private func performLoad(ticket: UInt64) async {
         do {
             let response = try await repository.getChapter(
                 bookId: bookId,
@@ -343,26 +353,32 @@ public final class ReaderModel {
                 mode: nil
             )
             guard !Task.isCancelled else { return }
+            try workPermit.validate(ticket)
 
             let chapter = response.chapter
             let progress = response.progress
 
-            serverCursorChapterNumber = progress.currentChapterNumber
-            lastPatchedChapterNumber = progress.currentChapterNumber
+            try workPermit.commit(ticket) {
+                serverCursorChapterNumber = progress.currentChapterNumber
+                lastPatchedChapterNumber = progress.currentChapterNumber
 
-            // Derive knowledge-complete from server progress (never computed client-side).
-            isKnowledgeComplete = progress.completedChapters.contains(chapterNumber)
+                // Derive knowledge-complete from server progress (never computed client-side).
+                isKnowledgeComplete = progress.completedChapters.contains(chapterNumber)
+            }
 
             let controlsModel = ReaderControlsModel(
                 chapter: chapter,
                 bookId: bookId,
                 variantFamily: variantFamily,
                 preferences: preferences,
-                store: store
+                store: store,
+                workPermit: workPermit
             )
 
             // Restore saved reading position.
-            if let saved = repository.loadScrollPosition(bookId: bookId, chapterNumber: chapterNumber),
+            if let saved = try workPermit.commit(ticket, {
+                repository.loadScrollPosition(bookId: bookId, chapterNumber: chapterNumber)
+            }),
                saved > 0 {
                 controlsModel.pendingScrollAnchor = min(saved, controlsModel.blocks.count - 1)
             }
@@ -379,39 +395,48 @@ public final class ReaderModel {
                 annModel.onAskAboutSelection = { [weak self] text in
                     self?.onAskAboutSelection?(text)
                 }
-                self.annotationModel = annModel
+                try workPermit.commit(ticket) {
+                    self.annotationModel = annModel
+                }
                 Task { await annModel.load() }
             }
 
-            phase = .loaded(controlsModel)
-            analytics.track(.chapterOpened(bookId: bookId, chapter: chapterNumber))
-            lastActivityDate = Date()
+            try workPermit.commit(ticket) {
+                phase = .loaded(controlsModel)
+                analytics.track(.chapterOpened(bookId: bookId, chapter: chapterNumber))
+                lastActivityDate = Date()
+            }
 
             // Start session and heartbeats.
             let chapterId = chapter.chapterId
             let bId = bookId
             let repo = repository
-            sessionId = await repo.startReadingSession(bookId: bId, chapterId: chapterId)
+            let startedSessionID = await repo.startReadingSession(bookId: bId, chapterId: chapterId)
+            try workPermit.commit(ticket) {
+                sessionId = startedSessionID
+            }
             startHeartbeats()
 
             // Fetch book state for the application axis (best-effort, does not block).
-            fetchBookState(chapterId: chapterId)
+            fetchBookState(chapterId: chapterId, ticket: ticket)
 
             // Fetch depth recommendation (best-effort, does not block loading).
-            applyDepthRecommendation(to: controlsModel)
+            applyDepthRecommendation(to: controlsModel, ticket: ticket)
 
             // Fetch manifest for in-reader ToC (best-effort, does not block loading).
-            fetchNavModel(progress: progress)
+            fetchNavModel(progress: progress, ticket: ticket)
 
         } catch is CancellationError {
             // Cancelled — phase remains loading; the next load() call will retry.
         } catch {
-            phase = .failed(error.localizedDescription)
+            try? workPermit.commit(ticket) {
+                phase = .failed(error.localizedDescription)
+            }
         }
     }
 
     /// Async best-effort fetch of `BookStateResponse` to populate `applicationState`.
-    private func fetchBookState(chapterId: String) {
+    private func fetchBookState(chapterId: String, ticket: UInt64) {
         bookStateTask?.cancel()
         let bId = bookId
         let repo = repository
@@ -419,7 +444,9 @@ public final class ReaderModel {
             guard let self else { return }
             guard let stateResponse = try? await repo.getBookState(bookId: bId) else { return }
             guard !Task.isCancelled else { return }
-            self.applicationState = stateResponse.applicationStates?[chapterId] ?? .none
+            try? self.workPermit.commit(ticket) {
+                self.applicationState = stateResponse.applicationStates?[chapterId] ?? .none
+            }
         }
     }
 
@@ -427,7 +454,7 @@ public final class ReaderModel {
     /// controls model when the recommendation is confident and available.
     ///
     /// Failures are silently swallowed — the recommendation is optional UI chrome.
-    private func applyDepthRecommendation(to controlsModel: ReaderControlsModel) {
+    private func applyDepthRecommendation(to controlsModel: ReaderControlsModel, ticket: UInt64) {
         guard fetchDepthRecommendation != nil else { return }
         recommendationTask?.cancel()
         let bId = bookId
@@ -441,8 +468,12 @@ public final class ReaderModel {
                 guard rec.isConfident,
                       let depth = rec.recommendedDepth,
                       controlsModel.availableVariants.contains(depth) else { return }
-                controlsModel.recommendedVariant = depth
-                controlsModel.recommendedRationale = rec.rationale(variantFamily: family)
+                try self.workPermit.commit(ticket) {
+                    controlsModel.recommendedVariant = depth
+                    controlsModel.recommendedRationale = rec.rationale(variantFamily: family)
+                }
+            } catch is CancellationError {
+                return
             } catch {
                 // Best-effort — silently ignore recommendation failures.
             }
@@ -453,7 +484,7 @@ public final class ReaderModel {
     ///
     /// Creates and wires `navModel` when the manifest loads. Failures are
     /// silently swallowed — the ToC is optional chrome; the reader still works.
-    private func fetchNavModel(progress: BookProgress) {
+    private func fetchNavModel(progress: BookProgress, ticket: UInt64) {
         navTask?.cancel()
         let bId = bookId
         let repo = repository
@@ -467,19 +498,23 @@ public final class ReaderModel {
                 progress: progress,
                 currentChapterNumber: chapterNum
             )
-            model.onNavigateToChapter = self.onNavigateToChapter
-            self.navModel = model
+            try? self.workPermit.commit(ticket) {
+                model.onNavigateToChapter = self.onNavigateToChapter
+                self.navModel = model
+            }
         }
     }
 
     /// PATCHes the server cursor when the current chapter number exceeds
     /// the last patched value. Forward-only; never sends a lower number.
-    private func patchCursorIfNeeded(chapterId: String) {
+    private func patchCursorIfNeeded(chapterId: String, ticket: UInt64? = nil) {
         guard chapterNumber > lastPatchedChapterNumber else { return }
+        guard let ticket = ticket ?? (try? workPermit.begin()) else { return }
         lastPatchedChapterNumber = chapterNumber
         let bId = bookId
         let repo = repository
         Task {
+            guard (try? self.workPermit.validate(ticket)) != nil else { return }
             try? await repo.patchBookCursor(bookId: bId, chapterId: chapterId)
         }
     }

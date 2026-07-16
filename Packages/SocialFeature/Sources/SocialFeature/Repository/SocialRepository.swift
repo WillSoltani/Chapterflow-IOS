@@ -115,8 +115,13 @@ public protocol SocialRepository: Sendable {
     /// implementation attempts a network upload. If the upload succeeds the
     /// returned item has `syncState == .synced`; if offline it has `.pending`
     /// and will be retried by ``syncPendingReflections(bookId:chapterN:)``.
-    /// Never throws — failures result in a `.pending` item.
-    func postReflection(bookId: String, chapterN: Int, text: String) async -> PendingReflectionItem
+    /// Network failures result in a durable `.pending` item. Throws when the
+    /// account scope closes before the local outbox accepts the write.
+    func postReflection(
+        bookId: String,
+        chapterN: Int,
+        text: String
+    ) async throws -> PendingReflectionItem
 
     /// Requests AI feedback for a synced server reflection.
     ///
@@ -133,14 +138,18 @@ public protocol SocialRepository: Sendable {
     /// The feedback request is stored in the outbox and sent automatically once
     /// the reflection itself is successfully synced to the server.
     /// Returns the updated `PendingReflectionItem`, or `nil` if `localId` is unknown.
-    func queueFeedbackForPending(localId: String) async -> PendingReflectionItem?
+    func queueFeedbackForPending(localId: String) async throws -> PendingReflectionItem?
 
     /// Retries syncing all pending reflections for a chapter to the server.
     ///
     /// For each newly-synced item whose `feedbackState == .pending`, also fetches
     /// AI feedback automatically. Returns the up-to-date pending list after
-    /// processing. Never throws; individual failures are logged and left for retry.
-    func syncPendingReflections(bookId: String, chapterN: Int) async -> [PendingReflectionItem]
+    /// processing. Individual network failures are logged and left for retry;
+    /// scope cancellation is propagated without mutating the outbox.
+    func syncPendingReflections(
+        bookId: String,
+        chapterN: Int
+    ) async throws -> [PendingReflectionItem]
 
     // MARK: - Safety (P7.7)
 

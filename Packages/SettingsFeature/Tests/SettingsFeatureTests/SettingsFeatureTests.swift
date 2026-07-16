@@ -1,8 +1,37 @@
 import Testing
 import Foundation
 @testable import SettingsFeature
+import AuthKit
+import CoreKit
 import Persistence
 import Networking
+
+private func makeSettingsAccountContext(
+    accountID: String = "settings-test-account"
+) throws -> AccountContext {
+    let identity = try #require(SessionIdentity(
+        subject: accountID,
+        username: "settings-test-reader",
+        email: "settings-reader@example.test",
+        source: .hermeticUITest
+    ))
+    let config = AppConfig(
+        apiBaseURL: "https://api.chapterflow.test",
+        cognitoRegion: "us-east-1",
+        cognitoUserPoolID: "us-east-1_ChapterFlowTests",
+        cognitoClientID: "ChapterFlowSettingsTests1234567890",
+        cognitoDomain: "chapterflow-tests.auth.us-east-1.amazoncognito.com"
+    )
+    guard case let .valid(validatedConfig) = config.validate() else {
+        Issue.record("Expected the static SettingsFeature test configuration to be valid")
+        throw SettingsTestSetupError.invalidConfiguration
+    }
+    return AccountContext(identity: identity, config: validatedConfig)
+}
+
+private enum SettingsTestSetupError: Error {
+    case invalidConfiguration
+}
 
 // MARK: - Module smoke test
 
@@ -150,14 +179,47 @@ struct FakeSettingsRepositoryTests {
 @Suite("SettingsModel")
 struct SettingsModelTests {
 
+    @Test("model retains the exact proven account context")
+    @MainActor
+    func modelRetainsExactAccountContext() throws {
+        let context = try makeSettingsAccountContext(accountID: "settings-account-a")
+        let model = SettingsModel(
+            repository: FakeSettingsRepository(),
+            preferences: AppPreferences(defaults: UserDefaults(suiteName: "test.settings.context")),
+            onSignOut: {},
+            accountContext: context
+        )
+
+        #expect(model.accountContext == context)
+        #expect(model.accountContext.accountID == "settings-account-a")
+    }
+
+    @Test(
+        "fallback identities cannot reach the SettingsModel constructor",
+        arguments: ["", " ", " account-with-padding ", "anon", "ANON", "local", "LOCAL"]
+    )
+    func fallbackIdentitiesAreRejected(_ accountID: String) {
+        #expect(SessionIdentity(
+            subject: accountID,
+            username: "settings-reader",
+            email: nil,
+            source: .cognitoUserPool
+        ) == nil)
+    }
+
     @Test("load syncs remote depth into AppPreferences")
     @MainActor
-    func loadSyncsDepth() async {
+    func loadSyncsDepth() async throws {
         let prefs = AppPreferences(defaults: UserDefaults(suiteName: "test.settings.depth"))
         let repo = FakeSettingsRepository(
             settings: UserReadingSettings(defaultDepth: "hard", readingTone: "competitive")
         )
-        let model = SettingsModel(repository: repo, preferences: prefs, onSignOut: {})
+        let model = SettingsModel(
+            repository: repo,
+            preferences: prefs,
+            onSignOut: {},
+            accountContext: try makeSettingsAccountContext()
+        )
         await model.load()
         #expect(prefs.depthVariant == .hard)
         #expect(prefs.readingTone == .competitive)
@@ -165,13 +227,18 @@ struct SettingsModelTests {
 
     @Test("load ignores unknown depth values gracefully")
     @MainActor
-    func loadIgnoresUnknownDepth() async {
+    func loadIgnoresUnknownDepth() async throws {
         let prefs = AppPreferences(defaults: UserDefaults(suiteName: "test.settings.unknown"))
         prefs.depthVariant = .medium
         let repo = FakeSettingsRepository(
             settings: UserReadingSettings(defaultDepth: "unknown_depth_xyz")
         )
-        let model = SettingsModel(repository: repo, preferences: prefs, onSignOut: {})
+        let model = SettingsModel(
+            repository: repo,
+            preferences: prefs,
+            onSignOut: {},
+            accountContext: try makeSettingsAccountContext()
+        )
         await model.load()
         // Unknown value must not crash; local pref unchanged.
         #expect(prefs.depthVariant == .medium)
@@ -179,23 +246,33 @@ struct SettingsModelTests {
 
     @Test("load clamps fontScale to valid range")
     @MainActor
-    func loadClampsFontScale() async {
+    func loadClampsFontScale() async throws {
         let prefs = AppPreferences(defaults: UserDefaults(suiteName: "test.settings.clamp"))
         let repo = FakeSettingsRepository(
             settings: UserReadingSettings(fontScale: 5.0) // out of range
         )
-        let model = SettingsModel(repository: repo, preferences: prefs, onSignOut: {})
+        let model = SettingsModel(
+            repository: repo,
+            preferences: prefs,
+            onSignOut: {},
+            accountContext: try makeSettingsAccountContext()
+        )
         await model.load()
         #expect(prefs.readerFontScale <= 1.8)
     }
 
     @Test("load is non-fatal when repository throws")
     @MainActor
-    func loadIsNonFatalOnError() async {
+    func loadIsNonFatalOnError() async throws {
         let prefs = AppPreferences(defaults: UserDefaults(suiteName: "test.settings.nonfatal"))
         prefs.depthVariant = .easy
         let repo = FakeSettingsRepository(shouldFail: true)
-        let model = SettingsModel(repository: repo, preferences: prefs, onSignOut: {})
+        let model = SettingsModel(
+            repository: repo,
+            preferences: prefs,
+            onSignOut: {},
+            accountContext: try makeSettingsAccountContext()
+        )
         await model.load()
         // Should not throw; local prefs unchanged.
         #expect(prefs.depthVariant == .easy)
@@ -204,11 +281,16 @@ struct SettingsModelTests {
 
     @Test("requestExport populates exportData on success")
     @MainActor
-    func requestExportPopulatesData() async {
+    func requestExportPopulatesData() async throws {
         let expectedData = Data("my data".utf8)
         let prefs = AppPreferences(defaults: UserDefaults(suiteName: "test.settings.export"))
         let repo = FakeSettingsRepository(exportData: expectedData)
-        let model = SettingsModel(repository: repo, preferences: prefs, onSignOut: {})
+        let model = SettingsModel(
+            repository: repo,
+            preferences: prefs,
+            onSignOut: {},
+            accountContext: try makeSettingsAccountContext()
+        )
         await model.requestExport()
         #expect(model.exportData == expectedData)
         #expect(model.showShareSheet)
@@ -216,10 +298,15 @@ struct SettingsModelTests {
 
     @Test("requestExport sets error on failure")
     @MainActor
-    func requestExportSetsErrorOnFailure() async {
+    func requestExportSetsErrorOnFailure() async throws {
         let prefs = AppPreferences(defaults: UserDefaults(suiteName: "test.settings.exportfail"))
         let repo = FakeSettingsRepository(shouldFail: true)
-        let model = SettingsModel(repository: repo, preferences: prefs, onSignOut: {})
+        let model = SettingsModel(
+            repository: repo,
+            preferences: prefs,
+            onSignOut: {},
+            accountContext: try makeSettingsAccountContext()
+        )
         await model.requestExport()
         #expect(model.exportData == nil)
         #expect(model.error != nil)
@@ -227,11 +314,16 @@ struct SettingsModelTests {
 
     @Test("confirmDelete calls repository and signs out")
     @MainActor
-    func confirmDeleteCallsRepoAndSignsOut() async {
+    func confirmDeleteCallsRepoAndSignsOut() async throws {
         let repo = FakeSettingsRepository()
         let prefs = AppPreferences(defaults: UserDefaults(suiteName: "test.settings.delete"))
         var signedOut = false
-        let model = SettingsModel(repository: repo, preferences: prefs, onSignOut: { signedOut = true })
+        let model = SettingsModel(
+            repository: repo,
+            preferences: prefs,
+            onSignOut: { signedOut = true },
+            accountContext: try makeSettingsAccountContext()
+        )
         await model.confirmDelete()
         #expect(repo.deleteCalled)
         #expect(signedOut)
@@ -239,11 +331,16 @@ struct SettingsModelTests {
 
     @Test("confirmDeactivate calls repository and signs out")
     @MainActor
-    func confirmDeactivateCallsRepoAndSignsOut() async {
+    func confirmDeactivateCallsRepoAndSignsOut() async throws {
         let repo = FakeSettingsRepository()
         let prefs = AppPreferences(defaults: UserDefaults(suiteName: "test.settings.deactivate"))
         var signedOut = false
-        let model = SettingsModel(repository: repo, preferences: prefs, onSignOut: { signedOut = true })
+        let model = SettingsModel(
+            repository: repo,
+            preferences: prefs,
+            onSignOut: { signedOut = true },
+            accountContext: try makeSettingsAccountContext()
+        )
         await model.confirmDeactivate()
         #expect(repo.deactivateCalled)
         #expect(signedOut)
@@ -251,22 +348,34 @@ struct SettingsModelTests {
 
     @Test("confirmDelete sets error and does not sign out on failure")
     @MainActor
-    func confirmDeleteSetsErrorOnFailure() async {
+    func confirmDeleteSetsErrorOnFailure() async throws {
         let repo = FakeSettingsRepository(shouldFail: true)
         let prefs = AppPreferences(defaults: UserDefaults(suiteName: "test.settings.deletefail"))
         var signedOut = false
-        let model = SettingsModel(repository: repo, preferences: prefs, onSignOut: { signedOut = true })
+        let model = SettingsModel(
+            repository: repo,
+            preferences: prefs,
+            onSignOut: { signedOut = true },
+            accountContext: try makeSettingsAccountContext()
+        )
         await model.confirmDelete()
         #expect(model.error != nil)
         #expect(!signedOut)
     }
 
-    @Test("deleteAllDownloads clears file list")
+    @Test("missing account-scoped download provider stays empty without legacy fallback")
     @MainActor
-    func deleteAllDownloadsClearsList() {
+    func missingDownloadProviderFailsClosed() async throws {
         let prefs = AppPreferences(defaults: UserDefaults(suiteName: "test.settings.dlall"))
         let repo = FakeSettingsRepository()
-        let model = SettingsModel(repository: repo, preferences: prefs, onSignOut: {})
+        let model = SettingsModel(
+            repository: repo,
+            preferences: prefs,
+            onSignOut: {},
+            accountContext: try makeSettingsAccountContext()
+        )
+
+        await model.load()
         model.deleteAllDownloads()
         #expect(model.downloadedFiles.isEmpty)
         #expect(model.totalDownloadBytes == 0)

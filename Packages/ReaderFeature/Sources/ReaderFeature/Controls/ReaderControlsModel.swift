@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import Models
 import Persistence
+import CoreKit
 
 /// Manages the interactive state of the reader control surface.
 ///
@@ -22,6 +23,7 @@ public final class ReaderControlsModel {
     public let variantFamily: VariantFamily
     @ObservationIgnored public let preferences: AppPreferences
     @ObservationIgnored private let store: KeyValueStore
+    @ObservationIgnored private let workPermit: SessionWorkPermit
     @ObservationIgnored private let resolver: ChapterContentResolver
     @ObservationIgnored private let builder: ReaderContentBuilder
 
@@ -117,13 +119,15 @@ public final class ReaderControlsModel {
         bookId: String,
         variantFamily: VariantFamily,
         preferences: AppPreferences,
-        store: KeyValueStore = KeyValueStore()
+        store: KeyValueStore = KeyValueStore(),
+        workPermit: SessionWorkPermit = SessionWorkPermit()
     ) {
         self.chapter = chapter
         self.bookId = bookId
         self.variantFamily = variantFamily
         self.preferences = preferences
         self.store = store
+        self.workPermit = workPermit
         self.resolver = ChapterContentResolver()
         self.builder = ReaderContentBuilder()
 
@@ -253,11 +257,14 @@ public final class ReaderControlsModel {
     }
 
     private func persistPreferences() {
+        guard let ticket = try? workPermit.begin() else { return }
         let prefs = BookReadingPreferences(
             variantKeyRaw: selectedVariant.rawValue,
             toneKeyRaw: selectedTone.rawValue
         )
-        try? store.set(prefs, forKey: BookReadingPreferences.storageKey(for: bookId))
+        try? workPermit.commit(ticket) {
+            try store.set(prefs, forKey: BookReadingPreferences.storageKey(for: bookId))
+        }
     }
 }
 

@@ -19,12 +19,9 @@ extension AppModel {
         QuickActionBridge.shared.pendingShortcutType = nil
         switch type {
         case QuickActionBridge.ShortcutType.continueReading:
-            let snapshot = SharedStateReader().load()
-            if let bookId = snapshot.continueBookId, let chapter = snapshot.continueChapterNumber {
-                handle(deepLink: .chapter(bookId: bookId, chapter: chapter))
-            } else {
-                handle(deepLink: .library)
-            }
+            // The legacy App Group continue-reading snapshot has no account
+            // owner. Preserve it for WP-ID-01B and open only the neutral library.
+            handle(deepLink: .library)
         case QuickActionBridge.ShortcutType.reviews:
             handle(deepLink: .review)
         case QuickActionBridge.ShortcutType.ask:

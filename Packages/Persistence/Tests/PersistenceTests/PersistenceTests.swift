@@ -1,6 +1,9 @@
 import Foundation
 import SwiftData
 import Testing
+#if canImport(Darwin)
+import Darwin
+#endif
 @testable import Persistence
 
 @Suite("Persistence")
@@ -267,7 +270,12 @@ struct FileStoreTests {
 
         // Root is excluded from iCloud backup.
         let values = try store.root.resourceValues(forKeys: [.isExcludedFromBackupKey])
-        #expect(values.isExcludedFromBackup == true)
+        // Temporary volumes on macOS 26 may report `false` even when Foundation
+        // successfully wrote the canonical backup-exclusion extended attribute.
+        #expect(
+            values.isExcludedFromBackup == true
+                || hasBackupExclusionMarker(store.root)
+        )
 
         try store.remove(named: "clip.mp3")
         #expect(store.exists("clip.mp3") == false)
@@ -283,6 +291,19 @@ struct FileStoreTests {
         #expect(throws: PersistenceError.notFound) {
             try store.read(named: "nope.dat")
         }
+    }
+
+    private func hasBackupExclusionMarker(_ url: URL) -> Bool {
+        #if canImport(Darwin)
+        let attribute = "com.apple.metadata:com_apple_backup_excludeItem"
+        return url.path.withCString { path in
+            attribute.withCString { name in
+                getxattr(path, name, nil, 0, 0, 0) >= 0
+            }
+        }
+        #else
+        return false
+        #endif
     }
 }
 

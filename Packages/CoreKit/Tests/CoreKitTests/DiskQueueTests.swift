@@ -118,6 +118,8 @@ struct DiskQueueTests {
 @Suite("DefaultAnalyticsClient (disk-backed)")
 struct DiskBackedAnalyticsClientTests {
     private let fixedNow: @Sendable () -> Date = { Date(timeIntervalSince1970: 1_700_000_000) }
+    private let accountA = "account-v1-" + String(repeating: "a", count: 64)
+    private let accountB = "account-v1-" + String(repeating: "b", count: 64)
 
     private func makeDiskQueue() -> (DiskQueue, URL) {
         let dir = FileManager.default.temporaryDirectory
@@ -174,9 +176,40 @@ struct DiskBackedAnalyticsClientTests {
         #expect(await diskQueue.count == 1)
 
         await client.setOptedOut(true)
-        // Allow the opt-out clear Task to run.
-        try await Task.sleep(for: .milliseconds(50))
         #expect(await diskQueue.isEmpty)
+    }
+
+    @Test("session suspension retains A queue and only a new A client can flush it")
+    func sessionSuspensionRetainsDurableQueue() async throws {
+        let applicationSupport = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AnalyticsSessionBoundary-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: applicationSupport) }
+        let oldTransport = SpyTransport()
+        let oldClient = try DefaultAnalyticsClient.makeDurable(
+            transport: oldTransport,
+            batchSize: 100,
+            storageNamespace: accountA,
+            applicationSupportDirectory: applicationSupport
+        )
+
+        await oldClient.record(.appOpen)
+        await oldClient.suspendForSessionBoundary()
+        await oldClient.flush()
+
+        #expect(await oldClient.diskQueueCount() == 1)
+        #expect(await oldTransport.isEmpty)
+
+        let resumedTransport = SpyTransport()
+        let resumedClient = try DefaultAnalyticsClient.makeDurable(
+            transport: resumedTransport,
+            batchSize: 100,
+            storageNamespace: accountA,
+            applicationSupportDirectory: applicationSupport
+        )
+        await resumedClient.flush()
+
+        #expect(await resumedClient.diskQueueCount() == 0)
+        #expect(await resumedTransport.lastBatchEventCount() == 1)
     }
 
     @Test("events are re-queued to disk on send failure")
@@ -196,5 +229,155 @@ struct DiskBackedAnalyticsClientTests {
         #expect(await spy.isEmpty)
         // …but events remain on disk for the next attempt.
         #expect(await diskQueue.count >= 1)
+    }
+
+    @Test("blocked full-queue flush preserves a newly enqueued rollover tail")
+    func blockedFlushPreservesRolloverTail() async throws {
+        let (_, fileURL) = makeDiskQueue()
+        let diskQueue = DiskQueue(fileURL: fileURL, maxSize: 2)
+        let transport = BlockingDiskAnalyticsTransport()
+        let client = DefaultAnalyticsClient(
+            transport: transport,
+            batchSize: 100,
+            now: fixedNow,
+            diskQueue: diskQueue
+        )
+
+        await client.record(.appOpen)
+        await client.record(.signIn(method: "first"))
+        let firstFlush = Task { await client.flush() }
+        await transport.waitUntilFirstSendStarts()
+
+        // Enqueue at max size while the original [1, 2] snapshot is in flight.
+        // The queue is now [2, 3]; successful removal must retain event 3.
+        await client.record(.bookStarted(bookId: "tail"))
+        let overlappingFlush = Task { await client.flush() }
+        while !(await client.hasPendingFlushForTest) {
+            await Task.yield()
+        }
+
+        await transport.releaseFirstSend()
+        await firstFlush.value
+        await overlappingFlush.value
+
+        #expect(await transport.batchSizes == [2, 1])
+        #expect(await diskQueue.isEmpty)
+    }
+
+    @Test("durable queues are isolated by opaque account namespace")
+    func accountQueuesAreIsolated() async throws {
+        let applicationSupport = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AnalyticsAccountIsolation-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: applicationSupport) }
+        let transportA = SpyTransport()
+        let transportB = SpyTransport()
+        let clientA = try DefaultAnalyticsClient.makeDurable(
+            transport: transportA,
+            batchSize: 100,
+            storageNamespace: accountA,
+            applicationSupportDirectory: applicationSupport
+        )
+        let clientB = try DefaultAnalyticsClient.makeDurable(
+            transport: transportB,
+            batchSize: 100,
+            storageNamespace: accountB,
+            applicationSupportDirectory: applicationSupport
+        )
+
+        await clientA.record(.appOpen)
+
+        #expect(await clientA.diskQueueCount() == 1)
+        #expect(await clientB.diskQueueCount() == 0)
+        await clientB.flush()
+        #expect(await transportB.isEmpty)
+
+        let relaunchedA = try DefaultAnalyticsClient.makeDurable(
+            transport: transportA,
+            batchSize: 100,
+            storageNamespace: accountA,
+            applicationSupportDirectory: applicationSupport
+        )
+        #expect(await relaunchedA.diskQueueCount() == 1)
+        await relaunchedA.flush()
+        #expect(await transportA.lastBatchEventCount() == 1)
+    }
+
+    @Test("legacy unowned queue is preserved and never attributed to an account")
+    func legacyQueueIsPreserved() async throws {
+        let applicationSupport = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AnalyticsLegacyPreservation-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: applicationSupport) }
+        let legacyDirectory = applicationSupport
+            .appendingPathComponent("com.chapterflow", isDirectory: true)
+        try FileManager.default.createDirectory(at: legacyDirectory, withIntermediateDirectories: true)
+        let legacyURL = legacyDirectory.appendingPathComponent("analytics_queue.json")
+        let legacyData = Data("legacy-unowned-queue".utf8)
+        try legacyData.write(to: legacyURL)
+
+        let client = try DefaultAnalyticsClient.makeDurable(
+            transport: SpyTransport(),
+            storageNamespace: accountA,
+            applicationSupportDirectory: applicationSupport
+        )
+
+        #expect(await client.diskQueueCount() == 0)
+        #expect(try Data(contentsOf: legacyURL) == legacyData)
+    }
+
+    @Test("invalid namespaces fail with a value-free error and create no path")
+    func invalidNamespaceFailsClosedAndRedacted() {
+        let applicationSupport = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AnalyticsInvalidNamespace-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: applicationSupport) }
+        let rawValue = "../private-account@example.test"
+
+        #expect(throws: AnalyticsDurableStorageFailure.invalidStorageNamespace) {
+            _ = try DefaultAnalyticsClient.makeDurable(
+                transport: SpyTransport(),
+                storageNamespace: rawValue,
+                applicationSupportDirectory: applicationSupport
+            )
+        }
+        #expect(!FileManager.default.fileExists(atPath: applicationSupport.path))
+        let error = AnalyticsDurableStorageFailure.invalidStorageNamespace
+        #expect(!String(describing: error).contains(rawValue))
+        #expect(Mirror(reflecting: error).children.isEmpty)
+    }
+}
+
+private actor BlockingDiskAnalyticsTransport: AnalyticsTransport {
+    private(set) var batchSizes: [Int] = []
+    private var firstSendStarted = false
+    private var startWaiters: [CheckedContinuation<Void, Never>] = []
+    private var releaseWaiter: CheckedContinuation<Void, Never>?
+    private var isReleased = false
+
+    func send(path: String, payload: Data) async throws {
+        let object = try JSONSerialization.jsonObject(with: payload) as? [String: Any]
+        batchSizes.append((object?["events"] as? [Any])?.count ?? 0)
+        guard batchSizes.count == 1 else { return }
+
+        firstSendStarted = true
+        let waiters = startWaiters
+        startWaiters.removeAll(keepingCapacity: false)
+        waiters.forEach { $0.resume() }
+        if !isReleased {
+            await withCheckedContinuation { continuation in
+                releaseWaiter = continuation
+            }
+        }
+    }
+
+    func waitUntilFirstSendStarts() async {
+        if firstSendStarted { return }
+        await withCheckedContinuation { continuation in
+            startWaiters.append(continuation)
+        }
+    }
+
+    func releaseFirstSend() {
+        isReleased = true
+        releaseWaiter?.resume()
+        releaseWaiter = nil
     }
 }

@@ -189,6 +189,18 @@ public struct ReviewSessionView: View {
                     }
                 }
             }
+            .disabled(model.isGrading)
+
+            if model.isGrading {
+                ProgressView("Saving review")
+                    .font(.cfCaption)
+            } else if let error = model.gradeError {
+                Text(error.errorDescription ?? "The review could not be saved. Try again.")
+                    .font(.cfCaption)
+                    .foregroundStyle(Color.red)
+                    .multilineTextAlignment(.center)
+                    .accessibilityLabel("Review not saved")
+            }
         }
     }
 

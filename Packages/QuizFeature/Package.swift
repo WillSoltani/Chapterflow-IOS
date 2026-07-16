@@ -30,7 +30,10 @@ let package = Package(
             name: "QuizFeatureTests",
             dependencies: [
                 "QuizFeature",
+                .product(name: "CoreKit", package: "CoreKit"),
+                .product(name: "Models", package: "Models"),
                 .product(name: "Networking", package: "Networking"),
+                .product(name: "Persistence", package: "Persistence"),
             ]
         ),
     ]

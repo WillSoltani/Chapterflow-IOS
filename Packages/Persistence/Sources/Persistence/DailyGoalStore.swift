@@ -39,15 +39,17 @@ public final class DailyGoalStore: @unchecked Sendable {
     // MARK: Storage
 
     private let defaults: UserDefaults
+    private let key: String
 
     // MARK: Init
 
     /// Creates a store backed by the App Group suite; falls back to `.standard`
     /// in test/simulator environments where the group is unavailable.
-    public init(defaults: UserDefaults? = nil) {
+    public init(defaults: UserDefaults? = nil, keyPrefix: String = "") {
         self.defaults = defaults
             ?? UserDefaults(suiteName: Self.appGroupSuite)
             ?? .standard
+        self.key = "\(keyPrefix)\(Self.goalKey)"
     }
 
     // MARK: - Public API
@@ -58,12 +60,12 @@ public final class DailyGoalStore: @unchecked Sendable {
     /// Writing a value outside the tier set snaps it to the nearest tier.
     public var dailyGoalMinutes: Int {
         get {
-            let stored = defaults.integer(forKey: Self.goalKey)
+            let stored = defaults.integer(forKey: key)
             return Self.tiers.contains(stored) ? stored : Self.defaultGoalMinutes
         }
         set {
             let snapped = Self.tiers.min(by: { abs($0 - newValue) < abs($1 - newValue) }) ?? Self.defaultGoalMinutes
-            defaults.set(snapped, forKey: Self.goalKey)
+            defaults.set(snapped, forKey: key)
         }
     }
 

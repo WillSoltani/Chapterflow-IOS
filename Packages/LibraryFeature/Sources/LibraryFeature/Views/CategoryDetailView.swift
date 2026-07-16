@@ -3,6 +3,7 @@ import Models
 import DesignSystem
 import CoreKit
 import AIFeature
+import Persistence
 
 /// All books in a single category, reached by tapping a category on Discover.
 ///
@@ -16,7 +17,12 @@ public struct CategoryDetailView: View {
     let progressItems: [ProgressOverviewItem]
     let bookDetailRepository: any BookDetailRepository
     let aiRepository: (any AIRepository)?
+    let preferences: AppPreferences
+    let store: KeyValueStore
+    let downloadManager: DownloadManager?
+    let accountID: String?
     let isGuest: Bool
+    let workPermit: SessionWorkPermit
     let onToggleSaved: (String) -> Void
     let onOpenReader: ((String, Int, VariantFamily) -> Void)?
     let onShowPaywall: (() -> Void)?
@@ -32,7 +38,12 @@ public struct CategoryDetailView: View {
         progressItems: [ProgressOverviewItem] = [],
         bookDetailRepository: any BookDetailRepository,
         aiRepository: (any AIRepository)? = nil,
+        preferences: AppPreferences,
+        store: KeyValueStore,
+        downloadManager: DownloadManager? = nil,
+        accountID: String? = nil,
         isGuest: Bool = false,
+        workPermit: SessionWorkPermit = SessionWorkPermit(),
         onToggleSaved: @escaping (String) -> Void,
         onOpenReader: ((String, Int, VariantFamily) -> Void)? = nil,
         onShowPaywall: (() -> Void)? = nil,
@@ -44,7 +55,12 @@ public struct CategoryDetailView: View {
         self.progressItems = progressItems
         self.bookDetailRepository = bookDetailRepository
         self.aiRepository = aiRepository
+        self.preferences = preferences
+        self.store = store
+        self.downloadManager = downloadManager
+        self.accountID = accountID
         self.isGuest = isGuest
+        self.workPermit = workPermit
         self.onToggleSaved = onToggleSaved
         self.onOpenReader = onOpenReader
         self.onShowPaywall = onShowPaywall
@@ -86,7 +102,12 @@ public struct CategoryDetailView: View {
                         bookId: bookId,
                         repository: bookDetailRepository,
                         aiRepository: aiRepository,
+                        preferences: preferences,
+                        store: store,
+                        downloadManager: downloadManager,
+                        accountID: accountID,
                         isGuest: isGuest,
+                        workPermit: workPermit,
                         onOpenReader: onOpenReader,
                         onShowPaywall: onShowPaywall,
                         onSignInRequired: onSignInRequired
@@ -161,6 +182,8 @@ public struct CategoryDetailView: View {
         savedBookIds: ["b-deep-work"],
         progressItems: [PreviewData.atomicHabitsProgress],
         bookDetailRepository: PreviewData.bookDetailInProgress,
+        preferences: AppPreferences(keyPrefix: "preview.category."),
+        store: KeyValueStore(keyPrefix: "preview.category."),
         onToggleSaved: { _ in }
     )
 }
@@ -170,6 +193,8 @@ public struct CategoryDetailView: View {
         category: "Productivity",
         books: PreviewData.books,
         bookDetailRepository: PreviewData.bookDetailFreeLocked,
+        preferences: AppPreferences(keyPrefix: "preview.category."),
+        store: KeyValueStore(keyPrefix: "preview.category."),
         onToggleSaved: { _ in }
     )
     .preferredColorScheme(.dark)
@@ -180,6 +205,8 @@ public struct CategoryDetailView: View {
         category: "Psychology",
         books: PreviewData.books,
         bookDetailRepository: PreviewData.bookDetailFreeLocked,
+        preferences: AppPreferences(keyPrefix: "preview.category."),
+        store: KeyValueStore(keyPrefix: "preview.category."),
         onToggleSaved: { _ in }
     )
     .dynamicTypeSize(.accessibility3)

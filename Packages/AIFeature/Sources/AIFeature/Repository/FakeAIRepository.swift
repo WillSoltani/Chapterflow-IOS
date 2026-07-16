@@ -6,6 +6,8 @@ import Models
 /// Seed it with a canned response or a forced error to drive any test scenario.
 public actor FakeAIRepository: AIRepository {
 
+    public nonisolated let accountID: String
+
     private let response: BookAskResponse?
     private let graphResponse: ConceptGraph?
     private let depthResponse: DepthRecommendation?
@@ -18,8 +20,10 @@ public actor FakeAIRepository: AIRepository {
         graph: ConceptGraph? = FakeAIRepository.sampleConceptGraph,
         depth: DepthRecommendation? = FakeAIRepository.sampleDepthRecommendation,
         error: AppError? = nil,
-        delay: Double = 0.0
+        delay: Double = 0.0,
+        accountID: String = "preview-user"
     ) {
+        self.accountID = accountID
         self.response = response
         self.graphResponse = graph
         self.depthResponse = depth

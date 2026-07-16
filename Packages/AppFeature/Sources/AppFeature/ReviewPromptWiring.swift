@@ -38,8 +38,8 @@ extension Bundle {
 
 /// Considers an App Store review request after a genuinely positive moment: passing a
 /// chapter quiz. Delegates the decision to `controller` (once-per-version, streak-gated)
-/// and only asks StoreKit when the policy allows. The reading streak is read from the
-/// shared app-state snapshot the app already maintains for widgets.
+/// and only asks StoreKit when the policy allows. The legacy App Group streak
+/// has no provable account owner, so it must not influence another account.
 @MainActor
 func requestReviewAfterQuizPass(_ model: AppModel, _ requestReview: RequestReviewAction) {
     #if DEBUG
@@ -48,9 +48,8 @@ func requestReviewAfterQuizPass(_ model: AppModel, _ requestReview: RequestRevie
     if ProcessInfo.processInfo.environment["CF_STUB_SERVER"] == "1" { return }
     #endif
 
-    let streakDays = SharedStateReader().load().streakDays
     model.reviewPromptController.requestReviewIfAppropriate(
-        for: .quizCompleted(passed: true, currentStreakDays: streakDays)
+        for: .quizCompleted(passed: true, currentStreakDays: 0)
     ) {
         // Decouple from the tap and give the pass animation a beat to settle before the
         // system sheet appears, per Apple's ratings-and-reviews guidance.

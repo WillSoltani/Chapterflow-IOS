@@ -217,7 +217,11 @@ public actor FakeSocialRepository: SocialRepository {
         pendingReflections.filter { $0.bookId == bookId && $0.chapterN == chapterN }
     }
 
-    public func postReflection(bookId: String, chapterN: Int, text: String) async -> PendingReflectionItem {
+    public func postReflection(
+        bookId: String,
+        chapterN: Int,
+        text: String
+    ) async throws -> PendingReflectionItem {
         reflectionIdCounter += 1
         var item = PendingReflectionItem(
             localId: "local-\(reflectionIdCounter)",
@@ -255,7 +259,7 @@ public actor FakeSocialRepository: SocialRepository {
         return "Great reflection! Your insight about this chapter shows real depth of understanding. Keep exploring these ideas as you continue reading."
     }
 
-    public func queueFeedbackForPending(localId: String) async -> PendingReflectionItem? {
+    public func queueFeedbackForPending(localId: String) async throws -> PendingReflectionItem? {
         guard let idx = pendingReflections.firstIndex(where: { $0.localId == localId }) else {
             return nil
         }
@@ -263,7 +267,10 @@ public actor FakeSocialRepository: SocialRepository {
         return pendingReflections[idx]
     }
 
-    public func syncPendingReflections(bookId: String, chapterN: Int) async -> [PendingReflectionItem] {
+    public func syncPendingReflections(
+        bookId: String,
+        chapterN: Int
+    ) async throws -> [PendingReflectionItem] {
         // Fake: everything is already synced; just return pending list.
         return pendingReflections.filter { $0.bookId == bookId && $0.chapterN == chapterN }
     }

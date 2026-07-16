@@ -62,6 +62,7 @@ public final class QuizModel {
 
     private let repository: any QuizRepository
     private let analytics: any AnalyticsClient
+    private let workPermit: SessionWorkPermit
     private nonisolated(unsafe) var connectivityMonitor: NWPathMonitor?
     private var connectivityTask: Task<Void, Never>?
 
@@ -72,12 +73,14 @@ public final class QuizModel {
         chapterNumber: Int,
         tone: ToneKey? = nil,
         repository: any QuizRepository,
+        workPermit: SessionWorkPermit = SessionWorkPermit(),
         analytics: any AnalyticsClient = NoopAnalyticsClient()
     ) {
         self.bookId = bookId
         self.chapterNumber = chapterNumber
         self.tone = tone
         self.repository = repository
+        self.workPermit = workPermit
         self.analytics = analytics
     }
 
@@ -92,7 +95,10 @@ public final class QuizModel {
         monitor.pathUpdateHandler = { [weak self] path in
             let connected = path.status == .satisfied
             Task { @MainActor [weak self] in
-                self?.isOnline = connected
+                guard let self, let ticket = try? self.workPermit.begin() else { return }
+                try? self.workPermit.commit(ticket) {
+                    self.isOnline = connected
+                }
             }
         }
         monitor.start(queue: queue)
@@ -109,28 +115,41 @@ public final class QuizModel {
 
     /// Fetch the quiz session from the server and enter the active phase.
     public func load() async {
-        phase = .loading
-        selectedAnswers = [:]
-        result = nil
-        retryEligibleAt = nil
+        guard let ticket = try? workPermit.begin() else { return }
+        try? workPermit.commit(ticket) {
+            phase = .loading
+            selectedAnswers = [:]
+            result = nil
+            retryEligibleAt = nil
+        }
         do {
             let response = try await repository.getQuiz(
                 bookId: bookId, n: chapterNumber, tone: tone
             )
-            session = response.quiz
-            phase = .active
+            try workPermit.commit(ticket) {
+                session = response.quiz
+                phase = .active
+            }
+        } catch is CancellationError {
+            return
         } catch let e as AppError {
-            phase = .error(e.errorDescription ?? e.code)
+            try? workPermit.commit(ticket) {
+                phase = .error(e.errorDescription ?? e.code)
+            }
         } catch {
-            phase = .error(error.localizedDescription)
+            try? workPermit.commit(ticket) {
+                phase = .error(error.localizedDescription)
+            }
         }
     }
 
     /// Record the user's choice for a question.
     /// Has no effect outside the `.active` phase.
     public func selectAnswer(_ choiceId: String, for questionId: String) {
-        guard phase == .active else { return }
-        selectedAnswers[questionId] = choiceId
+        guard phase == .active, let ticket = try? workPermit.begin() else { return }
+        try? workPermit.commit(ticket) {
+            selectedAnswers[questionId] = choiceId
+        }
     }
 
     /// Submit all selected answers to the server and transition to the result phase.
@@ -139,6 +158,7 @@ public final class QuizModel {
     /// ``isOnline`` is true before enabling the submit button.
     public func submit() async {
         guard phase == .active, let session else { return }
+        guard let ticket = try? workPermit.begin() else { return }
 
         // Collect answers in question order (server may require stable ordering).
         let answers = session.questions.compactMap { q -> QuizAnswerSubmission? in
@@ -146,7 +166,9 @@ public final class QuizModel {
             return QuizAnswerSubmission(questionId: q.questionId, choiceId: choiceId)
         }
 
-        phase = .submitting
+        try? workPermit.commit(ticket) {
+            phase = .submitting
+        }
         do {
             let graded = try await repository.submit(
                 bookId: bookId, n: chapterNumber, answers: answers
@@ -154,14 +176,16 @@ public final class QuizModel {
 
             // Cooldown anchor: use server-authoritative cooldownSeconds from response time.
             // We do NOT compute (nextEligibleAttemptAt - deviceNow) to avoid device clock skew.
-            if !graded.passed, graded.cooldownSeconds > 0 {
-                retryEligibleAt = Date().addingTimeInterval(TimeInterval(graded.cooldownSeconds))
-            } else {
-                retryEligibleAt = nil
-            }
+            try workPermit.commit(ticket) {
+                if !graded.passed, graded.cooldownSeconds > 0 {
+                    retryEligibleAt = Date().addingTimeInterval(TimeInterval(graded.cooldownSeconds))
+                } else {
+                    retryEligibleAt = nil
+                }
 
-            result = graded
-            phase = .result
+                result = graded
+                phase = .result
+            }
 
             let score = graded.scorePercent
             analytics.track(.quizSubmitted(bookId: bookId, chapter: chapterNumber, score: score))
@@ -175,19 +199,28 @@ public final class QuizModel {
             // Fire-and-forget server lifecycle event (separate from client analytics).
             Task { [weak self] in
                 guard let self else { return }
+                guard (try? self.workPermit.validate(ticket)) != nil else { return }
                 let event = QuizEventPayload(
                     eventType: graded.passed ? "quiz_passed" : "quiz_failed"
                 )
                 try? await repository.postEvent(bookId: bookId, n: chapterNumber, event: event)
             }
 
+        } catch is CancellationError {
+            return
         } catch QuizSubmissionError.pendingGrading {
             // Answers saved to offline outbox — will be graded when back online.
-            phase = .pendingGrading
+            try? workPermit.commit(ticket) {
+                phase = .pendingGrading
+            }
         } catch let e as AppError {
-            phase = .error(e.errorDescription ?? e.code)
+            try? workPermit.commit(ticket) {
+                phase = .error(e.errorDescription ?? e.code)
+            }
         } catch {
-            phase = .error(error.localizedDescription)
+            try? workPermit.commit(ticket) {
+                phase = .error(error.localizedDescription)
+            }
         }
     }
 

@@ -202,6 +202,46 @@ struct BookDetailReliabilityTests {
         #expect(error.category == .serviceUnavailable)
     }
 
+    @Test("quiesce during start completion cannot reopen the reader")
+    func quiesceBlocksLateStartNavigation() async {
+        let startCalled = TestSignal()
+        let startResponse = TestGate<BookStateResponse>()
+        let permit = SessionWorkPermit()
+        let notStartedState = BookDetailModelTests.notStartedState
+        let repo = ControlledBookDetailRepository(
+            manifest: BookDetailModelTests.manifest,
+            entitlement: BookDetailModelTests.proEntitlement(),
+            startState: notStartedState,
+            startHandler: {
+                await startCalled.signal()
+                return await startResponse.wait()
+            }
+        ) { _ in
+            notStartedState
+        }
+        let model = BookDetailModel(
+            bookId: "b-atomic-habits",
+            repository: repo,
+            workPermit: permit
+        )
+        await model.fetch()
+
+        var opened = false
+        model.onOpenReader = { _, _, _ in opened = true }
+        let action = Task { await model.performPrimaryAction() }
+        await startCalled.wait()
+
+        permit.quiesce()
+        await startResponse.open(BookStateResponse(
+            state: BookDetailModelTests.notStartedState.state,
+            applicationStates: BookDetailModelTests.notStartedState.applicationStates
+        ))
+        await action.value
+
+        #expect(opened == false)
+        #expect(model.primaryAction == .startReading)
+    }
+
     private func response(status: BookStateStatus?) -> BookStateGetResponse {
         BookStateGetResponse(
             stateStatus: status,
@@ -222,6 +262,7 @@ private actor ControlledBookDetailRepository: BookDetailRepository {
     private let manifest: BookManifest
     private let entitlement: EntitlementResponse
     private let startState: BookStateGetResponse
+    private let startHandler: (@Sendable () async throws -> BookStateResponse)?
     private var bookCalls = 0
     private var stateCalls = 0
     private var entitlementCalls = 0
@@ -230,11 +271,13 @@ private actor ControlledBookDetailRepository: BookDetailRepository {
         manifest: BookManifest,
         entitlement: EntitlementResponse,
         startState: BookStateGetResponse,
+        startHandler: (@Sendable () async throws -> BookStateResponse)? = nil,
         stateHandler: @escaping @Sendable (Int) async throws -> BookStateGetResponse
     ) {
         self.manifest = manifest
         self.entitlement = entitlement
         self.startState = startState
+        self.startHandler = startHandler
         self.stateHandler = stateHandler
     }
 
@@ -249,7 +292,10 @@ private actor ControlledBookDetailRepository: BookDetailRepository {
     }
 
     func startBook(id: String) async throws -> BookStateResponse {
-        BookStateResponse(
+        if let startHandler {
+            return try await startHandler()
+        }
+        return BookStateResponse(
             state: startState.state,
             applicationStates: startState.applicationStates
         )

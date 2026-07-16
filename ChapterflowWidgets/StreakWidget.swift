@@ -236,19 +236,23 @@ struct StreakWidgetEntryView: View {
     @Environment(\.widgetFamily) var family
 
     var body: some View {
-        switch family {
-        case .systemSmall:
-            StreakSmallView(snapshot: entry.snapshot)
-        case .systemMedium:
-            StreakMediumView(snapshot: entry.snapshot)
-        case .accessoryCircular:
-            StreakAccessoryCircularView(snapshot: entry.snapshot)
-        case .accessoryRectangular:
-            StreakAccessoryRectangularView(snapshot: entry.snapshot)
-        case .accessoryInline:
-            StreakAccessoryInlineView(snapshot: entry.snapshot)
-        default:
-            StreakSmallView(snapshot: entry.snapshot)
+        if !entry.snapshot.isAccountDataAvailable {
+            WidgetAccountDataUnavailableView()
+        } else {
+            switch family {
+            case .systemSmall:
+                StreakSmallView(snapshot: entry.snapshot)
+            case .systemMedium:
+                StreakMediumView(snapshot: entry.snapshot)
+            case .accessoryCircular:
+                StreakAccessoryCircularView(snapshot: entry.snapshot)
+            case .accessoryRectangular:
+                StreakAccessoryRectangularView(snapshot: entry.snapshot)
+            case .accessoryInline:
+                StreakAccessoryInlineView(snapshot: entry.snapshot)
+            default:
+                StreakSmallView(snapshot: entry.snapshot)
+            }
         }
     }
 }

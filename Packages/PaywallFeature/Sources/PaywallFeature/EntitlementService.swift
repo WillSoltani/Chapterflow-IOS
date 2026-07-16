@@ -3,9 +3,39 @@ import CoreKit
 import Models
 import Networking
 import Persistence
+import Synchronization
 #if canImport(UIKit)
 import UIKit
 #endif
+
+enum EntitlementServiceLifecycleState: Sendable, Equatable {
+    case idle
+    case running
+    case paused
+    case stopped
+}
+
+struct EntitlementServiceLifecycleSnapshot: Sendable, Equatable {
+    let state: EntitlementServiceLifecycleState
+    let storeKitListenerStartCount: Int
+    let foregroundListenerStartCount: Int
+    let refreshTaskStartCount: Int
+    let hasStoreKitListener: Bool
+}
+
+private struct EntitlementServiceTasks: Sendable {
+    var storeKitListener: Task<Void, Never>?
+    var foregroundListener: Task<Void, Never>?
+    var refresh: Task<Void, Never>?
+
+    mutating func takeAll() -> [Task<Void, Never>] {
+        let retained = [storeKitListener, foregroundListener, refresh].compactMap { $0 }
+        storeKitListener = nil
+        foregroundListener = nil
+        refresh = nil
+        return retained
+    }
+}
 
 /// The single source of truth for subscription access throughout the app.
 ///
@@ -64,8 +94,13 @@ public final class EntitlementService {
     private let storeKitConfig: StoreKitConfig
     private let log = AppLog(category: .billing)
 
-    nonisolated(unsafe) private var storeKitListenerTask: Task<Void, Never>?
-    nonisolated(unsafe) private var foregroundListenerTask: Task<Void, Never>?
+    private let tasks = Mutex(EntitlementServiceTasks())
+    private var lifecycleState: EntitlementServiceLifecycleState = .idle
+    private var stateBeforePause: EntitlementServiceLifecycleState = .idle
+    private var lifecycleGeneration = 0
+    private var storeKitListenerStartCount = 0
+    private var foregroundListenerStartCount = 0
+    private var refreshTaskStartCount = 0
 
     // MARK: - Init
 
@@ -112,8 +147,19 @@ public final class EntitlementService {
     }
 
     nonisolated deinit {
-        storeKitListenerTask?.cancel()
-        foregroundListenerTask?.cancel()
+        tasks.withLock { handles in
+            handles.takeAll().forEach { $0.cancel() }
+        }
+    }
+
+    var lifecycleSnapshotForTesting: EntitlementServiceLifecycleSnapshot {
+        EntitlementServiceLifecycleSnapshot(
+            state: lifecycleState,
+            storeKitListenerStartCount: storeKitListenerStartCount,
+            foregroundListenerStartCount: foregroundListenerStartCount,
+            refreshTaskStartCount: refreshTaskStartCount,
+            hasStoreKitListener: tasks.withLock { $0.storeKitListener != nil }
+        )
     }
 
     // MARK: - Plan detail accessors
@@ -169,9 +215,51 @@ public final class EntitlementService {
     /// Call once at app startup (composition root). Idempotent — safe to call
     /// again after the app re-enters the foreground.
     public func start() {
+        guard lifecycleState == .idle else { return }
+        lifecycleState = .running
         startStoreKitListener()
         startForegroundListener()
-        Task { await refresh() }
+        startRefreshTask()
+    }
+
+    /// Reversibly quiesces listeners and refresh work while retaining account state.
+    public func pause() async {
+        guard lifecycleState == .idle || lifecycleState == .running else { return }
+        stateBeforePause = lifecycleState
+        lifecycleState = .paused
+        lifecycleGeneration &+= 1
+        let retainedTasks = cancelTasks()
+        await storeKitService.pause()
+        await awaitTasks(retainedTasks)
+    }
+
+    /// Resumes this same instance after a failed sign-out attempt.
+    public func resume() async {
+        guard lifecycleState == .paused else { return }
+        let generation = lifecycleGeneration
+        let targetState = stateBeforePause
+        await storeKitService.resume()
+        guard lifecycleState == .paused, lifecycleGeneration == generation else { return }
+        lifecycleGeneration &+= 1
+        lifecycleState = targetState
+        guard targetState == .running else { return }
+        startStoreKitListener()
+        startForegroundListener()
+        startRefreshTask()
+    }
+
+    /// Permanently stops account-bound work and clears only in-memory authority.
+    /// Account-scoped durable cache data remains available to the same account.
+    public func stop() async {
+        guard lifecycleState != .stopped else { return }
+        lifecycleState = .stopped
+        lifecycleGeneration &+= 1
+        let retainedTasks = cancelTasks()
+        await storeKitService.stop()
+        await awaitTasks(retainedTasks)
+        backendEntitlement = nil
+        storeKitStatus = .unknown
+        updateDerivedState()
     }
 
     // MARK: - Refresh
@@ -189,29 +277,41 @@ public final class EntitlementService {
     /// Public so callers (e.g., post-purchase flow) can trigger an explicit
     /// refresh without waiting for the next background cycle.
     public func refresh() async {
-        await fetchBackendEntitlement()
-        await fetchStoreKitStatus()
-        await reconcileAndVerifyIfNeeded()
+        let generation = lifecycleGeneration
+        guard acceptsWork(generation: generation) else { return }
+        await fetchBackendEntitlement(generation: generation)
+        guard acceptsWork(generation: generation) else { return }
+        await fetchStoreKitStatus(generation: generation)
+        guard acceptsWork(generation: generation) else { return }
+        await reconcileAndVerifyIfNeeded(generation: generation)
     }
 
     // MARK: - Private fetch
 
-    private func fetchBackendEntitlement() async {
+    private func fetchBackendEntitlement(generation: Int) async {
         do {
             let response: EntitlementResponse = try await apiClient.send(Endpoints.getEntitlements())
+            guard acceptsWork(generation: generation) else { return }
             backendEntitlement = response.entitlement
             updateDerivedState()
             try? store.set(response.entitlement, forKey: Self.cacheKey)
+        } catch is CancellationError {
+            return
         } catch {
             log.warning("EntitlementService: backend fetch failed — \(error.localizedDescription)")
         }
     }
 
-    private func fetchStoreKitStatus() async {
+    private func fetchStoreKitStatus(generation: Int) async {
         do {
             let status = try await storeKitService.currentSubscriptionStatus()
+            guard acceptsWork(generation: generation) else { return }
             storeKitStatus = status
             updateDerivedState()
+        } catch is CancellationError {
+            return
+        } catch StoreKitServiceError.inactive {
+            return
         } catch {
             log.warning("EntitlementService: StoreKit status fetch failed — \(error.localizedDescription)")
         }
@@ -225,7 +325,8 @@ public final class EntitlementService {
     /// that StoreKit shows an active Apple subscription the backend hasn't processed
     /// (most commonly: a renewal that arrived before the server webhook fired),
     /// this method re-verifies the transaction and re-fetches the backend entitlement.
-    private func reconcileAndVerifyIfNeeded() async {
+    private func reconcileAndVerifyIfNeeded(generation: Int) async {
+        guard acceptsWork(generation: generation) else { return }
         guard let backend = backendEntitlement else { return }
 
         let action = reconciler.reconcile(
@@ -241,8 +342,13 @@ public final class EntitlementService {
         log.info("EntitlementService: reconciler triggered Apple verify")
         do {
             try await storeKitService.verifyCurrentEntitlements()
+            guard acceptsWork(generation: generation) else { return }
             // Re-fetch the backend entitlement to reflect the newly processed transaction.
-            await fetchBackendEntitlement()
+            await fetchBackendEntitlement(generation: generation)
+        } catch is CancellationError {
+            return
+        } catch StoreKitServiceError.inactive {
+            return
         } catch {
             log.warning("EntitlementService: Apple verify during reconciliation failed — \(error.localizedDescription)")
         }
@@ -251,27 +357,64 @@ public final class EntitlementService {
     // MARK: - Listeners
 
     private func startStoreKitListener() {
-        guard storeKitListenerTask == nil else { return }
+        guard lifecycleState == .running,
+              tasks.withLock({ $0.storeKitListener == nil }) else { return }
         let stream = storeKitService.entitlementChanges
-        storeKitListenerTask = Task { [weak self] in
+        storeKitListenerStartCount += 1
+        let task = Task { [weak self] in
             for await _ in stream {
+                guard !Task.isCancelled else { return }
                 await self?.refresh()
             }
         }
+        tasks.withLock { $0.storeKitListener = task }
     }
 
     private func startForegroundListener() {
-        guard foregroundListenerTask == nil else { return }
+        guard lifecycleState == .running,
+              tasks.withLock({ $0.foregroundListener == nil }) else { return }
         #if canImport(UIKit)
-        foregroundListenerTask = Task { [weak self] in
+        foregroundListenerStartCount += 1
+        let task = Task { [weak self] in
             let notifications = NotificationCenter.default.notifications(
                 named: UIApplication.didBecomeActiveNotification
             )
             for await _ in notifications {
+                guard !Task.isCancelled else { return }
                 await self?.refresh()
             }
         }
+        tasks.withLock { $0.foregroundListener = task }
         #endif
+    }
+
+    private func startRefreshTask() {
+        guard lifecycleState == .running,
+              tasks.withLock({ $0.refresh == nil }) else { return }
+        refreshTaskStartCount += 1
+        let generation = lifecycleGeneration
+        let task = Task { [weak self] in
+            guard let self, self.acceptsWork(generation: generation) else { return }
+            await self.refresh()
+        }
+        tasks.withLock { $0.refresh = task }
+    }
+
+    private func cancelTasks() -> [Task<Void, Never>] {
+        let retainedTasks = tasks.withLock { $0.takeAll() }
+        retainedTasks.forEach { $0.cancel() }
+        return retainedTasks
+    }
+
+    private func awaitTasks(_ retainedTasks: [Task<Void, Never>]) async {
+        for task in retainedTasks {
+            await task.value
+        }
+    }
+
+    private func acceptsWork(generation: Int) -> Bool {
+        generation == lifecycleGeneration &&
+            lifecycleState != .paused && lifecycleState != .stopped
     }
 
     // MARK: - Derived state

@@ -164,17 +164,21 @@ struct NextReviewEntryView: View {
     @Environment(\.widgetFamily) var family
 
     var body: some View {
-        switch family {
-        case .systemSmall:
-            ReviewSmallView(snapshot: entry.snapshot)
-        case .accessoryCircular:
-            ReviewAccessoryCircularView(snapshot: entry.snapshot)
-        case .accessoryRectangular:
-            ReviewAccessoryRectangularView(snapshot: entry.snapshot)
-        case .accessoryInline:
-            ReviewAccessoryInlineView(snapshot: entry.snapshot)
-        default:
-            ReviewSmallView(snapshot: entry.snapshot)
+        if !entry.snapshot.isAccountDataAvailable {
+            WidgetAccountDataUnavailableView()
+        } else {
+            switch family {
+            case .systemSmall:
+                ReviewSmallView(snapshot: entry.snapshot)
+            case .accessoryCircular:
+                ReviewAccessoryCircularView(snapshot: entry.snapshot)
+            case .accessoryRectangular:
+                ReviewAccessoryRectangularView(snapshot: entry.snapshot)
+            case .accessoryInline:
+                ReviewAccessoryInlineView(snapshot: entry.snapshot)
+            default:
+                ReviewSmallView(snapshot: entry.snapshot)
+            }
         }
     }
 }

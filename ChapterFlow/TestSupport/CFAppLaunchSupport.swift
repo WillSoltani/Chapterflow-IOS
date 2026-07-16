@@ -3,6 +3,7 @@ import AppFeature
 import AuthKit
 import CoreKit
 import Foundation
+import Persistence
 
 /// Entry point for XCUITest environment overrides applied at app launch.
 ///
@@ -38,16 +39,31 @@ enum CFAppLaunchSupport {
             // any session created from the default configuration (including Amplify).
             URLProtocol.registerClass(CFStubURLProtocol.self)
         }
+    }
 
-        if SessionManager.isHermeticUITestBypass(environment: env) {
-            // Mark first-run onboarding complete so the app lands directly in the
-            // main tab UI. Otherwise AppRootView presents OnboardingFlowView as a
-            // full-screen cover (gated on `!preferences.onboardingCompleted`),
-            // which blocks tab navigation and makes signed-in flow tests hang.
-            // Key + suite mirror AppPreferences.Keys.onboardingCompleted + AppGroup.identifier.
-            UserDefaults(suiteName: "group.com.chapterflow")?
-                .set(true, forKey: "pref.onboardingCompleted")
+    /// Marks onboarding complete in the exact account-scoped store used by the
+    /// fixed hermetic session. Configuration must be resolved and validated first
+    /// so the derived storage namespace matches the real `SessionScope` graph.
+    @MainActor
+    static func seedHermeticAccountPreferencesIfNeeded(
+        config: AppConfig,
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        defaults: UserDefaults? = UserDefaults(suiteName: AppGroup.identifier)
+    ) {
+        guard environment[invalidConfigurationKey] != "1",
+              SessionManager.isHermeticUITestBypass(environment: environment),
+              case let .valid(validatedConfig) = config.validate() else {
+            return
         }
+
+        let context = SessionManager.hermeticUITestAccountContext(
+            validatedConfig: validatedConfig
+        )
+        let preferences = AppPreferences(
+            defaults: defaults,
+            keyPrefix: "account.\(context.storageNamespace)."
+        )
+        preferences.onboardingCompleted = true
     }
 
     /// Returns a safe synthetic configuration only for the explicit hermetic

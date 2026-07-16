@@ -11,10 +11,10 @@ import Networking
 public protocol DeviceRegistrationRepository: Sendable {
     /// Registers an APNs device token with the backend.
     /// Safe to call repeatedly — the server upserts by (userId, token).
-    func register(apnsToken: String) async
+    func register(apnsToken: String) async throws
     /// Removes an APNs device token from the backend.
     /// Safe to call even if the token was never registered.
-    func unregister(apnsToken: String) async
+    func unregister(apnsToken: String) async throws
 }
 
 // MARK: - Live implementation
@@ -29,7 +29,7 @@ public struct LiveDeviceRegistrationRepository: DeviceRegistrationRepository {
         self.apiClient = apiClient
     }
 
-    public func register(apnsToken: String) async {
+    public func register(apnsToken: String) async throws {
         do {
             let endpoint = try Endpoints.registerDevice(
                 apnsToken: apnsToken,
@@ -40,17 +40,19 @@ public struct LiveDeviceRegistrationRepository: DeviceRegistrationRepository {
             let _: DeviceRegistrationResponse = try await apiClient.send(endpoint)
             log.info("APNs token registered with backend")
         } catch {
-            log.error("APNs token registration failed: \(error.localizedDescription)")
+            log.error("APNs token registration failed")
+            throw error
         }
     }
 
-    public func unregister(apnsToken: String) async {
+    public func unregister(apnsToken: String) async throws {
         do {
             let endpoint = try Endpoints.unregisterDevice(apnsToken: apnsToken)
             let _: DeviceRegistrationResponse = try await apiClient.send(endpoint)
             log.info("APNs token unregistered from backend")
         } catch {
-            log.error("APNs token unregistration failed: \(error.localizedDescription)")
+            log.error("APNs token unregistration failed")
+            throw error
         }
     }
 }
@@ -61,14 +63,18 @@ public struct LiveDeviceRegistrationRepository: DeviceRegistrationRepository {
 public final class FakeDeviceRegistrationRepository: DeviceRegistrationRepository, @unchecked Sendable {
     public private(set) var registeredTokens: [String] = []
     public private(set) var unregisteredTokens: [String] = []
+    public var shouldFailRegistration = false
+    public var shouldFailUnregistration = false
 
     public init() {}
 
-    public func register(apnsToken: String) async {
+    public func register(apnsToken: String) async throws {
+        if shouldFailRegistration { throw AppError.offline }
         registeredTokens.append(apnsToken)
     }
 
-    public func unregister(apnsToken: String) async {
+    public func unregister(apnsToken: String) async throws {
+        if shouldFailUnregistration { throw AppError.offline }
         unregisteredTokens.append(apnsToken)
     }
 }

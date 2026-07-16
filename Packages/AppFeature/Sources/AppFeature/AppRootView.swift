@@ -72,7 +72,7 @@ public struct AppRootView: View {
                     break
                 }
             }
-            .onChange(of: model.audioPlayerModel.isPlaying) { _, isPlaying in
+            .onChange(of: model.activeAudioPlayerModel?.isPlaying ?? false) { _, isPlaying in
                 model.publishAudioPlayingState(isPlaying)
             }
             .onChange(of: intentStore.pendingDeepLink) { _, link in
@@ -83,32 +83,25 @@ public struct AppRootView: View {
             .onChange(of: intentStore.pendingAudioPlay) { _, request in
                 guard let request else { return }
                 intentStore.pendingAudioPlay = nil
+                guard let audioPlayerModel = model.activeAudioPlayerModel else { return }
                 Task {
-                    await model.audioPlayerModel.play(
+                    await audioPlayerModel.play(
                         bookId: request.bookId,
                         chapterNumber: request.chapterNumber
                     )
                 }
             }
-            .onChange(of: model.session.authState) { _, newState in
-                switch newState {
-                case .signedIn:
-                    model.hydrateDisplayName()
-                    model.startAPNS()
-                    model.startSyncEngine()
-                    model.showAuthGate = false
-                    model.startSpotlightIndexing()
-                    // Replay any action the guest was attempting before signing in.
-                    if !model.pendingAuthIntent.isNone {
-                        Task { await model.replayPendingIntent { readingFlow = $0 } }
-                    } else {
-                        model.isGuestMode = false
-                    }
-                case .signedOut:
-                    model.displayName = ""
-                default:
-                    break
+            .onChange(of: model.sessionScopePhase) { _, phase in
+                guard phase == .active, model.hasActiveMatchingSessionScope else {
+                    readingFlow = nil
+                    return
                 }
+                guard !model.pendingAuthIntent.isNone else { return }
+                Task { await model.replayPendingIntent { readingFlow = $0 } }
+            }
+            .onChange(of: model.activeScopeInstanceID) { oldScopeID, newScopeID in
+                guard oldScopeID != newScopeID else { return }
+                readingFlow = nil
             }
             // Core Spotlight — activity from a Spotlight search result.
             .onContinueUserActivity(CSSearchableItemActionType) { activity in
@@ -141,6 +134,10 @@ public struct AppRootView: View {
             .onChange(of: model.pendingHandoffFlow) { _, flow in
                 guard let flow else { return }
                 model.pendingHandoffFlow = nil
+                guard model.hasActiveMatchingSessionScope else {
+                    readingFlow = nil
+                    return
+                }
                 readingFlow = flow
             }
             .onChange(of: model.syncStatus?.pendingCount) { oldCount, newCount in
@@ -151,6 +148,23 @@ public struct AppRootView: View {
                     try? await Task.sleep(for: .seconds(3))
                     showQueuedToast = false
                 }
+            }
+            .alert(
+                SignOutFailureContent.heading,
+                isPresented: Binding(
+                    get: { model.showsSignOutFailure },
+                    set: { if !$0 { model.dismissSignOutFailure() } }
+                )
+            ) {
+                Button(SignOutFailureContent.retryAction) {
+                    model.dismissSignOutFailure()
+                    Task { await model.signOut() }
+                }
+                Button(SignOutFailureContent.cancelAction, role: .cancel) {
+                    model.dismissSignOutFailure()
+                }
+            } message: {
+                Text(SignOutFailureContent.message)
             }
     }
 
@@ -165,46 +179,72 @@ public struct AppRootView: View {
     private var authGatedContent: some View {
         switch model.session.authState {
         case .unknown:
-            ProgressView()
-                .accessibilityLabel("Loading")
+            if model.isCoordinatingSignOut {
+                SessionTransitionProgressView(kind: .signingOut)
+            } else {
+                ProgressView()
+                    .accessibilityLabel("Loading")
+            }
 
         case .signedOut:
-            // Guest mode: show the full tab shell with public content available.
-            // The auth gate sheet and affordance pill are layered on top.
-            if model.isGuestMode {
-                guestTabView
+            if model.canPresentSignedOutEntry {
+                // Guest mode: show the full tab shell with public content available.
+                // The auth gate sheet and affordance pill are layered on top.
+                if model.isGuestMode {
+                    guestTabView
+                } else {
+                    authFlowContent
+                }
             } else {
-                authFlowContent
+                SessionTransitionProgressView(kind: .signingOut)
             }
 
         case .signedIn, .reauthRequired, .reconnecting:
-            mainTabView
-                .sheet(isPresented: .constant(model.session.authState == .reauthRequired)) {
-                    ReauthView(sessionManager: model.session)
-                        .interactiveDismissDisabled(true)
+            switch model.sessionScopePhase {
+            case .active:
+                if model.hasActiveMatchingSessionScope {
+                    mainTabView
+                        .sheet(isPresented: .constant(model.session.authState == .reauthRequired)) {
+                            ReauthView(sessionManager: model.session)
+                                .interactiveDismissDisabled(true)
+                        }
+                        .overlay(alignment: .top) {
+                            if model.session.authState == .reconnecting {
+                                ReconnectingBanner()
+                                    .animation(.spring, value: model.session.authState)
+                            }
+                        }
+                        #if os(iOS)
+                        .fullScreenCover(
+                            isPresented: Binding(
+                                get: { !model.preferences.onboardingCompleted },
+                                set: { _ in }
+                            )
+                        ) {
+                            OnboardingFlowView(
+                                preferences: model.preferences,
+                                repository: model.onboardingRepository,
+                                goalStore: model.dailyGoalStore,
+                                workPermit: model.workPermit,
+                                analytics: model.analytics
+                            )
+                        }
+                        #endif
+                } else {
+                    SessionTransitionProgressView(kind: .switchingAccounts)
                 }
-                .overlay(alignment: .top) {
-                    if model.session.authState == .reconnecting {
-                        ReconnectingBanner()
-                            .animation(.spring, value: model.session.authState)
-                    }
-                }
-                // First-run onboarding — dismissed automatically when preferences.onboardingCompleted
-                // becomes true (set by OnboardingModel after completing or skipping the flow).
-                #if os(iOS)
-                .fullScreenCover(
-                    isPresented: Binding(
-                        get: { !model.preferences.onboardingCompleted },
-                        set: { _ in }
-                    )
-                ) {
-                    OnboardingFlowView(
-                        preferences: model.preferences,
-                        repository: model.onboardingRepository,
-                        analytics: model.analytics
-                    )
-                }
-                #endif
+            case .failure:
+                SessionScopeRecoveryView(
+                    onRetry: { Task { await model.reconcileCurrentSession() } },
+                    onSignOut: { Task { await model.signOut() } }
+                )
+            case .quiescing:
+                SessionTransitionProgressView(
+                    kind: model.isCoordinatingSignOut ? .signingOut : .switchingAccounts
+                )
+            case .none, .preparing:
+                SessionTransitionProgressView(kind: .preparing)
+            }
         }
     }
 
@@ -306,13 +346,25 @@ public struct AppRootView: View {
                 .environment(model.audioPlayerModel)
         }
         #if os(iOS)
-        .fullScreenCover(item: $readingFlow) { flow in
+        .fullScreenCover(
+            item: Binding(
+                get: {
+                    SessionPrivatePresentationGate.item(
+                        readingFlow,
+                        hasActiveMatchingScope: model.hasActiveMatchingSessionScope
+                    )
+                },
+                set: { readingFlow = $0 }
+            )
+        ) { flow in
             ReadingFlowView(
                 flow: flow,
                 readerRepository: model.readerRepository,
                 quizRepository: model.quizRepository,
                 annotationRepository: model.annotationRepository,
                 preferences: model.preferences,
+                store: model.keyValueStore,
+                workPermit: model.workPermit,
                 analytics: model.analytics,
                 onDismiss: { readingFlow = nil },
                 onQuizPassed: { requestReviewAfterQuizPass(model, requestReview) }
@@ -406,7 +458,12 @@ public struct AppRootView: View {
                 repository: model.libraryRepository,
                 bookDetailRepository: model.bookDetailRepository,
                 aiRepository: model.aiRepository,
+                preferences: model.preferences,
+                store: model.keyValueStore,
+                downloadManager: model.activeDownloadManager,
+                accountID: model.activeAccountID,
                 analytics: model.analytics,
+                workPermit: model.workPermit,
                 onOpenReader: { bookId, chapterNumber, variantFamily in
                     readingFlow = ReadingFlow(
                         bookId: bookId,
@@ -427,7 +484,12 @@ public struct AppRootView: View {
                 repository: model.libraryRepository,
                 bookDetailRepository: model.bookDetailRepository,
                 aiRepository: model.aiRepository,
+                preferences: model.preferences,
+                store: model.keyValueStore,
+                downloadManager: model.activeDownloadManager,
+                accountID: model.activeAccountID,
                 analytics: model.analytics,
+                workPermit: model.workPermit,
                 onOpenReader: { bookId, chapterNumber, variantFamily in
                     readingFlow = ReadingFlow(
                         bookId: bookId,
@@ -447,7 +509,11 @@ public struct AppRootView: View {
                 pendingReferralCode: $model.pendingReferralCode
             )
         case .reviews:
-            ReviewsView(model: ReviewsModel(repository: model.reviewsRepository, analytics: model.analytics))
+            ReviewsView(model: ReviewsModel(
+                repository: model.reviewsRepository,
+                workPermit: model.workPermit,
+                analytics: model.analytics
+            ))
         case .settings:
             SettingsView(
                 isPro: model.entitlementService.isPro,
@@ -476,12 +542,8 @@ public struct AppRootView: View {
                     preferences: model.preferences,
                     onSignOut: { await model.signOut() },
                     downloadInfoProvider: model.downloadInfoProvider,
-                    userId: {
-                        if case .signedIn(let user) = model.session.authState {
-                            return user.userId
-                        }
-                        return ""
-                    }()
+                    accountContext: model.activeAccountContext,
+                    workPermit: model.workPermit
                 ),
                 syncStatus: model.syncStatus,
                 userEmail: model.displayName.isEmpty ? nil : {
@@ -518,4 +580,13 @@ public struct AppRootView: View {
 
 #Preview("Reconnecting banner") {
     ReconnectingBanner()
+}
+
+private struct SessionTransitionProgressView: View {
+    let kind: SessionTransitionKind
+
+    var body: some View {
+        ProgressView(kind.visibleLabel)
+            .accessibilityLabel(kind.accessibilityLabel)
+    }
 }

@@ -96,8 +96,9 @@ extension AudioPlaybackControl {
         var previewValue: Bool { false }
 
         func currentValue() async throws -> Bool {
-            let defaults = UserDefaults(suiteName: "group.com.chapterflow")
-            return defaults?.bool(forKey: "controlIntent.isAudioPlaying") ?? false
+            // The legacy App Group playback bit is ownerless. Keep the control
+            // neutral until WP-ID-01B can bind external-process state.
+            false
         }
     }
 }

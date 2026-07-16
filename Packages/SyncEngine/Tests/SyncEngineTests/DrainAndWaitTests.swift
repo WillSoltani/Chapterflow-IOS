@@ -32,6 +32,101 @@ private final class DrainMockClient: APIClientProtocol, @unchecked Sendable {
     }
 }
 
+private actor StopResumeDrainClient: APIClientProtocol {
+    struct Metrics: Sendable {
+        let attemptCount: Int
+        let successfulDispatchCount: Int
+        let maximumConcurrentRequestCount: Int
+    }
+
+    private var attemptCount = 0
+    private var successfulDispatchCount = 0
+    private var activeRequestCount = 0
+    private var maximumConcurrentRequestCount = 0
+    private var firstRequestStarted = false
+    private var firstCancellationObserved = false
+    private var firstRequestGate: CheckedContinuation<Void, Never>?
+    private var firstRequestStartWaiters: [CheckedContinuation<Void, Never>] = []
+    private var firstCancellationWaiters: [CheckedContinuation<Void, Never>] = []
+
+    func send<T: Decodable & Sendable>(_ endpoint: Endpoint) async throws -> T {
+        attemptCount += 1
+        let attempt = attemptCount
+        activeRequestCount += 1
+        maximumConcurrentRequestCount = max(maximumConcurrentRequestCount, activeRequestCount)
+        defer { activeRequestCount -= 1 }
+
+        if attempt == 1 {
+            await withTaskCancellationHandler {
+                await withCheckedContinuation { continuation in
+                    firstRequestGate = continuation
+                    firstRequestStarted = true
+                    let waiters = firstRequestStartWaiters
+                    firstRequestStartWaiters.removeAll()
+                    for waiter in waiters {
+                        waiter.resume()
+                    }
+                }
+            } onCancel: {
+                Task { await self.noteFirstCancellation() }
+            }
+            try Task.checkCancellation()
+        }
+
+        successfulDispatchCount += 1
+        return try JSONDecoder().decode(T.self, from: Data("{}".utf8))
+    }
+
+    func waitForFirstRequestToStart() async {
+        guard !firstRequestStarted else { return }
+        await withCheckedContinuation { continuation in
+            firstRequestStartWaiters.append(continuation)
+        }
+    }
+
+    func waitForFirstCancellation() async {
+        guard !firstCancellationObserved else { return }
+        await withCheckedContinuation { continuation in
+            firstCancellationWaiters.append(continuation)
+        }
+    }
+
+    func releaseFirstRequest() {
+        firstRequestGate?.resume()
+        firstRequestGate = nil
+    }
+
+    func metrics() -> Metrics {
+        Metrics(
+            attemptCount: attemptCount,
+            successfulDispatchCount: successfulDispatchCount,
+            maximumConcurrentRequestCount: maximumConcurrentRequestCount
+        )
+    }
+
+    private func noteFirstCancellation() {
+        guard !firstCancellationObserved else { return }
+        firstCancellationObserved = true
+        let waiters = firstCancellationWaiters
+        firstCancellationWaiters.removeAll()
+        for waiter in waiters {
+            waiter.resume()
+        }
+    }
+}
+
+private actor CompletionProbe {
+    private var completed = false
+
+    func markCompleted() {
+        completed = true
+    }
+
+    func isCompleted() -> Bool {
+        completed
+    }
+}
+
 // MARK: - drainAndWait tests
 
 @Suite("SyncEngine drainAndWait", .serialized)
@@ -86,5 +181,59 @@ struct DrainAndWaitTests {
             predicate: #Predicate { $0.userId == "u-cancel" }
         ))
         #expect(remaining == 0)
+    }
+
+    @Test("stop joins cancellation before the same engine resumes the mutation")
+    @MainActor
+    func stopJoinsBeforeResumeWithoutDuplicateDispatch() async throws {
+        let ctx = try freshDrainContext()
+        ctx.insert(PendingMutation(
+            mutationId: "m-stop-resume",
+            userId: "u-stop-resume",
+            kindRaw: MutationKind.progressCursor.rawValue,
+            payloadJSON: "{\"bookId\":\"b-1\",\"chapterId\":\"ch-1\"}"
+        ))
+        try ctx.save()
+
+        let client = StopResumeDrainClient()
+        let engine = SyncEngine(apiClient: client, container: drainContainer)
+        await engine.triggerDrain(userId: "u-stop-resume")
+        await client.waitForFirstRequestToStart()
+
+        let completion = CompletionProbe()
+        let stopTask = Task {
+            await engine.stop()
+            await completion.markCompleted()
+        }
+        await client.waitForFirstCancellation()
+
+        // Cancellation has reached the request, but teardown must still wait
+        // for that operation to unwind before a scope can resume.
+        #expect(await completion.isCompleted() == false)
+
+        await client.releaseFirstRequest()
+        await stopTask.value
+        #expect(await completion.isCompleted())
+
+        let retained = try ctx.fetch(FetchDescriptor<PendingMutation>(
+            predicate: #Predicate { $0.mutationId == "m-stop-resume" }
+        ))
+        let retainedMutation = try #require(retained.first)
+        #expect(retainedMutation.statusRaw != MutationStatus.failed.rawValue)
+        #expect(retainedMutation.attemptCount == 0)
+
+        await engine.start(userId: "u-stop-resume")
+        await engine.waitForCurrentDrain()
+
+        let metrics = await client.metrics()
+        #expect(metrics.attemptCount == 2)
+        #expect(metrics.successfulDispatchCount == 1)
+        #expect(metrics.maximumConcurrentRequestCount == 1)
+        let remaining = try ctx.fetchCount(FetchDescriptor<PendingMutation>(
+            predicate: #Predicate { $0.userId == "u-stop-resume" }
+        ))
+        #expect(remaining == 0)
+
+        await engine.stop()
     }
 }
