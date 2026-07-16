@@ -2,6 +2,12 @@ import SwiftUI
 import Testing
 @testable import DesignSystem
 
+#if canImport(AppKit)
+import CoreGraphics
+import ImageIO
+import UniformTypeIdentifiers
+#endif
+
 @MainActor
 @Suite("Editorial Foundation Snapshots")
 struct EditorialFoundationSnapshotTests {
@@ -44,6 +50,47 @@ struct EditorialFoundationSnapshotTests {
 
         assertRenders(view, label: "editorial foundation — compact RTL", size: size)
     }
+
+#if canImport(AppKit)
+    @Test("snapshot comparison normalizes embedded color spaces")
+    func canonicalColorSpaceComparison() throws {
+        let sRGB = try #require(CGColorSpace(name: CGColorSpace.sRGB))
+        let displayP3 = try #require(CGColorSpace(name: CGColorSpace.displayP3))
+        let sRGBColor = try #require(CGColor(
+            colorSpace: sRGB,
+            components: [0.31, 0.52, 0.73, 1]
+        ))
+        let displayP3Color = try #require(sRGBColor.converted(
+            to: displayP3,
+            intent: .relativeColorimetric,
+            options: nil
+        ))
+
+        let sRGBPNG = try flatPNG(color: sRGBColor, colorSpace: sRGB)
+        let displayP3PNG = try flatPNG(color: displayP3Color, colorSpace: displayP3)
+
+        #expect(sRGBPNG != displayP3PNG)
+        #expect(pixelMismatch(new: displayP3PNG, ref: sRGBPNG) == 0)
+    }
+
+    @Test("snapshot comparison rejects a materially different image")
+    func materiallyDifferentComparison() throws {
+        let sRGB = try #require(CGColorSpace(name: CGColorSpace.sRGB))
+        let referenceColor = try #require(CGColor(
+            colorSpace: sRGB,
+            components: [0.08, 0.12, 0.18, 1]
+        ))
+        let changedColor = try #require(CGColor(
+            colorSpace: sRGB,
+            components: [0.82, 0.68, 0.22, 1]
+        ))
+
+        let referencePNG = try flatPNG(color: referenceColor, colorSpace: sRGB)
+        let changedPNG = try flatPNG(color: changedColor, colorSpace: sRGB)
+
+        #expect(pixelMismatch(new: changedPNG, ref: referencePNG) == 1)
+    }
+#endif
 
     private func foundationPanel(
         surfaceStyle: some ShapeStyle
@@ -148,4 +195,38 @@ struct EditorialFoundationSnapshotTests {
         #expect(renderer.uiImage != nil, label)
 #endif
     }
+
+#if canImport(AppKit)
+    private func flatPNG(color: CGColor, colorSpace: CGColorSpace) throws -> Data {
+        let size = 8
+        let bitmapInfo = CGBitmapInfo.byteOrder32Big.rawValue
+            | CGImageAlphaInfo.premultipliedLast.rawValue
+        let context = try #require(CGContext(
+            data: nil,
+            width: size,
+            height: size,
+            bitsPerComponent: 8,
+            bytesPerRow: size * 4,
+            space: colorSpace,
+            bitmapInfo: bitmapInfo
+        ))
+        context.setBlendMode(.copy)
+        context.setRenderingIntent(.relativeColorimetric)
+        context.interpolationQuality = .none
+        context.setFillColor(color)
+        context.fill(CGRect(x: 0, y: 0, width: size, height: size))
+
+        let image = try #require(context.makeImage())
+        let data = NSMutableData()
+        let destination = try #require(CGImageDestinationCreateWithData(
+            data,
+            UTType.png.identifier as CFString,
+            1,
+            nil
+        ))
+        CGImageDestinationAddImage(destination, image, nil)
+        try #require(CGImageDestinationFinalize(destination))
+        return data as Data
+    }
+#endif
 }
