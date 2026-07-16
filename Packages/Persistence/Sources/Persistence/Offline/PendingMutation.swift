@@ -37,6 +37,8 @@ public enum MutationStatus: String, Sendable, CaseIterable {
     case inflight
     /// Upload failed; will be retried after backoff.
     case failed
+    /// The stored mutation cannot be safely dispatched without operator recovery.
+    case quarantined
 }
 
 // MARK: - PendingMutation

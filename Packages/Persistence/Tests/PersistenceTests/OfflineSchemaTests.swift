@@ -467,6 +467,28 @@ struct OfflineSchemaTests {
             let fetched = try context.fetch(FetchDescriptor<PendingMutation>())
             #expect(fetched.first?.status == .inflight)
         }
+
+        @MainActor
+        @Test("quarantined status round-trips through the existing raw field")
+        func quarantinedStatus() throws {
+            let context = try OfflineSchemaTests().freshContext()
+            let originalPayload = "{\"opaque\":\"unchanged\"}"
+            context.insert(PendingMutation(
+                mutationId: "quarantined-row",
+                userId: "u",
+                kindRaw: "future-kind",
+                payloadJSON: originalPayload,
+                lastError: "sync.quarantine.unknown_kind",
+                statusRaw: MutationStatus.quarantined.rawValue
+            ))
+            try context.save()
+
+            let fetched = try context.fetch(FetchDescriptor<PendingMutation>())
+            let mutation = try #require(fetched.first)
+            #expect(mutation.status == .quarantined)
+            #expect(mutation.statusRaw == MutationStatus.quarantined.rawValue)
+            #expect(mutation.payloadJSON == originalPayload)
+        }
     }
 
     // MARK: - UserDataWipe

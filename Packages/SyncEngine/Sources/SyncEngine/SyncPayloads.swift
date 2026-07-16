@@ -21,9 +21,9 @@ public struct ProgressCursorPayload: Codable, Sendable {
 /// Payload for ``MutationKind/quizSubmit``.
 ///
 /// The `sessionId` is the server-issued ID from `QuizClientSession.sessionId`.
-/// It is the idempotency key: the server rejects duplicate submits with the
-/// same sessionId and returns the original result (or an "already submitted"
-/// error that the SyncEngine treats as success).
+/// It identifies a quiz attempt, but the current backend contract does not
+/// establish that a repeated value is an idempotency proof. Local duplicates
+/// must remain durable until server application is authoritative.
 ///
 /// **No answer keys are stored here.** Grading is always server-side.
 public struct QuizSubmitPayload: Codable, Sendable {

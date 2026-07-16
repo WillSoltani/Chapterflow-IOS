@@ -62,8 +62,11 @@ actor SyncStore {
             try modelContext.save()
         }
 
+        let quarantinedStatus = MutationStatus.quarantined.rawValue
         var descriptor = FetchDescriptor<PendingMutation>(
-            predicate: #Predicate { $0.userId == userId },
+            predicate: #Predicate {
+                $0.userId == userId && $0.statusRaw != quarantinedStatus
+            },
             sortBy: [SortDescriptor(\.createdAt)]
         )
         descriptor.fetchLimit = 200
@@ -71,7 +74,7 @@ actor SyncStore {
         return results.map { SyncMutationSnapshot(from: $0) }
     }
 
-    /// Counts all pending mutations for a user (includes failed entries).
+    /// Counts all retained mutations for a user (including failed and quarantined entries).
     func countPendingMutations(userId: String) throws -> Int {
         let descriptor = FetchDescriptor<PendingMutation>(
             predicate: #Predicate { $0.userId == userId }
@@ -88,20 +91,35 @@ actor SyncStore {
         try modelContext.save()
     }
 
-    /// Records a failure on the mutation (increments attempt count, stores last error).
-    func markFailed(mutationId: String, errorDescription: String) throws {
+    /// Records a failure using a closed, privacy-safe code.
+    func markFailed(mutationId: String, failureCode: MutationFailureCode) throws {
         guard let mutation = try fetchMutation(mutationId: mutationId) else { return }
         mutation.statusRaw = MutationStatus.failed.rawValue
-        mutation.lastError = errorDescription
+        mutation.lastError = failureCode.rawValue
         mutation.attemptCount += 1
         try modelContext.save()
     }
 
-    /// Removes a successfully synced (or idempotently accepted) mutation from the outbox.
-    func deleteMutation(mutationId: String) throws {
+    /// Retains an unsafe-to-dispatch mutation with a closed quarantine reason.
+    func markQuarantined(
+        mutationId: String,
+        reason: MutationQuarantineReason
+    ) throws {
         guard let mutation = try fetchMutation(mutationId: mutationId) else { return }
+        mutation.statusRaw = MutationStatus.quarantined.rawValue
+        mutation.lastError = reason.safeCode
+        try modelContext.save()
+    }
+
+    /// Removes a successfully synced (or idempotently accepted) mutation from the outbox.
+    @discardableResult
+    func deleteMutation(mutationId: String) throws -> Bool {
+        try Task.checkCancellation()
+        guard let mutation = try fetchMutation(mutationId: mutationId) else { return false }
+        try Task.checkCancellation()
         modelContext.delete(mutation)
         try modelContext.save()
+        return true
     }
 
     // MARK: - Post-sync state updates
@@ -115,7 +133,7 @@ actor SyncStore {
         let rowId = CachedQuizState.makeRowId(
             userId: userId, bookId: bookId, chapterNumber: chapterNumber
         )
-        var descriptor = FetchDescriptor<CachedQuizState>(
+        let descriptor = FetchDescriptor<CachedQuizState>(
             predicate: #Predicate { $0.rowId == rowId }
         )
         guard let state = try modelContext.fetch(descriptor).first else { return }

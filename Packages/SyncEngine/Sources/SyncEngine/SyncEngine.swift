@@ -6,6 +6,46 @@ import Networking
 import Persistence
 import os
 
+enum MutationFailureCode: String, Sendable, Equatable {
+    case authentication = "sync.failure.authentication"
+    case verifierUnavailable = "sync.failure.verifier_unavailable"
+    case rateLimited = "sync.failure.rate_limited"
+    case forbidden = "sync.failure.forbidden"
+    case offline = "sync.failure.offline"
+    case invalidInput = "sync.failure.invalid_input"
+    case notFound = "sync.failure.not_found"
+    case server = "sync.failure.server"
+    case responseDecoding = "sync.failure.response_decoding"
+    case unknown = "sync.failure.unknown"
+
+    init(error: Error) {
+        guard let appError = error as? AppError else {
+            self = .unknown
+            return
+        }
+        switch appError {
+        case .unauthenticated, .reauthRequired:
+            self = .authentication
+        case .verifierUnavailable:
+            self = .verifierUnavailable
+        case .rateLimited:
+            self = .rateLimited
+        case .forbidden:
+            self = .forbidden
+        case .offline:
+            self = .offline
+        case .invalidInput:
+            self = .invalidInput
+        case .notFound:
+            self = .notFound
+        case .server:
+            self = .server
+        case .decoding:
+            self = .responseDecoding
+        }
+    }
+}
+
 // MARK: - SyncEngine
 
 /// Drains the offline write outbox when connectivity is restored.
@@ -17,8 +57,7 @@ import os
 ///   completions; it pushes cursor, notes, highlights, grades, and sessions and
 ///   PULLS gating truth from the server.
 /// - Idempotent quiz replay: a quiz taken offline stays "pending grading" until
-///   its submit returns. On "server already advanced", accept server truth and
-///   delete the mutation without re-submitting.
+///   its submit returns an authoritative applied outcome.
 /// - Expose observable ``SyncStatus`` for a subtle UI indicator.
 ///
 /// Start the engine after authentication by calling ``start(userId:)``.
@@ -39,9 +78,9 @@ public actor SyncEngine {
 
     // MARK: - State
 
-    /// In-memory guard preventing double-submission of the same quiz session
-    /// within a single drain pass.
-    var activeQuizSessionIds: Set<String> = []
+    /// In-memory ownership of quiz session IDs within a single drain pass.
+    /// The same row may retry; a distinct row with the same key is ambiguous.
+    var activeQuizSessionOwners: [String: String] = [:]
 
     /// The current drain task, if any.
     private var drainTask: Task<Void, Never>?
@@ -114,7 +153,7 @@ public actor SyncEngine {
             finishDrain(id: drainID)
         }
         if self.lifecycleID == lifecycleID {
-            activeQuizSessionIds.removeAll()
+            activeQuizSessionOwners.removeAll()
         }
     }
 
@@ -181,8 +220,8 @@ public actor SyncEngine {
         guard drainTaskID == id else { return }
         drainTask = nil
         drainTaskID = nil
-        // Reset the quiz idempotency set so the next drain pass starts fresh.
-        activeQuizSessionIds.removeAll()
+        // Reset local duplicate ownership so the next drain pass starts fresh.
+        activeQuizSessionOwners.removeAll()
     }
 
     /// Waits for the currently tracked drain without changing its lifecycle.
@@ -243,21 +282,28 @@ public actor SyncEngine {
         } catch is CancellationError {
             return
         } catch {
-            logger.error("SyncEngine: failed to fetch pending mutations: \(error)")
-            await updateStatus(phase: .error, pendingCount: 0, error: error.localizedDescription)
+            let failureCode = MutationFailureCode(error: error)
+            logger.error(
+                "SyncEngine: failed to fetch pending mutations: \(failureCode.rawValue, privacy: .public)"
+            )
+            await updateStatus(phase: .error, pendingCount: 0, error: failureCode.rawValue)
             return
         }
 
+        let retainedCount = (try? await store.countPendingMutations(userId: userId))
+            ?? snapshots.count
+        guard !Task.isCancelled else { return }
         guard !snapshots.isEmpty else {
-            await updateStatus(phase: .idle, pendingCount: 0)
+            let phase: SyncPhase = retainedCount == 0 ? .idle : .error
+            await updateStatus(phase: phase, pendingCount: retainedCount)
             return
         }
 
         let total = snapshots.count
-        await updateStatus(phase: .syncing, pendingCount: total)
+        await updateStatus(phase: .syncing, pendingCount: retainedCount)
         logger.info("SyncEngine: draining \(total) mutation(s)")
 
-        var remaining = total
+        var remaining = retainedCount
         for snapshot in snapshots {
             do {
                 try Task.checkCancellation()
@@ -266,12 +312,12 @@ public actor SyncEngine {
             } catch is CancellationError {
                 return
             } catch {
-                logger.warning("SyncEngine: could not mark inflight \(snapshot.mutationId): \(error)")
+                logger.warning("SyncEngine: could not mark mutation inflight")
             }
 
             do {
                 try Task.checkCancellation()
-                try await withAsyncRetry(
+                let outcome = try await withAsyncRetry(
                     maxAttempts: 3,
                     initialDelay: .milliseconds(500),
                     multiplier: 2.0,
@@ -280,18 +326,25 @@ public actor SyncEngine {
                     try await self.dispatchMutation(snapshot)
                 }
                 try Task.checkCancellation()
-                try await store.deleteMutation(mutationId: snapshot.mutationId)
+                let didDelete = try await resolveDispatchOutcome(outcome, for: snapshot)
                 try Task.checkCancellation()
-                remaining -= 1
-                await updateStatus(phase: .syncing, pendingCount: remaining)
-                logger.info("SyncEngine: synced \(snapshot.kindRaw) (\(snapshot.mutationId))")
+                if didDelete {
+                    remaining -= 1
+                    await updateStatus(phase: .syncing, pendingCount: remaining)
+                    logger.info("SyncEngine: applied mutation")
+                }
             } catch is CancellationError {
                 return
             } catch let error as AppError {
                 if error.isAuthenticationFailure {
                     // Stop the drain — user needs to re-authenticate before we retry.
                     logger.warning("SyncEngine: auth failure during drain, stopping")
-                    await updateStatus(phase: .error, pendingCount: remaining, error: error.localizedDescription)
+                    await recordFailure(snapshot: snapshot, error: error)
+                    await updateStatus(
+                        phase: .error,
+                        pendingCount: remaining,
+                        error: MutationFailureCode.authentication.rawValue
+                    )
                     break
                 }
                 await recordFailure(snapshot: snapshot, error: error)
@@ -300,8 +353,12 @@ public actor SyncEngine {
             }
         }
 
+        await publishFinalDrainStatus(userId: userId, fallbackCount: remaining)
+    }
+
+    private func publishFinalDrainStatus(userId: String, fallbackCount: Int) async {
         guard !Task.isCancelled else { return }
-        let finalCount = (try? await store.countPendingMutations(userId: userId)) ?? remaining
+        let finalCount = (try? await store.countPendingMutations(userId: userId)) ?? fallbackCount
         guard !Task.isCancelled else { return }
         let finalPhase: SyncPhase = finalCount == 0 ? .idle : .error
         await updateStatus(phase: finalPhase, pendingCount: finalCount)
@@ -317,19 +374,43 @@ public actor SyncEngine {
 
     // MARK: - Failure handling
 
+    @discardableResult
+    func resolveDispatchOutcome(
+        _ outcome: MutationDispatchOutcome,
+        for snapshot: SyncMutationSnapshot
+    ) async throws -> Bool {
+        try Task.checkCancellation()
+        switch outcome {
+        case .applied, .alreadyApplied:
+            return try await store.deleteMutation(mutationId: snapshot.mutationId)
+        case .quarantined(let reason):
+            try await store.markQuarantined(
+                mutationId: snapshot.mutationId,
+                reason: reason
+            )
+            logger.warning(
+                "SyncEngine: quarantined mutation: \(reason.safeCode, privacy: .public)"
+            )
+            return false
+        }
+    }
+
     private func recordFailure(snapshot: SyncMutationSnapshot, error: Error) async {
         guard !(error is CancellationError), !Task.isCancelled else { return }
-        logger.error("SyncEngine: failed to sync \(snapshot.kindRaw) (\(snapshot.mutationId)): \(error)")
+        let failureCode = MutationFailureCode(error: error)
+        logger.error(
+            "SyncEngine: mutation failed: \(failureCode.rawValue, privacy: .public)"
+        )
         do {
             try Task.checkCancellation()
             try await store.markFailed(
                 mutationId: snapshot.mutationId,
-                errorDescription: error.localizedDescription
+                failureCode: failureCode
             )
         } catch is CancellationError {
             return
         } catch {
-            logger.error("SyncEngine: could not record failure for \(snapshot.mutationId): \(error)")
+            logger.error("SyncEngine: could not record mutation failure")
         }
     }
 

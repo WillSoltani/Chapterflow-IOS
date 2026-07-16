@@ -285,12 +285,12 @@ struct SyncStoreTests {
         try ctx.save()
 
         let syncStore = SyncStore(modelContainer: sharedContainer)
-        try await syncStore.markFailed(mutationId: "m-fail", errorDescription: "timeout")
+        try await syncStore.markFailed(mutationId: "m-fail", failureCode: .offline)
 
         let fetched = try ctx.fetch(FetchDescriptor<PendingMutation>())
         let mutation = fetched.first
         #expect(mutation?.statusRaw == MutationStatus.failed.rawValue)
-        #expect(mutation?.lastError == "timeout")
+        #expect(mutation?.lastError == MutationFailureCode.offline.rawValue)
         #expect(mutation?.attemptCount == 1)
     }
 
@@ -403,9 +403,8 @@ struct SyncEngineConflictTests {
         }
     }
 
-    @Test("server-already-advanced error: dispatch returns without rethrowing (no double-submit)")
-    func serverAlreadyAdvanced() async throws {
-        // Test dispatch logic directly: no SwiftData needed for this behaviour check.
+    @Test("unverified duplicate error remains a failure instead of server proof")
+    func unverifiedDuplicateErrorIsNotAlreadyApplied() async throws {
         let quizPayload = QuizSubmitPayload(
             bookId: "b-1",
             chapterNumber: 2,
@@ -430,11 +429,9 @@ struct SyncEngineConflictTests {
         )
         let engine = SyncEngine(apiClient: mock, container: sharedContainer)
 
-        // dispatchMutation must NOT rethrow "quiz_already_submitted" — it is treated as success.
-        await #expect(throws: Never.self) {
+        await #expect(throws: AppError.self) {
             try await engine.dispatchMutation(snapshot)
         }
-        // API called exactly once (no retry loop on already-applied errors).
         #expect(mock.calls.count == 1)
     }
 

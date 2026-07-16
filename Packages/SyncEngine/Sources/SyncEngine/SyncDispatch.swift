@@ -3,64 +3,90 @@ import CoreKit
 import Networking
 import Models
 
+enum MutationDispatchOutcome: Sendable, Equatable {
+    case applied
+    /// Reserved for endpoint-specific server proof; no local duplicate may produce this outcome.
+    case alreadyApplied
+    case quarantined(MutationQuarantineReason)
+}
+
+enum MutationQuarantineReason: String, Sendable, Equatable {
+    case unknownKind = "unknown_kind"
+    case malformedPayload = "malformed_payload"
+    case missingRequiredField = "missing_required_field"
+    case ambiguousLocalDuplicate = "ambiguous_local_duplicate"
+    case unsupportedPayloadVersion = "unsupported_payload_version"
+
+    var safeCode: String { "sync.quarantine.\(rawValue)" }
+}
+
+private struct StoredPayloadDecodeFailure: Error, Sendable {}
+
 // MARK: - Dispatch extension
 
 extension SyncEngine {
 
     /// Translates a ``SyncMutationSnapshot`` into an API call.
     ///
-    /// Returns without throwing for unknown future `MutationKind` values —
-    /// forward-compatible skipping, consistent with RF2 tolerant-enum principle.
-    /// Throws `AppError` for network failures; the drain loop handles retry/failure.
-    func dispatchMutation(_ snapshot: SyncMutationSnapshot) async throws {
+    /// Unknown or unsafe local data returns an explicit quarantine outcome.
+    /// Network, authentication, and server failures continue to throw.
+    func dispatchMutation(_ snapshot: SyncMutationSnapshot) async throws -> MutationDispatchOutcome {
         guard let kind = snapshot.kind else {
-            // Unknown future kind: treat as a no-op so the outbox doesn't stall.
-            return
+            return .quarantined(.unknownKind)
         }
-        switch kind {
-        case .progressCursor:
-            try await dispatchProgressCursor(snapshot)
-        case .quizSubmit:
-            try await dispatchQuizSubmit(snapshot)
-        case .notebookWrite:
-            try await dispatchNotebookWrite(snapshot)
-        case .highlightWrite:
-            try await dispatchHighlightWrite(snapshot)
-        case .reviewGrade:
-            try await dispatchReviewGrade(snapshot)
-        case .commitment:
-            try await dispatchCommitment(snapshot)
-        case .savedToggle:
-            try await dispatchSavedToggle(snapshot)
-        case .readingSession:
-            try await dispatchReadingSession(snapshot)
+        do {
+            switch kind {
+            case .progressCursor:
+                return try await dispatchProgressCursor(snapshot)
+            case .quizSubmit:
+                return try await dispatchQuizSubmit(snapshot)
+            case .notebookWrite:
+                return try await dispatchNotebookWrite(snapshot)
+            case .highlightWrite:
+                return try await dispatchHighlightWrite(snapshot)
+            case .reviewGrade:
+                return try await dispatchReviewGrade(snapshot)
+            case .commitment:
+                return try await dispatchCommitment(snapshot)
+            case .savedToggle:
+                return try await dispatchSavedToggle(snapshot)
+            case .readingSession:
+                return try await dispatchReadingSession(snapshot)
+            }
+        } catch is StoredPayloadDecodeFailure {
+            return .quarantined(.malformedPayload)
         }
     }
 
     // MARK: - Per-kind dispatch
 
-    private func dispatchProgressCursor(_ snapshot: SyncMutationSnapshot) async throws {
-        let payload = try snapshot.decodePayload(as: ProgressCursorPayload.self)
+    private func dispatchProgressCursor(
+        _ snapshot: SyncMutationSnapshot
+    ) async throws -> MutationDispatchOutcome {
+        let payload = try decodeStoredPayload(snapshot, as: ProgressCursorPayload.self)
         let endpoint = try Endpoints.patchBookCursor(
             bookId: payload.bookId, chapterId: payload.chapterId
         )
         let _: BookStateResponseEnvelope = try await apiClient.send(endpoint)
+        return .applied
     }
 
-    /// Quiz submit with idempotency guard.
+    /// Quiz submit with a local ambiguity guard.
     ///
-    /// The `sessionId` is the server's idempotency key. A duplicate submit returns
-    /// an error code the SyncEngine recognises as "already applied" — it accepts
-    /// server truth and deletes the mutation without re-submitting.
-    private func dispatchQuizSubmit(_ snapshot: SyncMutationSnapshot) async throws {
-        let payload = try snapshot.decodePayload(as: QuizSubmitPayload.self)
+    /// The current backend contract exposes no verified already-applied response.
+    /// A repeated local session ID therefore cannot establish server application.
+    private func dispatchQuizSubmit(
+        _ snapshot: SyncMutationSnapshot
+    ) async throws -> MutationDispatchOutcome {
+        let payload = try decodeStoredPayload(snapshot, as: QuizSubmitPayload.self)
 
-        // Guard against double-submit within a single drain pass.
-        // Session IDs are added here and cleared when the tracked drain ends,
-        // so a duplicate mutation for the same sessionId is silently skipped.
+        // A retry of this exact row may proceed. A distinct row with the same
+        // session ID is only a local ambiguity and cannot prove server application.
         let key = payload.sessionId
-        guard !activeQuizSessionIds.contains(key) else { return }
-        activeQuizSessionIds.insert(key)
+        if let owner = activeQuizSessionOwners[key], owner != snapshot.mutationId {
+            return .quarantined(.ambiguousLocalDuplicate)
+        }
+        activeQuizSessionOwners[key] = snapshot.mutationId
 
         let endpoint = try Endpoints.submitQuiz(
             bookId: payload.bookId,
@@ -69,15 +95,7 @@ extension SyncEngine {
             answers: payload.answers
         )
 
-        do {
-            let _: QuizAttemptResult = try await apiClient.send(endpoint)
-        } catch let error as AppError {
-            if Self.isAlreadyApplied(error: error) {
-                // Server already processed this quiz session — accept server truth.
-                return
-            }
-            throw error
-        }
+        let _: QuizAttemptResult = try await apiClient.send(endpoint)
 
         // Clear the pendingGrading status from the offline cache.
         try? await store.clearQuizPendingGrading(
@@ -85,10 +103,13 @@ extension SyncEngine {
             chapterNumber: payload.chapterNumber,
             userId: snapshot.userId
         )
+        return .applied
     }
 
-    private func dispatchNotebookWrite(_ snapshot: SyncMutationSnapshot) async throws {
-        let payload = try snapshot.decodePayload(as: NotebookWritePayload.self)
+    private func dispatchNotebookWrite(
+        _ snapshot: SyncMutationSnapshot
+    ) async throws -> MutationDispatchOutcome {
+        let payload = try decodeStoredPayload(snapshot, as: NotebookWritePayload.self)
         if let entryId = payload.entryId {
             // Update existing entry.
             let body = NotebookUpdateRequest(content: payload.content, tags: nil)
@@ -107,10 +128,13 @@ extension SyncEngine {
             let endpoint = try Endpoints.postNotebookEntry(request)
             let _: NotebookCreateResponse = try await apiClient.send(endpoint)
         }
+        return .applied
     }
 
-    private func dispatchHighlightWrite(_ snapshot: SyncMutationSnapshot) async throws {
-        let payload = try snapshot.decodePayload(as: HighlightWritePayload.self)
+    private func dispatchHighlightWrite(
+        _ snapshot: SyncMutationSnapshot
+    ) async throws -> MutationDispatchOutcome {
+        let payload = try decodeStoredPayload(snapshot, as: HighlightWritePayload.self)
         if let entryId = payload.entryId {
             let body = NotebookUpdateRequest(content: nil, tags: nil)
             let endpoint = try Endpoints.patchNotebookEntry(entryId: entryId, body: body)
@@ -137,10 +161,13 @@ extension SyncEngine {
             let endpoint = try Endpoints.postNotebookEntry(request)
             let _: NotebookCreateResponse = try await apiClient.send(endpoint)
         }
+        return .applied
     }
 
-    private func dispatchReviewGrade(_ snapshot: SyncMutationSnapshot) async throws {
-        let payload = try snapshot.decodePayload(as: ReviewGradePayload.self)
+    private func dispatchReviewGrade(
+        _ snapshot: SyncMutationSnapshot
+    ) async throws -> MutationDispatchOutcome {
+        let payload = try decodeStoredPayload(snapshot, as: ReviewGradePayload.self)
         let endpoint = try Endpoints.gradeReviewCard(cardId: payload.cardId, rating: payload.rating)
         // Response is `{ card: FsrsCard }` — we discard it; repo pulls fresh cards later.
         struct GradeResponse: Decodable, Sendable {
@@ -150,14 +177,19 @@ extension SyncEngine {
             let card: WrappedCard?
         }
         let _: GradeResponse = try await apiClient.send(endpoint)
+        return .applied
     }
 
-    private func dispatchCommitment(_ snapshot: SyncMutationSnapshot) async throws {
-        let payload = try snapshot.decodePayload(as: CommitmentPayload.self)
+    private func dispatchCommitment(
+        _ snapshot: SyncMutationSnapshot
+    ) async throws -> MutationDispatchOutcome {
+        let payload = try decodeStoredPayload(snapshot, as: CommitmentPayload.self)
         if let commitmentId = payload.commitmentId {
             // Reflection/outcome update.
-            let reflection = payload.reflection ?? ""
-            let outcome = payload.outcome ?? ""
+            guard let reflection = payload.reflection,
+                  let outcome = payload.outcome else {
+                return .quarantined(.missingRequiredField)
+            }
             let endpoint = try Endpoints.updateCommitment(
                 id: commitmentId,
                 reflection: reflection,
@@ -173,8 +205,7 @@ extension SyncEngine {
             guard let ifStatement = payload.ifStatement,
                   let thenStatement = payload.thenStatement,
                   let followUpDays = payload.followUpDays else {
-                // Incomplete payload: skip rather than crash.
-                return
+                return .quarantined(.missingRequiredField)
             }
             let endpoint = try Endpoints.createCommitment(
                 bookId: payload.bookId,
@@ -189,16 +220,22 @@ extension SyncEngine {
             }
             let _: CommitmentCreateResponse = try await apiClient.send(endpoint)
         }
+        return .applied
     }
 
-    private func dispatchSavedToggle(_ snapshot: SyncMutationSnapshot) async throws {
-        let payload = try snapshot.decodePayload(as: SavedTogglePayload.self)
+    private func dispatchSavedToggle(
+        _ snapshot: SyncMutationSnapshot
+    ) async throws -> MutationDispatchOutcome {
+        let payload = try decodeStoredPayload(snapshot, as: SavedTogglePayload.self)
         let endpoint = try Endpoints.toggleSaved(bookId: payload.bookId, saved: payload.saved)
         let _: SavedBooksResponse = try await apiClient.send(endpoint)
+        return .applied
     }
 
-    private func dispatchReadingSession(_ snapshot: SyncMutationSnapshot) async throws {
-        let payload = try snapshot.decodePayload(as: ReadingSessionPayload.self)
+    private func dispatchReadingSession(
+        _ snapshot: SyncMutationSnapshot
+    ) async throws -> MutationDispatchOutcome {
+        let payload = try decodeStoredPayload(snapshot, as: ReadingSessionPayload.self)
         let endpoint = try Endpoints.postReadingSessionEvent(
             event: payload.event,
             bookId: payload.bookId,
@@ -209,25 +246,20 @@ extension SyncEngine {
             let sessionId: String?
         }
         let _: SessionResponse = try await apiClient.send(endpoint)
+        return .applied
     }
 
-    // MARK: - Idempotency helpers
+    // MARK: - Stored-payload decoding
 
-    /// Server error codes the SyncEngine treats as "mutation already applied".
-    ///
-    /// On these codes the engine accepts server truth, deletes the mutation from
-    /// the outbox, and does NOT retry. This prevents double-submission.
-    private static func isAlreadyApplied(error: AppError) -> Bool {
-        guard case .server(let code, _, _) = error else { return false }
-        let alreadyAppliedCodes: Set<String> = [
-            "quiz_already_submitted",
-            "session_already_submitted",
-            "chapter_already_unlocked",
-            "duplicate_request",
-            "already_applied",
-            "conflict",
-        ]
-        return alreadyAppliedCodes.contains(code)
+    private func decodeStoredPayload<Payload: Decodable>(
+        _ snapshot: SyncMutationSnapshot,
+        as type: Payload.Type
+    ) throws -> Payload {
+        do {
+            return try snapshot.decodePayload(as: type)
+        } catch {
+            throw StoredPayloadDecodeFailure()
+        }
     }
 }
 
