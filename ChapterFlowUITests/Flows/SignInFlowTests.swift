@@ -192,3 +192,50 @@ final class SignInFlowTests: CFUITestCase {
 
     // CFUITestCase.needsAuth defaults to true; setUp() already applies bypass.
 }
+
+final class GuestBrowsingFlowTests: CFUITestCase {
+    override var needsAuth: Bool { false }
+
+    /// Signed-out guest entry must reach public Home and Library without creating an account scope.
+    func testGuestBrowsingReachesPublicHomeAndLibrary() {
+        let browseButton = app.buttons[
+            "Continue browsing without creating an account"
+        ]
+        XCTAssertTrue(
+            browseButton.waitForExistence(timeout: 10),
+            "Signed-out launch must expose the guest browsing action"
+        )
+        browseButton.tap()
+
+        XCTAssertTrue(
+            app.tabBars.firstMatch.waitForExistence(timeout: 20),
+            "Guest entry must reach the tab shell"
+        )
+        XCTAssertTrue(
+            app.navigationBars["Home"].waitForExistence(timeout: 20),
+            "Guest Home must render"
+        )
+
+        let libraryTab = app.tabBars.buttons.matching(
+            NSPredicate(format: "label CONTAINS[c] 'librar'")
+        ).firstMatch
+        XCTAssertTrue(
+            libraryTab.waitForExistence(timeout: 5),
+            "Guest Library tab must be reachable"
+        )
+        // The guest account affordance occupies the upper part of the iOS 26
+        // tab-bar hit region; select the exposed lower portion of Library.
+        libraryTab.coordinate(
+            withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9)
+        ).tap()
+
+        XCTAssertTrue(
+            app.navigationBars["Library"].waitForExistence(timeout: 20),
+            "Guest Library must render"
+        )
+        XCTAssertTrue(
+            app.cells.firstMatch.waitForExistence(timeout: 60),
+            "Guest Library must show catalog content from the stub server"
+        )
+    }
+}

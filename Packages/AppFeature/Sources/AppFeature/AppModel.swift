@@ -312,6 +312,9 @@ public final class AppModel {
     private let guestLibraryRepository: any LibraryRepository
     private let guestBookDetailRepository: any BookDetailRepository
     private let guestPresentationStores = SessionPresentationStores.guest()
+    /// Process-owned cancellation gate for public guest presentation work.
+    /// It carries no account identity, namespace, or private graph capability.
+    let guestWorkPermit = SessionWorkPermit()
     private let processAnalytics: any AnalyticsClient
     private let backgroundWorkBroker: SessionBackgroundWorkBroker
     private let scopeBuilder: @MainActor (AccountContext) async throws -> SessionScope

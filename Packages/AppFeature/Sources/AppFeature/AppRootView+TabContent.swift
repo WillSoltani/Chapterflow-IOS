@@ -40,7 +40,7 @@ extension AppRootView {
                 preferences: model.guestPreferences,
                 store: model.guestKeyValueStore,
                 isGuest: true,
-                workPermit: model.workPermit,
+                workPermit: model.guestWorkPermit,
                 onOpenReader: nil, // guests can't open the reader
                 onShowPaywall: nil,
                 onRequireAuth: requireAuthClosure,
@@ -54,7 +54,7 @@ extension AppRootView {
                 preferences: model.guestPreferences,
                 store: model.guestKeyValueStore,
                 isGuest: true,
-                workPermit: model.workPermit,
+                workPermit: model.guestWorkPermit,
                 onOpenReader: nil,
                 onShowPaywall: nil,
                 onRequireAuth: requireAuthClosure,
