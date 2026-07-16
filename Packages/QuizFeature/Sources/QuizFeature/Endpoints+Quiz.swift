@@ -9,12 +9,19 @@ extension Endpoints {
     public static func submitQuiz(
         bookId: String,
         n: Int,
-        answers: [QuizAnswerSubmission]
+        attemptNumber: Int,
+        responses: [QuizAnswerSubmission]
     ) throws -> Endpoint {
-        try Endpoint(
+        let encodedBook = bookId.addingPercentEncoding(
+            withAllowedCharacters: .urlPathAllowed
+        ) ?? bookId
+        return try Endpoint(
             method: .post,
-            path: "/book/me/quiz/\(bookId)/\(n)/submit",
-            body: QuizSubmitRequest(answers: answers)
+            path: "/book/me/quiz/\(encodedBook)/\(n)/submit",
+            body: QuizSubmitRequest(
+                attemptNumber: attemptNumber,
+                responses: responses
+            )
         )
     }
 

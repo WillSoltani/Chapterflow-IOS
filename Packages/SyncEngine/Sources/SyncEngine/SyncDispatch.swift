@@ -39,7 +39,9 @@ extension SyncEngine {
             case .progressCursor:
                 return try await dispatchProgressCursor(snapshot)
             case .quizSubmit:
-                return try await dispatchQuizSubmit(snapshot)
+                // Legacy quiz payloads predate the attemptNumber contract and
+                // cannot be replayed safely. Quarantine before decoding or transport.
+                return .quarantined(.unsupportedPayloadVersion)
             case .notebookWrite:
                 return try await dispatchNotebookWrite(snapshot)
             case .highlightWrite:
@@ -68,41 +70,6 @@ extension SyncEngine {
             bookId: payload.bookId, chapterId: payload.chapterId
         )
         let _: BookStateResponseEnvelope = try await apiClient.send(endpoint)
-        return .applied
-    }
-
-    /// Quiz submit with a local ambiguity guard.
-    ///
-    /// The current backend contract exposes no verified already-applied response.
-    /// A repeated local session ID therefore cannot establish server application.
-    private func dispatchQuizSubmit(
-        _ snapshot: SyncMutationSnapshot
-    ) async throws -> MutationDispatchOutcome {
-        let payload = try decodeStoredPayload(snapshot, as: QuizSubmitPayload.self)
-
-        // A retry of this exact row may proceed. A distinct row with the same
-        // session ID is only a local ambiguity and cannot prove server application.
-        let key = payload.sessionId
-        if let owner = activeQuizSessionOwners[key], owner != snapshot.mutationId {
-            return .quarantined(.ambiguousLocalDuplicate)
-        }
-        activeQuizSessionOwners[key] = snapshot.mutationId
-
-        let endpoint = try Endpoints.submitQuiz(
-            bookId: payload.bookId,
-            chapterNumber: payload.chapterNumber,
-            sessionId: payload.sessionId,
-            answers: payload.answers
-        )
-
-        let _: QuizAttemptResult = try await apiClient.send(endpoint)
-
-        // Clear the pendingGrading status from the offline cache.
-        try? await store.clearQuizPendingGrading(
-            bookId: payload.bookId,
-            chapterNumber: payload.chapterNumber,
-            userId: snapshot.userId
-        )
         return .applied
     }
 

@@ -27,6 +27,9 @@ private let q2 = QuizQuestion(
 
 private let testSession = QuizClientSession(
     sessionId: "sess-1",
+    attemptNumber: 2,
+    nextAttemptNumber: 2,
+    status: .ready,
     questions: [q1, q2],
     passingScorePercent: 70,
     bookId: "b-test",
@@ -123,8 +126,11 @@ struct QuizModelTests {
         await model.load()
 
         model.selectAnswer("c-1-b", for: "q-1")
+        await model.waitForDraftSave()
 
         #expect(model.selectedAnswers["q-1"] == "c-1-b")
+        #expect(await repo.savedDraft == ["q-1": "c-1-b"])
+        #expect(await repo.draftSaveCount == 1)
     }
 
     @Test("selectAnswer has no effect outside .active phase")
@@ -228,13 +234,15 @@ struct QuizModelTests {
 
         await model.submit()
 
-        let recorded = await repo.recordedAnswers
+        let recorded = await repo.recordedResponses
         #expect(recorded.count == 2)
         #expect(recorded[0].questionId == "q-1")
         #expect(recorded[1].questionId == "q-2")
+        #expect(recorded.map(\.selectedChoiceId) == ["c-1-b", "c-2-b"])
+        #expect(await repo.recordedAttemptNumber == 2)
     }
 
-    @Test("submit() when offline queues answers and transitions to .pendingGrading")
+    @Test("offline submit confirms the draft without transport or local grading")
     @MainActor
     func testSubmitOffline() async throws {
         let repo = FakeQuizRepository(
@@ -249,10 +257,15 @@ struct QuizModelTests {
 
         await model.submit()
 
-        #expect(model.phase == .pendingGrading)
-        // Answers were still recorded in the outbox (fake repo captures them).
-        let recorded = await repo.recordedAnswers
+        #expect(model.phase == .active)
+        #expect(model.draftState == .savedRequiresConnection)
+        #expect(await repo.networkSubmitCount == 0)
+        let recorded = await repo.recordedResponses
         #expect(recorded.count == 2)
+        #expect(await repo.savedDraft == ["q-1": "c-1-b", "q-2": "c-2-b"])
+        #expect(model.result == nil)
+        #expect(model.retryEligibleAt == nil)
+        #expect(model.unlockedNextChapter == false)
     }
 
     @Test("canSubmit is true regardless of connectivity when all answered")
@@ -269,6 +282,82 @@ struct QuizModelTests {
         )
         #expect(model.allAnswered == true)
         #expect(model.canSubmit == true)
+    }
+
+    @Test("draft save failure never claims success")
+    @MainActor
+    func testDraftSaveFailure() async {
+        let repo = FakeQuizRepository(
+            quiz: QuizResponse(quiz: testSession, progress: testProgress),
+            offlineSubmit: true
+        )
+        await repo.setDraftError(.storageUnavailable)
+        let model = QuizModel(bookId: "b-test", chapterNumber: 1, repository: repo)
+        model.injectActiveForPreview(
+            session: testSession,
+            selectedAnswers: ["q-1": "c-1-b", "q-2": "c-2-b"],
+            isOnline: false
+        )
+
+        await model.submit()
+
+        guard case .failed = model.draftState else {
+            Issue.record("Expected failed draft state")
+            return
+        }
+        #expect(model.phase == .active)
+        #expect(await repo.networkSubmitCount == 0)
+    }
+
+    @Test("relaunch restores matching answers and connectivity never auto-submits")
+    @MainActor
+    func testRestoreAndNoAutomaticSubmit() async {
+        let restored = ["q-1": "c-1-b", "q-2": "c-2-b"]
+        let repo = FakeQuizRepository(
+            quiz: QuizResponse(quiz: testSession, progress: testProgress),
+            restoredAnswers: restored
+        )
+        let model = QuizModel(bookId: "b-test", chapterNumber: 1, repository: repo)
+
+        await model.load()
+        model.injectActiveForPreview(
+            session: testSession,
+            selectedAnswers: restored,
+            isOnline: true
+        )
+
+        #expect(model.selectedAnswers == restored)
+        #expect(model.draftState == .saved)
+        #expect(await repo.networkSubmitCount == 0)
+    }
+
+    @Test("missing attempt identity disables submit and requires refresh")
+    @MainActor
+    func testMissingAttemptRequiresRefresh() {
+        let legacySession = QuizClientSession(
+            sessionId: "legacy",
+            questions: [q1, q2],
+            passingScorePercent: 70,
+            bookId: "b-test",
+            chapterNumber: 1,
+            tone: nil
+        )
+        let model = QuizModel(bookId: "b-test", chapterNumber: 1, repository: FakeQuizRepository())
+        model.injectActiveForPreview(
+            session: legacySession,
+            selectedAnswers: ["q-1": "c-1-b", "q-2": "c-2-b"]
+        )
+
+        #expect(!model.canSubmit)
+        #expect(model.requiresSessionRefresh)
+    }
+
+    @Test("offline UI copy says saved locally and requires explicit online submit")
+    @MainActor
+    func testOfflineDraftCopy() {
+        #expect(QuizView.savedDraftOfflineMessage.contains("saved on this device"))
+        #expect(QuizView.savedDraftOfflineMessage.contains("Connect"))
+        #expect(QuizView.savedDraftOfflineMessage.contains("Submit Quiz"))
     }
 
     // MARK: - Retry gate
@@ -343,13 +432,21 @@ struct FakeQuizRepositoryTests {
         #expect(response.quiz.sessionId == "sess-1")
     }
 
-    @Test("submit records answers")
-    func testSubmitRecordsAnswers() async throws {
+    @Test("submit records attempt identity and canonical responses")
+    func testSubmitRecordsResponses() async throws {
         let repo = FakeQuizRepository(submitResult: passedResult)
-        let answers = [QuizAnswerSubmission(questionId: "q-1", choiceId: "c-1-b")]
-        _ = try await repo.submit(bookId: "b-test", n: 1, answers: answers)
-        let recorded = await repo.recordedAnswers
-        #expect(recorded == answers)
+        let responses = [
+            QuizAnswerSubmission(questionId: "q-1", selectedChoiceId: "c-1-b"),
+            QuizAnswerSubmission(questionId: "q-2", selectedChoiceId: "c-2-b"),
+        ]
+        _ = try await repo.submitAttempt(
+            bookId: "b-test",
+            n: 1,
+            session: testSession,
+            responses: responses
+        )
+        #expect(await repo.recordedResponses == responses)
+        #expect(await repo.recordedAttemptNumber == 2)
     }
 
     @Test("postEvent increments eventCount")
@@ -368,7 +465,12 @@ struct FakeQuizRepositoryTests {
             _ = try await repo.getQuiz(bookId: "b-test", n: 1, tone: nil)
         }
         await #expect(throws: AppError.self) {
-            _ = try await repo.submit(bookId: "b-test", n: 1, answers: [])
+            _ = try await repo.submitAttempt(
+                bookId: "b-test",
+                n: 1,
+                session: testSession,
+                responses: []
+            )
         }
     }
 }
@@ -377,13 +479,35 @@ struct FakeQuizRepositoryTests {
 
 @Suite("QuizEndpoints")
 struct QuizEndpointTests {
-    @Test("submitQuiz endpoint has correct path and method")
+    @Test("submitQuiz encodes only canonical attemptNumber and ordered responses")
     func testSubmitEndpoint() throws {
-        let answers = [QuizAnswerSubmission(questionId: "q-1", choiceId: "c-1-b")]
-        let endpoint = try Endpoints.submitQuiz(bookId: "b-ah", n: 3, answers: answers)
+        let responses = [
+            QuizAnswerSubmission(questionId: "q-1", selectedChoiceId: "c-1-b"),
+            QuizAnswerSubmission(questionId: "q-2", selectedChoiceId: "c-2-b"),
+        ]
+        let endpoint = try Endpoints.submitQuiz(
+            bookId: "b-ah",
+            n: 3,
+            attemptNumber: 7,
+            responses: responses
+        )
         #expect(endpoint.path == "/book/me/quiz/b-ah/3/submit")
         #expect(endpoint.method == HTTPMethod.post)
-        #expect(endpoint.httpBody != nil)
+        #expect(endpoint.reliabilityPolicy.retryPolicy == .none)
+
+        let body = try #require(endpoint.httpBody)
+        let root = try #require(
+            JSONSerialization.jsonObject(with: body) as? [String: Any]
+        )
+        #expect(Set(root.keys) == ["attemptNumber", "responses"])
+        #expect(root["attemptNumber"] as? Int == 7)
+        let encodedResponses = try #require(root["responses"] as? [[String: Any]])
+        #expect(encodedResponses.count == 2)
+        #expect(encodedResponses.map { $0["questionId"] as? String } == ["q-1", "q-2"])
+        #expect(encodedResponses.map { $0["selectedChoiceId"] as? String } == ["c-1-b", "c-2-b"])
+        #expect(encodedResponses.allSatisfy { Set($0.keys) == ["questionId", "selectedChoiceId"] })
+        #expect(root["answers"] == nil)
+        #expect(root["sessionId"] == nil)
     }
 
     @Test("getQuiz endpoint has correct path")

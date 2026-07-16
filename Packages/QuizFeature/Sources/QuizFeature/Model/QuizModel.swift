@@ -4,69 +4,48 @@ import Models
 import CoreKit
 @preconcurrency import Network
 
-/// Observable model driving the Quiz experience.
-///
-/// Responsibilities:
-/// - Load a quiz session from the server.
-/// - Track selected answers (one per question).
-/// - Submit answers and render the server-graded result.
-/// - Enforce the server-authoritative cooldown on failed attempts (countdown
-///   is derived from ``QuizAttemptResult/cooldownSeconds``, not the device clock,
-///   to avoid skew from wrong device time).
-/// - Detect offline connectivity and disable submission with a clear UI hint.
-///
-/// **Grading contract:** this model never evaluates whether an answer is correct.
-/// All correctness data comes from ``QuizAttemptResult/questionResults`` returned
-/// by the server after submission.
+/// Observable model driving the server-authoritative quiz experience.
 @Observable
 @MainActor
 public final class QuizModel {
 
-    // MARK: - Phase
-
     public enum Phase: Equatable {
         case idle
         case loading
-        /// The user is actively answering questions.
         case active
         case submitting
-        /// Server has returned a graded result.
         case result
-        /// Submitted while offline; awaiting server grading when connectivity returns.
-        case pendingGrading
         case error(String)
     }
 
-    // MARK: - Public state
+    public enum DraftState: Equatable {
+        case none
+        case saving
+        case saved
+        case savedRequiresConnection
+        case failed(String)
+    }
 
     public private(set) var phase: Phase = .idle
-    /// The quiz session returned by the server (questions + choices).
     public private(set) var session: QuizClientSession?
-    /// The server-graded result returned after submission.
     public private(set) var result: QuizAttemptResult?
-    /// Maps questionId → selected choiceId. Updated by ``selectAnswer(_:for:)``.
     public private(set) var selectedAnswers: [String: String] = [:]
-    /// Device time at which the cooldown expires (nil while active or passed).
-    /// Derived from ``QuizAttemptResult/cooldownSeconds`` so it's server-authoritative.
     public private(set) var retryEligibleAt: Date?
-    /// Whether the device currently has network connectivity.
     public private(set) var isOnline: Bool = true
-
-    // MARK: - Book context
+    public private(set) var draftState: DraftState = .none
+    public private(set) var submissionMessage: String?
 
     public let bookId: String
     public let chapterNumber: Int
     public let tone: ToneKey?
 
-    // MARK: - Private
-
     private let repository: any QuizRepository
     private let analytics: any AnalyticsClient
     private let workPermit: SessionWorkPermit
-    private nonisolated(unsafe) var connectivityMonitor: NWPathMonitor?
-    private var connectivityTask: Task<Void, Never>?
-
-    // MARK: - Init
+    @ObservationIgnored private var connectivityMonitor: NWPathMonitor?
+    @ObservationIgnored private var draftSaveTask: Task<Void, Never>?
+    @ObservationIgnored private var eventTask: Task<Void, Never>?
+    @ObservationIgnored private var draftRevision = 0
 
     public init(
         bookId: String,
@@ -86,8 +65,6 @@ public final class QuizModel {
 
     // MARK: - Lifecycle
 
-    /// Begin monitoring network connectivity.
-    /// Call this from the quiz view's `.task` modifier and cancel via ``stopConnectivityMonitor()``.
     public func startConnectivityMonitor() {
         let monitor = NWPathMonitor()
         connectivityMonitor = monitor
@@ -107,34 +84,42 @@ public final class QuizModel {
     public func stopConnectivityMonitor() {
         connectivityMonitor?.cancel()
         connectivityMonitor = nil
-        connectivityTask?.cancel()
-        connectivityTask = nil
+        eventTask?.cancel()
+        eventTask = nil
     }
 
     // MARK: - Actions
 
-    /// Fetch the quiz session from the server and enter the active phase.
     public func load() async {
         guard let ticket = try? workPermit.begin() else { return }
+        draftRevision += 1
+        draftSaveTask?.cancel()
+        draftSaveTask = nil
         try? workPermit.commit(ticket) {
             phase = .loading
             selectedAnswers = [:]
             result = nil
             retryEligibleAt = nil
+            draftState = .none
+            submissionMessage = nil
         }
         do {
-            let response = try await repository.getQuiz(
-                bookId: bookId, n: chapterNumber, tone: tone
+            let loaded = try await repository.loadQuiz(
+                bookId: bookId,
+                n: chapterNumber,
+                tone: tone
             )
             try workPermit.commit(ticket) {
-                session = response.quiz
+                session = loaded.response.quiz
+                selectedAnswers = loaded.selectedAnswers
+                draftState = loaded.selectedAnswers.isEmpty ? .none : .saved
                 phase = .active
             }
         } catch is CancellationError {
-            return
-        } catch let e as AppError {
+            try? workPermit.commit(ticket) { phase = .idle }
+        } catch let error as AppError {
             try? workPermit.commit(ticket) {
-                phase = .error(e.errorDescription ?? e.code)
+                phase = .error(error.errorDescription ?? error.code)
             }
         } catch {
             try? workPermit.commit(ticket) {
@@ -143,141 +128,235 @@ public final class QuizModel {
         }
     }
 
-    /// Record the user's choice for a question.
-    /// Has no effect outside the `.active` phase.
     public func selectAnswer(_ choiceId: String, for questionId: String) {
-        guard phase == .active, let ticket = try? workPermit.begin() else { return }
+        guard phase == .active,
+              let session,
+              let question = session.questions.first(where: { $0.questionId == questionId }),
+              question.choices.contains(where: { $0.choiceId == choiceId }),
+              let ticket = try? workPermit.begin() else {
+            return
+        }
         try? workPermit.commit(ticket) {
             selectedAnswers[questionId] = choiceId
+            submissionMessage = nil
+        }
+        scheduleDraftSave(session: session, ticket: ticket)
+    }
+
+    private func scheduleDraftSave(session: QuizClientSession, ticket: UInt64) {
+        draftRevision += 1
+        let revision = draftRevision
+        let answers = selectedAnswers
+        let repository = repository
+        let bookId = bookId
+        let chapterNumber = chapterNumber
+
+        draftSaveTask?.cancel()
+        draftState = .saving
+        draftSaveTask = Task { [weak self] in
+            do {
+                try Task.checkCancellation()
+                try await repository.saveDraft(
+                    bookId: bookId,
+                    n: chapterNumber,
+                    session: session,
+                    selectedAnswers: answers
+                )
+                try Task.checkCancellation()
+                guard let self, self.draftRevision == revision else { return }
+                try self.workPermit.commit(ticket) {
+                    self.draftState = .saved
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                guard let self, self.draftRevision == revision else { return }
+                try? self.workPermit.commit(ticket) {
+                    self.draftState = .failed(error.localizedDescription)
+                }
+            }
         }
     }
 
-    /// Submit all selected answers to the server and transition to the result phase.
-    ///
-    /// If the device is offline the method returns early; the caller should ensure
-    /// ``isOnline`` is true before enabling the submit button.
     public func submit() async {
-        guard phase == .active, let session else { return }
+        guard phase == .active, canSubmit, let session else { return }
         guard let ticket = try? workPermit.begin() else { return }
 
-        // Collect answers in question order (server may require stable ordering).
-        let answers = session.questions.compactMap { q -> QuizAnswerSubmission? in
-            guard let choiceId = selectedAnswers[q.questionId] else { return nil }
-            return QuizAnswerSubmission(questionId: q.questionId, choiceId: choiceId)
-        }
+        draftRevision += 1
+        let pendingDraftSave = draftSaveTask
+        pendingDraftSave?.cancel()
+        draftSaveTask = nil
+
+        let responses = orderedResponses(for: session)
 
         try? workPermit.commit(ticket) {
             phase = .submitting
+            draftState = .saving
+            submissionMessage = nil
+        }
+        await pendingDraftSave?.value
+        if Task.isCancelled {
+            try? workPermit.commit(ticket) { phase = .active }
+            return
         }
         do {
-            let graded = try await repository.submit(
-                bookId: bookId, n: chapterNumber, answers: answers
+            let outcome = try await repository.submitAttempt(
+                bookId: bookId,
+                n: chapterNumber,
+                session: session,
+                responses: responses
             )
+            switch outcome {
+            case .graded(let graded, let draftCleared):
+                try workPermit.commit(ticket) {
+                    if !graded.passed, graded.cooldownSeconds > 0 {
+                        retryEligibleAt = Date().addingTimeInterval(
+                            TimeInterval(graded.cooldownSeconds)
+                        )
+                    } else {
+                        retryEligibleAt = nil
+                    }
+                    result = graded
+                    draftState = draftCleared
+                        ? .none
+                        : .failed("The server graded this quiz, but the local draft still needs cleanup.")
+                    phase = .result
+                }
+                recordServerResult(graded, ticket: ticket)
 
-            // Cooldown anchor: use server-authoritative cooldownSeconds from response time.
-            // We do NOT compute (nextEligibleAttemptAt - deviceNow) to avoid device clock skew.
-            try workPermit.commit(ticket) {
-                if !graded.passed, graded.cooldownSeconds > 0 {
-                    retryEligibleAt = Date().addingTimeInterval(TimeInterval(graded.cooldownSeconds))
-                } else {
-                    retryEligibleAt = nil
+            case .draftSavedRequiresConnection:
+                try workPermit.commit(ticket) {
+                    draftState = .savedRequiresConnection
+                    phase = .active
                 }
 
-                result = graded
-                phase = .result
+            case .refreshedAfterStale(let loaded):
+                try workPermit.commit(ticket) {
+                    self.session = loaded.response.quiz
+                    selectedAnswers = loaded.selectedAnswers
+                    draftState = loaded.selectedAnswers.isEmpty ? .none : .saved
+                    submissionMessage = "The quiz changed on the server. Review it before submitting again."
+                    result = nil
+                    retryEligibleAt = nil
+                    phase = .active
+                }
             }
-
-            let score = graded.scorePercent
-            analytics.track(.quizSubmitted(bookId: bookId, chapter: chapterNumber, score: score))
-            if graded.passed {
-                analytics.track(.custom(name: "quiz_passed", properties: [
-                    "bookId": bookId,
-                    "chapter": String(chapterNumber),
-                    "score": String(score),
-                ]))
-            }
-            // Fire-and-forget server lifecycle event (separate from client analytics).
-            Task { [weak self] in
-                guard let self else { return }
-                guard (try? self.workPermit.validate(ticket)) != nil else { return }
-                let event = QuizEventPayload(
-                    eventType: graded.passed ? "quiz_passed" : "quiz_failed"
-                )
-                try? await repository.postEvent(bookId: bookId, n: chapterNumber, event: event)
-            }
-
         } catch is CancellationError {
-            return
-        } catch QuizSubmissionError.pendingGrading {
-            // Answers saved to offline outbox — will be graded when back online.
+            try? workPermit.commit(ticket) { phase = .active }
+        } catch let error as QuizDraftError {
             try? workPermit.commit(ticket) {
-                phase = .pendingGrading
+                draftState = .failed(error.errorDescription ?? "The draft could not be saved.")
+                submissionMessage = error.errorDescription
+                phase = .active
             }
-        } catch let e as AppError {
+        } catch let error as AppError {
             try? workPermit.commit(ticket) {
-                phase = .error(e.errorDescription ?? e.code)
+                draftState = .saved
+                submissionMessage = error.errorDescription ?? error.code
+                phase = .active
             }
         } catch {
             try? workPermit.commit(ticket) {
-                phase = .error(error.localizedDescription)
+                draftState = .saved
+                submissionMessage = error.localizedDescription
+                phase = .active
             }
         }
     }
 
-    /// Reload the quiz for a retry attempt.
-    /// Only valid when ``canRetry`` is true.
+    private func orderedResponses(for session: QuizClientSession) -> [QuizAnswerSubmission] {
+        session.questions.compactMap { question in
+            selectedAnswers[question.questionId].map {
+                QuizAnswerSubmission(questionId: question.questionId, selectedChoiceId: $0)
+            }
+        }
+    }
+
+    private func recordServerResult(_ graded: QuizAttemptResult, ticket: UInt64) {
+        let score = graded.scorePercent
+        analytics.track(.quizSubmitted(bookId: bookId, chapter: chapterNumber, score: score))
+        if graded.passed {
+            analytics.track(.custom(name: "quiz_passed", properties: [
+                "bookId": bookId,
+                "chapter": String(chapterNumber),
+                "score": String(score),
+            ]))
+        }
+
+        eventTask?.cancel()
+        eventTask = Task { [weak self] in
+            guard let self,
+                  (try? self.workPermit.validate(ticket)) != nil else {
+                return
+            }
+            let event = QuizEventPayload(
+                eventType: graded.passed ? "quiz_passed" : "quiz_failed"
+            )
+            try? await self.repository.postEvent(
+                bookId: self.bookId,
+                n: self.chapterNumber,
+                event: event
+            )
+        }
+    }
+
     public func retry() async {
         guard canRetry else { return }
         await load()
     }
 
-    // MARK: - Computed
-
-    /// Whether the submit button should be enabled.
-    ///
-    /// Offline submission is allowed — the repository will queue the answers as a
-    /// ``PendingMutation`` and throw ``QuizSubmissionError/pendingGrading`` so the
-    /// view can transition to the waiting state.
-    public var canSubmit: Bool {
-        phase == .active && allAnswered
+    /// Test synchronization point for the retained draft task.
+    func waitForDraftSave() async {
+        await draftSaveTask?.value
     }
 
-    /// True when every question has a selected answer.
+    // MARK: - Computed state
+
+    public var canSubmit: Bool {
+        phase == .active && sessionCanSubmit && allAnswered
+    }
+
+    public var requiresSessionRefresh: Bool {
+        session != nil && !sessionCanSubmit
+    }
+
+    private var sessionCanSubmit: Bool {
+        guard let session,
+              let attemptNumber = session.attemptNumber,
+              attemptNumber > 0,
+              session.status == .ready else {
+            return false
+        }
+        return session.nextAttemptNumber == attemptNumber
+    }
+
     public var allAnswered: Bool {
         guard let session else { return false }
         return session.questions.allSatisfy { selectedAnswers[$0.questionId] != nil }
     }
 
-    /// True when a failed attempt has passed its cooldown and can be retried.
     public var canRetry: Bool {
         guard let result, !result.passed else { return false }
         guard let eligibleAt = retryEligibleAt else { return true }
         return Date() >= eligibleAt
     }
 
-    /// Seconds remaining in the retry cooldown (0 when eligible).
     public var cooldownRemaining: TimeInterval {
         guard let eligibleAt = retryEligibleAt else { return 0 }
         return max(0, eligibleAt.timeIntervalSinceNow)
     }
 
-    /// The passing score threshold (defaults to 70 if server omits the field).
     public var passingScorePercent: Int {
         session?.passingScorePercent ?? 70
     }
 
-    /// True if the quiz has been completed and the next chapter was unlocked.
     public var unlockedNextChapter: Bool {
         result?.unlockedNextChapter ?? false
     }
 }
 
-// MARK: - Preview support
-
 #if DEBUG
 extension QuizModel {
-    /// Injects a pre-baked result state for SwiftUI `#Preview` blocks.
-    /// Must be in the same file to access `private(set)` setters.
     func injectResultForPreview(
         session: QuizClientSession,
         result: QuizAttemptResult,
@@ -290,14 +369,13 @@ extension QuizModel {
             self.retryEligibleAt = Date().addingTimeInterval(TimeInterval(cooldownSeconds))
         }
         self.selectedAnswers = Dictionary(
-            uniqueKeysWithValues: result.questionResults.compactMap { qr in
-                guard let choiceId = qr.selectedChoiceId else { return nil }
-                return (qr.questionId, choiceId)
+            uniqueKeysWithValues: result.questionResults.compactMap { questionResult in
+                guard let choiceId = questionResult.selectedChoiceId else { return nil }
+                return (questionResult.questionId, choiceId)
             }
         )
     }
 
-    /// Injects an active (in-progress) state for SwiftUI `#Preview` blocks.
     func injectActiveForPreview(
         session: QuizClientSession,
         selectedAnswers: [String: String] = [:],
@@ -307,6 +385,7 @@ extension QuizModel {
         self.phase = .active
         self.selectedAnswers = selectedAnswers
         self.isOnline = isOnline
+        self.draftState = selectedAnswers.isEmpty ? .none : .saved
     }
 }
 #endif

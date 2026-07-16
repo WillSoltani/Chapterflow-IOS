@@ -2,16 +2,114 @@ import Foundation
 import SwiftData
 import Models
 
-/// Status of a cached offline quiz session.
-///
-/// A quiz taken offline is stored as `pendingGrading` — the app never grades
-/// locally and never stores answer keys. The `quizSubmit` PendingMutation
-/// carries the answers to the server when connectivity returns.
+/// Status of a cached quiz session and its local draft.
 public enum QuizCacheStatus: String, Sendable, CaseIterable {
-    /// Questions fetched; not yet submitted.
+    /// Questions fetched with no locally saved answers.
     case ready
-    /// Submitted offline; awaiting server grading.
+    /// Answers are saved locally and require an explicit online submit.
+    case draftPendingOnline
+    /// Legacy readable value. New code never creates automatic grading work.
     case pendingGrading
+}
+
+/// The versioned payload stored inside ``CachedQuizState/dataJSON``.
+///
+/// It intentionally contains only the server-projected questions and the user's
+/// selected choice IDs. It never contains answer keys, correctness, or grading.
+public struct CachedQuizDocument: Codable, Sendable, Equatable {
+    public static let currentVersion = 1
+
+    public let version: Int
+    public let session: QuizClientSession
+    public let selectedAnswers: [String: String]
+
+    public init(
+        version: Int = Self.currentVersion,
+        session: QuizClientSession,
+        selectedAnswers: [String: String]
+    ) throws {
+        guard version == Self.currentVersion else {
+            throw CachedQuizDocumentError.unsupportedVersion(version)
+        }
+        try Self.validate(selectedAnswers, for: session)
+        self.version = version
+        self.session = session
+        self.selectedAnswers = selectedAnswers
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case version, session, selectedAnswers
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let version = try container.decode(Int.self, forKey: .version)
+        let session = try container.decode(QuizClientSession.self, forKey: .session)
+        let answers = try container.decodeIfPresent(
+            [String: String].self,
+            forKey: .selectedAnswers
+        ) ?? [:]
+        try self.init(version: version, session: session, selectedAnswers: answers)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(version, forKey: .version)
+        try container.encode(session, forKey: .session)
+        try container.encode(selectedAnswers, forKey: .selectedAnswers)
+    }
+
+    /// Returns answers only when both attempt identity and assigned questions/choices match.
+    public func answers(matching currentSession: QuizClientSession) -> [String: String] {
+        guard let cachedAttempt = session.attemptNumber,
+              cachedAttempt > 0,
+              currentSession.attemptNumber == cachedAttempt,
+              Self.questionSignature(session) == Self.questionSignature(currentSession) else {
+            return [:]
+        }
+        return selectedAnswers
+    }
+
+    private static func validate(
+        _ selectedAnswers: [String: String],
+        for session: QuizClientSession
+    ) throws {
+        if !selectedAnswers.isEmpty {
+            guard let attemptNumber = session.attemptNumber, attemptNumber > 0 else {
+                throw CachedQuizDocumentError.missingAttemptNumber
+            }
+        }
+
+        var choicesByQuestion: [String: Set<String>] = [:]
+        for question in session.questions {
+            guard choicesByQuestion[question.questionId] == nil else {
+                throw CachedQuizDocumentError.duplicateQuestion(question.questionId)
+            }
+            choicesByQuestion[question.questionId] = Set(question.choices.map(\.choiceId))
+        }
+        for (questionID, choiceID) in selectedAnswers {
+            guard choicesByQuestion[questionID]?.contains(choiceID) == true else {
+                throw CachedQuizDocumentError.invalidSelection(questionID: questionID)
+            }
+        }
+    }
+
+    private static func questionSignature(
+        _ session: QuizClientSession
+    ) -> [String: Set<String>] {
+        Dictionary(
+            session.questions.map { ($0.questionId, Set($0.choices.map(\.choiceId))) },
+            uniquingKeysWith: { current, _ in current }
+        )
+    }
+}
+
+public enum CachedQuizDocumentError: Error, Sendable, Equatable {
+    case unsupportedVersion(Int)
+    case missingAttemptNumber
+    case duplicateQuestion(String)
+    case invalidSelection(questionID: String)
+    case invalidEncoding
 }
 
 /// A cached ``QuizClientSession`` for offline quiz access.
@@ -24,9 +122,9 @@ public final class CachedQuizState {
     public var userId: String
     public var bookId: String
     public var chapterNumber: Int
-    /// The server-assigned session ID (nil if the session hasn't been started yet).
+    /// Legacy cache compatibility only. Current submit uses `attemptNumber` from `dataJSON`.
     public var sessionId: String?
-    /// JSON-encoded QuizClientSession (questions only — no answers/keys).
+    /// JSON-encoded ``CachedQuizDocument``. Legacy rows may contain a bare session.
     public var dataJSON: String
     /// Raw QuizCacheStatus value.
     public var statusRaw: String
@@ -65,9 +163,14 @@ extension CachedQuizState {
         userId: String,
         bookId: String,
         chapterNumber: Int,
+        selectedAnswers: [String: String] = [:],
         status: QuizCacheStatus = .ready
     ) throws -> CachedQuizState {
-        let data = try JSONEncoder().encode(domain)
+        let document = try CachedQuizDocument(
+            session: domain,
+            selectedAnswers: selectedAnswers
+        )
+        let data = try JSONEncoder().encode(document)
         return CachedQuizState(
             rowId: makeRowId(userId: userId, bookId: bookId, chapterNumber: chapterNumber),
             userId: userId,
@@ -80,7 +183,27 @@ extension CachedQuizState {
     }
 
     public func toDomain() throws -> QuizClientSession {
-        try JSONDecoder.chapterFlow.decode(QuizClientSession.self, from: Data(dataJSON.utf8))
+        try toDocument().session
+    }
+
+    /// Decodes the current document first, then the legacy bare-session shape.
+    public func toDocument() throws -> CachedQuizDocument {
+        let data = Data(dataJSON.utf8)
+        if let document = try? JSONDecoder.chapterFlow.decode(
+            CachedQuizDocument.self,
+            from: data
+        ) {
+            return document
+        }
+        let legacySession = try JSONDecoder.chapterFlow.decode(
+            QuizClientSession.self,
+            from: data
+        )
+        return try CachedQuizDocument(session: legacySession, selectedAnswers: [:])
+    }
+
+    public func restoredAnswers(matching session: QuizClientSession) throws -> [String: String] {
+        try toDocument().answers(matching: session)
     }
 
     /// The typed status value. Defaults to `.ready` for any unrecognised raw value.

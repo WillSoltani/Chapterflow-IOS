@@ -250,6 +250,25 @@ struct OfflineSchemaTests {
 
     @Suite("CachedQuizState")
     struct CachedQuizStateTests {
+        @Test("current quiz session decodes attempt identity and tolerant status")
+        func currentSessionAttemptIdentity() throws {
+            let data = Data(#"{"attemptNumber":3,"nextAttemptNumber":3,"status":"future_state","questions":[{"questionId":"q-1","prompt":"Prompt","choices":[{"choiceId":"c-1","text":"One"}]}]}"#.utf8)
+            let session = try JSONDecoder().decode(QuizClientSession.self, from: data)
+
+            #expect(session.attemptNumber == 3)
+            #expect(session.nextAttemptNumber == 3)
+            #expect(session.status == .unknown("future_state"))
+        }
+
+        @Test("missing attempt number remains displayable without an inferred default")
+        func missingAttemptNumberIsTolerated() throws {
+            let data = Data(#"{"status":"ready","questions":[{"questionId":"q-1","prompt":"Prompt","choices":[{"choiceId":"c-1","text":"One"}]}]}"#.utf8)
+            let session = try JSONDecoder().decode(QuizClientSession.self, from: data)
+
+            #expect(session.attemptNumber == nil)
+            #expect(session.questions.count == 1)
+        }
+
         @MainActor
         @Test("round-trips QuizClientSession losslessly with .ready status")
         func roundTripReady() throws {
@@ -272,6 +291,82 @@ struct OfflineSchemaTests {
             #expect(domain.tone == .direct)
         }
 
+        @Test("legacy bare-session cache decodes with an empty draft")
+        func legacyBareSession() throws {
+            let data = try JSONEncoder().encode(sampleQuiz)
+            let json = try #require(String(bytes: data, encoding: .utf8))
+            let row = CachedQuizState(
+                rowId: "u:b:1",
+                userId: "u",
+                bookId: "b",
+                chapterNumber: 1,
+                sessionId: sampleQuiz.sessionId,
+                dataJSON: json
+            )
+
+            let document = try row.toDocument()
+            #expect(document.version == CachedQuizDocument.currentVersion)
+            #expect(document.session.sessionId == sampleQuiz.sessionId)
+            #expect(document.selectedAnswers.isEmpty)
+        }
+
+        @Test("versioned draft round-trips selected answers")
+        func versionedDraftRoundTrip() throws {
+            let session = currentSession()
+            let row = try CachedQuizState.from(
+                session,
+                userId: "u",
+                bookId: "b",
+                chapterNumber: 1,
+                selectedAnswers: ["q-1": "c-2"],
+                status: .draftPendingOnline
+            )
+
+            let document = try row.toDocument()
+            #expect(document.version == 1)
+            #expect(document.session.attemptNumber == 2)
+            #expect(document.selectedAnswers == ["q-1": "c-2"])
+            #expect(row.status == .draftPendingOnline)
+        }
+
+        @Test("malformed document fails without manufacturing a session")
+        func malformedDocumentFailsSafely() {
+            let row = CachedQuizState(
+                rowId: "u:b:1",
+                userId: "u",
+                bookId: "b",
+                chapterNumber: 1,
+                dataJSON: #"{"version":1,"session":"not-a-session"}"#
+            )
+
+            #expect(throws: (any Error).self) {
+                try row.toDocument()
+            }
+        }
+
+        @Test("different attempt or question assignment never restores answers")
+        func mismatchedSessionDoesNotRestoreAnswers() throws {
+            let document = try CachedQuizDocument(
+                session: currentSession(),
+                selectedAnswers: ["q-1": "c-1"]
+            )
+            let nextAttempt = currentSession(attemptNumber: 3)
+            let changedQuestions = currentSession(questionID: "q-new")
+
+            #expect(document.answers(matching: nextAttempt).isEmpty)
+            #expect(document.answers(matching: changedQuestions).isEmpty)
+        }
+
+        @Test("invalid question and choice IDs cannot enter a draft")
+        func invalidSelectionsAreRejected() {
+            #expect(throws: CachedQuizDocumentError.self) {
+                try CachedQuizDocument(
+                    session: currentSession(),
+                    selectedAnswers: ["q-1": "not-a-choice"]
+                )
+            }
+        }
+
         @Test("pendingGrading status stored and retrieved correctly")
         func pendingGradingStatus() throws {
             let row = try CachedQuizState.from(
@@ -279,6 +374,32 @@ struct OfflineSchemaTests {
             )
             #expect(row.status == .pendingGrading)
             #expect(row.statusRaw == QuizCacheStatus.pendingGrading.rawValue)
+        }
+
+        private func currentSession(
+            attemptNumber: Int = 2,
+            questionID: String = "q-1"
+        ) -> QuizClientSession {
+            QuizClientSession(
+                sessionId: nil,
+                attemptNumber: attemptNumber,
+                nextAttemptNumber: attemptNumber,
+                status: .ready,
+                questions: [
+                    QuizQuestion(
+                        questionId: questionID,
+                        prompt: "Prompt",
+                        choices: [
+                            QuizChoice(choiceId: "c-1", text: "One"),
+                            QuizChoice(choiceId: "c-2", text: "Two"),
+                        ]
+                    ),
+                ],
+                passingScorePercent: 70,
+                bookId: "b",
+                chapterNumber: 1,
+                tone: .direct
+            )
         }
     }
 

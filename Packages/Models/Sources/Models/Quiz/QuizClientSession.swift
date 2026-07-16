@@ -1,9 +1,17 @@
 /// A quiz client session returned by `GET /book/books/{bookId}/chapters/{n}/quiz`.
 ///
 /// Contains questions for the UI; grading is **always server-side**.
-/// Submit selected `choiceId` values to `POST .../submit` — never grade locally.
-public struct QuizClientSession: Codable, Sendable {
+/// Submit selected choice IDs with the exact server-issued `attemptNumber` —
+/// never grade locally and never infer a missing attempt identity.
+public struct QuizClientSession: Codable, Sendable, Equatable {
+    /// Legacy cache compatibility only. Current production submit never reads this value.
     public let sessionId: String?
+    /// The server-issued identity of the currently represented attempt.
+    public let attemptNumber: Int?
+    /// The next attempt reported by the server, when one exists.
+    public let nextAttemptNumber: Int?
+    /// Server-owned lifecycle state. Unknown values remain opaque and fail closed.
+    public let status: QuizSessionStatus?
     public let questions: [QuizQuestion]
     public let passingScorePercent: Int?
     public let bookId: String?
@@ -12,6 +20,9 @@ public struct QuizClientSession: Codable, Sendable {
 
     public init(
         sessionId: String?,
+        attemptNumber: Int? = nil,
+        nextAttemptNumber: Int? = nil,
+        status: QuizSessionStatus? = nil,
         questions: [QuizQuestion],
         passingScorePercent: Int?,
         bookId: String?,
@@ -19,6 +30,9 @@ public struct QuizClientSession: Codable, Sendable {
         tone: ToneKey?
     ) {
         self.sessionId = sessionId
+        self.attemptNumber = attemptNumber
+        self.nextAttemptNumber = nextAttemptNumber
+        self.status = status
         self.questions = questions
         self.passingScorePercent = passingScorePercent
         self.bookId = bookId
@@ -27,8 +41,44 @@ public struct QuizClientSession: Codable, Sendable {
     }
 }
 
+/// Lifecycle state returned by the quiz session projection.
+public enum QuizSessionStatus: Codable, Sendable, Equatable {
+    case ready
+    case cooldown
+    case passed
+    case unknown(String)
+
+    public init(rawValue: String) {
+        switch rawValue {
+        case "ready": self = .ready
+        case "cooldown": self = .cooldown
+        case "passed": self = .passed
+        default: self = .unknown(rawValue)
+        }
+    }
+
+    public var rawValue: String {
+        switch self {
+        case .ready: "ready"
+        case .cooldown: "cooldown"
+        case .passed: "passed"
+        case .unknown(let value): value
+        }
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        self.init(rawValue: try container.decode(String.self))
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
+}
+
 /// A single quiz question with a server-managed choice-ID scheme.
-public struct QuizQuestion: Codable, Sendable, Identifiable {
+public struct QuizQuestion: Codable, Sendable, Identifiable, Equatable {
     public let questionId: String
     /// The question text. The server may use either `prompt` or `stem`; we unify them.
     public let prompt: String
@@ -67,7 +117,7 @@ public struct QuizQuestion: Codable, Sendable, Identifiable {
 }
 
 /// A single answer choice presented to the user.
-public struct QuizChoice: Codable, Sendable, Identifiable {
+public struct QuizChoice: Codable, Sendable, Identifiable, Equatable {
     public let choiceId: String
     public let text: String
 

@@ -403,69 +403,51 @@ struct SyncEngineConflictTests {
         }
     }
 
-    @Test("unverified duplicate error remains a failure instead of server proof")
-    func unverifiedDuplicateErrorIsNotAlreadyApplied() async throws {
-        let quizPayload = QuizSubmitPayload(
-            bookId: "b-1",
-            chapterNumber: 2,
-            sessionId: "sess-already",
-            answers: ["q-1": "c-1b"]
-        )
-        let payloadData = try JSONEncoder().encode(quizPayload)
-        // Create an in-memory mutation (not persisted — we're testing dispatch behaviour only).
+    @Test("malformed legacy quiz payload quarantines before decode or transport")
+    func malformedLegacyQuizQuarantinesBeforeDecode() async throws {
         let mutation = PendingMutation(
             mutationId: "m-already",
             userId: "u",
             kindRaw: MutationKind.quizSubmit.rawValue,
-            payloadJSON: String(data: payloadData, encoding: .utf8) ?? "{}"
+            payloadJSON: "not-json::legacy-quiz"
         )
         let snapshot = SyncMutationSnapshot(from: mutation)
 
         let mock = MockClient()
-        mock.stubbedError = AppError.server(
-            code: "quiz_already_submitted",
-            message: "Already graded",
-            requestId: nil
-        )
         let engine = SyncEngine(apiClient: mock, container: sharedContainer)
 
-        await #expect(throws: AppError.self) {
-            try await engine.dispatchMutation(snapshot)
-        }
-        #expect(mock.calls.count == 1)
+        let outcome = try await engine.dispatchMutation(snapshot)
+
+        #expect(outcome == .quarantined(.unsupportedPayloadVersion))
+        #expect(mock.calls.isEmpty)
     }
 
-    @Test("quiz submit idempotency: same sessionId not sent twice in one drain")
-    @MainActor
-    func quizIdempotencyGuard() async throws {
-        let ctx = try freshContext()
-        // Two mutations for the same sessionId (shouldn't happen in practice, but test the guard).
-        for _ in 0..<2 {
-            let payload = QuizSubmitPayload(
-                bookId: "b-1",
-                chapterNumber: 1,
-                sessionId: "sess-dedup",
-                answers: ["q-1": "c-1a"]
-            )
-            let mutation = try PendingMutation.make(userId: "u", kind: .quizSubmit, payload: payload)
-            ctx.insert(mutation)
-        }
-        try ctx.save()
-
+    @Test("well-formed legacy quiz payload also quarantines with zero transport")
+    func wellFormedLegacyQuizQuarantines() async throws {
+        let payload = QuizSubmitPayload(
+            bookId: "b-1",
+            chapterNumber: 1,
+            sessionId: "sess-dedup",
+            answers: ["q-1": "c-1a"]
+        )
+        let mutation = try PendingMutation.make(userId: "u", kind: .quizSubmit, payload: payload)
         let mock = MockClient()
         let engine = SyncEngine(apiClient: mock, container: sharedContainer)
-        await engine.triggerDrain(userId: "u")
-        try await Task.sleep(for: .milliseconds(300))
+        let outcome = try await engine.dispatchMutation(SyncMutationSnapshot(from: mutation))
 
-        // The dedup guard inside dispatchQuizSubmit prevents the second call.
-        let quizCalls = mock.calls.filter { $0.path.contains("submit") }
-        #expect(quizCalls.count <= 1)
+        #expect(outcome == .quarantined(.unsupportedPayloadVersion))
+        #expect(mock.calls.isEmpty)
     }
 
     @Test("retry-after-partial-drain: failed mutations remain in outbox")
     @MainActor
     func retryAfterPartialDrain() async throws {
-        let ctx = try freshContext()
+        // Keep this delayed drain isolated from other suites that exercise the
+        // shared container concurrently under `swift test --parallel`.
+        let schema = Schema(PersistenceSchemaV7.models)
+        let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let container = try ModelContainer(for: schema, configurations: configuration)
+        let ctx = container.mainContext
         ctx.insert(PendingMutation(
             mutationId: "m-1",
             userId: "u-retry",
@@ -484,7 +466,7 @@ struct SyncEngineConflictTests {
         // Use a non-retryable error (invalidInput has isRetryable == false)
         // so the drain fails immediately without backoff delays.
         mock.stubbedError = AppError.invalidInput("server rejected")
-        let engine = SyncEngine(apiClient: mock, container: sharedContainer)
+        let engine = SyncEngine(apiClient: mock, container: container)
         await engine.triggerDrain(userId: "u-retry")
         try await Task.sleep(for: .milliseconds(300))
 
@@ -545,39 +527,25 @@ struct SyncEngineConflictTests {
 
 }
 
-// MARK: - Endpoint+Sync tests
+// MARK: - Retired quiz replay producer
 
-@Suite("Endpoint+Sync")
-struct EndpointSyncTests {
-
-    @Test("submitQuiz builds the correct path and body")
-    func submitQuizPath() throws {
-        let endpoint = try Endpoints.submitQuiz(
-            bookId: "book-abc",
-            chapterNumber: 5,
-            sessionId: "sess-42",
-            answers: ["q1": "c1a"]
+@Suite("Retired quiz replay producer")
+struct RetiredQuizReplayProducerTests {
+    @Test("obsolete Endpoint+Sync producer and mapping record no longer exist")
+    func obsoleteProducerIsAbsent() throws {
+        var repositoryRoot = URL(fileURLWithPath: #filePath)
+        for _ in 0..<5 { repositoryRoot.deleteLastPathComponent() }
+        let obsoleteSource = repositoryRoot.appendingPathComponent(
+            "Packages/Networking/Sources/Networking/Endpoint+Sync.swift"
         )
-        #expect(endpoint.method == .post)
-        #expect(endpoint.path == "/book/me/quiz/book-abc/5/submit")
-        #expect(endpoint.requiresAuth == true)
-        #expect(endpoint.httpBody != nil)
+        #expect(!FileManager.default.fileExists(atPath: obsoleteSource.path))
 
-        struct Body: Decodable { let sessionId: String; let answers: [String: String] }
-        // swiftlint:disable:next force_unwrapping
-        let body = try JSONDecoder().decode(Body.self, from: endpoint.httpBody!)
-        #expect(body.sessionId == "sess-42")
-        #expect(body.answers["q1"] == "c1a")
-    }
-
-    @Test("submitQuiz percent-encodes bookId")
-    func submitQuizEncoding() throws {
-        let endpoint = try Endpoints.submitQuiz(
-            bookId: "book/with/slashes",
-            chapterNumber: 1,
-            sessionId: "s",
-            answers: [:]
+        let mappingURL = repositoryRoot.appendingPathComponent(
+            "contracts/native-ios/v1/ios-native-contract-inventory-source.json"
         )
-        #expect(!endpoint.path.contains("//"))
+        let mapping = try String(contentsOf: mappingURL, encoding: .utf8)
+        #expect(!mapping.contains("submitquiz-sync"))
+        #expect(!mapping.contains("submitQuiz.sync"))
+        #expect(mapping.contains("submitquiz-online"))
     }
 }
