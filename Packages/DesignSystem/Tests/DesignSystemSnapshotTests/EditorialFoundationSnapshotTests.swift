@@ -10,7 +10,7 @@ struct EditorialFoundationSnapshotTests {
     @Test("editorial foundation has a stable normal reference")
     func normalReference() throws {
         let size = CGSize(width: compactWidth, height: 1_000)
-        let view = foundationPanel
+        let view = foundationPanel(surfaceStyle: ReferenceSurface.light)
             .environment(\.colorScheme, .light)
             .environment(\.dynamicTypeSize, .large)
 
@@ -24,7 +24,7 @@ struct EditorialFoundationSnapshotTests {
     @Test("editorial foundation has a stable AX5 dark reference")
     func accessibility5Reference() throws {
         let size = CGSize(width: compactWidth, height: 1_200)
-        let view = foundationPanel
+        let view = foundationPanel(surfaceStyle: ReferenceSurface.dark)
             .environment(\.colorScheme, .dark)
             .environment(\.dynamicTypeSize, .accessibility5)
 
@@ -38,14 +38,16 @@ struct EditorialFoundationSnapshotTests {
     @Test("editorial foundation renders RTL at the smallest supported width")
     func rightToLeftCompactRender() {
         let size = CGSize(width: compactWidth, height: 1_550)
-        let view = foundationPanel
+        let view = foundationPanel(surfaceStyle: Color.cfSecondaryBackground)
             .environment(\.layoutDirection, .rightToLeft)
             .environment(\.dynamicTypeSize, .large)
 
         assertRenders(view, label: "editorial foundation — compact RTL", size: size)
     }
 
-    private var foundationPanel: some View {
+    private func foundationPanel(
+        surfaceStyle: some ShapeStyle
+    ) -> some View {
         VStack(alignment: .leading, spacing: .cfSpacing20) {
             typographySpecimens
 
@@ -60,7 +62,8 @@ struct EditorialFoundationSnapshotTests {
                     kind: .loading,
                     title: "Loading your highlights",
                     message: "This should only take a moment."
-                )
+                ),
+                snapshotSurfaceStyle: surfaceStyle
             )
 
             CFInlineStateView(
@@ -68,7 +71,8 @@ struct EditorialFoundationSnapshotTests {
                     kind: .empty,
                     title: "No highlights yet",
                     message: "Select a passage while reading to keep it here."
-                )
+                ),
+                snapshotSurfaceStyle: surfaceStyle
             )
 
             CFInlineStateView(
@@ -77,7 +81,8 @@ struct EditorialFoundationSnapshotTests {
                     title: "Highlights could not load",
                     message: "Your saved highlights are still safe."
                 ),
-                retryAction: CFInlineRetryAction("Try Again") {}
+                retryAction: CFInlineRetryAction("Try Again") {},
+                snapshotSurfaceStyle: surfaceStyle
             )
 
             CFInlineStateView(
@@ -85,12 +90,32 @@ struct EditorialFoundationSnapshotTests {
                     kind: .offline,
                     title: "You're offline",
                     message: "Reconnect to refresh this section."
-                )
+                ),
+                snapshotSurfaceStyle: surfaceStyle
             )
         }
         .padding(.cfSpacing16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color.cfGroupedBackground)
+    }
+
+    /// Stable sRGB calibration values for raster fixtures only. Production
+    /// views continue to use the adaptive `cfSecondaryBackground` token.
+    private enum ReferenceSurface {
+        static let light = Color(
+            .sRGB,
+            red: 0.92,
+            green: 0.92,
+            blue: 0.92,
+            opacity: 1
+        )
+        static let dark = Color(
+            .sRGB,
+            red: 0.16,
+            green: 0.16,
+            blue: 0.16,
+            opacity: 1
+        )
     }
 
     private var typographySpecimens: some View {

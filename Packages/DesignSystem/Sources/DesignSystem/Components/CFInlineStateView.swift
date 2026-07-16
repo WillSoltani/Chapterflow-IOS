@@ -58,6 +58,7 @@ public struct CFInlineRetryAction {
 public struct CFInlineStateView: View {
     let state: CFInlineState
     let retryAction: CFInlineRetryAction?
+    private let surfaceStyle: AnyShapeStyle
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -69,6 +70,19 @@ public struct CFInlineStateView: View {
     ) {
         self.state = state
         self.retryAction = state.kind.supportsRetry ? retryAction : nil
+        self.surfaceStyle = AnyShapeStyle(Color.cfSecondaryBackground)
+    }
+
+    /// Keeps raster references deterministic without changing the public
+    /// semantic surface used by production callers.
+    init<Surface: ShapeStyle>(
+        state: CFInlineState,
+        retryAction: CFInlineRetryAction? = nil,
+        snapshotSurfaceStyle: Surface
+    ) {
+        self.state = state
+        self.retryAction = state.kind.supportsRetry ? retryAction : nil
+        self.surfaceStyle = AnyShapeStyle(snapshotSurfaceStyle)
     }
 
     public var body: some View {
@@ -139,7 +153,7 @@ public struct CFInlineStateView: View {
         .padding(.cfSpacing16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            Color.cfSecondaryBackground,
+            surfaceStyle,
             in: RoundedRectangle(cornerRadius: .cfRadius12)
         )
         .accessibilityElement(children: .contain)
