@@ -20,6 +20,41 @@ import SettingsFeature
 import SyncEngine
 
 extension AppRootView {
+    @ViewBuilder
+    var authGateSheetContent: some View {
+        #if os(iOS)
+        AuthGateSheet(
+            authService: model.authService,
+            sessionManager: model.session,
+            intent: model.pendingAuthIntent
+        )
+        #if DEBUG
+        .safeAreaInset(edge: .bottom) {
+            if model.canCompleteDeferredHermeticAuth {
+                Button("Complete hermetic sign-in") {
+                    model.completeDeferredHermeticSignIn()
+                }
+                .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("hermetic-auth-complete")
+                .padding(.cfSpacing16)
+            }
+        }
+        #endif
+        .presentationDetents([.large])
+        #else
+        EmptyView()
+        #endif
+    }
+
+    var referralSheetContent: some View {
+        NavigationStack {
+            ReferralView(
+                repository: model.socialRepository,
+                pendingReferralCode: model.pendingReferralCode
+            )
+        }
+    }
+
     // MARK: - Guest tab content
 
     @ViewBuilder
@@ -50,6 +85,7 @@ extension AppRootView {
             LibraryView(
                 repository: model.libraryRepository,
                 bookDetailRepository: model.bookDetailRepository,
+                router: model.libraryRouter,
                 aiRepository: nil,
                 preferences: model.guestPreferences,
                 store: model.guestKeyValueStore,

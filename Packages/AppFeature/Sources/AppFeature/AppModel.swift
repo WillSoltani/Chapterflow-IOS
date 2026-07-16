@@ -38,6 +38,26 @@ private enum SessionTransitionTarget: Equatable {
     }
 }
 
+/// One exact external navigation request owned by the application shell.
+///
+/// This intentionally covers only WP-NAV-01A. Journey and event destinations
+/// retain their existing safe tab fallback until WP-NAV-01B owns them.
+enum AppNavigationRequest: Sendable, Equatable {
+    case book(id: String)
+    case chapter(bookId: String, chapter: Int)
+    case review
+    case pairAccept(code: String)
+    case gift(code: String)
+    case referral(code: String)
+    case notifications
+    case paywall
+
+    var requiresActiveScope: Bool {
+        if case .book = self { return false }
+        return true
+    }
+}
+
 /// The top-level observable app state that drives `AppRootView`.
 ///
 /// Responsibilities:
@@ -51,6 +71,19 @@ private enum SessionTransitionTarget: Equatable {
 @Observable
 @MainActor
 public final class AppModel {
+
+    #if DEBUG
+    private static let deferredAuthUITestKey = "CF_UITEST_DEFERRED_AUTH"
+
+    static func isHermeticDeferredAuthUITest(
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> Bool {
+        environment[deferredAuthUITestKey] == "1"
+            && environment["CF_STUB_SERVER"] == "1"
+            && environment["CF_HERMETIC_TEST_CONFIGURATION"] == "1"
+            && environment["CF_UITEST_BYPASS_AUTH"] != "1"
+    }
+    #endif
 
     // MARK: - Auth
 
@@ -70,6 +103,11 @@ public final class AppModel {
     /// The action a guest was trying to perform when they hit an auth gate.
     /// Cleared and replayed by `replayPendingIntent()` after sign-in.
     public var pendingAuthIntent: AuthGateIntent = .none
+
+    /// The one exact external request waiting for private-scope authority.
+    /// Internal so deterministic tests can prove payload and account affinity.
+    private(set) var pendingNavigationRequest: AppNavigationRequest?
+    private var pendingNavigationAccountID: String?
 
     // MARK: - Focus filter
 
@@ -492,6 +530,8 @@ public final class AppModel {
             sessionFeatureModelsStorage = nil
             showsSignOutFailure = false
             apiObservationHealthRecorder.transition(to: .signedOut)
+            isGuestMode = false
+            clearAccountPresentationState()
             return
         }
         if let signOutTask {
@@ -640,6 +680,7 @@ public final class AppModel {
     }
 
     private func prepareScope(for identity: SessionIdentity, generation: UInt64) async {
+        bindPendingNavigationRequest(to: identity.subject)
         let context = AccountContext(identity: identity, config: validatedConfig)
         if let activeSessionScope,
            activeSessionScope.context.accountID == context.accountID,
@@ -652,13 +693,16 @@ public final class AppModel {
         }
 
         if let oldScope = activeSessionScope {
+            let preservesPendingNavigation = oldScope.context.accountID == context.accountID
             sessionScopePhase = .quiescing
             activeSessionScope = nil
             sessionFeatureModelsStorage = nil
             await cancelSpotlightIndexingAndRemoveAll()
             await cancelAccountBackgroundWork()
             await oldScope.invalidate()
-            clearAccountPresentationState()
+            clearAccountPresentationState(
+                preservingPendingNavigation: preservesPendingNavigation
+            )
 
             // A production SessionManager requires A's sign-out transaction to
             // finish before B can authenticate. If an unsupported/test-only
@@ -694,6 +738,11 @@ public final class AppModel {
             }
             activeSessionScope = scope
             installSessionFeatureModels(for: scope)
+            #if DEBUG
+            if Self.isHermeticDeferredAuthUITest() {
+                scope.graph?.preferences.onboardingCompleted = true
+            }
+            #endif
             sessionScopePhase = .active
             hydrateDisplayName()
             showAuthGate = false
@@ -708,7 +757,10 @@ public final class AppModel {
             if generation == sessionPreparationGeneration {
                 activeSessionScope = nil
                 sessionFeatureModelsStorage = nil
-                clearAccountPresentationState()
+                // The Recovery retry is still bound to this same proven
+                // identity, so preserve its exact request until retry,
+                // cancellation, sign-out, or an account mismatch.
+                clearAccountPresentationState(preservingPendingNavigation: true)
                 sessionScopePhase = .failure
             }
         }
@@ -753,8 +805,14 @@ public final class AppModel {
         clearAccountPresentationState()
     }
 
-    private func clearAccountPresentationState() {
+    private func clearAccountPresentationState(
+        preservingPendingNavigation: Bool = false
+    ) {
         pendingHandoffFlow = nil
+        if !preservingPendingNavigation {
+            pendingNavigationRequest = nil
+            pendingNavigationAccountID = nil
+        }
         pendingGiftCode = nil
         pendingReferralCode = ""
         pendingPairAcceptCode = ""
@@ -939,8 +997,27 @@ public final class AppModel {
     /// After the user signs in, `AppRootView` calls `replayPendingIntent()` to
     /// execute the captured action.
     public func requestAuth(intent: AuthGateIntent) {
+        // One actionable request owns the auth transition. A later tap may
+        // keep the sheet visible, but cannot overwrite an exact external route.
+        guard pendingNavigationRequest == nil else {
+            showAuthGate = true
+            return
+        }
+        guard pendingAuthIntent.isNone || pendingAuthIntent == intent else {
+            showAuthGate = true
+            return
+        }
         pendingAuthIntent = intent
         showAuthGate = true
+    }
+
+    /// Explicit user cancellation is the only pre-consumption path that drops
+    /// an exact pending route.
+    public func cancelPendingAuthNavigation() {
+        pendingNavigationRequest = nil
+        pendingNavigationAccountID = nil
+        pendingAuthIntent = .none
+        showAuthGate = false
     }
 
     /// Executes the pending intent after a successful sign-in.
@@ -948,9 +1025,8 @@ public final class AppModel {
     /// Starts the book and opens the reader for `.startBook`, or does nothing
     /// for `.none`. Called from `AppRootView.onChange(of: authState)`.
     func replayPendingIntent(readingFlowSetter: (ReadingFlow) -> Void) async {
+        guard activeMatchingScope != nil else { return }
         let intent = pendingAuthIntent
-        pendingAuthIntent = .none
-        isGuestMode = false
 
         switch intent {
         case .startBook(let bookId, let variantFamily):
@@ -972,7 +1048,135 @@ public final class AppModel {
         case .none:
             break
         }
+        pendingAuthIntent = .none
+        isGuestMode = false
     }
+
+    /// Replays one exact external route after the matching account scope is
+    /// active. The request remains pending if authority is not yet available.
+    func replayPendingNavigationRequest() {
+        guard let request = pendingNavigationRequest,
+              request.requiresActiveScope,
+              let scope = activeMatchingScope else {
+            return
+        }
+        if let pendingNavigationAccountID,
+           pendingNavigationAccountID != scope.context.accountID {
+            cancelPendingAuthNavigation()
+            return
+        }
+
+        consumeNavigationRequest(request)
+        pendingNavigationRequest = nil
+        pendingNavigationAccountID = nil
+        showAuthGate = false
+        isGuestMode = false
+    }
+
+    private func bindPendingNavigationRequest(to accountID: String) {
+        guard pendingNavigationRequest != nil else { return }
+        guard let pendingNavigationAccountID else {
+            self.pendingNavigationAccountID = accountID
+            return
+        }
+        guard pendingNavigationAccountID == accountID else {
+            cancelPendingAuthNavigation()
+            return
+        }
+    }
+
+    private func enqueuePrivateNavigationRequest(_ request: AppNavigationRequest) {
+        guard request.requiresActiveScope else {
+            consumeNavigationRequest(request)
+            return
+        }
+        if activeMatchingScope != nil {
+            consumeNavigationRequest(request)
+            return
+        }
+
+        // First request wins until consumption or explicit cancellation.
+        if let pendingNavigationRequest {
+            if pendingNavigationRequest == request { showAuthGate = true }
+            return
+        }
+        guard pendingAuthIntent.isNone else { return }
+
+        pendingNavigationRequest = request
+        pendingNavigationAccountID = session.currentIdentity?.subject
+        switch session.authState {
+        case .unknown, .signedOut:
+            isGuestMode = true
+        case .signedIn, .reauthRequired, .reconnecting:
+            break
+        }
+        showAuthGate = true
+    }
+
+    private func consumeNavigationRequest(_ request: AppNavigationRequest) {
+        switch request {
+        case .book(let id):
+            selectedTab = .library
+            libraryRouter.popToRoot()
+            libraryRouter.push(LibraryRoute.bookDetail(bookId: id))
+        case .chapter(let bookId, let chapter):
+            selectedTab = .library
+            let flow = ReadingFlow(
+                bookId: bookId,
+                chapterNumber: chapter,
+                variantFamily: .emh
+            )
+            if pendingHandoffFlow != flow { pendingHandoffFlow = flow }
+        case .review:
+            selectedTab = .reviews
+        case .pairAccept(let code):
+            pendingPairAcceptCode = code
+            selectedTab = .profile
+        case .gift(let code):
+            pendingGiftCode = code
+            selectedTab = .profile
+        case .referral(let code):
+            pendingReferralCode = code
+            selectedTab = .profile
+        case .notifications:
+            selectedTab = .home
+            showNotificationInbox = true
+        case .paywall:
+            paywallContext = .settings
+            showPaywall = true
+        }
+    }
+
+    #if DEBUG
+    var canCompleteDeferredHermeticAuth: Bool {
+        Self.isHermeticDeferredAuthUITest() && session.authState == .signedOut
+    }
+
+    @discardableResult
+    func completeDeferredHermeticSignIn() -> Bool {
+        guard canCompleteDeferredHermeticAuth,
+              let identity = SessionIdentity(
+                subject: "uitest-user-123",
+                username: "Test User",
+                email: nil,
+                source: .hermeticUITest
+              ) else {
+            return false
+        }
+        let tokens = StoredTokens(
+            idToken: "eyJhbGciOiJub25lIn0.eyJzdWIiOiJ1aXRlc3QtdXNlci0xMjMiLCJuYW1lIjoiVGVzdCBVc2VyIiwiZXhwIjo5OTk5OTk5OTk5fQ.",
+            accessToken: "hermetic-access-token",
+            refreshToken: "hermetic-refresh-token",
+            expiresAt: .distantFuture
+        )
+        do {
+            try session.establishHermeticSession(identity: identity, tokens: tokens)
+            return true
+        } catch {
+            return false
+        }
+    }
+    #endif
 
     private func resolveChapterNumber(from state: BookUserBookState) -> Int {
         guard let chapterId = state.currentChapterId ?? state.lastReadChapterId else { return 1 }
@@ -1046,51 +1250,72 @@ public final class AppModel {
     }
 
     public func handle(deepLink: DeepLink) {
-        // In guest mode, browseable links go through normally;
-        // account-only links trigger the auth gate instead.
-        if isGuestMode {
-            switch deepLink {
-            case .book, .chapter, .library:
-                selectedTab = .library
-            default:
-                requestAuth(intent: .none)
+        if let request = navigationRequest(from: deepLink) {
+            if request.requiresActiveScope {
+                enqueuePrivateNavigationRequest(request)
+            } else {
+                if activeMatchingScope == nil { isGuestMode = true }
+                consumeNavigationRequest(request)
             }
             return
         }
+
+        // WP-NAV-01B owns exact journey/event and external-source routing.
+        // Preserve the existing safe tab fallback without inventing a detail.
         switch deepLink {
-        case .book, .chapter:
-            selectedTab = .library
-        case .review:
-            selectedTab = .reviews
-        case .pairAccept(let code):
-            pendingPairAcceptCode = code
-            selectedTab = .profile
-        case .gift(let code):
-            selectedTab = .profile
-            pendingGiftCode = code
-        case .referral(let code):
-            // iOS has no deferred deep-link API — a new install cannot carry the
-            // code automatically. The Profile tab always shows a manual entry path.
-            pendingReferralCode = code
-            selectedTab = .profile
-        case .paywall:
-            paywallContext = .settings
-            showPaywall = true
         case .journey, .event:
-            // Journey and event detail screens live inside the Engagement/Home tab.
-            selectedTab = .home
+            if activeMatchingScope != nil {
+                selectedTab = .home
+            } else {
+                requestAuth(intent: .none)
+            }
         case .library:
+            if activeMatchingScope == nil { isGuestMode = true }
             selectedTab = .library
         case .profile:
-            selectedTab = .profile
+            if activeMatchingScope != nil {
+                selectedTab = .profile
+            } else {
+                requestAuth(intent: .none)
+            }
         case .engagement:
-            selectedTab = .home
-        case .notifications:
-            selectedTab = .home
-            showNotificationInbox = true
-        case .unknown:
+            if activeMatchingScope != nil {
+                selectedTab = .home
+            } else {
+                requestAuth(intent: .none)
+            }
+        case .book, .chapter, .review, .pairAccept, .gift, .referral,
+             .notifications, .paywall, .unknown:
             break
         }
+    }
+
+    private func navigationRequest(from deepLink: DeepLink) -> AppNavigationRequest? {
+        switch deepLink {
+        case .book(let id) where Self.isValidRouteValue(id):
+            .book(id: id)
+        case .chapter(let bookId, let chapter)
+            where Self.isValidRouteValue(bookId) && chapter > 0:
+            .chapter(bookId: bookId, chapter: chapter)
+        case .review:
+            .review
+        case .pairAccept(let code) where Self.isValidRouteValue(code):
+            .pairAccept(code: code)
+        case .gift(let code) where Self.isValidRouteValue(code):
+            .gift(code: code)
+        case .referral(let code) where Self.isValidRouteValue(code):
+            .referral(code: code)
+        case .notifications:
+            .notifications
+        case .paywall:
+            .paywall
+        default:
+            nil
+        }
+    }
+
+    private static func isValidRouteValue(_ value: String) -> Bool {
+        !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     // MARK: - Push notification routing

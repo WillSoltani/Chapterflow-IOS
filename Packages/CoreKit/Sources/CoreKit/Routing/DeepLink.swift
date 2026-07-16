@@ -111,37 +111,65 @@ public enum DeepLink: Sendable, Equatable {
         switch segments.first {
         case "book":          return parseBook(segments: segments, url: url)
         case "pair":          return parsePair(segments: segments, url: url)
-        case "gift":          return parseCode(segments, url: url) { .gift(code: $0) }
-        case "ref":           return parseCode(segments, url: url) { .referral(code: $0) }
-        case "review":        return .review
-        case "paywall":       return .paywall
-        case "journey":       return parseCode(segments, url: url) { .journey(id: $0) }
-        case "event":         return parseCode(segments, url: url) { .event(id: $0) }
-        case "library":       return .library
+        case "gift":          return parseExactCode(segments, url: url) { .gift(code: $0) }
+        case "ref":           return parseExactCode(segments, url: url) { .referral(code: $0) }
+        case "review":        return parseExactFixed(segments, url: url, route: .review)
+        case "paywall":       return parseExactFixed(segments, url: url, route: .paywall)
+        // Journey/event destination precision belongs to WP-NAV-01B. Preserve
+        // their existing safe tab fallback without widening this slice.
+        case "journey":       return parseLegacyCode(segments, url: url) { .journey(id: $0) }
+        case "event":         return parseLegacyCode(segments, url: url) { .event(id: $0) }
+        case "library":       return parseExactFixed(segments, url: url, route: .library)
         case "profile":       return .profile
         case "engagement":    return .engagement
-        case "notifications": return .notifications
+        case "notifications": return parseExactFixed(segments, url: url, route: .notifications)
         default:              return .unknown(url)
         }
     }
 
     private static func parseBook(segments: [String], url: URL) -> DeepLink {
         guard segments.count >= 2, !segments[1].isEmpty else { return .unknown(url) }
-        let bookId = segments[1]
-        if segments.count >= 4, segments[2] == "chapter", let n = Int(segments[3]) {
-            return .chapter(bookId: bookId, chapter: n)
+        if segments.count == 2 {
+            return .book(id: segments[1])
         }
-        return .book(id: bookId)
+        guard segments.count == 4,
+              segments[2] == "chapter",
+              let chapter = Int(segments[3]),
+              chapter > 0 else {
+            return .unknown(url)
+        }
+        return .chapter(bookId: segments[1], chapter: chapter)
     }
 
     private static func parsePair(segments: [String], url: URL) -> DeepLink {
-        guard segments.count >= 3, segments[1] == "accept", !segments[2].isEmpty else {
+        guard segments.count == 3, segments[1] == "accept", !segments[2].isEmpty else {
             return .unknown(url)
         }
         return .pairAccept(code: segments[2])
     }
 
-    private static func parseCode(_ segments: [String], url: URL, make: (String) -> DeepLink) -> DeepLink {
+    private static func parseExactCode(
+        _ segments: [String],
+        url: URL,
+        make: (String) -> DeepLink
+    ) -> DeepLink {
+        guard segments.count == 2, !segments[1].isEmpty else { return .unknown(url) }
+        return make(segments[1])
+    }
+
+    private static func parseExactFixed(
+        _ segments: [String],
+        url: URL,
+        route: DeepLink
+    ) -> DeepLink {
+        segments.count == 1 ? route : .unknown(url)
+    }
+
+    private static func parseLegacyCode(
+        _ segments: [String],
+        url: URL,
+        make: (String) -> DeepLink
+    ) -> DeepLink {
         guard segments.count >= 2, !segments[1].isEmpty else { return .unknown(url) }
         return make(segments[1])
     }

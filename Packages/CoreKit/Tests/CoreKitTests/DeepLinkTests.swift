@@ -78,9 +78,30 @@ struct DeepLinkTests {
         #expect(link("chapterflow://something/weird") == .unknown(url))
     }
 
-    @Test("a non-numeric chapter degrades to the book link")
+    @Test("a non-numeric chapter is inert")
     func nonNumericChapter() {
-        #expect(link("chapterflow://book/abc/chapter/notanumber") == .book(id: "abc"))
+        let url = URL(string: "chapterflow://book/abc/chapter/notanumber")!
+        #expect(link(url.absoluteString) == .unknown(url))
+    }
+
+    @Test(
+        "malformed exact routes are inert",
+        arguments: [
+            "chapterflow://book/abc/chapter",
+            "chapterflow://book/abc/chapter/0",
+            "chapterflow://book/abc/chapter/-1",
+            "chapterflow://book/abc/chapter/2/extra",
+            "chapterflow://pair/accept/CODE/extra",
+            "chapterflow://gift/CODE/extra",
+            "chapterflow://ref/CODE/extra",
+            "chapterflow://review/extra",
+            "chapterflow://paywall/extra",
+            "chapterflow://notifications/extra",
+        ]
+    )
+    func malformedExactRoute(urlString: String) {
+        let url = URL(string: urlString)!
+        #expect(link(urlString) == .unknown(url))
     }
 
     @Test("foreign schemes are rejected")
@@ -199,9 +220,10 @@ struct DeepLinkAppDomainTests {
         #expect(link("https://app.chapterflow.ca/some/unknown/path") == .unknown(url))
     }
 
-    @Test("UL app-domain: non-numeric chapter degrades to book")
+    @Test("UL app-domain: non-numeric chapter is inert")
     func nonNumericChapterUniversalLink() {
-        #expect(link("https://app.chapterflow.ca/book/abc/chapter/nan") == .book(id: "abc"))
+        let url = URL(string: "https://app.chapterflow.ca/book/abc/chapter/nan")!
+        #expect(link(url.absoluteString) == .unknown(url))
     }
 }
 
