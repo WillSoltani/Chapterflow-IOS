@@ -76,11 +76,15 @@ func assertSnapshot<V: View>(
     let dir    = snapshotDir(file: file)
     let refURL = dir.appendingPathComponent("\(name).png")
 
-    if isSnapshotRecordMode || !FileManager.default.fileExists(atPath: refURL.path) {
+    if isSnapshotRecordMode {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         try png.write(to: refURL)
         // Record mode: writing succeeds → test passes.
         return
+    }
+
+    guard FileManager.default.fileExists(atPath: refURL.path) else {
+        throw SnapshotError.missingReference(name)
     }
 
     guard let refPNG = try? Data(contentsOf: refURL) else {
@@ -127,8 +131,13 @@ private func pixelMismatch(new newPNG: Data, ref refPNG: Data) -> Double {
         let refRep = NSBitmapImageRep(data: refImg.tiffRepresentation ?? Data())
     else { return 1.0 }
 
-    let w = min(newRep.pixelsWide, refRep.pixelsWide)
-    let h = min(newRep.pixelsHigh, refRep.pixelsHigh)
+    guard
+        newRep.pixelsWide == refRep.pixelsWide,
+        newRep.pixelsHigh == refRep.pixelsHigh
+    else { return 1.0 }
+
+    let w = newRep.pixelsWide
+    let h = newRep.pixelsHigh
     guard w > 0, h > 0 else { return 1.0 }
 
     var diff = 0
