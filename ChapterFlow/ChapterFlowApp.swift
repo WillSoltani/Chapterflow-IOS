@@ -27,6 +27,7 @@ struct ChapterFlowApp: App {
         let config = CFAppLaunchSupport.resolveConfiguration(
             default: AppConfig.fromInfoPlist()
         )
+        CFAppLaunchSupport.seedHermeticAccountPreferencesIfNeeded(config: config)
         _bootstrap = State(initialValue: CFAppLaunchSupport.makeBootstrap(
             config: config,
             buildConfiguration: .debug

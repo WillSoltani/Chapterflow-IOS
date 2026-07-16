@@ -25,6 +25,26 @@ struct AccountContextTests {
         #expect(first != second)
     }
 
+    @Test("hermetic account context matches production namespace derivation")
+    @MainActor
+    func hermeticAccountContextMatchesProductionDerivation() throws {
+        let config = try makeValidatedConfig(
+            userPoolID: "us-east-1_ChapterFlowUITest",
+            clientID: "chapterflowuitestclient12345",
+            domain: "auth.chapterflow.test"
+        )
+        let expected = AccountContext(
+            identity: SessionManager.hermeticUITestIdentity,
+            config: config
+        )
+        let actual = SessionManager.hermeticUITestAccountContext(validatedConfig: config)
+
+        #expect(actual.accountID == expected.accountID)
+        #expect(actual.source == expected.source)
+        #expect(actual.environmentNamespace == expected.environmentNamespace)
+        #expect(actual.storageNamespace == expected.storageNamespace)
+    }
+
     @Test("account and environment boundaries produce distinct opaque namespaces")
     func namespacesRespectAccountAndEnvironmentBoundaries() throws {
         let accountA = AccountContext(

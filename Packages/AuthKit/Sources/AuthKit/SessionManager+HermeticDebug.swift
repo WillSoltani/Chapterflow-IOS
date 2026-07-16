@@ -1,3 +1,4 @@
+import CoreKit
 import Persistence
 
 #if DEBUG
@@ -23,6 +24,14 @@ extension SessionManager {
         environment["CF_UITEST_BYPASS_AUTH"] == "1"
             && environment["CF_STUB_SERVER"] == "1"
             && environment["CF_HERMETIC_TEST_CONFIGURATION"] == "1"
+    }
+
+    /// Derives the same account authority that production session composition
+    /// creates for the fixed hermetic identity and a validated configuration.
+    public static func hermeticUITestAccountContext(
+        validatedConfig: ValidatedAppConfig
+    ) -> AccountContext {
+        AccountContext(identity: hermeticUITestIdentity, config: validatedConfig)
     }
 
     /// Constructs a deterministic signed-in session for hermetic package/UI tests.
