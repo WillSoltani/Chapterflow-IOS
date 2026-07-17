@@ -2,6 +2,7 @@ import Foundation
 import CoreKit
 import Networking
 import Models
+import Persistence
 
 enum MutationDispatchOutcome: Sendable, Equatable {
     case applied
@@ -46,6 +47,8 @@ extension SyncEngine {
                 return try await dispatchNotebookWrite(snapshot)
             case .highlightWrite:
                 return try await dispatchHighlightWrite(snapshot)
+            case .notebookDelete:
+                return try await dispatchNotebookDelete(snapshot)
             case .reviewGrade:
                 return try await dispatchReviewGrade(snapshot)
             case .commitment:
@@ -83,17 +86,48 @@ extension SyncEngine {
             let endpoint = try Endpoints.patchNotebookEntry(entryId: entryId, body: body)
             let _: NotebookUpdateResponse = try await apiClient.send(endpoint)
         } else {
+            if let localAnnotationID = payload.localAnnotationId {
+                guard !localAnnotationID.isEmpty else {
+                    return .quarantined(.missingRequiredField)
+                }
+                let state = try await store.annotationCreateReconciliationState(
+                    localAnnotationId: localAnnotationID
+                )
+                if state == .reconciled {
+                    return .applied
+                }
+            }
             // Create new entry.
+            let anchor = payload.anchor.map {
+                NotebookEntryRequest.Anchor(
+                    variantKey: $0.variantKey,
+                    toneKey: $0.toneKey,
+                    blockIndex: $0.blockIndex,
+                    blockType: $0.blockType,
+                    startChar: $0.startChar,
+                    endChar: $0.endChar,
+                    snippet: $0.snippet
+                )
+            }
             let request = NotebookEntryRequest(
                 bookId: payload.bookId,
                 chapterId: payload.chapterId,
                 type: payload.type,
                 content: payload.content,
                 quote: payload.quote,
-                color: payload.color
+                color: payload.color,
+                anchor: anchor
             )
             let endpoint = try Endpoints.postNotebookEntry(request)
-            let _: NotebookCreateResponse = try await apiClient.send(endpoint)
+            let response: NotebookCreateResponse = try await apiClient.send(endpoint)
+            try Task.checkCancellation()
+            if let localAnnotationID = payload.localAnnotationId {
+                try await store.reconcileAnnotationCreate(
+                    localAnnotationId: localAnnotationID,
+                    serverEntryId: response.entryId,
+                    userId: snapshot.userId
+                )
+            }
         }
         return .applied
     }
@@ -107,6 +141,17 @@ extension SyncEngine {
             let endpoint = try Endpoints.patchNotebookEntry(entryId: entryId, body: body)
             let _: NotebookUpdateResponse = try await apiClient.send(endpoint)
         } else {
+            if let localAnnotationID = payload.localAnnotationId {
+                guard !localAnnotationID.isEmpty else {
+                    return .quarantined(.missingRequiredField)
+                }
+                let state = try await store.annotationCreateReconciliationState(
+                    localAnnotationId: localAnnotationID
+                )
+                if state == .reconciled {
+                    return .applied
+                }
+            }
             let anchor = NotebookEntryRequest.Anchor(
                 variantKey: payload.variantKey,
                 toneKey: payload.toneKey,
@@ -126,8 +171,33 @@ extension SyncEngine {
                 anchor: anchor
             )
             let endpoint = try Endpoints.postNotebookEntry(request)
-            let _: NotebookCreateResponse = try await apiClient.send(endpoint)
+            let response: NotebookCreateResponse = try await apiClient.send(endpoint)
+            try Task.checkCancellation()
+            if let localAnnotationID = payload.localAnnotationId {
+                try await store.reconcileAnnotationCreate(
+                    localAnnotationId: localAnnotationID,
+                    serverEntryId: response.entryId,
+                    userId: snapshot.userId
+                )
+            }
         }
+        return .applied
+    }
+
+    private func dispatchNotebookDelete(
+        _ snapshot: SyncMutationSnapshot
+    ) async throws -> MutationDispatchOutcome {
+        let payload = try decodeStoredPayload(snapshot, as: NotebookDeletePayload.self)
+        guard !payload.localAnnotationId.isEmpty, !payload.serverEntryId.isEmpty else {
+            return .quarantined(.missingRequiredField)
+        }
+        let endpoint = Endpoints.deleteNotebookEntry(entryId: payload.serverEntryId)
+        let _: NotebookDeleteResponse = try await apiClient.send(endpoint)
+        try Task.checkCancellation()
+        try await store.removeConfirmedAnnotationDelete(
+            localAnnotationId: payload.localAnnotationId,
+            serverEntryId: payload.serverEntryId
+        )
         return .applied
     }
 

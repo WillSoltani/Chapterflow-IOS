@@ -234,6 +234,8 @@ final class SessionPrivateGraph {
         )
         apiClient = client
         let container = persistence.controller.container
+        let syncEngine = SyncEngine(apiClient: client, container: container)
+        self.syncEngine = syncEngine
         let presentationStores = SessionPresentationStores.account(context: context)
         let keyValueStore = presentationStores.keyValueStore
         let preferences = presentationStores.preferences
@@ -270,7 +272,10 @@ final class SessionPrivateGraph {
         )
         annotationRepository = LiveAnnotationRepository(
             container: container,
-            apiClient: client,
+            accountID: context.accountID,
+            triggerSync: { [syncEngine, accountID = context.accountID] in
+                await syncEngine.triggerDrain(userId: accountID)
+            },
             workPermit: permit
         )
         reviewsRepository = ReviewsRepository(
@@ -334,9 +339,6 @@ final class SessionPrivateGraph {
                 workPermit: permit
             )
         )
-
-        let syncEngine = SyncEngine(apiClient: client, container: container)
-        self.syncEngine = syncEngine
         downloadManager = DownloadManager(
             resources: persistence,
             apiClient: client,

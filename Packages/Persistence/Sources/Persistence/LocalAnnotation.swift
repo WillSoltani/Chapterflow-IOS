@@ -3,8 +3,8 @@ import SwiftData
 
 /// A local annotation (highlight, note, or bookmark) persisted in SwiftData.
 ///
-/// Synced write-through to the notebook API when online.
-/// Queued via ``PendingAnnotationUpload`` and retried when offline.
+/// Saved together with a deterministic central ``PendingMutation``. The
+/// SyncEngine is the only network/retry owner.
 @Model
 public final class LocalAnnotation {
     @Attribute(.unique) public var annotationId: String
@@ -21,7 +21,7 @@ public final class LocalAnnotation {
     /// The quoted passage at annotation time. Nil for bookmarks with no selection.
     public var snippet: String?
     public var createdAt: Date
-    /// One of: "pending", "synced", "failed"
+    /// Raw value of ``LocalAnnotationSyncState``.
     public var syncState: String
     /// Server-assigned entry ID returned by POST /book/me/notebook.
     public var serverEntryId: String?
@@ -53,10 +53,34 @@ public final class LocalAnnotation {
     }
 }
 
+/// Local visibility/reconciliation state for a notebook-backed annotation.
+///
+/// This remains a raw string on ``LocalAnnotation`` for schema compatibility;
+/// adding `pendingDelete` therefore requires no SwiftData migration.
+public enum LocalAnnotationSyncState: String, Sendable, CaseIterable {
+    case pending
+    case synced
+    case failed
+    case pendingDelete
+}
+
+extension LocalAnnotation {
+    /// Typed state for repository and SyncEngine reconciliation.
+    public var syncStatus: LocalAnnotationSyncState {
+        get { LocalAnnotationSyncState(rawValue: syncState) ?? .failed }
+        set { syncState = newValue.rawValue }
+    }
+
+    /// Tombstones stay durable but are excluded from normal reader loads.
+    public var isPendingDeletion: Bool {
+        syncStatus == .pendingDelete
+    }
+}
+
 /// An offline upload ticket for an annotation that could not be synced immediately.
 ///
-/// Retried when the app regains connectivity.
-/// A lightweight pre-P3.4 offline outbox — offline writes must not crash.
+/// Legacy pre-central-journal upload ticket. New code never creates these rows;
+/// valid rows are migrated transactionally and malformed bytes are preserved.
 @Model
 public final class PendingAnnotationUpload {
     @Attribute(.unique) public var uploadId: String

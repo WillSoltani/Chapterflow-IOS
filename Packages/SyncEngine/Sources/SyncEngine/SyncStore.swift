@@ -33,6 +33,17 @@ struct SyncMutationSnapshot: Sendable {
     }
 }
 
+enum AnnotationCreateReconciliationState: Sendable, Equatable {
+    case needsCreate
+    case reconciled
+}
+
+private enum AnnotationReconciliationFailure: Error, Sendable {
+    case missingLocalAnnotation
+    case inconsistentLocalAnnotation
+    case mutationIdentityCollision
+}
+
 // MARK: - SyncStore
 
 /// A dedicated `@ModelActor` for the SyncEngine's SwiftData operations.
@@ -124,6 +135,97 @@ actor SyncStore {
 
     // MARK: - Post-sync state updates
 
+    /// Checks local state before a reader-annotation create is transported.
+    /// A prior server response may already have been reconciled before a crash
+    /// left the journal row behind; that row can be removed without another POST.
+    func annotationCreateReconciliationState(
+        localAnnotationId: String
+    ) throws -> AnnotationCreateReconciliationState {
+        try Task.checkCancellation()
+        guard let annotation = try fetchAnnotation(annotationId: localAnnotationId) else {
+            throw AnnotationReconciliationFailure.missingLocalAnnotation
+        }
+        if let serverEntryId = annotation.serverEntryId, !serverEntryId.isEmpty {
+            return .reconciled
+        }
+        guard annotation.syncStatus != .synced else {
+            throw AnnotationReconciliationFailure.inconsistentLocalAnnotation
+        }
+        return .needsCreate
+    }
+
+    /// Stores the create response before the mutation may be reported applied.
+    /// If a delete was requested while create was inflight, the row remains a
+    /// tombstone and the deterministic delete mutation is inserted in this save.
+    func reconcileAnnotationCreate(
+        localAnnotationId: String,
+        serverEntryId: String,
+        userId: String
+    ) throws {
+        try Task.checkCancellation()
+        guard !serverEntryId.isEmpty,
+              let annotation = try fetchAnnotation(annotationId: localAnnotationId) else {
+            throw AnnotationReconciliationFailure.missingLocalAnnotation
+        }
+        if let existingServerID = annotation.serverEntryId,
+           existingServerID != serverEntryId {
+            throw AnnotationReconciliationFailure.inconsistentLocalAnnotation
+        }
+
+        var deleteMutation: PendingMutation?
+        if annotation.syncStatus == .pendingDelete {
+            let payload = NotebookDeletePayload(
+                localAnnotationId: localAnnotationId,
+                serverEntryId: serverEntryId
+            )
+            let mutationID = AnnotationMutationID.delete(localAnnotationId: localAnnotationId)
+            if let existing = try fetchMutation(mutationId: mutationID) {
+                guard existing.userId == userId,
+                      existing.kind == .notebookDelete,
+                      (try? existing.decodePayload(as: NotebookDeletePayload.self)) == payload else {
+                    throw AnnotationReconciliationFailure.mutationIdentityCollision
+                }
+            } else {
+                deleteMutation = try PendingMutation.make(
+                    mutationId: mutationID,
+                    userId: userId,
+                    kind: .notebookDelete,
+                    payload: payload
+                )
+            }
+        }
+
+        try Task.checkCancellation()
+        annotation.serverEntryId = serverEntryId
+        if annotation.syncStatus != .pendingDelete {
+            annotation.syncStatus = .synced
+        }
+        if let deleteMutation {
+            modelContext.insert(deleteMutation)
+        }
+        try saveOrRollback()
+    }
+
+    /// Removes a hidden local tombstone only after DELETE has succeeded.
+    func removeConfirmedAnnotationDelete(
+        localAnnotationId: String,
+        serverEntryId: String
+    ) throws {
+        try Task.checkCancellation()
+        guard let annotation = try fetchAnnotation(annotationId: localAnnotationId) else {
+            // A previous confirmed pass may have removed the row before a crash
+            // left only the central mutation. The desired local state already holds.
+            return
+        }
+        guard annotation.syncStatus == .pendingDelete,
+              annotation.serverEntryId == serverEntryId else {
+            throw AnnotationReconciliationFailure.inconsistentLocalAnnotation
+        }
+        try Task.checkCancellation()
+        modelContext.delete(annotation)
+        try saveOrRollback()
+    }
+
     /// After a successful quiz submit, clears the `pendingGrading` flag so the
     /// QuizFeature repository knows the result is now available from the server.
     ///
@@ -149,5 +251,21 @@ actor SyncStore {
             predicate: #Predicate { $0.mutationId == mutationId }
         )
         return try modelContext.fetch(descriptor).first
+    }
+
+    private func fetchAnnotation(annotationId: String) throws -> LocalAnnotation? {
+        let descriptor = FetchDescriptor<LocalAnnotation>(
+            predicate: #Predicate { $0.annotationId == annotationId }
+        )
+        return try modelContext.fetch(descriptor).first
+    }
+
+    private func saveOrRollback() throws {
+        do {
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            throw error
+        }
     }
 }

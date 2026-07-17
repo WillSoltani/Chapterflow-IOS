@@ -30,9 +30,6 @@ public protocol AnnotationRepository: AnyObject {
     /// Returns the newly created bookmark, or `nil` if the bookmark was deleted.
     func toggleBookmark(bookId: String, chapterId: String) async throws -> LocalAnnotation?
 
-    /// Permanently removes an annotation from the local store and the server.
+    /// Stages a durable local delete; server-confirmed removal is owned by SyncEngine.
     func deleteAnnotation(_ annotation: LocalAnnotation) async throws
-
-    /// Retries any pending (failed or offline-queued) uploads.
-    func retryPendingUploads() async
 }
