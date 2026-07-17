@@ -1171,7 +1171,11 @@ byte-identical to the merged backend copy. Two overlay generations were byte-ide
 The build emits one pre-existing `nonisolated(unsafe)` warning in the hermetic UI-test stub route;
 this slice does not change that file. The first independent root rerun of two Swift packages was
 blocked by the managed sandbox's home-directory module cache; the identical required commands then
-passed with cache access, and no source correction or blind retry was used.
+passed with cache access. On PR #136, exact-head `CI / Required` then passed all selected jobs at
+`18060782a835a5c0a23d5e2936d7b34c80f60364`. Full Contract Drift ran all 162 incremental canaries and
+found one stale non-contract mutation target: its Analytics log fixture still searched for `dropped`
+while current `main` uses `retained`. The single allowed same-root correction now mutates the exact
+unique full log expression; its focused canary passes locally. New exact-head checks remain required.
 
 ### Boundaries and remaining publication evidence
 
@@ -1181,5 +1185,5 @@ live-account flow was exercised, and none is claimed. No schema or migration was
 
 This slice changes no backend runtime route, auth, storage, deployment, release, App Store,
 TestFlight, review-grade, entitlement, or frozen PR #117 state. It does not touch the primary dirty
-checkout or unrelated user work. This record makes no iOS PR, exact-head CI, iOS merge, or
+checkout or unrelated user work. This record makes no green final exact-head, iOS merge, or
 post-merge-main claim; those remain required before terminal completion.

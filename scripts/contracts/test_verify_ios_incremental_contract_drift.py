@@ -323,8 +323,8 @@ class IOSIncrementalContractDriftCanaries(unittest.TestCase):
             self.replace_once(
                 candidate,
                 path,
-                "track flush dropped \\(batch.count) event(s)",
-                "track delivery dropped \\(batch.count) event(s)",
+                'log.error("track flush retained \\(batch.count) event(s)")',
+                'log.error("track delivery retained \\(batch.count) event(s)")',
             )
 
         self.assert_sources_accepted(mutate)
