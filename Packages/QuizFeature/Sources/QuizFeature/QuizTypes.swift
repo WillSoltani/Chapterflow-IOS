@@ -5,17 +5,18 @@ import Foundation
 /// A single selected answer to be sent to the server.
 public struct QuizAnswerSubmission: Codable, Sendable, Equatable {
     public let questionId: String
-    public let choiceId: String
+    public let selectedChoiceId: String
 
-    public init(questionId: String, choiceId: String) {
+    public init(questionId: String, selectedChoiceId: String) {
         self.questionId = questionId
-        self.choiceId = choiceId
+        self.selectedChoiceId = selectedChoiceId
     }
 }
 
 /// The request body for `POST .../submit`.
 struct QuizSubmitRequest: Encodable, Sendable {
-    let answers: [QuizAnswerSubmission]
+    let attemptNumber: Int
+    let responses: [QuizAnswerSubmission]
 }
 
 // MARK: - Single-answer check

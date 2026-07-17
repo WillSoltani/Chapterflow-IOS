@@ -1100,3 +1100,90 @@ This slice changes no backend source, endpoint contract, retry policy, mutation 
 navigation architecture, release configuration, signing, App Store/TestFlight/deployment state, or
 frozen PR #117 state. The primary checkout and unrelated user work remain untouched. This local
 record makes no commit, push, pull-request, exact-head CI, merge, or post-merge-main claim.
+
+---
+
+## WP-SYNC-02A quiz draft persistence and canonical submit — 2026-07-17
+
+**Phase:** local implementation, merged-backend contract refresh, focused validation, and fixed
+count-gate correction are complete; iOS publication and merge are pending
+
+**Branch/worktree:** `codex/wp-sync-02a-quiz-draft-submit` at
+`/private/tmp/Chapterflow-IOS-wp-sync-02a`
+
+**Base and pinned history:** iOS `main` is still
+`2f92bbf507268330ed31c8c819aabdc3b1f5aec8`; product/source commit
+`c71cdfb3c0a26c8d7c2cc8bf6ab931a498123c86`, source snapshot
+`32b282a64914caadfab90cebce383f276b7954cd`, and manifest commit
+`f224a6153a73b94ebe11289a28a4b09c90c2149e` remain in order and unrewritten.
+
+### Current local outcome
+
+Quiz answers are saved as an account/book/chapter-scoped draft. An offline submit confirms only that
+the draft is saved; connectivity changes never auto-submit or locally grade it. A later explicit
+submit uses the server attempt number and ordered `responses` containing `questionId` plus
+`selectedChoiceId`. Ordinary failure retains the exact draft. A stale-attempt response refreshes
+once, never resubmits, and restores answers only when attempt and question identity still match.
+
+The obsolete quiz sync endpoint is removed. Legacy `.quizSubmit` pending mutations are rejected as
+unsupported before payload decoding or transport, so no retained legacy shape can become an
+automatic replay. The server remains authoritative for correctness, pass state, cooldown, and
+unlock behavior.
+
+The effective Package `Sources`/`Tests` diff is exactly 16 files, including the two reserved
+Networking contract-test slots. Existing persistence and live-repository regressions were
+consolidated into the changed QuizFeature test file to preserve that cap; strict lint required no
+new suppression or threshold change.
+
+### Merged-backend contract and provenance
+
+Backend contract PR #408 was squash-merged. The exact contract-changing backend `main` revision is
+`04e0ae50b4c1f1722b33a6501e03b79bc8894112`; its post-merge CI completed successfully. Refresh and
+`--check` used a clean checkout at that revision and the trusted ref `refs/remotes/origin/main`.
+
+The deterministic bundle reports **83 operations / 92 producers / 29 matrix rows / 92 relations**,
+with **61 partial / 22 blocked** operations. `quiz-submit.post` is partial and has one online
+producer. Its idempotency class remains unknown and explicitly does not claim replay idempotency or
+a deployed backend revision.
+
+The separately collected iOS inventory remains pinned to source snapshot
+`32b282a64914caadfab90cebce383f276b7954cd`. Its manifest SHA-256 remains
+`fc0daed99b0115bee380cd92f5767caf02bdee39e50971a3c141e0c7f8dc012b`; the refreshed iOS manifest is
+byte-identical to the merged backend copy. Two overlay generations were byte-identical.
+
+### Integrated local evidence
+
+| Scope | Integrated result |
+|---|---|
+| Models | **PASS**, 185 tests in 67 suites |
+| Networking | **PASS**, 96 tests in 6 suites |
+| Persistence | **PASS**, 113 tests in 33 suites |
+| SyncEngine | **PASS**, 44 tests in 8 suites |
+| QuizFeature | **PASS**, 37 tests in 8 suites after behavior-preserving test consolidation |
+| Focused relaunch/draft/explicit-submit test | **PASS**, 1 test in 1 suite |
+| Native inventory generator tests | **PASS**, 66 tests |
+| CI workflow tests | **PASS**, 48 tests |
+| Merged-backend fixture refresh plus `--check` | **PASS**, deterministic 83/92/29/92 and 61/22 output |
+| Unsigned Debug iOS Simulator build | **PASS**, generic iOS Simulator destination |
+| Repository-wide SwiftLint | **PASS**, strict, 0 violations in 800 files |
+| `git diff --check` | **PASS** |
+
+The build emits one pre-existing `nonisolated(unsafe)` warning in the hermetic UI-test stub route;
+this slice does not change that file. The first independent root rerun of two Swift packages was
+blocked by the managed sandbox's home-directory module cache; the identical required commands then
+passed with cache access. On PR #136, exact-head `CI / Required` then passed all selected jobs at
+`18060782a835a5c0a23d5e2936d7b34c80f60364`. Full Contract Drift ran all 162 incremental canaries and
+found one stale non-contract mutation target: its Analytics log fixture still searched for `dropped`
+while current `main` uses `retained`. The single allowed same-root correction now mutates the exact
+unique full log expression; its focused canary passes locally. New exact-head checks remain required.
+
+### Boundaries and remaining publication evidence
+
+Quiz status and offline copy remain textually explicit rather than color-only, and the existing
+QuizFeature render guards passed. No signed device, physical-device VoiceOver, deployed backend, or
+live-account flow was exercised, and none is claimed. No schema or migration was added.
+
+This slice changes no backend runtime route, auth, storage, deployment, release, App Store,
+TestFlight, review-grade, entitlement, or frozen PR #117 state. It does not touch the primary dirty
+checkout or unrelated user work. This record makes no green final exact-head, iOS merge, or
+post-merge-main claim; those remain required before terminal completion.

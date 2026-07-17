@@ -3,7 +3,7 @@ import CoreKit
 
 /// In-memory ``QuizRepository`` for unit tests and SwiftUI previews.
 ///
-/// Seed it with stubs, then inspect ``recordedAnswers`` to assert on what the model submitted.
+/// Seed it with stubs, then inspect ``recordedResponses`` and ``savedDraft``.
 /// An optional `forcedError` makes every call throw.
 public actor FakeQuizRepository: QuizRepository {
 
@@ -11,12 +11,19 @@ public actor FakeQuizRepository: QuizRepository {
     public var submitStub: QuizAttemptResult?
     public var checkStub: QuizCheckResult?
     public var forcedError: AppError?
+    public var submitError: AppError?
+    public var draftError: QuizDraftError?
+    public var restoredAnswers: [String: String] = [:]
+    public var submissionOutcome: QuizSubmissionOutcome?
 
-    public private(set) var recordedAnswers: [QuizAnswerSubmission] = []
+    public private(set) var recordedResponses: [QuizAnswerSubmission] = []
+    public private(set) var recordedAttemptNumber: Int?
+    public private(set) var savedDraft: [String: String] = [:]
+    public private(set) var draftSaveCount: Int = 0
+    public private(set) var networkSubmitCount: Int = 0
     public private(set) var eventCount: Int = 0
 
-    /// When `true`, `submit()` throws ``QuizSubmissionError/pendingGrading``
-    /// to simulate an offline quiz submission that has been queued in the outbox.
+    /// When `true`, submit confirms the local draft and performs no transport.
     public var simulateOfflineSubmit: Bool = false
 
     public init(
@@ -24,13 +31,21 @@ public actor FakeQuizRepository: QuizRepository {
         submitResult: QuizAttemptResult? = nil,
         checkResult: QuizCheckResult? = nil,
         error: AppError? = nil,
-        offlineSubmit: Bool = false
+        offlineSubmit: Bool = false,
+        restoredAnswers: [String: String] = [:],
+        submissionOutcome: QuizSubmissionOutcome? = nil
     ) {
         self.quizStub = quiz
         self.submitStub = submitResult
         self.checkStub = checkResult
         self.forcedError = error
         self.simulateOfflineSubmit = offlineSubmit
+        self.restoredAnswers = restoredAnswers
+        self.submissionOutcome = submissionOutcome
+    }
+
+    public func setDraftError(_ error: QuizDraftError?) {
+        draftError = error
     }
 
     public func getQuiz(bookId: String, n: Int, tone: ToneKey?) async throws -> QuizResponse {
@@ -39,15 +54,53 @@ public actor FakeQuizRepository: QuizRepository {
         return stub
     }
 
-    public func submit(bookId: String, n: Int, answers: [QuizAnswerSubmission]) async throws -> QuizAttemptResult {
+    public func loadQuiz(bookId: String, n: Int, tone: ToneKey?) async throws -> LoadedQuiz {
+        LoadedQuiz(
+            response: try await getQuiz(bookId: bookId, n: n, tone: tone),
+            selectedAnswers: restoredAnswers
+        )
+    }
+
+    public func saveDraft(
+        bookId: String,
+        n: Int,
+        session: QuizClientSession,
+        selectedAnswers: [String: String]
+    ) async throws {
+        if let draftError { throw draftError }
+        if let forcedError { throw forcedError }
+        savedDraft = selectedAnswers
+        draftSaveCount += 1
+    }
+
+    public func submitAttempt(
+        bookId: String,
+        n: Int,
+        session: QuizClientSession,
+        responses: [QuizAnswerSubmission]
+    ) async throws -> QuizSubmissionOutcome {
+        let draft = Dictionary(
+            uniqueKeysWithValues: responses.map {
+                ($0.questionId, $0.selectedChoiceId)
+            }
+        )
+        try await saveDraft(
+            bookId: bookId,
+            n: n,
+            session: session,
+            selectedAnswers: draft
+        )
+        recordedResponses = responses
+        recordedAttemptNumber = session.attemptNumber
         if simulateOfflineSubmit {
-            recordedAnswers = answers
-            throw QuizSubmissionError.pendingGrading
+            return .draftSavedRequiresConnection
         }
+        networkSubmitCount += 1
+        if let submitError { throw submitError }
         if let e = forcedError { throw e }
-        recordedAnswers = answers
+        if let submissionOutcome { return submissionOutcome }
         guard let stub = submitStub else { throw AppError.notFound }
-        return stub
+        return .graded(stub, draftCleared: true)
     }
 
     public func check(bookId: String, n: Int, questionId: String, choiceId: String) async throws -> QuizCheckResult {

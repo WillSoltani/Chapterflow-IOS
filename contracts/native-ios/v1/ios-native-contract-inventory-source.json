@@ -877,20 +877,7 @@
       "producerSourcePath": "Packages/QuizFeature/Sources/QuizFeature/Endpoints+Quiz.swift",
       "stableVariantSuffix": "submitquiz-online",
       "sourceMethodExpression": "method: .post",
-      "sourcePathExpression": "\"/book/me/quiz/\\(bookId)/\\(n)/submit\""
-    },
-    {
-      "operationId": "quiz-submit.post",
-      "method": "POST",
-      "routeTemplate": "/book/me/quiz/{bookId}/{chapterNumber}/submit",
-      "matrixRowId": "quiz-submit",
-      "operationVariantId": "quiz-submit.post:submitquiz-sync",
-      "producerKind": "endpoint_factory",
-      "producerSymbol": "submitQuiz.sync",
-      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Sync.swift",
-      "stableVariantSuffix": "submitquiz-sync",
-      "sourceMethodExpression": "method: .post",
-      "sourcePathExpression": "\"/book/me/quiz/\\(encodedBook)/\\(chapterNumber)/submit\""
+      "sourcePathExpression": "\"/book/me/quiz/\\(encodedBook)/\\(n)/submit\""
     },
     {
       "operationId": "quiz.get",

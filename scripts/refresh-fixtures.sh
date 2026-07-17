@@ -165,9 +165,9 @@ unique_operations=$(jq -r '.inventory.uniqueOperationCount' "$tmp_first")
 native_producers=$(jq -r '.inventory.nativeProducerCount' "$tmp_first")
 matrix_rows=$(jq -r '.inventory.matrixRowCount' "$tmp_first")
 relation_count=$(jq -r '.inventory.iosSourceEvidence.relationalRecordCount // 0' "$tmp_first")
-if [[ "$unique_operations" != "83" || "$native_producers" != "93" || \
-      "$matrix_rows" != "29" || "$relation_count" != "93" ]]; then
-  echo "error: expected exact 83/93/29 inventory with 93 relational records; got $unique_operations/$native_producers/$matrix_rows/$relation_count" >&2
+if [[ "$unique_operations" != "83" || "$native_producers" != "92" || \
+      "$matrix_rows" != "29" || "$relation_count" != "92" ]]; then
+  echo "error: expected exact 83/92/29 inventory with 92 relational records; got $unique_operations/$native_producers/$matrix_rows/$relation_count" >&2
   exit 1
 fi
 

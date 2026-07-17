@@ -36,7 +36,7 @@ let expectedMatrixRowIDs: Set<String> = [
     "mobile-config",
 ]
 
-let expectedIOSInventoryRevision = "8fec3a3a2ae21af87a799334949491fd90d9af72"
+let expectedIOSInventoryRevision = "32b282a64914caadfab90cebce383f276b7954cd"
 
 let expectedProductionAuthorityTests = [
     "chapter.get": "models.chapter-progress.authority-deletion",
@@ -62,8 +62,8 @@ struct NativeContractBundleTests {
         let partial = bundle.operations.filter { $0.coverage == "partial" }
         let blocked = bundle.operations.filter { $0.coverage == "blocked" }
 
-        #expect(partial.count == 60)
-        #expect(blocked.count == 23)
+        #expect(partial.count == 61)
+        #expect(blocked.count == 22)
         #expect(!bundle.operations.contains { $0.coverage == "full" })
         for operation in partial {
             let kinds = Set(operation.gaps.map(\.kind))
@@ -104,9 +104,9 @@ struct NativeContractBundleTests {
         #expect(evidence.bundleSuccessDecoderTestedOperationCount == 24)
         #expect(!evidence.backendRuntimeFactoryValidationPerformed)
         #expect(manifest.operationKeyCount == 83)
-        #expect(manifest.producerVariantCount == 93)
-        #expect(manifest.relationalRecordCount == 93)
-        #expect(manifest.records.count == 93)
+        #expect(manifest.producerVariantCount == 92)
+        #expect(manifest.relationalRecordCount == 92)
+        #expect(manifest.records.count == 92)
         #expect(manifest.matrixRowCount == 29)
         #expect(manifest.matrixRows.count == 29)
         #expect(manifest.bundleSuccessDecoderTestedOperationCount == 24)
@@ -133,7 +133,7 @@ struct NativeContractBundleTests {
         let bundle = try NativeContractBundleFixture.load()
         let blocked = bundle.operations.filter { $0.coverage == "blocked" }
 
-        #expect(blocked.count == 23)
+        #expect(blocked.count == 22)
         for operation in blocked {
             let blocker = try #require(operation.blocker)
             try validate(blocker.resolution, operationID: operation.id)
@@ -156,13 +156,39 @@ struct NativeContractBundleTests {
         let bundle = try NativeContractBundleFixture.load()
         try validateAuthorityProofs(bundle)
 
-        #expect(bundle.authorityProofSummary.structuralFixtureVerifiedOperationCount == 51)
+        #expect(bundle.authorityProofSummary.structuralFixtureVerifiedOperationCount == 52)
         #expect(bundle.authorityProofSummary.productionConsumerVerifiedOperationCount == 4)
-        #expect(bundle.authorityProofSummary.blockedOrUnprovenOperationCount == 1)
+        #expect(bundle.authorityProofSummary.blockedOrUnprovenOperationCount == 0)
         let quizSubmit = try #require(bundle.operations.first { $0.id == "quiz-submit.post" })
-        #expect(quizSubmit.authority.proof.level == "blocked_unproven")
+        #expect(quizSubmit.authority.proof.level == "structural_fixture_only")
     }
-
+    @Test("quiz submit uses attempt-number responses and retains server authority")
+    func quizSubmitContract() throws {
+        let bundle = try NativeContractBundleFixture.load()
+        let quizSubmit = try #require(bundle.operations.first { $0.id == "quiz-submit.post" })
+        let request = try #require(quizSubmit.nativeRequestFixtures.first)
+        let canonicalJSON =
+            #"{"attemptNumber":1,"responses":[{"questionId":"question-synthetic-1","selectedChoiceId":"choice-a"}]}"#
+        let canonical = try JSONDecoder().decode(
+            ContractJSONValue.self, from: Data(canonicalJSON.utf8)
+        )
+        #expect(quizSubmit.coverage == "partial" && quizSubmit.blocker == nil
+            && quizSubmit.nativeRequestFixtures.count == 1)
+        #expect(request.operationVariantId == "quiz-submit.post:submitquiz-online"
+            && !request.producerEvidence.contains { $0.localizedCaseInsensitiveContains("sync") })
+        #expect(request.body.kind == "json" && request.body.value == canonical)
+        #expect(quizSubmit.idempotency.idempotencyClass == "unknown"
+            && quizSubmit.idempotency.notes.contains("not replay-idempotent"))
+        let success = try #require(quizSubmit.fixtures?.success)
+        guard case .json(let payload) = success.payload else {
+            throw NativeContractValidationError.invalid("quiz-submit success fixture")
+        }
+        #expect(success.requiredAuthorityFields.count == 5
+            && success.requiredAuthorityFields.allSatisfy { payload.has(pointer: $0) })
+        #expect(quizSubmit.fixtures?.errors.contains {
+            $0.status == 409 && $0.code == "quiz_session_stale"
+        } == true)
+    }
     @Test("request fixtures preserve ordered query items and body kind")
     func requestRepresentationIsLossless() throws {
         let bundle = try NativeContractBundleFixture.load()
@@ -394,14 +420,14 @@ func validateAuthorityProofs(_ bundle: NativeContractBundleFixture) throws {
         $0.authority.proof.level == "blocked_unproven"
     }
 
-    try requireContract(structuralCount == 51, "structural authority count")
+    try requireContract(structuralCount == 52, "structural authority count")
     try requireContract(productionOperations.count == 4, "production authority count")
-    try requireContract(blockedOperations.count == 1, "blocked authority count")
+    try requireContract(blockedOperations.isEmpty, "blocked authority count")
     try requireContract(
         Set(productionOperations.map(\.id)) == Set(expectedProductionAuthorityTests.keys),
         "production authority operation set"
     )
-    try requireContract(blockedOperations.map(\.id) == ["quiz-submit.post"], "blocked authority set")
+    try requireContract(blockedOperations.isEmpty, "blocked authority set")
 
     let summary = bundle.authorityProofSummary
     try requireContract(

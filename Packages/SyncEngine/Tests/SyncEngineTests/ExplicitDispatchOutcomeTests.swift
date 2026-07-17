@@ -123,7 +123,7 @@ struct ExplicitDispatchOutcomeTests {
         #expect(await client.callCount == 0)
     }
 
-    @Test("local quiz duplicate ambiguity is quarantined without a second request")
+    @Test("legacy quiz row is quarantined without decoding or transport")
     @MainActor
     func localDuplicateAmbiguityIsQuarantined() async throws {
         let container = explicitOutcomeContainer
@@ -141,32 +141,29 @@ struct ExplicitDispatchOutcomeTests {
             createdAt: Date(timeIntervalSince1970: 1_000)
         )
         first.mutationId = "quiz-first"
-        let duplicate = try PendingMutation.make(
-            userId: "account-a",
-            kind: .quizSubmit,
-            payload: payload,
-            createdAt: Date(timeIntervalSince1970: 2_000)
-        )
-        duplicate.mutationId = "quiz-duplicate"
         context.insert(first)
-        context.insert(duplicate)
         try context.save()
         let client = OutcomeRecordingClient()
         let engine = SyncEngine(apiClient: client, container: container)
         await engine.drainAndWait(userId: "account-a")
-        #expect(fetchMutation("quiz-first", from: context) == nil)
-        let retained = try #require(fetchMutation("quiz-duplicate", from: context))
+        let retained = try #require(fetchMutation("quiz-first", from: context))
         #expect(retained.status == .quarantined)
-        #expect(retained.lastError == MutationQuarantineReason.ambiguousLocalDuplicate.safeCode)
-        #expect(await client.callCount == 1)
+        #expect(retained.lastError == MutationQuarantineReason.unsupportedPayloadVersion.safeCode)
+        #expect(await client.callCount == 0)
     }
 
-    @Test("retryable error remains durable after bounded retries")
+    @Test("legacy quiz payload bytes are retained verbatim")
     @MainActor
     func retryableErrorRemainsDurable() async throws {
         let container = explicitOutcomeContainer
         let context = try freshExplicitOutcomeContext()
-        context.insert(PendingMutation(mutationId: "retryable", userId: "account-a", kindRaw: MutationKind.quizSubmit.rawValue, payloadJSON: "{\"bookId\":\"book-a\",\"chapterNumber\":1,\"sessionId\":\"retry-session\",\"answers\":{\"question-a\":\"choice-a\"}}"))
+        let originalPayload = "{\"bookId\":\"book-a\",\"chapterNumber\":1,\"sessionId\":\"retry-session\",\"answers\":{\"question-a\":\"choice-a\"}}"
+        context.insert(PendingMutation(
+            mutationId: "retryable",
+            userId: "account-a",
+            kindRaw: MutationKind.quizSubmit.rawValue,
+            payloadJSON: originalPayload
+        ))
         try context.save()
         let client = OutcomeRecordingClient(stubbedError: .offline)
         let engine = SyncEngine(apiClient: client, container: container)
@@ -174,10 +171,11 @@ struct ExplicitDispatchOutcomeTests {
         await engine.drainAndWait(userId: "account-a")
 
         let mutation = try #require(fetchMutation("retryable", from: context))
-        #expect(mutation.status == .failed)
-        #expect(mutation.attemptCount == 1)
-        #expect(mutation.lastError == MutationFailureCode.offline.rawValue)
-        #expect(await client.callCount == 3)
+        #expect(mutation.status == .quarantined)
+        #expect(mutation.lastError == MutationQuarantineReason.unsupportedPayloadVersion.safeCode)
+        #expect(mutation.payloadJSON == originalPayload)
+        #expect(mutation.attemptCount == 0)
+        #expect(await client.callCount == 0)
     }
 
     @Test("terminal error remains durable and persists only a closed safe code")
@@ -356,7 +354,7 @@ struct ExplicitDispatchOutcomeTests {
         #expect(await client.callCount == 1)
     }
 
-    @Test("every supported mutation kind still returns applied", arguments: MutationKind.allCases)
+    @Test("supported transport mutations apply while legacy quiz rows quarantine", arguments: MutationKind.allCases)
     @MainActor
     func everySupportedKindDispatches(kind: MutationKind) async throws {
         let container = explicitOutcomeContainer
@@ -367,8 +365,13 @@ struct ExplicitDispatchOutcomeTests {
 
         let outcome = try await engine.dispatchMutation(snapshot)
 
-        #expect(outcome == .applied)
-        #expect(await client.callCount == 1)
+        if kind == .quizSubmit {
+            #expect(outcome == .quarantined(.unsupportedPayloadVersion))
+            #expect(await client.callCount == 0)
+        } else {
+            #expect(outcome == .applied)
+            #expect(await client.callCount == 1)
+        }
     }
 }
 
@@ -591,10 +594,7 @@ private func makeSnapshot(for kind: MutationKind) throws -> SyncMutationSnapshot
     }
 }
 
-private func makeSnapshot<Payload: Encodable>(
-    kind: MutationKind,
-    payload: Payload
-) throws -> SyncMutationSnapshot {
+private func makeSnapshot<Payload: Encodable>(kind: MutationKind, payload: Payload) throws -> SyncMutationSnapshot {
     let mutation = try PendingMutation.make(userId: "account-a", kind: kind, payload: payload)
     return SyncMutationSnapshot(from: mutation)
 }

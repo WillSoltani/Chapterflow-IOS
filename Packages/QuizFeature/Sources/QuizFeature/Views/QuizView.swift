@@ -2,17 +2,14 @@ import SwiftUI
 import Models
 import CoreKit
 import DesignSystem
-#if canImport(UIKit)
-import UIKit
-#endif
 
 /// The top-level Quiz view.
 ///
 /// Lifecycle:
 /// 1. Fetch quiz from server (`.loading` phase → skeleton).
 /// 2. User answers questions (`.active` phase).
-///    - Submit disabled offline: shows "Connect to submit" banner.
-///    - Submit disabled until all questions answered.
+///    - Every selection is saved as an account-scoped local draft.
+///    - Offline actions save only; reconnect never submits automatically.
 /// 3. After submission: `.result` phase shows ``QuizResultView``.
 ///
 /// Entry point for a book chapter quiz:
@@ -21,11 +18,16 @@ import UIKit
 /// ```
 public struct QuizView: View {
 
+    static let savedDraftOfflineMessage = String(
+        localized: "Draft saved on this device. Connect and tap Submit Quiz for grading."
+    )
+
     @State private var model: QuizModel
+    @State private var selectionFeedbackTrigger = 0
     public let onContinue: () -> Void
     /// Fired once when the server-graded *pass* result first appears. Used by the host to
     /// mark a genuine positive moment (e.g. to consider an App Store review request). Never
-    /// fires on a failure, pending-grading, or error result.
+    /// fires on a failure, local draft, or error result.
     public let onQuizPassed: () -> Void
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -67,6 +69,7 @@ public struct QuizView: View {
         .onDisappear {
             model.stopConnectivityMonitor()
         }
+        .sensoryFeedback(.selection, trigger: selectionFeedbackTrigger)
     }
 
     // MARK: - Phase routing
@@ -87,8 +90,6 @@ public struct QuizView: View {
                 onRetry: { Task { await model.retry() } },
                 onQuizPassed: onQuizPassed
             )
-        case .pendingGrading:
-            pendingGradingView
         case .error(let msg):
             errorView(msg)
         }
@@ -112,6 +113,9 @@ public struct QuizView: View {
     private var activeView: some View {
         ScrollView {
             VStack(spacing: .cfSpacing16) {
+                if let message = model.submissionMessage {
+                    submitNotice(message)
+                }
                 if let session = model.session {
                     ForEach(Array(session.questions.enumerated()), id: \.element.id) { index, question in
                         QuizQuestionCard(
@@ -122,7 +126,7 @@ public struct QuizView: View {
                             questionResult: nil,
                             onSelect: { choiceId in
                                 model.selectAnswer(choiceId, for: question.questionId)
-                                triggerSelectionHaptic()
+                                selectionFeedbackTrigger += 1
                             }
                         )
                     }
@@ -142,18 +146,28 @@ public struct QuizView: View {
 
     private var submitArea: some View {
         VStack(spacing: 0) {
-            if !model.isOnline {
+            if model.requiresSessionRefresh {
+                refreshRequiredBanner
+            } else if !model.isOnline {
                 offlineBanner
             } else if !model.allAnswered {
                 unansweredHint
             }
 
             Button {
-                Task { await model.submit() }
+                Task {
+                    if model.requiresSessionRefresh {
+                        await model.load()
+                    } else {
+                        await model.submit()
+                    }
+                }
             } label: {
                 Group {
-                    if !model.isOnline {
-                        Label("Save for Later", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
+                    if model.requiresSessionRefresh {
+                        Label("Refresh Quiz", systemImage: "arrow.clockwise")
+                    } else if !model.isOnline {
+                        Label("Save Draft", systemImage: "square.and.arrow.down")
                     } else {
                         Text("Submit Quiz")
                     }
@@ -162,15 +176,15 @@ public struct QuizView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.cfSpacing16)
                 .background(
-                    model.canSubmit
+                    primaryActionEnabled
                         ? Color.cfAccent
                         : Color.cfSecondaryBackground,
                     in: RoundedRectangle(cornerRadius: .cfRadius12)
                 )
-                .foregroundStyle(model.canSubmit ? .white : Color.cfTertiaryLabel)
+                .foregroundStyle(primaryActionEnabled ? .white : Color.cfTertiaryLabel)
             }
             .buttonStyle(.plain)
-            .disabled(!model.canSubmit)
+            .disabled(!primaryActionEnabled)
             .accessibilityLabel(submitAccessibilityLabel)
             .padding(.horizontal, .cfSpacing20)
             .padding(.vertical, .cfSpacing16)
@@ -182,32 +196,65 @@ public struct QuizView: View {
         HStack(spacing: .cfSpacing8) {
             Image(systemName: "wifi.slash")
                 .font(.cfCaption)
-            Text("Offline — answers will be graded when you reconnect.")
+                .accessibilityHidden(true)
+            offlineMessage
                 .font(.cfCaption)
         }
         .foregroundStyle(.secondary)
         .frame(maxWidth: .infinity)
         .padding(.horizontal, .cfSpacing20)
         .padding(.vertical, .cfSpacing8)
-        .accessibilityLabel("You are offline. Your answers will be saved and graded when you reconnect.")
+        .accessibilityElement(children: .combine)
     }
 
-    // MARK: - Pending grading
-
-    private var pendingGradingView: some View {
-        ContentUnavailableView {
-            Label("Awaiting Grading", systemImage: "clock.arrow.trianglehead.counterclockwise.rotate.90")
-                .symbolRenderingMode(.hierarchical)
-        } description: {
-            Text("Your answers have been saved. We'll grade them automatically when you're back online.")
-                .font(.cfCallout)
-                .foregroundStyle(.secondary)
-        } actions: {
-            Button("Continue", action: onContinue)
-                .buttonStyle(.borderedProminent)
-                .tint(.cfAccent)
+    @ViewBuilder
+    private var offlineMessage: some View {
+        switch model.draftState {
+        case .saved, .savedRequiresConnection:
+            Text(Self.savedDraftOfflineMessage)
+        case .saving:
+            Text("Saving this draft. Grading requires a connection.")
+        case .failed:
+            Text("Draft not saved. Keep this screen open and try again.")
+        case .none:
+            Text("Offline. Save this draft on this device; grading requires a connection.")
         }
-        .accessibilityLabel("Your quiz answers are saved and waiting to be graded.")
+    }
+
+    private var refreshRequiredBanner: some View {
+        HStack(spacing: .cfSpacing8) {
+            Image(systemName: "arrow.clockwise.circle")
+                .font(.cfCaption)
+                .accessibilityHidden(true)
+            Text(refreshRequiredMessage)
+                .font(.cfCaption)
+        }
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, .cfSpacing20)
+        .padding(.vertical, .cfSpacing8)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var refreshRequiredMessage: String {
+        switch model.session?.status {
+        case .passed:
+            return String(localized: "This quiz is complete on the server.")
+        case .cooldown:
+            return String(localized: "The server says this quiz is cooling down. Refresh before retrying.")
+        case .ready, .unknown, nil:
+            return String(localized: "Refresh this quiz to get a valid server attempt before submitting.")
+        }
+    }
+
+    private func submitNotice(_ message: String) -> some View {
+        Label(message, systemImage: "info.circle")
+            .font(.cfCallout)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.cfSpacing12)
+            .background(Color.cfSecondaryBackground, in: RoundedRectangle(cornerRadius: .cfRadius12))
+            .accessibilityElement(children: .combine)
     }
 
     private var unansweredHint: some View {
@@ -224,13 +271,18 @@ public struct QuizView: View {
     }
 
     private var submitAccessibilityLabel: String {
-        if !model.isOnline { return "Save answers for grading when back online" }
+        if model.requiresSessionRefresh { return "Refresh quiz from the server" }
+        if !model.isOnline { return "Save quiz draft on this device. Grading requires a connection" }
         if !model.allAnswered {
             let answered = model.selectedAnswers.count
             let total = model.session?.questions.count ?? 0
             return "Submit — \(answered) of \(total) answered"
         }
         return "Submit Quiz"
+    }
+
+    private var primaryActionEnabled: Bool {
+        model.requiresSessionRefresh || model.canSubmit
     }
 
     // MARK: - Submitting spinner
@@ -261,13 +313,6 @@ public struct QuizView: View {
         }
     }
 
-    // MARK: - Haptics
-
-    private func triggerSelectionHaptic() {
-        #if canImport(UIKit)
-        UISelectionFeedbackGenerator().selectionChanged()
-        #endif
-    }
 }
 
 // MARK: - Previews

@@ -58,7 +58,7 @@ private func validateInventory(
 ) throws {
     let inventory = bundle.inventory
     try requireContract(
-        inventory.uniqueOperationCount == 83 && inventory.nativeProducerCount == 93
+        inventory.uniqueOperationCount == 83 && inventory.nativeProducerCount == 92
             && inventory.matrixRowCount == 29 && bundle.operations.count == 83,
         "inventory counts"
     )
@@ -74,7 +74,7 @@ private func validateInventory(
     let requests = bundle.operations.flatMap(\.nativeRequestFixtures)
     let variantIDs = requests.map(\.operationVariantId)
     try requireContract(
-        requests.count == 93 && Set(variantIDs).count == variantIDs.count,
+        requests.count == 92 && Set(variantIDs).count == variantIDs.count,
         "producer summary"
     )
     let evidence = inventory.iosSourceEvidence
@@ -168,8 +168,8 @@ private func validateManifest(_ manifest: IOSSourceInventoryManifest) throws {
         "iOS inventory identity and revision"
     )
     try requireContract(
-        manifest.operationKeyCount == 83 && manifest.producerVariantCount == 93
-            && manifest.relationalRecordCount == 93 && manifest.records.count == 93
+        manifest.operationKeyCount == 83 && manifest.producerVariantCount == 92
+            && manifest.relationalRecordCount == 92 && manifest.records.count == 92
             && manifest.matrixRowCount == 29 && manifest.matrixRows.count == 29,
         "iOS inventory counts"
     )
@@ -269,7 +269,7 @@ private func validateProducerRelations(
     let expectedIDs = expected.map(\.operationVariantId)
     let actualIDs = actual.map(\.operationVariantId)
     try requireContract(
-        actual.count == 93 && expected.count == actual.count
+        actual.count == 92 && expected.count == actual.count
             && Set(expectedIDs).count == expectedIDs.count
             && Set(actualIDs).count == actualIDs.count && Set(expectedIDs) == Set(actualIDs),
         "producer relation membership"
@@ -361,6 +361,7 @@ struct NativeContractBundleFixture: Decodable, Sendable {
         var method, routeTemplate: String
         var matrixRowId: String?
         let auth: Auth
+        let idempotency: Idempotency
         var nativeRequestFixtures: [Request]
         let responseContract: ResponseContract
         let authority: Authority
@@ -382,6 +383,15 @@ struct NativeContractBundleFixture: Decodable, Sendable {
 
             private enum CodingKeys: String, CodingKey {
                 case authClass = "class"
+            }
+        }
+
+        struct Idempotency: Decodable, Sendable {
+            let idempotencyClass, notes: String
+
+            private enum CodingKeys: String, CodingKey {
+                case idempotencyClass = "class"
+                case notes
             }
         }
 
