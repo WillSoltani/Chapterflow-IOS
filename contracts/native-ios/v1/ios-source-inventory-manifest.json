@@ -2,30 +2,46 @@
   "schemaVersion": "chapterflow-ios-native-inventory-v2",
   "iosRepository": "WillSoltani/Chapterflow-IOS",
   "iosBaseRevision": "92a5c351a42771f546b3d0e575b3b37a8cbfb588",
-  "iosSourceRevision": "8fec3a3a2ae21af87a799334949491fd90d9af72",
+  "iosSourceRevision": "32b282a64914caadfab90cebce383f276b7954cd",
   "iosSourceRevisionPhase": "committed_contract_branch",
   "canonicalization": "UTF-8 records; fixed field order; TAB-separated fields; null matrix row is empty; lexicographically sorted lines joined with LF and a terminal LF",
   "operationKeyCount": 83,
   "operationKeySha256": "b24a9ad2861744ad127ce1aca976c13b621fdb7460fc8cd9b9d5669ec9468174",
-  "producerVariantCount": 93,
-  "producerVariantIdSha256": "6c52d6b0f465d50f0e68d5a98cca273f90c8611c3b962f1d8f7d36d1f292ba20",
-  "producerIdentitySha256": "9f1c75e50035022d7b46da7be173fec2f265a58110f77504c9e7d247bd8ea453",
+  "producerVariantCount": 92,
+  "producerVariantIdSha256": "2baa362580790da8a52d55a07f22a0fbf9be3c63b16eacabf14e250c0eb89cfa",
+  "producerIdentitySha256": "d2bca54bf6a332bcd3c80ae8002f39de27216ade334b77c73cff96c695e55a19",
   "matrixRowCount": 29,
-  "relationalRecordCount": 93,
-  "relationalRecordSha256": "03103dcada4b7ae3ed2763372dda873aa504a75c18ae4553e91cc71f17007a78",
-  "sourceInputTreeSha256": "9f1b7285c945cee0f457535066fd7be664b7d28973ffb71b13ac67889c97377e",
+  "relationalRecordCount": 92,
+  "relationalRecordSha256": "cd18fb91ad043e03469ea7619bee6983099ea27e8743884d86694e76dc611040",
+  "sourceInputTreeSha256": "e23c204bea594b4cedd487769d51a588161b8f266a6b54ee3e5fe734dc9895bc",
   "sourceInputs": [
     {
       "path": "Packages/AIFeature/Sources/AIFeature/AIFeature.swift",
       "sha256": "b3870cfb4bf9e6bb9f997784c417b5adc634030513c21f75047fe090cea16588"
     },
     {
+      "path": "Packages/AIFeature/Sources/AIFeature/Audio/AudioPlaybackTypes.swift",
+      "sha256": "729f79242a45a6705906e09dc4d5acbaa4b1a03386f91cdcccfb15fcdd936483"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Audio/AudioPlayer+RepositoryWork.swift",
+      "sha256": "98544ee32951c1b50109a685aaa9a54932de70352e0d04858a25a3abd08c7dab"
+    },
+    {
       "path": "Packages/AIFeature/Sources/AIFeature/Audio/AudioPlayer.swift",
-      "sha256": "4992f629c317e984341817afa652f33650a883805eae93c386fbef26038be496"
+      "sha256": "b8a574f9072fb6aa1095f98e34df0246347d406e2492f15f5fbc172dabb1a18f"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Audio/AudioPlayerModel+Platform.swift",
+      "sha256": "ff50925cc16e522e74ab393d7d289fa2865a4faf3ac1540a1c8ebefaca7e9d28"
     },
     {
       "path": "Packages/AIFeature/Sources/AIFeature/Audio/AudioPlayerModel.swift",
-      "sha256": "b5d9e57f82711dadce6fda5ff4647c22f01742199aedd038d392f816e8cda9b3"
+      "sha256": "5b5232005dfa9b107e8a64e228c82f3cbc1cc01eecf69a5b159612ce50507dc9"
+    },
+    {
+      "path": "Packages/AIFeature/Sources/AIFeature/Audio/AudioPlayerPhase.swift",
+      "sha256": "ee2c04a6a74243642efc839562c9a78ba5b6d3d630b821f955383477674c6632"
     },
     {
       "path": "Packages/AIFeature/Sources/AIFeature/Audio/AudioRepository.swift",
@@ -57,7 +73,7 @@
     },
     {
       "path": "Packages/AIFeature/Sources/AIFeature/Model/AskTheBookModel.swift",
-      "sha256": "f36ac899953ffebc548a92faec50147d85ec23ead55c3764307cb6ab25c72dc9"
+      "sha256": "4de00715c55a41e081ce1ae6b9ced90521114a986782c903b88367616e82cf0c"
     },
     {
       "path": "Packages/AIFeature/Sources/AIFeature/Models/AskMessage.swift",
@@ -89,15 +105,15 @@
     },
     {
       "path": "Packages/AIFeature/Sources/AIFeature/Repository/AIRepository.swift",
-      "sha256": "aa09228d3c3f1de7284d81445cfd9b46a2249928894b6f2cba825eddcf821e6a"
+      "sha256": "778d922ac0bd8633e8f8894c0055f34966f6ab26043513d5215bbfdac8a7c51f"
     },
     {
       "path": "Packages/AIFeature/Sources/AIFeature/Repository/FakeAIRepository.swift",
-      "sha256": "75411ff74265f969feaba6a1c95b994b28d9821dcb6e93eefa07ab8e85e14e49"
+      "sha256": "b955f3ff5e49f1ccf98fe9dd99f963b544403eba594779fa90623c021a659b69"
     },
     {
       "path": "Packages/AIFeature/Sources/AIFeature/Repository/LiveAIRepository.swift",
-      "sha256": "72c9ff41c20b3b801ac3bfcff3e496c73bb2d41ba4f10c54e7df2cdd26c72036"
+      "sha256": "4b3fa28445c659e232eb8dc21b64e4c4a564f77ac74b653be94141ea0326c829"
     },
     {
       "path": "Packages/AIFeature/Sources/AIFeature/Store/AskThreadStore.swift",
@@ -109,7 +125,7 @@
     },
     {
       "path": "Packages/AIFeature/Sources/AIFeature/Views/AskTheBookSheet.swift",
-      "sha256": "f975b8a361531da3204ea38dd9f8280e9982096ed26f2c691a63853d54560319"
+      "sha256": "df7e0e72f7b1db7a566699cea85c66a059defb4475ec1725c720015eec56ad7f"
     },
     {
       "path": "Packages/AIFeature/Sources/AIFeature/Views/Audio/AudioArtworkView.swift",
@@ -184,6 +200,14 @@
       "sha256": "58e086ed885a83057bdfc46dd56731d7cea45866b19bf198ef0d03437cf6ac64"
     },
     {
+      "path": "Packages/AppFeature/Sources/AppFeature/AppBootstrapDebugSupport.swift",
+      "sha256": "ee73cd1d95c8daf6793ca8d42fe7cd9ddbd341c353d98c1696fca9e41251d352"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/AppBootstrapSupport.swift",
+      "sha256": "bfcc644c6581280d8e4d0e53001456569b72ffead71b013dd040f311041fb704"
+    },
+    {
       "path": "Packages/AppFeature/Sources/AppFeature/AppConfigGateView.swift",
       "sha256": "7b443bd13d84abfd7941965d22de31435a14fc93b2d7a02d1f3bceea5294b3f8"
     },
@@ -201,15 +225,15 @@
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/AppModel+AudioControl.swift",
-      "sha256": "e39e14d8ae67c4cda088ec0f6fc378bf80a8300a3edd505541604944a7933ee6"
+      "sha256": "4ac2f57b466b0429ab624371f739a3cd8c8947751d15982defa4a1677da84dd2"
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/AppModel+BGSync.swift",
-      "sha256": "1baae055a40e076958d8ff5fddde822b51bd9b7ed96bc89c240b70a3649611d4"
+      "sha256": "1665786d0c6af898cc7acbfbe97233181e549aa63ff14924bf5deca0e63b0965"
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/AppModel+Extensions.swift",
-      "sha256": "5e3304325524fcae7d8d2d463e9331695e58729062a06b1e348aff0daf1fc513"
+      "sha256": "5c7b15eb940218b01df3d2c0f117df1b8978019d9de31d90d21c8a6da87de1ea"
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/AppModel+Handoff.swift",
@@ -217,15 +241,15 @@
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/AppModel+P86.swift",
-      "sha256": "8af87d12382a2879b692f82bad24970c1cbebccdb02b837c841df6dc7f11e979"
+      "sha256": "9344c19edc400e7fcfe27f07f018bd88f16f1b2b9b3fc5da4e32e6e1d711cf3b"
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/AppModel+P89.swift",
-      "sha256": "a19737061c782e1134409c6a0a2e602523192b2ca6e0b19372a81316cc55be5d"
+      "sha256": "5780bed542de4cf6ffc0a05d32f05580b876987263b4222e8043f2aa763729aa"
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/AppModel.swift",
-      "sha256": "12a2fe8f7933c83d14e382a5b53db2f01b7a241b1cb69b2fb93e20b141471f9b"
+      "sha256": "91093e1860a7892d1fcce7e85895fa941944f3d379e330259ae2de8b2ca74ace"
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/AppRootView+Banners.swift",
@@ -233,7 +257,7 @@
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/AppRootView+TabContent.swift",
-      "sha256": "f5160d5c090007d62c3c3591454c0b24981383fc6dd5a913226d5e7c7eccb77d"
+      "sha256": "09d4084bf2cd23b6f29c1073ebf152847be61a5e032aa6512a4d757663c1ac18"
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/AppRootView+WhatsNew.swift",
@@ -241,15 +265,19 @@
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/AppRootView.swift",
-      "sha256": "fe263d53467ddc5f4a8ceb73d8c4aa5260632a05ac8c7583af10a11db7840405"
+      "sha256": "50c1c6b2c4518b5fd36d4fe57b83791d50fbe12e90a7da77463a75c0b105a4d8"
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/AppTab.swift",
       "sha256": "e4d36f695cccd06d6ee894cddc8ea10882cb9dbc082aeba46638ae872cafbda7"
     },
     {
+      "path": "Packages/AppFeature/Sources/AppFeature/BootstrapRecoveryViews.swift",
+      "sha256": "86ff1ab7355999d8cf0c8b6c734fdfa83e22e27ba10b547d084c37dc9179a055"
+    },
+    {
       "path": "Packages/AppFeature/Sources/AppFeature/ConfiguredAppRootView.swift",
-      "sha256": "683c0480be84382a5941994551aff47d21d7016a285c2d70a2b8be15e5882027"
+      "sha256": "627b18667d0ce8cde7c7569674b927426f55cd21e4403afd966c43fc854167f2"
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/DebugMenuView.swift",
@@ -261,7 +289,11 @@
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/GuestBrowse/AuthGateSheet.swift",
-      "sha256": "6a06f6d09bc32edba900e2cd930f4b46266dbda252e1b235ae39f451aa6f90e6"
+      "sha256": "f87dd91197f51b7191ac6435b9501285ff1a47b585cc993eb41d7e62cb8b477f"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/GuestBrowse/GuestPublicRepositories.swift",
+      "sha256": "198002b0b8b0d56d87b074436bf06f5b0286a57afd4132ba4d956b055a3db7b0"
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/GuestBrowse/GuestTabEmptyView.swift",
@@ -269,19 +301,19 @@
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/Intents/ChapterFlowShortcutsProvider.swift",
-      "sha256": "9f0046dafc784745efb15aef5093bef6580cf0ef19e0ee0613b5b35816afd053"
+      "sha256": "14dc09a3a5b8a875cfe8f7a2adeaef35900c581af353cbc9c524fc2cfd7c117f"
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/Intents/IntentActionStore.swift",
-      "sha256": "469516f3328316f60b49f73dcb3f4464c4e78bf3b9211ad177509bb0efc0a962"
+      "sha256": "986018d8ba83f60be699eb1b6e9e56a2d9f5e9c6969e3cc4c19bca845872adea"
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/Intents/IntentKeys.swift",
-      "sha256": "ba62d476738eebc7a615d5e55bd555028b4c6402975fb0cc20ae3a7e86a3b0c0"
+      "sha256": "70e180c29e7b19541eec500a06a8643d162c811e174a81b14201046fbf142f47"
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/Intents/LogDailyReadingIntent.swift",
-      "sha256": "ce364ffdec44634e4482fe6dd2c711aa9e3c81cd791ac9ffa41bc20cdbf4dff7"
+      "sha256": "331be6d341f315763a8d3bbd31bee103820df87e7298d31feac498bd2a0032f3"
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/Intents/ReadingFocusFilterIntent.swift",
@@ -289,15 +321,19 @@
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/Intents/StartAudioNarrationIntent.swift",
-      "sha256": "972c337c633f27ac26021954c54cb2732430152949d0e820576b682ad90e421a"
+      "sha256": "6c80ccd7a4e1a461cfe82f57be2638d86cbb1988f930a03130806322becc598e"
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/Intents/StartDailyReadingIntent.swift",
-      "sha256": "394399eae0cd2573a9ec62e0405c00cc54eb887ed66917b022282c779affdff5"
+      "sha256": "44297361af089ef64dca4c63a10389243b4d668a471e6cfe36d488eca0f23c4e"
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/Intents/StartReviewIntent.swift",
       "sha256": "a0a4de7cda0947312055ba1a00bcb63d08e038b0a6fffe0a12e1957e0f6a8bec"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/LiveAPIClientComposition.swift",
+      "sha256": "f7e221c14f5d57f38cead0d77bb6fd2e0cf4f7a642fcebdea85b1156d0ec946f"
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/QuickActions/QuickActionBridge.swift",
@@ -305,15 +341,31 @@
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/ReadingFlowView.swift",
-      "sha256": "6d7480743999352bd2674ef867242b1b0dcc426ff5e0ee9516848fef2b0e2647"
+      "sha256": "a8eed435bc36466f269fb5dcda38d1388f5da0edaf0470e69ccf30ed1e7d1cca"
     },
     {
       "path": "Packages/AppFeature/Sources/AppFeature/ReviewPromptWiring.swift",
-      "sha256": "200e4737b3bbbf949421e7036606f1aac263e1b99bbb8f3784e15612dc49cfe3"
+      "sha256": "494f54340f5073248224b37950ad007b48537e721b7738367ab44aee76eee5f6"
     },
     {
-      "path": "Packages/AppFeature/Sources/AppFeature/UserIdBox.swift",
-      "sha256": "4ef79c9633e2da87e7fa70db77d8ab094c0f2e04df5e2299ee40ee5753a4d52e"
+      "path": "Packages/AppFeature/Sources/AppFeature/SessionFeatureModels.swift",
+      "sha256": "88922a9a89b12898b38c8da90a5a257f0557bf77377b7c75aff6406cb1d94c20"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/SessionLifecycleViews.swift",
+      "sha256": "697430b2fde41cdad86447ca7dda4f629d2d274caed93af6fbce9bd047bcbb7b"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/SessionScope.swift",
+      "sha256": "86e9b597915cef8788af16590c3cfec035973b0f49b9d521530cd99dcbce6d55"
+    },
+    {
+      "path": "Packages/AppFeature/Sources/AppFeature/SessionScopedAPIClient.swift",
+      "sha256": "d18fb6db224879368e1baffb1c90c3ee675c75ef252b873a8ffde5a715cb7973"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/AccountContext.swift",
+      "sha256": "92e4e2547235bcca90ab6a4375ee0052367ddfe766b201f8a54d16fa8751740e"
     },
     {
       "path": "Packages/AuthKit/Sources/AuthKit/AmplifyConfigurator.swift",
@@ -333,11 +385,11 @@
     },
     {
       "path": "Packages/AuthKit/Sources/AuthKit/AuthFlowModel.swift",
-      "sha256": "d9e10fbd4f407cba1e4648bb71e1ab2e2f92641d2098d246bfe5baa3b7db7aff"
+      "sha256": "98a68925858a6528687a0ef5e46f17f32b0900e2cf0f99c02681bc33b3f5bb9c"
     },
     {
       "path": "Packages/AuthKit/Sources/AuthKit/AuthFlowView.swift",
-      "sha256": "467cb9623989a6621ea2950d5ca143219299e3f1e63855c2be822a024e54c8bc"
+      "sha256": "17ce0e48fd39958199f563ac7cacdb40c9f57a1fbee8d2a87da8226f07a5127f"
     },
     {
       "path": "Packages/AuthKit/Sources/AuthKit/AuthKit.swift",
@@ -345,47 +397,59 @@
     },
     {
       "path": "Packages/AuthKit/Sources/AuthKit/AuthService.swift",
-      "sha256": "6fecf74eb6afa139def76fa975b1f1e4e0772bf036c1b47cb93b27206d86877b"
+      "sha256": "9b835813a531773e185abcc025c723263517f564c3683dd30f329d9097fbb0ab"
     },
     {
       "path": "Packages/AuthKit/Sources/AuthKit/AuthState.swift",
-      "sha256": "9f9cc621d0eba006029b23ec0e29bd916c711959e7b1d9bea6d267d909f7702e"
+      "sha256": "959d8153c1be28104ce2a8761dcda50018aed7d53683995676dbd02b131888bf"
     },
     {
-      "path": "Packages/AuthKit/Sources/AuthKit/AuthTokenProvider.swift",
-      "sha256": "909912ceb7be67e1fc85172a45c35e88c2473b8440dcdefb98514e1d5cf36d67"
+      "path": "Packages/AuthKit/Sources/AuthKit/CognitoSessionClient.swift",
+      "sha256": "f94fc56d1b8e5d55a2ea15d1874c69a8a842398e3741bcd65feedf125cd5ce1d"
     },
     {
       "path": "Packages/AuthKit/Sources/AuthKit/ForgotPasswordView.swift",
-      "sha256": "28e38b59fb264931160bfc8472086f027b8804a7512a74941664550b5fa11d61"
+      "sha256": "2034a56ff2b1151465e3638379a7d47589786603219f1d6f69a1dd6af5ba5962"
     },
     {
       "path": "Packages/AuthKit/Sources/AuthKit/LogInView.swift",
-      "sha256": "86c65a1bcb6a768ef7ca37d064d0757a7e4dd5044d36e8caace292bf7405389e"
+      "sha256": "66d814062fe4845202135bb1fd5364804035b879875346ffb761712584cf77be"
     },
     {
       "path": "Packages/AuthKit/Sources/AuthKit/PreviewAuthService.swift",
-      "sha256": "7f119b6501a0a7a33e7ce76d6509c788f34a330424122c6d737ab53d426b63de"
+      "sha256": "ce9c9b11c236e00e89c86ae7973e2d318e5c5b69581eea5a1f07946745216551"
     },
     {
       "path": "Packages/AuthKit/Sources/AuthKit/ReauthView.swift",
-      "sha256": "151b1ba8e55d820c387ca93996c13a9ea52369a406aabdce0d90becb221a8945"
+      "sha256": "63bb9e2f668b38e8ac8ad6a30d205d87ab29fb10927b5ed01079dbdfcfd5d0ca"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/SessionIdentity.swift",
+      "sha256": "5af0fea30c670fb1ea1fdf2cf9692ca572cb674e4e283a04352a5a8889a3eb6d"
     },
     {
       "path": "Packages/AuthKit/Sources/AuthKit/SessionManager+BGTask.swift",
       "sha256": "34fb1764e9f9bd246fc9ee96e78f84f666ff53b9fa382ba63b0d172a1d47bbde"
     },
     {
+      "path": "Packages/AuthKit/Sources/AuthKit/SessionManager+HermeticDebug.swift",
+      "sha256": "637c0c0c334fc9b1bd37e130c204a52379ce7be81de1bfff79081e32937fc414"
+    },
+    {
+      "path": "Packages/AuthKit/Sources/AuthKit/SessionManager+TokenAccess.swift",
+      "sha256": "c4bc9e95096cba732d8ed14f2296927d652762b7702e8643ab30496a9e7ebfd2"
+    },
+    {
       "path": "Packages/AuthKit/Sources/AuthKit/SessionManager.swift",
-      "sha256": "8d109ff0ca4690dc273dd2122ddeb79101237a90d7e70b8f2bc931861029d477"
+      "sha256": "05475cbf579f5495b0dfca0b505c4e199a39746769432aaca677a9b4de81a53c"
     },
     {
       "path": "Packages/AuthKit/Sources/AuthKit/SignUpView.swift",
-      "sha256": "9697939637b55bd84ca23256b6bdd9618209bc91d1399cb9818782d567a52b18"
+      "sha256": "0e3574bc028311ee04580c802438a8caf494913c33dbbe2b25259449089f37d9"
     },
     {
       "path": "Packages/AuthKit/Sources/AuthKit/TokenRefreshing.swift",
-      "sha256": "e135e87dfd013b143459a9608484ababde899bbbd072de8434fdd8b3c9df4ff8"
+      "sha256": "58b4b9810ee787a03d84eb7581200904f3c9e0cdea4bc705b1347dad93b29eaa"
     },
     {
       "path": "Packages/AuthKit/Sources/AuthKit/UserProfile.swift",
@@ -393,19 +457,19 @@
     },
     {
       "path": "Packages/AuthKit/Sources/AuthKit/UserSummary.swift",
-      "sha256": "36baf085a87e4d9c8a5689011fad018553ddc099a88d9747ecebcd4031e4545a"
+      "sha256": "5225ae2dec4a9d9cefaed751696471961ed5866e784e0913b0a5e56977308398"
     },
     {
       "path": "Packages/AuthKit/Sources/AuthKit/VerifyEmailView.swift",
-      "sha256": "e81689ec79b898b5fd020d3c3f493b70a047cc2a50135e02eacb7b31b27ca43d"
+      "sha256": "cfc2e6f4cb1c674fb979815d3cfac6130d2084421d62702344497a9a44bca534"
     },
     {
       "path": "Packages/AuthKit/Sources/AuthKit/WelcomeView.swift",
-      "sha256": "78224ab81e7287ac6ebda649c41e1da206fa8d22f98a2298781942e49160d210"
+      "sha256": "b3aa337118e190204b8901943d07ef14aebefb2c17da960c1a3602718f4f8ad3"
     },
     {
       "path": "Packages/CoreKit/Sources/CoreKit/Analytics/AnalyticsClient.swift",
-      "sha256": "e0844cc61ce3444b30ad94d15f88e6657ca641918803c15cecaf2ccecc3613ec"
+      "sha256": "56194ae627bff3c1b5a51af278c7702d9e408957a843054d412661fa5d943014"
     },
     {
       "path": "Packages/CoreKit/Sources/CoreKit/Analytics/AnalyticsEvent.swift",
@@ -413,7 +477,7 @@
     },
     {
       "path": "Packages/CoreKit/Sources/CoreKit/Analytics/DiskQueue.swift",
-      "sha256": "1822dd760e147c47a22c183d43e06a5f1b531e185fffb1c00a44827113e15063"
+      "sha256": "17483eb1508984025749fe8be9ff37930ec32c0e520b8142dcd1762d5eb0a879"
     },
     {
       "path": "Packages/CoreKit/Sources/CoreKit/AppConfig.swift",
@@ -425,7 +489,7 @@
     },
     {
       "path": "Packages/CoreKit/Sources/CoreKit/BackgroundSync/BackgroundSyncCoordinator.swift",
-      "sha256": "41ca1ee81ee4a0a3364b0474db14c6f71778c2f1f6862304acc6f19265e4b4e7"
+      "sha256": "81dae6a66686b856bf2f6fc47d2af3834dceeb84e0e8bb6de68e0dc1a6195497"
     },
     {
       "path": "Packages/CoreKit/Sources/CoreKit/Config/AppConfigEnvironment.swift",
@@ -477,11 +541,27 @@
     },
     {
       "path": "Packages/CoreKit/Sources/CoreKit/Observability/APIClientObserver.swift",
-      "sha256": "b95652b88377d94b602f9a1f73febab83027a783f12d90ba216c161063fbe301"
+      "sha256": "257f6072a3c7456c27235edac31aa59b8bf327a2343927feab5e53332b1d3c6e"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Observability/APIObservationHealthRecorder.swift",
+      "sha256": "933b7b9f1520af6c17c6017807b77e789f04917c98773e5a9fd2a4cf94e91f17"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Observability/APIRequestObservation.swift",
+      "sha256": "b99919d30e15f734f8fb0efec55c2a09a0a3f5373e703c75aeb55f4425ed2499"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Observability/APIRouteSanitizer.swift",
+      "sha256": "b86834b19647f194cb8949bb7f5d68d6b67205af209e912b2b8c2430ba7e8908"
     },
     {
       "path": "Packages/CoreKit/Sources/CoreKit/Observability/AppConfigurationDiagnostics.swift",
       "sha256": "a86fdd524e7178b590ec777eb1cb1a5e7f975a3d57de0dfccfa44efcef4474c5"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/Observability/CompositeAPIClientObserver.swift",
+      "sha256": "f527ce0239dcb27dd12ef4bb30135af860ec5fdb6297855459540a34230123b5"
     },
     {
       "path": "Packages/CoreKit/Sources/CoreKit/Reachability/ReachabilityService.swift",
@@ -509,7 +589,7 @@
     },
     {
       "path": "Packages/CoreKit/Sources/CoreKit/Routing/DeepLink.swift",
-      "sha256": "2fea9d3d201e429bb45ece95ec4cd3109eaa18904be9f263058e28072fd88aab"
+      "sha256": "a293a3f1437fb73677e56f842463353029d68056aaeca64dc0b76990ebe4d888"
     },
     {
       "path": "Packages/CoreKit/Sources/CoreKit/Routing/HandoffActivityType.swift",
@@ -518,6 +598,14 @@
     {
       "path": "Packages/CoreKit/Sources/CoreKit/Routing/Router.swift",
       "sha256": "c11ea258605c578376b3a32ba0b65196af9a43c2936cadf09f2654391686da95"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/SessionWorkPermit.swift",
+      "sha256": "edde34c4fb7cbd794bd7c85d7e27c092c322cabae95f52826aae3f72bff96641"
+    },
+    {
+      "path": "Packages/CoreKit/Sources/CoreKit/UserFacingError.swift",
+      "sha256": "df73f614bbe5d76001dc642459a6b22c85b25f6ca9d69f34de72de0a45aae500"
     },
     {
       "path": "Packages/CoreKit/Sources/CoreKit/Utilities/AsyncRetry.swift",
@@ -552,8 +640,16 @@
       "sha256": "9521eb0a74f8351f74be808e691ee8ee00f39b44a1c1d83041f0d9d69c0d1d48"
     },
     {
+      "path": "Packages/DesignSystem/Sources/DesignSystem/Components/CFEditorialSectionHeader.swift",
+      "sha256": "6b798fbe426c502a4c4cd2ad9a6e45cce283eeb93639ca0ff04fcdc70a27b9e7"
+    },
+    {
       "path": "Packages/DesignSystem/Sources/DesignSystem/Components/CFEmptyState.swift",
       "sha256": "ad63dc8b1ed7f7ad95e633eea9dc1b035d0e8fc7f7d47d0fee6be6d6984767c0"
+    },
+    {
+      "path": "Packages/DesignSystem/Sources/DesignSystem/Components/CFInlineStateView.swift",
+      "sha256": "2a3766ac63ae7689e72e49a5ef813ec9b4c2e82c8eae9c16f54fc9a33928c34c"
     },
     {
       "path": "Packages/DesignSystem/Sources/DesignSystem/Components/CFProgressRing.swift",
@@ -585,7 +681,7 @@
     },
     {
       "path": "Packages/DesignSystem/Sources/DesignSystem/Font+CF.swift",
-      "sha256": "309c3438405747707c24678e8ad1fe2eedc8ff08d069dd00dfa9eb0449c53cde"
+      "sha256": "7cb9fb7278c0eab61514cafb590231db95c03ec10f5950aa250041b1a777be1f"
     },
     {
       "path": "Packages/DesignSystem/Sources/DesignSystem/Gallery/DesignSystemGallery.swift",
@@ -797,19 +893,19 @@
     },
     {
       "path": "Packages/EngagementFeature/Sources/EngagementFeature/Reviews/ReviewNotificationScheduler.swift",
-      "sha256": "fefaab2a589ee1a62759c5bc3304f58dee0bd080dc308c7fc17f99925082eaf7"
+      "sha256": "134aec04a949b78420cbe00cba69e49e851b21f0dd3d68492a3da86b499a5823"
     },
     {
       "path": "Packages/EngagementFeature/Sources/EngagementFeature/Reviews/ReviewSessionView.swift",
-      "sha256": "d77d0928c4372adfbd8ee0456deb65574e7df581af022b042422e69826560b2a"
+      "sha256": "6fa6a2ad1fdf58ee2f96b453fc61d5aba6ade6436b89e36652f891f70b5b7197"
     },
     {
       "path": "Packages/EngagementFeature/Sources/EngagementFeature/Reviews/ReviewsModel.swift",
-      "sha256": "4812fbc518a32ea65ff134aa62405c148fdafdd563d53d6a87f8d87c9e05f60d"
+      "sha256": "df2f8a381d6fb3aa2ce591013d4d903aa44b86568095b06bb167c2aa64ce3b78"
     },
     {
       "path": "Packages/EngagementFeature/Sources/EngagementFeature/Reviews/ReviewsRepository.swift",
-      "sha256": "2e0431cb8efc0ee8a2793e60b2adcf266d556ac1126f470f4e242f8d37610835"
+      "sha256": "51236b4281277aaa721a0c806f5d3a45a57b6fe447998b741f61a4a99a37ad71"
     },
     {
       "path": "Packages/EngagementFeature/Sources/EngagementFeature/Reviews/ReviewsView.swift",
@@ -941,15 +1037,19 @@
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Download/DownloadManager+BackgroundPrefetch.swift",
-      "sha256": "139aad0e4ebcd4ff5b7663cd53800316528accfba024cfcf9e6078f27a5ad41e"
+      "sha256": "b0015d1a49e17d738d8aea1941ae1a9818f88dc9ba29262d16d8bf16916b990b"
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Download/DownloadManager.swift",
-      "sha256": "5983c60a7e6995506bb6563fb218e9731025ed46869d656d8847a7232b165f8a"
+      "sha256": "5cbd7666cc603b8797381fe87e14811011ea9dac6888767a42f7e40116515466"
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Download/DownloadProgress.swift",
       "sha256": "4b106061fcf520f1c6d2cf0f6f313b437ee3a9acbda5ef078b8bf6b63b7da101"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Download/SegmentDownloadSession.swift",
+      "sha256": "00b28cfd44ee65a9653c02135839e54dc608a9f72c4418c9a5c14db164eefcdc"
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/LibraryFeature.swift",
@@ -957,7 +1057,11 @@
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Model/BookDetailModel.swift",
-      "sha256": "e57deb2bc6d75af1932dfcc0de54e4e29417a8d0fd052d519803e1665bdda3e9"
+      "sha256": "bacaceba2974ecc7f7b55edf487d753649ba3fc8098482d8aa8184b54b62bd77"
+    },
+    {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Model/BookDetailTypes.swift",
+      "sha256": "900e79b4cf60d3e78f72f098bae6e6b35445786fb12cbe90d168556bfa51ff33"
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Model/BookPreferencesModel.swift",
@@ -981,7 +1085,7 @@
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Repository/BookDetailRepository.swift",
-      "sha256": "4b6b03b9f00941e2673d40b6df9df68c4e6c33502a20a2c8b232d22393552b2b"
+      "sha256": "79f7450f79b5ae9da32d1d0b31ab249946b5e15f6d06dd9a7e81ab0d9ccb90a1"
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Repository/BookPreferencesRepository.swift",
@@ -989,7 +1093,7 @@
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Repository/FakeBookDetailRepository.swift",
-      "sha256": "9ed40dd0e7679967257f7820e24a9ecd1f5eb8939cfc00b092b09cbd47566b51"
+      "sha256": "a645f89570768e750c44f2389cda4738dd1de0f343d0f7dd7367ca36b4c9e998"
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Repository/FakeBookPreferencesRepository.swift",
@@ -1005,7 +1109,7 @@
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Repository/LiveBookDetailRepository.swift",
-      "sha256": "abfd52666b2672092eff0c932d963a7a4f65099e6ff6a9176d3ee5e221473c5b"
+      "sha256": "1e48788eedb3d5f9695f2ab0162358f93090e32308e3f6e7f7946ad8863a0dd3"
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Repository/LiveBookPreferencesRepository.swift",
@@ -1032,8 +1136,12 @@
       "sha256": "d9f95a2c3e61b37022e3a27916ffdcbd64b58d2abd24d126d4bacda5a1c31da2"
     },
     {
+      "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/BookDetailView+Support.swift",
+      "sha256": "c6c9a9c5f49430eff3ffcb1d1d8f0014578681b25f772cd8efd517e595ae8087"
+    },
+    {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/BookDetailView.swift",
-      "sha256": "083e74ef3361c63027b81ce992cf6e0715d4f2a39889f58a640f1c179f7ffb37"
+      "sha256": "931816445427fe213134eb3ae1b88dd0c32e53fe31436125fb4ae55b5909d76f"
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/BookPreferencesSheet.swift",
@@ -1041,7 +1149,7 @@
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/CategoryDetailView.swift",
-      "sha256": "1aba6890e4bf9976a501faf069bd8d166734e8ae5e6cbb0c42637c27dbcdf807"
+      "sha256": "b4abf3142733d75805c6c9f953deab3d632abdfef09005437a56f48f022b8c05"
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/Components/BookCardView.swift",
@@ -1053,7 +1161,7 @@
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/Components/BookDownloadButton.swift",
-      "sha256": "11c2fe38b0b1f0cbd04cd5f4aa746135d758a984633f344597013d4871f329bd"
+      "sha256": "385a073007261e4a99fbf2c6475ac6528e2d23c7f85e7f66547c383333ffe81d"
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/Components/BookShelfView.swift",
@@ -1081,7 +1189,7 @@
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/DiscoverView.swift",
-      "sha256": "69a4aa3875b794815d9c8450d72ba966f0fa11df72b54af2cc03e4e19b5bc653"
+      "sha256": "d9bd0f457df5f1a69e75362230667b9357f60e913872ef35da01abb085cb3146"
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/GlobalSearchView.swift",
@@ -1089,15 +1197,15 @@
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/HomeView.swift",
-      "sha256": "ecdd7248413430d8ac50bb0564a807752c9e779850bc21acb7084f6c82b5b098"
+      "sha256": "27f1051837e38e740dafb3569dbf38ce2c8b1e233ae970d0fda24388850f3217"
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/LibraryView.swift",
-      "sha256": "61c81f3a561cd90558f991ff2e1c159582097ab067f86ff09cbf7775829d08bc"
+      "sha256": "7fad7ecc93357cc353118b7987618abbc3e49c55b372fe751266036ca29f0076"
     },
     {
       "path": "Packages/LibraryFeature/Sources/LibraryFeature/Views/PreviewData.swift",
-      "sha256": "85674c71d1e5333a54d7c0f79a7a289de98638e031f04e2f757141b1e9dbfd5f"
+      "sha256": "54b21ed8b0fdb99f6097b74c6396c13de0db8a674ad5b633f968afa2ab84da54"
     },
     {
       "path": "Packages/Models/Sources/Models/Audio/AudioNarrationPlan.swift",
@@ -1265,7 +1373,7 @@
     },
     {
       "path": "Packages/Models/Sources/Models/Progress/BookUserBookState.swift",
-      "sha256": "da4d7c931298bab815638befad745cad401ff379ce90285c825a99dd4d496928"
+      "sha256": "e640a652458b0ea681b6a806685bff755a5a5605deee43120c5a0ed49bbead81"
     },
     {
       "path": "Packages/Models/Sources/Models/Quiz/QuizAttemptResult.swift",
@@ -1273,7 +1381,7 @@
     },
     {
       "path": "Packages/Models/Sources/Models/Quiz/QuizClientSession.swift",
-      "sha256": "d348635f41db45cd1860d497952f0138fc8903d64037a33a0538fd2692365a28"
+      "sha256": "598b3d27473c86475131158234dc7334966e3a0f75d59e134ac12464c78c2148"
     },
     {
       "path": "Packages/Models/Sources/Models/Recommendation/DepthRecommendation.swift",
@@ -1297,7 +1405,11 @@
     },
     {
       "path": "Packages/Networking/Sources/Networking/APIClient.swift",
-      "sha256": "33cb58181ce8c40121e1a36f8b6e8aceda7f6f9ced6d3851aab8c7ed33e1d535"
+      "sha256": "cb042fa6cd18e8f12c339116a8b189b57478d1a3b34965154f4e95bf13773ace"
+    },
+    {
+      "path": "Packages/Networking/Sources/Networking/APIClientRetrySupport.swift",
+      "sha256": "21e4321e5df4bb5667674055e89d0c4a7913a05761f1e8a5e4e4ef4bd4455ecf"
     },
     {
       "path": "Packages/Networking/Sources/Networking/AppConfigGate.swift",
@@ -1340,6 +1452,10 @@
       "sha256": "b1e74006e82dd9093e322bf8785b37b3b2d9e8daa862e6d2976c7d0a1a0b8380"
     },
     {
+      "path": "Packages/Networking/Sources/Networking/Endpoint+Reliability.swift",
+      "sha256": "54f11fb9c247bbe8bd8c1aa4e05c4e5dba90467ce3a00f5047ff78b70a190b16"
+    },
+    {
       "path": "Packages/Networking/Sources/Networking/Endpoint+Safety.swift",
       "sha256": "fc5e6fbea470d5ccc323ffdcad2051a166f67e75e7a17744f404bd150c15aba1"
     },
@@ -1348,12 +1464,8 @@
       "sha256": "9ce5c095389f477d1e8b287dcf0f4958767d0a1efac9d1c4bc325a9905a4a7bd"
     },
     {
-      "path": "Packages/Networking/Sources/Networking/Endpoint+Sync.swift",
-      "sha256": "92ffd1829604f4dd1249747a816f090639571e0091326b99ab7e11f9965851fd"
-    },
-    {
       "path": "Packages/Networking/Sources/Networking/Endpoint.swift",
-      "sha256": "5b897aba7dd1bbd4502f5d85150a58197bd829181bf37bd7c887d0c04824a9c5"
+      "sha256": "be5ef8154c93503025bde27715aa97c7a5c52c1b28a456c6183ebac68fa952ee"
     },
     {
       "path": "Packages/Networking/Sources/Networking/Endpoints+Scenarios.swift",
@@ -1389,15 +1501,15 @@
     },
     {
       "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/APNSRegistrationBridge.swift",
-      "sha256": "3508cab272da1be82181a317cc9f6b46d60ef3271a613d36779a69d4ae984aef"
+      "sha256": "7562fe9f3b3a7f6cfc7a5ecef8194d40db3026d01fec6b5d6f185f08dcf22f34"
     },
     {
       "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/APNSRegistrationManager.swift",
-      "sha256": "8917fc2b8844fc5b8bcbffd3cd1075712ec21063f2c04c9d36a663034f397cf3"
+      "sha256": "19239fa9b32a29bfeecbfe896e9f6f51bb7e7dbd8ab405fc6ec2b200f76bb94f"
     },
     {
       "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/DeviceRegistrationRepository.swift",
-      "sha256": "3ee97da0c1e87d55ca3b877430053a94bb7f7d3e1d9f87dcc96ae12227729665"
+      "sha256": "7165614a41ede06b6d7c64cd3451b6a85e4d0cdad2e070e3267e88c5db729703"
     },
     {
       "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/LocalNotificationScheduler.swift",
@@ -1429,11 +1541,11 @@
     },
     {
       "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationInboxModel.swift",
-      "sha256": "56bca505ebdcf7dc7c576705bb684b4facf36d4b5a9c53479158daf3c4686a01"
+      "sha256": "ef952188d8923270aff24cbb4497eee36b0f77f888157d60a6526679732772f1"
     },
     {
       "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationInboxRepository.swift",
-      "sha256": "273b6460735a238648b64fdd87ec5926e88c9af3fb1b9d07836475b99a53d40e"
+      "sha256": "33e99ab74562da8938e788deb486b4a5572a6b0ee6b6108a3888e66d766c5e4f"
     },
     {
       "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationInboxView.swift",
@@ -1469,15 +1581,15 @@
     },
     {
       "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationSettingsModel.swift",
-      "sha256": "9c4c35710822ccae2a95ab8a9d69928a430dbef8be808ca7e796057ab2b51eff"
+      "sha256": "cf3f6333ebca5991459d7ff784f679caced39a8f53be7c54b05ca12a3a8d755d"
     },
     {
       "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationSettingsView.swift",
-      "sha256": "333183e9bf81774905f220800a74657c838869448181ec3e3766b9a5caa39923"
+      "sha256": "82f200b1640aa23de5401b7d2098d4b7347457187e475a5a7202f2bcd7d5607f"
     },
     {
       "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationsFeature.swift",
-      "sha256": "0137db0625197a285e80fea617372f8e539c661d30577cce1f23517502d7a0a1"
+      "sha256": "6d2bcac14af2ab284b04ed6310d424c866e75dede56ff634b80b0eb5f20c14b1"
     },
     {
       "path": "Packages/NotificationsFeature/Sources/NotificationsFeature/NotificationsPreviewSupport.swift",
@@ -1533,11 +1645,11 @@
     },
     {
       "path": "Packages/OnboardingFeature/Sources/OnboardingFeature/OnboardingFlowView.swift",
-      "sha256": "9ce860bb8d02f7b37e59531e8792dfa8f46673bef9fe08f6c4a2353af2df020a"
+      "sha256": "1fdaac33f594022404def55feda175f35d65df07801d68f282886d27241a9387"
     },
     {
       "path": "Packages/OnboardingFeature/Sources/OnboardingFeature/OnboardingModel.swift",
-      "sha256": "1fc06d9050c53b5526f31937a05b35332ee6280a8473b936f4d55b1b18f2b479"
+      "sha256": "f192fd291aac39315907e28c66604ce6aa21e8153a264bce773d6bfb6a168fbf"
     },
     {
       "path": "Packages/OnboardingFeature/Sources/OnboardingFeature/OnboardingModels.swift",
@@ -1569,7 +1681,7 @@
     },
     {
       "path": "Packages/PaywallFeature/Sources/PaywallFeature/EntitlementService.swift",
-      "sha256": "52ca9493f4d68ddcf5e477cf9f5d3bfb468b407e5958be41645e48cb81191aed"
+      "sha256": "5cb1c7e62c22b3b0fc448b5097b6775b3d98d3b353f188f98951c1596678afca"
     },
     {
       "path": "Packages/PaywallFeature/Sources/PaywallFeature/EntitlementServicePreview.swift",
@@ -1613,7 +1725,7 @@
     },
     {
       "path": "Packages/PaywallFeature/Sources/PaywallFeature/StoreKitService.swift",
-      "sha256": "b08aaa3b7f4786b455e80960a9d10e741d9a4a8004a42987bb8d23d1cc8b1adf"
+      "sha256": "76355c5be9489935f960b0f4b77c39e900e343eecc7b08bff092e9182874e7d3"
     },
     {
       "path": "Packages/PaywallFeature/Sources/PaywallFeature/SubscriptionManagementModel.swift",
@@ -1632,6 +1744,10 @@
       "sha256": "6a3935563932722c862421c4a0268df1688f56c61e8aa69a1f7c7686b23b346b"
     },
     {
+      "path": "Packages/Persistence/Sources/Persistence/AccountPersistence.swift",
+      "sha256": "c0e9afbb24733b92bce83fdf5a683b6b3fcfec4539accff44cbe8305ea3eade7"
+    },
+    {
       "path": "Packages/Persistence/Sources/Persistence/AppGroupContinueRecord.swift",
       "sha256": "f20d9fbdaed62077b1fc674c917487f57ed5cb6f142f50dfaab01c7b3267406e"
     },
@@ -1640,8 +1756,12 @@
       "sha256": "978f225e75f51bdc0bdc14de100a7f5b613a467d9eb98d907aeee9385441cd88"
     },
     {
+      "path": "Packages/Persistence/Sources/Persistence/AppPersistenceBootstrap.swift",
+      "sha256": "ab1b5bb4d903b0ef483050450a1f8d6ce41335a7c4e9997ca524d088aa0c23ea"
+    },
+    {
       "path": "Packages/Persistence/Sources/Persistence/AppPreferences.swift",
-      "sha256": "63e053dcdbe5294dcf628b2c673b55c82f74653952d4c6bf8aa824d3381d978c"
+      "sha256": "13f6d7b736067eb9f5ffdda45d77b100d927d76249288974ae56fb1b17ceba3c"
     },
     {
       "path": "Packages/Persistence/Sources/Persistence/BookReadingPreferences.swift",
@@ -1649,7 +1769,7 @@
     },
     {
       "path": "Packages/Persistence/Sources/Persistence/DailyGoalStore.swift",
-      "sha256": "833085c4066891f83a6b1173a10ad71779d77f2dfab4ff29c47fd148736fc0d1"
+      "sha256": "40d48ff459632254e0f94118321bb88fca5042e1264875f9c8f14bb5b8acdfe9"
     },
     {
       "path": "Packages/Persistence/Sources/Persistence/DownloadInfoProviding.swift",
@@ -1665,7 +1785,7 @@
     },
     {
       "path": "Packages/Persistence/Sources/Persistence/KeyValueStore.swift",
-      "sha256": "f0d08aa3776d5eab50d2481754e73b15d3168d1361c6b380ea098f71165ed4de"
+      "sha256": "5c34c8c4682fcc50e52a750a40a9eea46f6cb2e09ae0b687eef9903b95d36150"
     },
     {
       "path": "Packages/Persistence/Sources/Persistence/Keychain.swift",
@@ -1717,7 +1837,7 @@
     },
     {
       "path": "Packages/Persistence/Sources/Persistence/Offline/CachedQuizState.swift",
-      "sha256": "470f02ed7a79193201eebf02c4eb8807b71bcead0443e11f938505b5bac44da8"
+      "sha256": "46a8c04a0397864a386a7956c0d9fe2012b29493d0a5e4c9afa20b820477707d"
     },
     {
       "path": "Packages/Persistence/Sources/Persistence/Offline/CachedReviewCard.swift",
@@ -1725,7 +1845,7 @@
     },
     {
       "path": "Packages/Persistence/Sources/Persistence/Offline/PendingMutation.swift",
-      "sha256": "868730144d7eae5ba15c451bc6bce38757cd5676b9925b40cd5aaf767c588aea"
+      "sha256": "ccef3e0c553ce0be682682b2fd882b2fba84c90d7841032176cb6cb3a7497957"
     },
     {
       "path": "Packages/Persistence/Sources/Persistence/Offline/UserDataWipe.swift",
@@ -1749,7 +1869,7 @@
     },
     {
       "path": "Packages/Persistence/Sources/Persistence/Persistence.swift",
-      "sha256": "102a43b0ca0c552cfa53497c064c4bb6e29abfb7acf0e9246d619bcaf6fb96c3"
+      "sha256": "93b277a74b413adc83871a6ec121bc4b279c2d2750c8da414f81d8af6f655f7d"
     },
     {
       "path": "Packages/Persistence/Sources/Persistence/SharedAppStateSnapshot.swift",
@@ -1765,7 +1885,7 @@
     },
     {
       "path": "Packages/Persistence/Sources/Persistence/StoreRecoveryManager.swift",
-      "sha256": "32bdc8906fb1c3f20933fe4564227f17a3c597e16219b1f43d080ef0f6d86f5d"
+      "sha256": "ec2ccf39148e06735220f0fc5bdf04b8c4d45657429f4190ecc85424b59a2804"
     },
     {
       "path": "Packages/Persistence/Sources/Persistence/SwiftDataStack.swift",
@@ -1773,15 +1893,15 @@
     },
     {
       "path": "Packages/Persistence/Sources/Persistence/TokenStore.swift",
-      "sha256": "894e7c44d734a59d029a0096b7a7e2ffe051735bc272c07a9f8b87b90a0d3f4e"
+      "sha256": "6aedf9813f1151ce3c1faea341c115ec9a38492bf8c9e1a14a40f5a49fbb848c"
     },
     {
       "path": "Packages/QuizFeature/Sources/QuizFeature/Endpoints+Quiz.swift",
-      "sha256": "a329b19168c0daa9f0f619c487a103e0e68f6c63de90cd3fcbccd96a03da0136"
+      "sha256": "47d949cf6ffe812d4db8e2f8182859bc7a5ea4a50031543148377d560a199952"
     },
     {
       "path": "Packages/QuizFeature/Sources/QuizFeature/Model/QuizModel.swift",
-      "sha256": "aaa0d37f8ba90e6e4d87ffe2f571f85b4a5eb053ce6af28eb02d2e58d2869792"
+      "sha256": "a0899694e67b0917a25595418a5cdd5cb130bfc212c8c48954cb8d29f1fec284"
     },
     {
       "path": "Packages/QuizFeature/Sources/QuizFeature/Model/QuizSubmissionError.swift",
@@ -1793,19 +1913,19 @@
     },
     {
       "path": "Packages/QuizFeature/Sources/QuizFeature/QuizTypes.swift",
-      "sha256": "253530485d6df11036aa48dafc2ea88eed110ba87cb862d07abd3b823fb4a70d"
+      "sha256": "7deaa694c4a8db765f8d716fe96fdaca0033298ecf32a6f60e8dd50d5886ff4c"
     },
     {
       "path": "Packages/QuizFeature/Sources/QuizFeature/Repository/FakeQuizRepository.swift",
-      "sha256": "f2926c8f3b0656d4251495f0776a36262ea3d8761d8bd8f0b03aa17a119e5689"
+      "sha256": "5bac0419d2765b419d21a074860d3cffe8355004448677491f79e672d99db90a"
     },
     {
       "path": "Packages/QuizFeature/Sources/QuizFeature/Repository/LiveQuizRepository.swift",
-      "sha256": "8ff6ac00d22b1835b112866500d8f4c9af128ed529b06addb0fa6f5276105158"
+      "sha256": "43fa410f84833e2c49445f852c2f0a38d965f7324db4b8395f9e8bf057ad46b8"
     },
     {
       "path": "Packages/QuizFeature/Sources/QuizFeature/Repository/QuizRepository.swift",
-      "sha256": "09364ec073cb67950a052082609c9e8ab2c2d8645de3b5789c87801d8cd88cbe"
+      "sha256": "3e4e51e3762a1ea837ac9f8e27c5a77fe5e3006897ea6b355897e5675c3f7e92"
     },
     {
       "path": "Packages/QuizFeature/Sources/QuizFeature/Views/Components/QuizChoiceButton.swift",
@@ -1825,7 +1945,7 @@
     },
     {
       "path": "Packages/QuizFeature/Sources/QuizFeature/Views/QuizView.swift",
-      "sha256": "1874ab0511c936c122580f1bfe5393702a16831faa0c10ee76525c1548d07abc"
+      "sha256": "3749b092deaa2d0a17c2579ccea3f8a0ee7b66deb0383a51a4cc5607d7126faa"
     },
     {
       "path": "Packages/ReaderFeature/Sources/ReaderFeature/Annotation/AnnotationAnchor.swift",
@@ -1869,7 +1989,7 @@
     },
     {
       "path": "Packages/ReaderFeature/Sources/ReaderFeature/Controls/ReaderControlsModel.swift",
-      "sha256": "412e9a28ac862698da7a8d09bb5eefb8c550117228600f8e676dad23f8b186d4"
+      "sha256": "c42929eafdaf53ccd1dd7fbb5b7e924df32654f179bbf6e2e1b2f971008b48cf"
     },
     {
       "path": "Packages/ReaderFeature/Sources/ReaderFeature/Controls/ReaderPaginatedView.swift",
@@ -1893,7 +2013,7 @@
     },
     {
       "path": "Packages/ReaderFeature/Sources/ReaderFeature/Models/ReaderModel.swift",
-      "sha256": "20b9ba9d1816400ec1ce3ec7b26f56eabbb32ac7c1a7f73ddb6aa850486f82c4"
+      "sha256": "5559821fe909d0270082c42f2f0c9e44fc08b836a5301320ff1463ff3857fa7d"
     },
     {
       "path": "Packages/ReaderFeature/Sources/ReaderFeature/Navigation/ChapterNavModel.swift",
@@ -1933,15 +2053,15 @@
     },
     {
       "path": "Packages/ReaderFeature/Sources/ReaderFeature/Repository/LiveAnnotationRepository.swift",
-      "sha256": "7bbc124222486843d463f67173ceb84c75dd437f113438439e386581295073b3"
+      "sha256": "769955cea130d04cf926288c0887539287a7756530569a76869961023e448a83"
     },
     {
       "path": "Packages/ReaderFeature/Sources/ReaderFeature/Repository/LiveReaderRepository.swift",
-      "sha256": "b40aaf0b82fead387e4ee912c743249f70c1ac89e332330caa5e9491cc5c7c26"
+      "sha256": "e010f2cf54ce680751f6bb1c08cec0bfa6bc8ee546527115e242cbe2c23f84ea"
     },
     {
       "path": "Packages/ReaderFeature/Sources/ReaderFeature/Repository/ReaderRepository.swift",
-      "sha256": "cb369a8c47bde1685db3068ae524352d5575b4cb6b824317293f36c3d7149cee"
+      "sha256": "abfac3cec86860f7200a54a18ffdb2d68ed658f3cbd304d1e87783b341034c37"
     },
     {
       "path": "Packages/ReaderFeature/Sources/ReaderFeature/Views/Annotation/AnnotatedBlock.swift",
@@ -2065,7 +2185,7 @@
     },
     {
       "path": "Packages/SettingsFeature/Sources/SettingsFeature/DownloadsSettingsView.swift",
-      "sha256": "3ccdbbdfe1f30caa008c411004376ce7de356b90fbe2266eb6720501ddaa9167"
+      "sha256": "ace7048ed46064b921b80c05daa850a252464b579b3451c5949c61a428a403af"
     },
     {
       "path": "Packages/SettingsFeature/Sources/SettingsFeature/SettingsFeature.swift",
@@ -2073,7 +2193,7 @@
     },
     {
       "path": "Packages/SettingsFeature/Sources/SettingsFeature/SettingsModel.swift",
-      "sha256": "3a0dab8795685c67467b90b16105647d85f2babbbc471bfb04ae894acd579c2e"
+      "sha256": "8f22810af62747e7910b62b5be1f0217f241a63a2ceb226bc9fee11220276132"
     },
     {
       "path": "Packages/SettingsFeature/Sources/SettingsFeature/SettingsRepository.swift",
@@ -2081,7 +2201,7 @@
     },
     {
       "path": "Packages/SettingsFeature/Sources/SettingsFeature/SettingsView+Previews.swift",
-      "sha256": "8d2ba066cde0cb0a7326a03fe2a4dac18e6e13ee0def310a1ead08c36426bd0c"
+      "sha256": "b4148a53bfd1dac7cf90eca9b67efeb02308582c52c29ee7b96d374f2c629aec"
     },
     {
       "path": "Packages/SettingsFeature/Sources/SettingsFeature/SettingsView+PushSection.swift",
@@ -2093,7 +2213,7 @@
     },
     {
       "path": "Packages/SettingsFeature/Sources/SettingsFeature/SettingsView.swift",
-      "sha256": "e9512c232f2fa99f5fe22a77a39908ff4ae9825d14656ddd3ac8255c4f1635b2"
+      "sha256": "1dc7cb0d79618cbf445b1cf2423dae94236850b58a577cb8562ab4fb248af3af"
     },
     {
       "path": "Packages/SettingsFeature/Sources/SettingsFeature/WhatsNew/WhatsNewContentProvider.swift",
@@ -2169,19 +2289,19 @@
     },
     {
       "path": "Packages/SocialFeature/Sources/SocialFeature/Repository/FakeSocialRepository.swift",
-      "sha256": "d2ff7cf4ee5d3d94eb234d275e754d7ef98a6b63551da4d4e9cee9f2c8d9dc3b"
+      "sha256": "ae2b07dec7a092df4b8ede5cf32016d5a90c6a1f23036627a60f7debb85b3d2d"
     },
     {
       "path": "Packages/SocialFeature/Sources/SocialFeature/Repository/LiveSocialRepository.swift",
-      "sha256": "79bb8c35a65986e10cf7e6bd34426cbe7dd28e6cbc09518a6794d1ed5b92dfb3"
+      "sha256": "9e481f0d4d009dd68137f881772b15c3dcc69a47d07f84732f8043caae01c915"
     },
     {
       "path": "Packages/SocialFeature/Sources/SocialFeature/Repository/ReflectionOutbox.swift",
-      "sha256": "a3ec1eb97889ea1665698cb872bc95e1759d323e07e9dc9b2ddbb13472cb349c"
+      "sha256": "4511b127a0acaf5928ea8e120367ce7714756be768a768dd6abc97f56596ef5b"
     },
     {
       "path": "Packages/SocialFeature/Sources/SocialFeature/Repository/SocialRepository.swift",
-      "sha256": "89a8599f0e6238d8f294c809ba33f36fe5d22b548d96e5ca0619e6e1601c5a71"
+      "sha256": "36a3ba37b403d4d340d2f8122088ed77622665dad5989c8a09481e17d8ed0c27"
     },
     {
       "path": "Packages/SocialFeature/Sources/SocialFeature/Safety/NudgeRateLimiter.swift",
@@ -2285,7 +2405,7 @@
     },
     {
       "path": "Packages/SocialFeature/Sources/SocialFeature/Views/Reflections/ReflectionsModel.swift",
-      "sha256": "59a558e090ade2cb6b516a9c11f2b9b174f92cf0c13016959bcdde427fdc1ccd"
+      "sha256": "c7e9135a58f67462d03e61a04f59551b23dee54b1eaa2838f4203384dd51980f"
     },
     {
       "path": "Packages/SocialFeature/Sources/SocialFeature/Views/Reflections/ReflectionsView.swift",
@@ -2321,15 +2441,15 @@
     },
     {
       "path": "Packages/SyncEngine/Sources/SyncEngine/SyncDispatch.swift",
-      "sha256": "fb302095979c03086bfd80e4b153c746eefadbfa570d1557168961c1da0834e9"
+      "sha256": "4834f592c971ab75f3c6de9cb622737f99731d21aa4703ccb9ccf9b4e48fcd04"
     },
     {
       "path": "Packages/SyncEngine/Sources/SyncEngine/SyncEngine.swift",
-      "sha256": "37f9c1f69bab4601a9d349d40e1a12b3cd30ef4d91ef23a34b5a07cffb855716"
+      "sha256": "b88cedb7863e5e741515fc1eb790c2c7d06e702892a46008c7e5fad3d3f7753f"
     },
     {
       "path": "Packages/SyncEngine/Sources/SyncEngine/SyncPayloads.swift",
-      "sha256": "5ed74080ac2fd561962e9b7969f303dc56b6a2a333d76cff5aac514e4f7dfeba"
+      "sha256": "370e29ad5b35f4f1702e752a24630bc8896a19b52884ef742777ce09227f9c09"
     },
     {
       "path": "Packages/SyncEngine/Sources/SyncEngine/SyncStatus.swift",
@@ -2341,15 +2461,15 @@
     },
     {
       "path": "Packages/SyncEngine/Sources/SyncEngine/SyncStore.swift",
-      "sha256": "3256b2b8517fb9c14dcfff048143ad00c433a1c46ba3a4789a8e767acef81355"
+      "sha256": "653ba9e75b1c869f9c13773c726d72670789e42cd5d3765adc3669dccc0d2e52"
     },
     {
       "path": "contracts/native-ios/v1/ios-native-contract-inventory-source.json",
-      "sha256": "0c3c7599345b5c5ae71830f071ab600526ca7ea0425288df6d17d08c3f4216ea"
+      "sha256": "72fbad0e2863ea5f2149b1e31591815c81b3c77bd8f6cae4a1580e081e8e5666"
     },
     {
       "path": "scripts/contracts/generate_ios_native_inventory.py",
-      "sha256": "5cc53394683d272ed1df38e842dff65933c2a504ae8a17f8b57cdc19d2c6c8d7"
+      "sha256": "7b12dd545ae9f1cb28b1f97ee3412e294cd96cf09a449198d2f0e25787471694"
     }
   ],
   "records": [
@@ -3196,20 +3316,7 @@
       "producerSourcePath": "Packages/QuizFeature/Sources/QuizFeature/Endpoints+Quiz.swift",
       "stableVariantSuffix": "submitquiz-online",
       "sourceMethodExpression": "method: .post",
-      "sourcePathExpression": "\"/book/me/quiz/\\(bookId)/\\(n)/submit\""
-    },
-    {
-      "operationId": "quiz-submit.post",
-      "method": "POST",
-      "routeTemplate": "/book/me/quiz/{bookId}/{chapterNumber}/submit",
-      "matrixRowId": "quiz-submit",
-      "operationVariantId": "quiz-submit.post:submitquiz-sync",
-      "producerKind": "endpoint_factory",
-      "producerSymbol": "submitQuiz.sync",
-      "producerSourcePath": "Packages/Networking/Sources/Networking/Endpoint+Sync.swift",
-      "stableVariantSuffix": "submitquiz-sync",
-      "sourceMethodExpression": "method: .post",
-      "sourcePathExpression": "\"/book/me/quiz/\\(encodedBook)/\\(chapterNumber)/submit\""
+      "sourcePathExpression": "\"/book/me/quiz/\\(encodedBook)/\\(n)/submit\""
     },
     {
       "operationId": "quiz.get",
