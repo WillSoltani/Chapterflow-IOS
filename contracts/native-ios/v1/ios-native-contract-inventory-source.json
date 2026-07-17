@@ -877,7 +877,7 @@
       "producerSourcePath": "Packages/QuizFeature/Sources/QuizFeature/Endpoints+Quiz.swift",
       "stableVariantSuffix": "submitquiz-online",
       "sourceMethodExpression": "method: .post",
-      "sourcePathExpression": "\"/book/me/quiz/\\(bookId)/\\(n)/submit\""
+      "sourcePathExpression": "\"/book/me/quiz/\\(encodedBook)/\\(n)/submit\""
     },
     {
       "operationId": "quiz.get",

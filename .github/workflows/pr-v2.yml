@@ -234,7 +234,7 @@ jobs:
 
           expected_line = (
               "Current iOS contract semantics passed "
-              "(83 operations / 93 producers / 29 matrix rows / 93 relations)."
+              "(83 operations / 92 producers / 29 matrix rows / 92 relations)."
           )
           if os.environ.get("CONTRACT_OUTPUT") != expected_line:
               raise SystemExit("native contract verifier produced malformed proof output")
@@ -250,9 +250,9 @@ jobs:
           }
           expected_counts = {
               "operations": 83,
-              "producers": 93,
+              "producers": 92,
               "matrix_rows": 29,
-              "relations": 93,
+              "relations": 92,
           }
           if counts != expected_counts:
               raise SystemExit(
@@ -902,9 +902,9 @@ jobs:
               expected_proof = {
                   "schema_version": 1,
                   "operations": 83,
-                  "producers": 93,
+                  "producers": 92,
                   "matrix_rows": 29,
-                  "relations": 93,
+                  "relations": 92,
                   "policy_digest_valid": True,
               }
               try:
@@ -914,7 +914,7 @@ jobs:
               else:
                   if proof != expected_proof:
                       errors.append(
-                          "contract-semantics: proof output does not match 83/93/29/93 "
+                          "contract-semantics: proof output does not match 83/92/29/92 "
                           "with a valid policy digest"
                       )
           elif proof_raw:

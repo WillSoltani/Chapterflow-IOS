@@ -83,10 +83,10 @@ class IOSNativeInventoryCanaries(unittest.TestCase):
 
         self.assertEqual(inventory.serialize_manifest(first), inventory.serialize_manifest(second))
         self.assertEqual(first["operationKeyCount"], 83)
-        self.assertEqual(first["producerVariantCount"], 93)
+        self.assertEqual(first["producerVariantCount"], 92)
         self.assertEqual(first["matrixRowCount"], 29)
-        self.assertEqual(first["relationalRecordCount"], 93)
-        self.assertEqual(len(first["records"]), 93)
+        self.assertEqual(first["relationalRecordCount"], 92)
+        self.assertEqual(len(first["records"]), 92)
         self.assertEqual(len(first["matrixRows"]), 29)
         self.assertEqual(
             {item["path"] for item in first["sourceInputs"]},
@@ -272,11 +272,11 @@ class IOSNativeInventoryCanaries(unittest.TestCase):
 
         def mutate(candidate) -> None:
             source = candidate[path].decode("utf-8")
-            old = "public func flush() async {\n        if let diskQueue"
+            old = "public func flush() async {\n        guard let ticket = try? workPermit.begin()"
             new = (
                 "public func flush() async {\n"
                 '        let Path = (track: "/book/wrong", beacon: "/book/wrong")\n'
-                "        if let diskQueue"
+                "        guard let ticket = try? workPermit.begin()"
             )
             self.assertEqual(source.count(old), 1)
             candidate[path] = source.replace(old, new).encode("utf-8")

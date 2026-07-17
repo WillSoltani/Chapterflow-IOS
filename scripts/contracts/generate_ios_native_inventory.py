@@ -27,7 +27,7 @@ IOS_REPOSITORY = "WillSoltani/Chapterflow-IOS"
 SOURCE_MAPPING_PATH = "contracts/native-ios/v1/ios-native-contract-inventory-source.json"
 GENERATOR_PATH = "scripts/contracts/generate_ios_native_inventory.py"
 EXPECTED_OPERATION_COUNT = 83
-EXPECTED_PRODUCER_COUNT = 93
+EXPECTED_PRODUCER_COUNT = 92
 EXPECTED_MATRIX_ROW_COUNT = 29
 
 EXPECTED_MATRIX_ROW_IDS = frozenset(

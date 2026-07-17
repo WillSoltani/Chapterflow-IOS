@@ -19,9 +19,9 @@ CONTRACT_PROOF = json.dumps(
     {
         "schema_version": 1,
         "operations": 83,
-        "producers": 93,
+        "producers": 92,
         "matrix_rows": 29,
-        "relations": 93,
+        "relations": 92,
         "policy_digest_valid": True,
     },
     separators=(",", ":"),
