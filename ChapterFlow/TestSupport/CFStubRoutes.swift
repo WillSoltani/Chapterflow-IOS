@@ -1,14 +1,37 @@
 #if DEBUG
+import CoreGraphics
 import Foundation
+import ImageIO
 
 // swiftlint:disable line_length
 /// Route table for ``CFStubURLProtocol``.
 /// Maps URL path prefixes → (statusCode, JSON body) used by XCUITests.
 nonisolated enum CFStubRoutes {
 
+    struct Response: Sendable {
+        enum CachePolicy: Sendable {
+            case allowed
+            case notAllowed
+        }
+
+        let statusCode: Int
+        let body: Data
+        let contentType: String
+        let cachePolicy: CachePolicy
+    }
+
     // MARK: - Lookup
 
-    nonisolated static func response(for path: String, method: String) -> (statusCode: Int, body: Data)? {
+    nonisolated static func response(for path: String, method: String) -> Response? {
+        if path.hasPrefix(artworkPathPrefix), path.hasSuffix(".png"), method == "GET" {
+            return Response(
+                statusCode: 200,
+                body: artworkPNG,
+                contentType: "image/png",
+                cachePolicy: .allowed
+            )
+        }
+
         // Longest-prefix wins: a specific route like `/book/books/{id}` must beat
         // the shorter `/book/books` (catalog) prefix, regardless of table order.
         var best: (route: Route, handler: () -> String)?
@@ -19,8 +42,15 @@ nonisolated enum CFStubRoutes {
             }
         }
         guard let handler = best?.handler else { return nil }
-        return (200, handler().data(using: .utf8) ?? Data())
+        return Response(
+            statusCode: 200,
+            body: handler().data(using: .utf8) ?? Data(),
+            contentType: "application/json",
+            cachePolicy: .notAllowed
+        )
     }
+
+    static let artworkPathPrefix = "/covers/atomic-habits-"
 
     // MARK: - Route table
 
@@ -29,7 +59,7 @@ nonisolated enum CFStubRoutes {
         let method: String?
     }
 
-    nonisolated(unsafe) private static let routes: [(Route, @Sendable () -> String)] = [
+    private static let routes: [(Route, @Sendable () -> String)] = [
 
         // ── Auth / identity ────────────────────────────────────────────────────
         (Route(path: "/auth/session", method: nil), { session }),
@@ -95,17 +125,67 @@ nonisolated enum CFStubRoutes {
     {"sub":"uitest-user-123","email":"test@chapterflow.com","displayName":"Test User"}
     """
 
-    private static let catalog = """
-    {"books":[{"bookId":"b-atomic-habits","title":"Atomic Habits","author":"James Clear","categories":["Productivity"],"tags":["habits"],"cover":{"emoji":"⚛️","color":"#2D6A4F"},"variantFamily":"EMH","status":"published","latestVersion":3,"currentPublishedVersion":3,"updatedAt":"2024-01-15T10:00:00.000Z"},{"bookId":"b-deep-work","title":"Deep Work","author":"Cal Newport","categories":["Productivity"],"tags":["focus"],"cover":{"emoji":"🎯","color":"#1B4332"},"variantFamily":"PBC","status":"published","latestVersion":2,"currentPublishedVersion":2,"updatedAt":"2024-02-01T09:00:00.000Z"}]}
+    private static var catalog: String {
+        """
+    {"books":[{"bookId":"b-atomic-habits","title":"Atomic Habits","author":"James Clear","categories":["Productivity"],"tags":["habits"],"cover":{"emoji":"⚛️","color":"#2D6A4F"},"coverImage":"\(artworkURL)","variantFamily":"EMH","status":"published","latestVersion":3,"currentPublishedVersion":3,"updatedAt":"2024-01-15T10:00:00.000Z"},{"bookId":"b-deep-work","title":"Deep Work","author":"Cal Newport","categories":["Productivity"],"tags":["focus"],"cover":{"emoji":"🎯","color":"#1B4332"},"variantFamily":"PBC","status":"published","latestVersion":2,"currentPublishedVersion":2,"updatedAt":"2024-02-01T09:00:00.000Z"}]}
     """
+    }
 
     private static let bookState = """
     {"state":{"bookId":"b-atomic-habits","currentChapterNumber":1,"currentChapterId":"ch-ah-1","completedChapterIds":[],"unlockedChapterIds":["ch-ah-1"],"chapterScores":{},"lastReadChapterId":null},"applicationStates":{}}
     """
 
-    private static let bookManifest = """
-    {"bookId":"b-atomic-habits","title":"Atomic Habits","author":"James Clear","cover":{"emoji":"⚛️","color":"#2D6A4F"},"categories":["Productivity"],"tags":["habits"],"variantFamily":"EMH","status":"published","latestVersion":3,"currentPublishedVersion":3,"updatedAt":"2024-01-15T10:00:00.000Z","chapters":[{"chapterId":"ch-ah-1","number":1,"title":"The Surprising Power of Atomic Habits","readingTimeMinutes":20,"isPreview":false},{"chapterId":"ch-ah-2","number":2,"title":"How Habits Shape Your Identity","readingTimeMinutes":18,"isPreview":false}],"chapterCount":2,"totalReadingTimeMinutes":38}
+    private static var bookManifest: String {
+        """
+    {"bookId":"b-atomic-habits","title":"Atomic Habits","author":"James Clear","cover":{"emoji":"⚛️","color":"#2D6A4F"},"coverImage":"\(artworkURL)","categories":["Productivity"],"tags":["habits"],"variantFamily":"EMH","status":"published","latestVersion":3,"currentPublishedVersion":3,"updatedAt":"2024-01-15T10:00:00.000Z","chapters":[{"chapterId":"ch-ah-1","number":1,"title":"The Surprising Power of Atomic Habits","readingTimeMinutes":20,"isPreview":false},{"chapterId":"ch-ah-2","number":2,"title":"How Habits Shape Your Identity","readingTimeMinutes":18,"isPreview":false}],"chapterCount":2,"totalReadingTimeMinutes":38}
     """
+    }
+
+    private static var artworkURL: String {
+        let rawToken = ProcessInfo.processInfo.environment["CF_STUB_ARTWORK_TOKEN"] ?? "default"
+        let token = rawToken.filter { $0.isLetter || $0.isNumber }
+        return "https://artwork.chapterflow.test\(artworkPathPrefix)\(token).png"
+    }
+
+    /// A generated fixture keeps the UI test independent from checked-in image assets
+    /// while still exercising an actual PNG transport and decode path.
+    private static let artworkPNG: Data = {
+        let width = 84
+        let height = 118
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            return Data()
+        }
+
+        context.setFillColor(CGColor(red: 0.05, green: 0.22, blue: 0.17, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        context.setFillColor(CGColor(red: 0.96, green: 0.73, blue: 0.20, alpha: 1))
+        context.fill(CGRect(x: 0, y: 82, width: width, height: 12))
+        context.fill(CGRect(x: 14, y: 14, width: 12, height: 54))
+        context.setFillColor(CGColor(red: 0.95, green: 0.93, blue: 0.84, alpha: 1))
+        context.fill(CGRect(x: 36, y: 24, width: 34, height: 46))
+
+        guard let image = context.makeImage() else { return Data() }
+        let output = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(
+            output,
+            "public.png" as CFString,
+            1,
+            nil
+        ) else {
+            return Data()
+        }
+        CGImageDestinationAddImage(destination, image, nil)
+        guard CGImageDestinationFinalize(destination) else { return Data() }
+        return output as Data
+    }()
 
     private static let chapter = """
     {"chapter":{"chapterId":"ch-ah-1","number":1,"title":"The Surprising Power of Atomic Habits","readingTimeMinutes":20,"activeVariant":"medium","availableVariants":["easy","medium","hard"],"contentVariants":{"medium":{"chapterBreakdown":{"gentle":"Small habits compound remarkably over time.","direct":"1% improvements compound to 37× gains over a year.","competitive":"Master the art of marginal gains to dominate your field."},"keyTakeaways":[{"point":{"gentle":"Small changes lead to big results.","direct":"1% daily improvement compounds to 37× gains.","competitive":"Marginally superior habits create exponentially better outcomes."}}],"oneMinuteRecap":{"gentle":"Habits matter more than you think.","direct":"1% improvements compound dramatically over time.","competitive":"Your habits are your competitive edge."},"activationPrompt":{"gentle":"What small habit could you improve today?","direct":"Identify one habit to improve by 1% this week.","competitive":"Which habit gives you the biggest competitive edge right now?"},"selfCheckPrompts":[{"gentle":"Can you name one habit you could improve by 1%?","direct":"Can you name one habit you could improve by 1%?","competitive":"Can you name one habit you could improve by 1%?"},{"gentle":"How do small improvements compound over time?","direct":"How do small improvements compound over time?","competitive":"How do small improvements compound over time?"}],"reflectionPrompts":[{"gentle":"What tiny change could transform your performance?","direct":"What tiny change could transform your performance?","competitive":"What tiny change could transform your performance?"},{"gentle":"Where are you accepting mediocrity in your daily habits?","direct":"Where are you accepting mediocrity in your daily habits?","competitive":"Where are you accepting mediocrity in your daily habits?"}]}},"examples":[],"implementationPlan":null,"reviewCards":[{"cardId":"card-1","front":"What happens when you improve 1% every day for a year?","back":{"gentle":"You become 37× better.","direct":"37× improvement through compounding.","competitive":"37× gains — the compound effect of marginal superiority."}}],"keyTakeawayCard":{"cardId":"ktc-1","front":"The core insight of Atomic Habits","back":{"gentle":"Small habits matter enormously over time.","direct":"1% better every day = 37× better in a year.","competitive":"Marginal daily gains compound into massive competitive advantages."}},"v21Extras":null},"progress":{"progressRev":1,"currentChapterNumber":1,"unlockedThroughChapterNumber":1,"completedChapters":[],"bestScoreByChapter":{},"preferredVariant":"medium"}}

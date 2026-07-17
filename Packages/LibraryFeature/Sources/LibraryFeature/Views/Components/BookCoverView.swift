@@ -1,8 +1,9 @@
 import SwiftUI
 import Models
 import DesignSystem
+import Observation
 
-/// Renders a book's emoji + gradient cover — no image download required.
+/// Renders public remote artwork over the book's generated fallback when available.
 ///
 /// The design is an emoji centred on a vertical gradient derived from the
 /// `cover.color` hex string. Falls back to a neutral DesignSystem fill when
@@ -10,22 +11,59 @@ import DesignSystem
 public struct BookCoverView: View {
 
     let cover: Cover?
+    let coverImageURL: String?
     let size: CGFloat
+    private let artworkLoader: any BookArtworkLoading
 
-    public init(cover: Cover?, size: CGFloat = 56) {
+    @Environment(\.displayScale) private var displayScale
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var artworkState: BookArtworkViewState
+
+    public init(cover: Cover?, coverImageURL: String? = nil, size: CGFloat = 56) {
         self.cover = cover
+        self.coverImageURL = coverImageURL
         self.size = size
+        artworkLoader = BookArtworkLoader.shared
+        _artworkState = State(initialValue: BookArtworkViewState())
+    }
+
+    init(
+        cover: Cover?,
+        coverImageURL: String?,
+        size: CGFloat,
+        artworkLoader: any BookArtworkLoading,
+        artworkState: BookArtworkViewState = BookArtworkViewState()
+    ) {
+        self.cover = cover
+        self.coverImageURL = coverImageURL
+        self.size = size
+        self.artworkLoader = artworkLoader
+        _artworkState = State(initialValue: artworkState)
     }
 
     public var body: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                .fill(gradient)
-            Text(cover?.emoji ?? "📖")
-                .font(.system(size: size * 0.45))
-                .minimumScaleFactor(0.5)
+            fallback
+
+            if let image = artworkState.image(for: request) {
+                Image(decorative: image, scale: displayScale)
+                    .resizable()
+                    .interpolation(.medium)
+                    .scaledToFill()
+                    .frame(width: size, height: size * coverAspect)
+                    .clipped()
+                    .transition(.opacity)
+            }
         }
         .frame(width: size, height: size * coverAspect)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .animation(
+            reduceMotion ? nil : .easeInOut(duration: 0.2),
+            value: artworkState.image(for: request) != nil
+        )
+        .task(id: request) {
+            await artworkState.load(request: request, using: artworkLoader)
+        }
         .accessibilityHidden(true)
     }
 
@@ -40,6 +78,25 @@ public struct BookCoverView: View {
     }
 
     private var coverAspect: CGFloat { 1.4 }
+
+    private var request: BookArtworkRequest? {
+        guard let coverImageURL else { return nil }
+        return BookArtworkRequest(
+            rawURL: coverImageURL,
+            pixelWidth: Int(ceil(size * displayScale)),
+            pixelHeight: Int(ceil(size * coverAspect * displayScale))
+        )
+    }
+
+    private var fallback: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(gradient)
+            Text(cover?.emoji ?? "📖")
+                .font(.system(size: size * 0.45))
+                .minimumScaleFactor(0.5)
+        }
+    }
 
     private var gradient: LinearGradient {
         let base = parseHex(cover?.color) ?? Color.cfSecondaryFill
@@ -59,6 +116,49 @@ public struct BookCoverView: View {
             green: Double((rgb >> 8)  & 0xFF) / 255,
             blue:  Double( rgb        & 0xFF) / 255
         )
+    }
+}
+
+struct BookArtworkRequest: Hashable, Sendable {
+    let rawURL: String
+    let pixelWidth: Int
+    let pixelHeight: Int
+
+    var pixelSize: CGSize {
+        CGSize(width: pixelWidth, height: pixelHeight)
+    }
+}
+
+@MainActor
+@Observable
+final class BookArtworkViewState {
+    private(set) var image: CGImage?
+    private(set) var publishedRequest: BookArtworkRequest?
+    private var generation = 0
+
+    func image(for request: BookArtworkRequest?) -> CGImage? {
+        guard publishedRequest == request else { return nil }
+        return image
+    }
+
+    func load(request: BookArtworkRequest?, using loader: any BookArtworkLoading) async {
+        generation += 1
+        let loadGeneration = generation
+        image = nil
+        publishedRequest = nil
+
+        guard let request else { return }
+        let loadedImage = await loader.image(for: request.rawURL, pixelSize: request.pixelSize)
+        guard !Task.isCancelled, generation == loadGeneration else { return }
+
+        image = loadedImage
+        publishedRequest = loadedImage == nil ? nil : request
+    }
+
+    func seed(image: CGImage, for request: BookArtworkRequest) {
+        generation += 1
+        self.image = image
+        publishedRequest = request
     }
 }
 

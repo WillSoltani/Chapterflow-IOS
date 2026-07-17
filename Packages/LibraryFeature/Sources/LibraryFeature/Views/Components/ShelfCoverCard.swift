@@ -31,7 +31,7 @@ public struct ShelfCoverCard: View {
     public var body: some View {
         Button(action: onTap) {
             VStack(alignment: .leading, spacing: .cfSpacing8) {
-                BookCoverView(cover: book.cover, size: 104)
+                BookCoverView(cover: book.cover, coverImageURL: book.coverImageURL, size: 104)
                     .shadow(color: .black.opacity(0.12), radius: 6, x: 0, y: 3)
 
                 VStack(alignment: .leading, spacing: .cfSpacing2) {
@@ -77,7 +77,7 @@ public struct ShelfCoverCard: View {
 
     private var contextMenuPreview: some View {
         VStack(spacing: .cfSpacing8) {
-            BookCoverView(cover: book.cover, size: 120)
+            BookCoverView(cover: book.cover, coverImageURL: book.coverImageURL, size: 120)
                 .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
             VStack(spacing: .cfSpacing4) {
                 Text(book.title)

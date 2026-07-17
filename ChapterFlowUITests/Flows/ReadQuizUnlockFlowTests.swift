@@ -1,3 +1,4 @@
+import Foundation
 import XCTest
 
 /// XCUITests for the read → quiz → unlock chapter flow.
@@ -94,5 +95,83 @@ final class ReadQuizUnlockFlowTests: CFUITestCase {
         // Navigate Home; verifies /book/me/progress and /book/me/dashboard.
         robot.goToHome()
         robot.assertNoErrorState()
+    }
+}
+
+/// Proves that remote artwork remains presentation-only: the fallback catalog
+/// is immediately interactive, navigation succeeds while the response is still
+/// delayed, and the eventual PNG replaces the detail fallback.
+final class BookArtworkFlowTests: CFUITestCase {
+    private let artworkToken = UUID().uuidString
+
+    override var extraLaunchEnvironment: [String: String] {
+        [
+            "CF_STUB_ARTWORK_DELAY_MS": "20000",
+            "CF_STUB_ARTWORK_TOKEN": artworkToken,
+        ]
+    }
+
+    func testDelayedArtworkDoesNotBlockCatalogOrNavigation() {
+        let robot = AppRobot(app: app)
+        robot.waitForTabBar()
+        robot.goToLibrary()
+
+        let firstBook = app.descendants(matching: .any).matching(
+            NSPredicate(format: "label CONTAINS[c] 'Atomic Habits'")
+        ).firstMatch
+        assertExists(
+            firstBook,
+            message: "The fallback catalog card must be available before artwork completes",
+            timeout: 60
+        )
+        let catalogFallback = firstBook.screenshot()
+        let fallbackAttachment = XCTAttachment(screenshot: catalogFallback)
+        fallbackAttachment.name = "Catalog fallback before remote artwork"
+        fallbackAttachment.lifetime = .keepAlways
+        add(fallbackAttachment)
+
+        firstBook.tap()
+        assertExists(
+            app.navigationBars["Atomic Habits"],
+            message: "Book navigation must remain usable while artwork is loading",
+            timeout: 15
+        )
+
+        let detailSurface = app.scrollViews.firstMatch
+        assertExists(detailSurface, message: "The loaded book detail must be visible")
+        let detailFallback = detailSurface.screenshot().pngRepresentation
+        let earliestExpectedDelivery = Date().addingTimeInterval(21)
+        let artworkReplacedFallback = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in
+                Date() >= earliestExpectedDelivery
+                    && detailSurface.exists
+                    && detailSurface.screenshot().pngRepresentation != detailFallback
+            },
+            object: nil
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [artworkReplacedFallback], timeout: 35),
+            .completed,
+            "The generated remote PNG must replace the visible fallback"
+        )
+
+        let remoteAttachment = XCTAttachment(screenshot: detailSurface.screenshot())
+        remoteAttachment.name = "Book detail after remote artwork"
+        remoteAttachment.lifetime = .keepAlways
+        add(remoteAttachment)
+
+        let backButton = app.navigationBars["Atomic Habits"].buttons.firstMatch
+        assertExists(backButton, message: "Book detail must keep its back navigation affordance")
+        backButton.tap()
+        assertExists(
+            app.navigationBars["Library"],
+            message: "Navigation must remain usable after artwork replacement"
+        )
+        assertExists(
+            app.descendants(matching: .any).matching(
+                NSPredicate(format: "label CONTAINS[c] 'Atomic Habits'")
+            ).firstMatch,
+            message: "The catalog must remain available after returning"
+        )
     }
 }
