@@ -176,6 +176,26 @@ struct SessionScopeLifecycleTests {
         #expect(constructedAccounts == ["exact-subject-a", "exact-subject-b"])
     }
 
+    @Test("StoreKit composition accepts the exact UUID Cognito subject")
+    func storeKitBindingUsesExactAccountIdentity() throws {
+        let context = AccountContext(
+            identity: try identity(subject: "8f14e45f-ea4f-4a1b-8c32-07bbf1cdb22f"),
+            config: makeTestValidatedConfig()
+        )
+
+        #expect(SessionPrivateGraph.storeKitAccountBinding(for: context) != nil)
+    }
+
+    @Test("StoreKit composition leaves invalid Cognito identity purchase-unavailable")
+    func invalidStoreKitBindingFailsClosed() throws {
+        let context = AccountContext(
+            identity: try identity(subject: "not-a-uuid"),
+            config: makeTestValidatedConfig()
+        )
+
+        #expect(SessionPrivateGraph.storeKitAccountBinding(for: context) == nil)
+    }
+
     @Test("successful sign-out quiesces and invalidates dependencies once")
     func successfulSignOutStopsOnce() async throws {
         let session = try signedInSession(subject: "account-a")
