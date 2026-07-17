@@ -40,7 +40,7 @@ public struct ContinueReadingCard: View {
 
     private var coverWithRing: some View {
         ZStack(alignment: .bottomTrailing) {
-            BookCoverView(cover: book.cover, size: 72)
+            BookCoverView(cover: book.cover, coverImageURL: book.coverImageURL, size: 72)
             ProgressRingView(progress: progress.completionFraction, size: 26, lineWidth: 3)
                 .background(
                     Circle().fill(Color.cfBackground).padding(-3)

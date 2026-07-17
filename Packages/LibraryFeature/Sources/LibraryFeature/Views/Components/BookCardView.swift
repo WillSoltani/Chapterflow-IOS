@@ -36,7 +36,7 @@ public struct BookCardView: View {
     public var body: some View {
         Button { onTap?() } label: {
             HStack(spacing: .cfSpacing12) {
-                BookCoverView(cover: book.cover, size: 56)
+                BookCoverView(cover: book.cover, coverImageURL: book.coverImageURL, size: 56)
 
                 VStack(alignment: .leading, spacing: .cfSpacing4) {
                     Text(book.title)
@@ -143,7 +143,7 @@ public struct BookCardView: View {
     /// Rich thumbnail shown while the context menu is open.
     private var contextMenuPreview: some View {
         VStack(alignment: .leading, spacing: .cfSpacing8) {
-            BookCoverView(cover: book.cover, size: 120)
+            BookCoverView(cover: book.cover, coverImageURL: book.coverImageURL, size: 120)
                 .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 4)
             VStack(alignment: .leading, spacing: .cfSpacing4) {
                 Text(book.title)

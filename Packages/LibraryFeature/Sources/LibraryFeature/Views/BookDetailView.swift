@@ -158,7 +158,7 @@ public struct BookDetailView: View {
     private var heroSection: some View {
         VStack(alignment: .center, spacing: .cfSpacing12) {
             if let manifest = model.manifest {
-                BookCoverView(cover: manifest.cover, size: 120)
+                BookCoverView(cover: manifest.cover, coverImageURL: manifest.coverImageURL, size: 120)
                     .shadow(color: .black.opacity(0.12), radius: 12, x: 0, y: 4)
                     .padding(.top, .cfSpacing24)
 
