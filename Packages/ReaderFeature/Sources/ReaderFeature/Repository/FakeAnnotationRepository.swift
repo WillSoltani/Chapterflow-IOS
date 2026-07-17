@@ -66,7 +66,5 @@ public final class FakeAnnotationRepository: AnnotationRepository {
     public func deleteAnnotation(_ annotation: LocalAnnotation) async throws {
         store.removeAll { $0.annotationId == annotation.annotationId }
     }
-
-    public func retryPendingUploads() async {}
 }
 #endif

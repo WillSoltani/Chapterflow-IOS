@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import CoreKit
 import Foundation
 import Networking
@@ -565,6 +566,14 @@ private func makeSnapshot(for kind: MutationKind) throws -> SyncMutationSnapshot
                 variantKey: "medium", toneKey: "direct",
                 blockIndex: 0, blockType: "paragraph",
                 startChar: 0, endChar: 4, snippet: "text", color: "yellow"
+            )
+        )
+    case .notebookDelete:
+        return try makeSnapshot(
+            kind: kind,
+            payload: NotebookDeletePayload(
+                localAnnotationId: "annotation-a",
+                serverEntryId: "entry-a"
             )
         )
     case .reviewGrade:

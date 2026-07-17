@@ -403,7 +403,7 @@ struct OfflineSchemaTests {
         }
 
         @MainActor
-        @Test("round-trips all 8 mutation kinds via payloadJSON losslessly")
+        @Test("round-trips every mutation kind via payloadJSON losslessly")
         func allKindsRoundTrip() throws {
             let context = try OfflineSchemaTests().freshContext()
             let payload = ProgressPayload(bookId: "book-1", chapterNumber: 3)
@@ -448,6 +448,47 @@ struct OfflineSchemaTests {
             let mutation = try PendingMutation.make(userId: "u", kind: .quizSubmit, payload: original)
             let decoded = try mutation.decodePayload(as: Payload.self)
             #expect(decoded == original)
+        }
+
+        @Test("deterministic annotation mutation ID is preserved by factory")
+        func deterministicAnnotationMutationID() throws {
+            let payload = NotebookDeletePayload(
+                localAnnotationId: "annotation-a",
+                serverEntryId: "entry-a"
+            )
+            let mutation = try PendingMutation.make(
+                mutationId: AnnotationMutationID.delete(localAnnotationId: "annotation-a"),
+                userId: "account-a",
+                kind: .notebookDelete,
+                payload: payload
+            )
+
+            #expect(mutation.mutationId == "annotation-delete:annotation-a")
+            #expect(try mutation.decodePayload(as: NotebookDeletePayload.self) == payload)
+        }
+
+        @Test("legacy notebook create payload decodes without reconciliation fields")
+        func legacyNotebookPayloadCompatibility() throws {
+            let legacyJSON = """
+            {
+              "entryId": null,
+              "bookId": "book-a",
+              "chapterId": "chapter-a",
+              "type": "note",
+              "content": "private note",
+              "quote": null,
+              "color": null
+            }
+            """
+
+            let payload = try JSONDecoder().decode(
+                NotebookWritePayload.self,
+                from: Data(legacyJSON.utf8)
+            )
+
+            #expect(payload.localAnnotationId == nil)
+            #expect(payload.anchor == nil)
+            #expect(payload.content == "private note")
         }
 
         @MainActor

@@ -17,6 +17,8 @@ public enum MutationKind: String, Sendable, CaseIterable {
     case notebookWrite
     /// Create or update a reader highlight (`POST/PATCH /book/me/notebook`).
     case highlightWrite
+    /// Delete a notebook-backed annotation (`DELETE /book/me/notebook/{entryId}`).
+    case notebookDelete
     /// Submit an FSRS review grade (`POST /book/me/reviews/{cardId}`).
     case reviewGrade
     /// Create or update a commitment (`POST/PATCH /book/me/commitments`).
@@ -102,6 +104,7 @@ extension PendingMutation {
 
     /// Convenience factory that encodes a `Codable` payload and queues the mutation.
     public static func make<P: Encodable>(
+        mutationId: String = UUID().uuidString,
         userId: String,
         kind: MutationKind,
         payload: P,
@@ -109,7 +112,7 @@ extension PendingMutation {
     ) throws -> PendingMutation {
         let data = try JSONEncoder().encode(payload)
         return PendingMutation(
-            mutationId: UUID().uuidString,
+            mutationId: mutationId,
             userId: userId,
             kindRaw: kind.rawValue,
             payloadJSON: String(bytes: data, encoding: .utf8) ?? "",
