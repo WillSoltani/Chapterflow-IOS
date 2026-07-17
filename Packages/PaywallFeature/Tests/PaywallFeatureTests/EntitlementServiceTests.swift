@@ -15,11 +15,17 @@ private typealias SubscriptionStatus = PaywallFeature.SubscriptionStatus
 private actor StubSKService: StoreKitServicing {
     nonisolated let entitlementChanges: AsyncStream<Void>
     private let continuation: AsyncStream<Void>.Continuation
-    private let isProStatus: Bool
+    private let status: SubscriptionStatus
     private let shouldThrow: Bool
 
-    init(isPro: Bool = false, shouldThrow: Bool = false) {
-        isProStatus = isPro
+    init(
+        isPro: Bool = false,
+        status: SubscriptionStatus? = nil,
+        shouldThrow: Bool = false
+    ) {
+        self.status = status ?? (isPro
+            ? .subscribed(productID: "com.cf.annual", expirationDate: nil)
+            : .notSubscribed)
         self.shouldThrow = shouldThrow
         var cont: AsyncStream<Void>.Continuation!
         entitlementChanges = AsyncStream { cont = $0 }
@@ -34,9 +40,7 @@ private actor StubSKService: StoreKitServicing {
     func verifyCurrentEntitlements() async throws {}
     func currentSubscriptionStatus() async throws -> SubscriptionStatus {
         if shouldThrow { throw AppError.offline }
-        return isProStatus
-            ? .subscribed(productID: "com.cf.annual", expirationDate: nil)
-            : .notSubscribed
+        return status
     }
     func currentTransactionID() async -> UInt64? { nil }
 }
@@ -79,6 +83,7 @@ private struct SUTFixture {
 private func makeSUT(
     entitlement: Entitlement? = nil,
     storeKitIsPro: Bool = false,
+    storeKitStatus: SubscriptionStatus? = nil,
     storeKitShouldThrow: Bool = false,
     networkShouldFail: Bool = false,
     store: KeyValueStore? = nil
@@ -92,7 +97,11 @@ private func makeSUT(
             for: "/book/me/entitlements"
         )
     }
-    let storeKit = StubSKService(isPro: storeKitIsPro, shouldThrow: storeKitShouldThrow)
+    let storeKit = StubSKService(
+        isPro: storeKitIsPro,
+        status: storeKitStatus,
+        shouldThrow: storeKitShouldThrow
+    )
     let kvStore = store ?? freshStore()
     let sut = EntitlementService(storeKitService: storeKit, apiClient: mockClient, store: kvStore)
     return SUTFixture(service: sut, storeKit: storeKit, apiClient: mockClient)
@@ -113,13 +122,15 @@ struct EntitlementServiceIsProTests {
         #expect(!fixture.service.isPro)
     }
 
-    @Test("true — backend confirms active Pro")
+    @Test("true — backend active Pro remains authoritative with local status unknown")
     func isProBackendActive() async throws {
         let fixture = try await makeSUT(
-            entitlement: makeEntitlement(plan: .pro, proStatus: "active")
+            entitlement: makeEntitlement(plan: .pro, proStatus: "active"),
+            storeKitStatus: .unknown
         )
         await fixture.service.refresh()
         #expect(fixture.service.isPro)
+        #expect(!fixture.service.isAwaitingBackendVerification)
     }
 
     @Test("false — Pro plan but proStatus is past_due, not active")
@@ -140,14 +151,15 @@ struct EntitlementServiceIsProTests {
         #expect(!fixture.service.isPro)
     }
 
-    @Test("true — StoreKit optimism: backend free, SK subscribed")
-    func isProStoreKitOptimism() async throws {
+    @Test("false — backend free, local subscribed waits for backend verification")
+    func localStoreKitCannotGrantPro() async throws {
         let fixture = try await makeSUT(
             entitlement: makeEntitlement(plan: .free),
             storeKitIsPro: true
         )
         await fixture.service.refresh()
-        #expect(fixture.service.isPro)
+        #expect(!fixture.service.isPro)
+        #expect(fixture.service.isAwaitingBackendVerification)
     }
 
     @Test("true — both backend and StoreKit confirm Pro")
@@ -158,6 +170,19 @@ struct EntitlementServiceIsProTests {
         )
         await fixture.service.refresh()
         #expect(fixture.service.isPro)
+        #expect(!fixture.service.isAwaitingBackendVerification)
+    }
+
+    @Test("false — backend unavailable, local subscribed remains fail closed")
+    func backendUnavailableStoreKitSubscribed() async throws {
+        let fixture = try await makeSUT(
+            storeKitIsPro: true,
+            networkShouldFail: true
+        )
+        await fixture.service.refresh()
+        #expect(!fixture.service.isPro)
+        #expect(!fixture.service.canStartNewBook)
+        #expect(fixture.service.isAwaitingBackendVerification)
     }
 
     @Test("false — unknown plan treated as free")
@@ -212,14 +237,15 @@ struct EntitlementServiceCanStartTests {
         #expect(!fixture.service.canStartNewBook)
     }
 
-    @Test("true — StoreKit optimism: no backend Pro, SK is subscribed")
-    func canStartStoreKitPro() async throws {
+    @Test("false — local StoreKit cannot create a backend free start")
+    func canStartRequiresBackendAuthority() async throws {
         let fixture = try await makeSUT(
             entitlement: makeEntitlement(plan: .free, remainingFreeStarts: 0),
             storeKitIsPro: true
         )
         await fixture.service.refresh()
-        #expect(fixture.service.canStartNewBook)
+        #expect(!fixture.service.canStartNewBook)
+        #expect(fixture.service.isAwaitingBackendVerification)
     }
 }
 

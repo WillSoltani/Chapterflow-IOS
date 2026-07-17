@@ -193,6 +193,12 @@ final class SessionPrivateGraph {
     private let backgroundBroker: SessionBackgroundWorkBroker
     private var wasAudioPlaying = false
 
+    static func storeKitAccountBinding(
+        for context: AccountContext
+    ) -> StoreKitAccountBinding? {
+        StoreKitAccountBinding(accountID: context.accountID)
+    }
+
     // This is the composition root for the complete private graph; keeping the
     // construction in one initializer makes partial account graphs impossible.
     // swiftlint:disable:next function_body_length
@@ -280,7 +286,8 @@ final class SessionPrivateGraph {
 
         let storeKitService = StoreKitService(
             apiClient: client,
-            config: StoreKitConfig.from(config)
+            config: StoreKitConfig.from(config),
+            accountBinding: Self.storeKitAccountBinding(for: context)
         )
         self.storeKitService = storeKitService
         entitlementService = EntitlementService(

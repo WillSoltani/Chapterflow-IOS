@@ -39,11 +39,11 @@ private struct EntitlementServiceTasks: Sendable {
 
 /// The single source of truth for subscription access throughout the app.
 ///
-/// Merges two inputs:
+/// Reconciles two inputs:
 /// - **Backend entitlement** (`GET /book/me/entitlements`) — authoritative once the
 ///   server has processed an Apple transaction.
-/// - **Local StoreKit status** from ``StoreKitService`` — provides optimistic
-///   `isPro = true` immediately after a purchase while the backend catches up.
+/// - **Local StoreKit status** from ``StoreKitService`` — may request backend
+///   reconciliation, but never grants access locally.
 ///
 /// **Cross-platform reconciliation (P4.7):** on every `refresh()`, an
 /// ``EntitlementReconciler`` compares the backend state with the local StoreKit
@@ -64,14 +64,17 @@ public final class EntitlementService {
 
     /// `true` when the user holds an active Pro subscription.
     ///
-    /// `true` when either the backend confirms Pro with `proStatus == "active"`,
-    /// OR the local StoreKit subscription is active (optimistic post-purchase bridge).
+    /// `true` only when the backend confirms Pro with `proStatus == "active"`.
     public private(set) var isPro: Bool = false
 
     /// `true` when the user can open a new book.
     ///
-    /// `isPro || remainingFreeStarts > 0`
+    /// Backend Pro or backend-issued `remainingFreeStarts > 0`.
     public private(set) var canStartNewBook: Bool = false
+
+    /// `true` when local StoreKit appears active but backend Pro is not active yet.
+    /// This is a reconciliation signal only and never grants access.
+    public private(set) var isAwaitingBackendVerification: Bool = false
 
     /// The raw `proSource` field from the backend entitlement.
     ///
@@ -298,7 +301,7 @@ public final class EntitlementService {
         } catch is CancellationError {
             return
         } catch {
-            log.warning("EntitlementService: backend fetch failed — \(error.localizedDescription)")
+            log.warning("EntitlementService: backend entitlement fetch failed")
         }
     }
 
@@ -313,7 +316,7 @@ public final class EntitlementService {
         } catch StoreKitServiceError.inactive {
             return
         } catch {
-            log.warning("EntitlementService: StoreKit status fetch failed — \(error.localizedDescription)")
+            log.warning("EntitlementService: StoreKit status fetch failed")
         }
     }
 
@@ -350,7 +353,7 @@ public final class EntitlementService {
         } catch StoreKitServiceError.inactive {
             return
         } catch {
-            log.warning("EntitlementService: Apple verify during reconciliation failed — \(error.localizedDescription)")
+            log.warning("EntitlementService: Apple verification reconciliation failed")
         }
     }
 
@@ -423,11 +426,15 @@ public final class EntitlementService {
         let backendIsPro = backendEntitlement.map { e in
             e.plan == .pro && e.proStatus == "active"
         } ?? false
-        let newIsPro = backendIsPro || storeKitStatus.isPro
-        let newCanStart = newIsPro || (backendEntitlement?.remainingFreeStarts ?? 0) > 0
+        let newIsPro = backendIsPro
+        let newCanStart = backendIsPro || (backendEntitlement?.remainingFreeStarts ?? 0) > 0
+        let newIsAwaitingBackendVerification = storeKitStatus.isPro && !backendIsPro
         let newProSource = backendEntitlement?.proSource
         if isPro != newIsPro { isPro = newIsPro }
         if canStartNewBook != newCanStart { canStartNewBook = newCanStart }
+        if isAwaitingBackendVerification != newIsAwaitingBackendVerification {
+            isAwaitingBackendVerification = newIsAwaitingBackendVerification
+        }
         if proSource != newProSource { proSource = newProSource }
     }
 }
