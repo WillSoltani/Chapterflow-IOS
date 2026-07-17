@@ -3,19 +3,19 @@
   "contractVersion": "1",
   "provenance": {
     "backendRepository": "WillSoltani/ChapterFlow",
-    "sourceRevision": "efea6adc09707c203bf5c2b5bce1bd8ab2104cb0",
+    "sourceRevision": "04e0ae50b4c1f1722b33a6501e03b79bc8894112",
     "behaviorSourceRevision": "6a792cf2572f585e56ce5dbb181307955c1896a8",
     "behaviorSourceTimestamp": "2026-07-13T23:19:13-03:00",
     "sourceRevisionPhase": "merged_backend",
     "generatedAt": "2026-07-15T03:48:02-03:00",
     "generatorVersion": "chapterflow-native-contract-generator-v1",
-    "generatorTreeDigest": "d75b219de8bde81dede11d65d83192038533df883fc0978fef36280e7261aeea",
+    "generatorTreeDigest": "9eeccd0663b79c6ca1677a1aac8fadbaf698c25ff3d7c46cd9c58084bbe818cf",
     "committedInputTree": {
-      "sha256": "57af6cda54479dfd9d4d30eb7e93400976094ff1b4237090b5672af566d0cdad",
+      "sha256": "6763804b49a46f80beebc0c68f32eb7bf936dd5180ef8b626e4d0b5d17bc93ec",
       "inputPathCount": 121,
       "expectedMissingPathCount": 7,
       "trustedMainRef": "refs/remotes/origin/main",
-      "trustedMainRevision": "efea6adc09707c203bf5c2b5bce1bd8ab2104cb0"
+      "trustedMainRevision": "04e0ae50b4c1f1722b33a6501e03b79bc8894112"
     },
     "syntheticDataOnly": true,
     "deployedRevision": null,
@@ -23,22 +23,22 @@
   },
   "inventory": {
     "uniqueOperationCount": 83,
-    "nativeProducerCount": 93,
+    "nativeProducerCount": 92,
     "matrixRowCount": 29,
     "iosSourceEvidence": {
       "manifestPath": "contracts/native-ios/v1/ios-source-inventory-manifest.json",
-      "manifestSha256": "03a2b3295fc6dd97dc4f06c6a1189c6b70924424cb056157adf4839ee1b0fd05",
+      "manifestSha256": "fc0daed99b0115bee380cd92f5767caf02bdee39e50971a3c141e0c7f8dc012b",
       "manifestSchemaVersion": "chapterflow-ios-native-inventory-v2",
       "iosRepository": "WillSoltani/Chapterflow-IOS",
       "iosBaseRevision": "92a5c351a42771f546b3d0e575b3b37a8cbfb588",
-      "iosSourceRevision": "8fec3a3a2ae21af87a799334949491fd90d9af72",
+      "iosSourceRevision": "32b282a64914caadfab90cebce383f276b7954cd",
       "iosSourceRevisionPhase": "committed_contract_branch",
       "operationKeySha256": "b24a9ad2861744ad127ce1aca976c13b621fdb7460fc8cd9b9d5669ec9468174",
-      "producerVariantIdSha256": "6c52d6b0f465d50f0e68d5a98cca273f90c8611c3b962f1d8f7d36d1f292ba20",
-      "producerIdentitySha256": "9f1c75e50035022d7b46da7be173fec2f265a58110f77504c9e7d247bd8ea453",
-      "relationalRecordCount": 93,
-      "relationalRecordSha256": "03103dcada4b7ae3ed2763372dda873aa504a75c18ae4553e91cc71f17007a78",
-      "sourceInputTreeSha256": "9f1b7285c945cee0f457535066fd7be664b7d28973ffb71b13ac67889c97377e",
+      "producerVariantIdSha256": "2baa362580790da8a52d55a07f22a0fbf9be3c63b16eacabf14e250c0eb89cfa",
+      "producerIdentitySha256": "d2bca54bf6a332bcd3c80ae8002f39de27216ade334b77c73cff96c695e55a19",
+      "relationalRecordCount": 92,
+      "relationalRecordSha256": "cd18fb91ad043e03469ea7619bee6983099ea27e8743884d86694e76dc611040",
+      "sourceInputTreeSha256": "e23c204bea594b4cedd487769d51a588161b8f266a6b54ee3e5fe734dc9895bc",
       "matrixRowCount": 29,
       "exactFactoryTestedProducerCount": 6,
       "bundleSuccessDecoderTestedOperationCount": 24,
@@ -320,9 +320,9 @@
     "gap": "Rate-limit responses do not currently define a stable Retry-After header, so no fixture is invented."
   },
   "authorityProofSummary": {
-    "structuralFixtureVerifiedOperationCount": 51,
+    "structuralFixtureVerifiedOperationCount": 52,
     "productionConsumerVerifiedOperationCount": 4,
-    "blockedOrUnprovenOperationCount": 1
+    "blockedOrUnprovenOperationCount": 0
   },
   "operations": [
     {
@@ -660,11 +660,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -868,11 +868,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -1079,11 +1079,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -1335,11 +1335,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -1628,11 +1628,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -2033,11 +2033,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -2249,11 +2249,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -2391,48 +2391,26 @@
           "body": {
             "kind": "json",
             "value": {
-              "answers": [
+              "attemptNumber": 1,
+              "responses": [
                 {
                   "questionId": "question-synthetic-1",
-                  "choiceId": "choice-a"
+                  "selectedChoiceId": "choice-a"
                 }
               ]
             }
           },
-          "compatibility": "client_drift",
-          "notes": "Synthetic request derived from the named native producer."
-        },
-        {
-          "operationVariantId": "quiz-submit.post:submitquiz-sync",
-          "producerEvidence": [
-            "submitQuiz.sync@Packages/Networking/Sources/Networking/Endpoint+Sync.swift:18"
-          ],
-          "pathParameters": {
-            "bookId": "bookId-synthetic",
-            "chapterNumber": 1
-          },
-          "queryItems": [],
-          "headers": [],
-          "body": {
-            "kind": "json",
-            "value": {
-              "sessionId": "session-synthetic",
-              "answers": {
-                "question-synthetic-1": "choice-a"
-              }
-            }
-          },
-          "compatibility": "client_drift",
+          "compatibility": "canonical",
           "notes": "Synthetic request derived from the named native producer."
         }
       ],
       "cache": {
         "class": "no_store",
-        "notes": "Pending offline grading must remain truthful; no synthetic local result is allowed."
+        "notes": "The authoritative no-store result may clear the matching local draft only after this request succeeds."
       },
       "idempotency": {
         "class": "unknown",
-        "notes": "Only the sync variant carries sessionId, but neither native body matches the backend request schema."
+        "notes": "This write is not replay-idempotent: attemptNumber is a freshness check, not an idempotency key, and no automatic replay contract is claimed."
       },
       "responseContract": {
         "iosModels": [
@@ -2449,87 +2427,276 @@
       "authority": {
         "classification": "server_decision",
         "expectedRequiredPointers": [
-          "/passed",
-          "/scorePercent",
-          "/unlockedNextChapter"
+          "/quiz/result/passed",
+          "/quiz/result/scorePercent",
+          "/quiz/unlockedNextChapter",
+          "/quiz/cooldownSeconds",
+          "/quiz/nextAttemptAvailableAt"
         ],
         "failureMode": "fail_closed",
         "proof": {
-          "level": "blocked_unproven",
-          "structuralEvidence": [],
+          "level": "structural_fixture_only",
+          "structuralEvidence": [
+            "quiz-submit.post requiredAuthorityFields are validated against the synthetic success fixture by assertNativeContractBundle"
+          ],
           "productionConsumerTestIds": [],
           "productionConsumerEvidence": [],
           "gaps": [
-            "No compatible success fixture exists; authority fields /passed, /scorePercent, /unlockedNextChapter remain unproven."
+            "No executed production iOS decoder/mapper deletion test is registered for /quiz/result/passed, /quiz/result/scorePercent, /quiz/unlockedNextChapter, /quiz/cooldownSeconds, /quiz/nextAttemptAvailableAt."
           ]
         }
       },
       "ios": {
         "factories": [
-          "submitQuiz.online@Packages/QuizFeature/Sources/QuizFeature/Endpoints+Quiz.swift:9",
-          "submitQuiz.sync@Packages/Networking/Sources/Networking/Endpoint+Sync.swift:18"
+          "submitQuiz.online@Packages/QuizFeature/Sources/QuizFeature/Endpoints+Quiz.swift:9"
         ],
         "callSites": [
-          "LiveQuizRepository.swift:109",
-          "SyncDispatch.swift:50"
+          "LiveQuizRepository.swift:211"
         ]
       },
       "evidence": [
         "submitQuiz.online@Packages/QuizFeature/Sources/QuizFeature/Endpoints+Quiz.swift:9",
-        "submitQuiz.sync@Packages/Networking/Sources/Networking/Endpoint+Sync.swift:18",
-        "LiveQuizRepository.swift:109",
-        "SyncDispatch.swift:50"
+        "LiveQuizRepository.swift:211"
       ],
-      "coverage": "blocked",
+      "coverage": "partial",
       "gaps": [
         {
-          "kind": "request_mismatch",
-          "reason": "Backend requires responses:[{questionId,selectedChoiceId|selectedIndex}]; both native producers send incompatible answers shapes."
+          "kind": "response_path_execution",
+          "reason": "The response path has no exported hermetic serializer seam."
+        },
+        {
+          "kind": "route_specific_error_coverage",
+          "reason": "Documented error fixtures are representative, not an exhaustive route-specific status/code/header contract."
+        },
+        {
+          "kind": "native_request_fixture_proof",
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
+        },
+        {
+          "kind": "native_response_consumer_proof",
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+        },
+        {
+          "kind": "source_dependency_closure",
+          "reason": "Fenced backend source files are selected direct evidence, not a complete transitive import/dependency closure."
         },
         {
           "kind": "native_authority_consumer_proof",
-          "reason": "No compatible success contract exists, so production iOS authority handling for /passed, /scorePercent, /unlockedNextChapter remains unproven.",
+          "reason": "Structural fixture validation exists, but no production iOS decoder/mapper deletion test is registered for /quiz/result/passed, /quiz/result/scorePercent, /quiz/unlockedNextChapter, /quiz/cooldownSeconds, /quiz/nextAttemptAvailableAt.",
           "owner": "ios",
-          "dependency": "WP-SYNC-02"
+          "dependency": "WP-CONTRACT-01 iOS authority-consumer follow-up"
         }
       ],
-      "blocker": {
-        "kind": "request_mismatch",
-        "reason": "Backend requires responses:[{questionId,selectedChoiceId|selectedIndex}]; both native producers send incompatible answers shapes.",
-        "evidence": [
-          "app/app/api/book/me/quiz/[bookId]/[chapterNumber]/submit/route.ts:90-136",
-          "Packages/QuizFeature/Sources/QuizFeature/Endpoints+Quiz.swift:9-20",
-          "Packages/Networking/Sources/Networking/Endpoint+Sync.swift:18-35"
-        ],
-        "resolution": {
-          "owner": "ios",
-          "rationale": "Backend canonical response validation is explicit; both online and replay iOS producers send older incompatible answer DTOs.",
-          "dependency": "WP-SYNC-02",
-          "decisionRequired": false,
-          "unresolvedDecision": null
-        },
-        "backendCandidate": {
-          "routeSource": "app/app/api/book/me/quiz/[bookId]/[chapterNumber]/submit/route.ts",
-          "exportedMethods": [
-            "POST"
+      "fixtures": {
+        "request": {
+          "operationVariantId": "quiz-submit.post:submitquiz-online",
+          "producerEvidence": [
+            "submitQuiz.online@Packages/QuizFeature/Sources/QuizFeature/Endpoints+Quiz.swift:9"
           ],
-          "sourceFiles": [
-            {
-              "path": "app/app/api/book/me/quiz/[bookId]/[chapterNumber]/submit/route.ts",
-              "role": "route",
-              "sourceSha256": "0712423bff47a427334db1c750d5eb19c897e28331d2cceb9f561dca6f288670"
-            },
-            {
-              "path": "app/app/api/book/_lib/http.ts",
-              "role": "error_envelope",
-              "sourceSha256": "0d762a44058d625dde4ce32353c365b54cd620c7deedc7457fd1757ffc3ec01f"
-            },
-            {
-              "path": "app/app/api/book/_lib/account-guard.ts",
-              "role": "auth",
-              "sourceSha256": "ddddf2b5fbb416b8d24dd6c1de4215e08534878318b83f1cb8e7b10bde9ec33a"
+          "pathParameters": {
+            "bookId": "bookId-synthetic",
+            "chapterNumber": 1
+          },
+          "queryItems": [],
+          "headers": [],
+          "body": {
+            "kind": "json",
+            "value": {
+              "attemptNumber": 1,
+              "responses": [
+                {
+                  "questionId": "question-synthetic-1",
+                  "selectedChoiceId": "choice-a"
+                }
+              ]
             }
+          },
+          "compatibility": "canonical",
+          "notes": "Synthetic request derived from the named native producer."
+        },
+        "requestVariants": [
+          {
+            "operationVariantId": "quiz-submit.post:submitquiz-online",
+            "producerEvidence": [
+              "submitQuiz.online@Packages/QuizFeature/Sources/QuizFeature/Endpoints+Quiz.swift:9"
+            ],
+            "pathParameters": {
+              "bookId": "bookId-synthetic",
+              "chapterNumber": 1
+            },
+            "queryItems": [],
+            "headers": [],
+            "body": {
+              "kind": "json",
+              "value": {
+                "attemptNumber": 1,
+                "responses": [
+                  {
+                    "questionId": "question-synthetic-1",
+                    "selectedChoiceId": "choice-a"
+                  }
+                ]
+              }
+            },
+            "compatibility": "canonical",
+            "notes": "Synthetic request derived from the named native producer."
+          }
+        ],
+        "success": {
+          "status": 200,
+          "headers": [
+            {
+              "name": "Cache-Control",
+              "value": "private, no-store"
+            }
+          ],
+          "payload": {
+            "kind": "json",
+            "value": {
+              "quiz": {
+                "chapterId": "book-synthetic-ch01",
+                "chapterNumber": 1,
+                "title": "Synthetic quiz",
+                "passingScorePercent": 80,
+                "status": "passed",
+                "attemptNumber": 1,
+                "nextAttemptNumber": null,
+                "attemptsCount": 1,
+                "failureStreak": 0,
+                "cooldownSeconds": 0,
+                "nextAttemptAvailableAt": null,
+                "highestScorePercent": 100,
+                "unlockedNextChapter": true,
+                "latestAttemptAt": "2026-07-17T12:00:00.000Z",
+                "questions": [
+                  {
+                    "questionId": "question-synthetic-1",
+                    "prompt": "Which option is synthetic?",
+                    "choices": [
+                      {
+                        "choiceId": "choice-a",
+                        "text": "Option A"
+                      },
+                      {
+                        "choiceId": "choice-b",
+                        "text": "Option B"
+                      }
+                    ],
+                    "selectedChoiceId": "choice-a",
+                    "correctChoiceId": "choice-a",
+                    "isCorrect": true
+                  }
+                ],
+                "result": {
+                  "attemptNumber": 1,
+                  "scorePercent": 100,
+                  "correctAnswers": 1,
+                  "totalQuestions": 1,
+                  "passed": true,
+                  "submittedAt": "2026-07-17T12:00:00.000Z"
+                },
+                "history": [
+                  {
+                    "attemptNumber": 1,
+                    "scorePercent": 100,
+                    "correctAnswers": 1,
+                    "totalQuestions": 1,
+                    "passed": true,
+                    "submittedAt": "2026-07-17T12:00:00.000Z"
+                  }
+                ]
+              },
+              "progress": {
+                "currentChapterNumber": 2,
+                "unlockedThroughChapterNumber": 2,
+                "completedChapters": [
+                  1
+                ]
+              }
+            }
+          },
+          "requiredAuthorityFields": [
+            "/quiz/result/passed",
+            "/quiz/result/scorePercent",
+            "/quiz/unlockedNextChapter",
+            "/quiz/cooldownSeconds",
+            "/quiz/nextAttemptAvailableAt"
           ]
+        },
+        "deployedCompatibleSuccessAliases": [],
+        "errors": [
+          {
+            "status": 401,
+            "code": "unauthenticated",
+            "headers": [],
+            "body": {
+              "error": {
+                "code": "unauthenticated",
+                "message": "Authentication is required.",
+                "requestId": "req_synthetic_quiz_submit_post"
+              }
+            }
+          },
+          {
+            "status": 500,
+            "code": "server_error",
+            "headers": [],
+            "body": {
+              "error": {
+                "code": "server_error",
+                "message": "An unexpected server error occurred.",
+                "requestId": "req_synthetic_quiz_submit_post"
+              }
+            }
+          },
+          {
+            "status": 409,
+            "code": "quiz_session_stale",
+            "headers": [],
+            "body": {
+              "error": {
+                "code": "quiz_session_stale",
+                "message": "This quiz session is out of date. Refresh and try again.",
+                "requestId": "req_synthetic_quiz_submit_stale"
+              }
+            }
+          }
+        ]
+      },
+      "backend": {
+        "routeSource": "app/app/api/book/me/quiz/[bookId]/[chapterNumber]/submit/route.ts",
+        "exportedMethod": "POST",
+        "authClass": "active_book_user",
+        "sourceFiles": [
+          {
+            "path": "app/app/api/book/me/quiz/[bookId]/[chapterNumber]/submit/route.ts",
+            "role": "route",
+            "sourceSha256": "0712423bff47a427334db1c750d5eb19c897e28331d2cceb9f561dca6f288670"
+          },
+          {
+            "path": "app/app/api/book/_lib/http.ts",
+            "role": "error_envelope",
+            "sourceSha256": "0d762a44058d625dde4ce32353c365b54cd620c7deedc7457fd1757ffc3ec01f"
+          },
+          {
+            "path": "app/app/api/book/_lib/account-guard.ts",
+            "role": "auth",
+            "sourceSha256": "ddddf2b5fbb416b8d24dd6c1de4215e08534878318b83f1cb8e7b10bde9ec33a"
+          },
+          {
+            "path": "app/app/api/book/_lib/quiz-session.ts",
+            "role": "response_builder",
+            "sourceSha256": "e16cc8f3ba010af9a750c67ca3034ab6623b5852852eda11e67db1d804d313ed"
+          },
+          {
+            "path": "app/app/api/book/_lib/types.ts",
+            "role": "schema",
+            "sourceSha256": "63cfe4e8d2d1b2d6b79970fd8a18deced9fbe62508be503e41e00e1da723fbc4"
+          }
+        ],
+        "serializerProof": {
+          "kind": "source_fenced",
+          "reason": "The response path has no exported hermetic serializer seam."
         }
       }
     },
@@ -2655,11 +2822,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -3003,11 +3170,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -3364,11 +3531,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -3600,11 +3767,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -3827,11 +3994,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -4046,11 +4213,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -4573,11 +4740,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -4790,11 +4957,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -5019,11 +5186,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -5247,11 +5414,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -5480,11 +5647,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -5698,11 +5865,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -5938,11 +6105,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -6165,11 +6332,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -6389,11 +6556,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -6606,11 +6773,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -6832,11 +6999,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -7189,11 +7356,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -7466,11 +7633,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -7706,11 +7873,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -7945,11 +8112,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -8175,11 +8342,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -8394,11 +8561,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -8743,11 +8910,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -9186,11 +9353,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -9455,11 +9622,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -9847,11 +10014,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -10351,11 +10518,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -10717,11 +10884,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -11090,11 +11257,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -11306,11 +11473,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -11736,11 +11903,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -11952,11 +12119,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -12164,11 +12331,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -12374,11 +12541,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -12595,11 +12762,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -12820,11 +12987,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -13049,11 +13216,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -13260,11 +13427,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -13480,11 +13647,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -13709,11 +13876,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -14043,11 +14210,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -14259,11 +14426,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -14469,11 +14636,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -14680,11 +14847,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -14890,11 +15057,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -15128,11 +15295,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -15336,11 +15503,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -15636,11 +15803,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -15845,11 +16012,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -16061,11 +16228,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -16335,11 +16502,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
@@ -16661,11 +16828,11 @@
         },
         {
           "kind": "native_request_fixture_proof",
-          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 93 producers currently have exact factory tests in the iOS consumer."
+          "reason": "Native requests are source-inventoried and hand-registered; the backend exporter does not instantiate Swift factories, and only six of 92 producers currently have exact factory tests in the iOS consumer."
         },
         {
           "kind": "native_response_consumer_proof",
-          "reason": "Only 24 of 60 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
+          "reason": "Only 24 of 61 partial operations currently pass the bundle success payload through the production iOS decoder and a cache round-trip; the remaining success fixtures are schema evidence, not native-consumer execution proof."
         },
         {
           "kind": "source_dependency_closure",
