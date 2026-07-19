@@ -1187,3 +1187,128 @@ This slice changes no backend runtime route, auth, storage, deployment, release,
 TestFlight, review-grade, entitlement, or frozen PR #117 state. It does not touch the primary dirty
 checkout or unrelated user work. This record makes no green final exact-head, iOS merge, or
 post-merge-main claim; those remain required before terminal completion.
+
+## WP-REC-01 recovery baseline and external evidence runner — 2026-07-19
+
+**Outcome:** live ChapterFlow work was re-inventoried from supported local Git/process sources and
+paginated GitHub API captures before the recovery baseline was recorded. No historical source was
+copied or cherry-picked, no owner work was cleaned, and no product implementation is claimed.
+
+### Revision and evidence boundary
+
+| Scope | Exact revision/state | Evidence type and disposition |
+|---|---|---|
+| iOS GitHub `main` and package base | `533cf592d88cd85a8e7f363acc05c418626b26b7` | Live GitHub API plus fetched local ref. The only drift from the package's `22da44d27bc18771f4d7db7681e17c10970ccb13` product baseline is the integrated `upgrade/**` plan. |
+| Backend GitHub `main` | `3f5ba1ecb570b7e447e40f5ca384925ae5e0fa1f` | Live GitHub API and matching cached ref; static source authority only. |
+| Protected backend checkout | `update` at `04e0ae50b4c1f1722b33a6501e03b79bc8894112`, behind remote with untracked owner prompts/plan | Local preservation evidence; `unsafe-to-touch`. |
+| Backend deployed revision/environment | Unknown | `blocked-evidence`; source integration is not deployment proof. |
+| Frozen iOS PR #117 | open draft, `codex/wp-rel-01` at `7bb9b5a88494027832cfe1553cc3c6c464702ab6`, base `main` | Paginated/API read-only evidence; `frozen`. |
+
+The primary iOS checkout remained branch `Pro` at
+`7291e8c3d43b37d3e63f732ffc3a6cc9a8c832d1`. Its default porcelain-v2 status digest is
+`e25d240ffa191ef227b5798947d3f59a8dd59789f01cdb31f51a823047d7157d`, tracked binary-diff
+digest is `2281f515b42154b92524b39adf3ce2d5814b86212cadf5574207525cf6868d2e`, and governing
+`AGENTS.md` digest is `cf9f435745593215cbca036c74fc274b355ee073c48fb6c59c04f72863a0289a`.
+These values match the protected planning checkpoint. The exact same three fingerprints are required
+again after the package lifecycle. The final lifecycle also records a canonical Git-owner-state
+fingerprint before publication and after completion: tracked working-tree and index diff digests plus
+every Git-visible untracked regular-file content digest and symlink-target digest, with stable-read
+identity and HEAD/status consistency checks. The two privacy-safe JSON inventories must compare
+byte-for-byte; untracked path names, file contents, and raw symlink targets are never persisted as
+evidence.
+
+During pre-commit verification on 2026-07-19, an external cleanup outside this package removed every
+registered `/private/tmp/Chapterflow-IOS-*` directory, the in-progress package claim, and the prior
+external evidence root. Git retained the affected worktree registrations as prunable metadata. This
+package did not invoke that deletion, repair/prune another package's registration, or claim recovery
+of any missing uncommitted owner bytes. WP-REC-01 atomically reacquired only its own package claim,
+reconstructed only its package worktree from the retained private candidate lineage, restored it to
+the declared path, and reran the repair validation. All earlier deleted evidence is invalidated; final candidate
+evidence must be regenerated under a fresh private root and retained through post-merge verification.
+
+### Recovery dispositions
+
+- `unsafe-to-touch`: the dirty primary checkout; dirty S-tier planning and upgrade handoff
+  registrations; the WP-ARCH-02 and WP-NOTE-01A registrations whose temporary directories were
+  later removed and whose last working state is not reproducible; the prunable onboarding
+  registration; the stale protected backend checkout; and every missing, prunable, dirty, foreign-
+  registry, live-state-incomplete, or object-unavailable row. Missing paths and unknown state are
+  never treated as cleanup permission.
+- `active`: this package's isolated `codex/wp-rec-01-recovery-baseline` iOS worktree and the open
+  backend PR rows. Separate backend dirty-status and PID captures establish concurrent backend
+  activity during the observation window. A clean registry-bound worktree with live open files is
+  also `active`; supporting activity captures do not weaken any more restrictive row disposition.
+- `novel`: iOS or backend rows whose repository-specific Git relationship proves an ahead commit or
+  unique patches. Novel does not mean authorized to copy, merge, or schedule. The missing local
+  `codex/wp-onb-01a-recoverable-draft` worktree registration is `unsafe-to-touch` at the worktree
+  level; its preserved branch head is used only by the separately stated successor link below.
+- `frozen`: PR #117, `codex/wp-rel-01`, and its prunable local registry entry. The missing local
+  Git directory is preservation evidence, not authority to repair or prune the frozen registration.
+- `merged` or `stale`: historical iOS or backend heads already contained in that repository's exact
+  target, tree-equivalent to it, or superseded by an identified integrating commit. Diverged
+  histories without proven equivalence—including merge-only content hidden by non-merge patch
+  comparison—fail closed as `unsafe-to-touch`. These classifications remain evidence, not packages
+  to replay.
+
+The required normalized external inventory keeps the iOS and backend worktree registries and both
+repositories' GitHub PR/branch observations as distinct repository-scoped rows even when paths,
+branch names, or heads coincide. Each normalized row receives exactly one disposition and exact
+head. The inventory binds the backend capture and later classification to the explicitly declared
+canonical backend root, exact `github.com/WillSoltani/ChapterFlow` origin, and Git common-directory
+identity. Classification uses the iOS and backend object databases separately, verifies each existing
+worktree still has the captured canonical path, registry row, HEAD, branch/detached state, and common
+Git directory, rejects locked or prunable rows, and rechecks status/open-file liveness and the complete
+registry before accepting a permissive disposition. Target objects, status, liveness, or a stable
+observation that cannot be proved fail closed. Open backend PR rows are `active`. Successor links are
+keyed by repository plus branch, so an identically named backend branch cannot inherit an iOS package
+link.
+
+### Evidence-backed successor links
+
+- `codex/wp-onb-01a-recoverable-draft` may inform `WP-ENTRY-01` only for paths that package owns;
+  its Persistence and historical UI-test paths are outside that envelope and are not copied.
+- The deleted WP-ARCH-02 and WP-NOTE-01A path observations are not reproducible from the retained
+  final evidence, so this baseline assigns them no successor link. Historical path-to-package
+  suggestions remain unverified leads only and grant no source-transfer or backend-write authority.
+- PR #117 has no wholesale successor and remains frozen.
+
+These are scheduling links, not source-transfer permission. Every successor must start again from
+its live verified base and declared write set.
+
+### Standard external evidence contract
+
+`scripts/validation/run_evidence.py` is the common stdlib runner for later package rows. It binds an
+attempt to sorted repeatable `repository=fullSHA` tuples, stores it append-only under an external
+head-set digest, rewrites declared `results/...` outputs outside the source worktree, retains
+stdout/stderr/counts/digests, and fails on zero matches, failures, skips, missing/symlink artifacts,
+attempt collision, or any changed repository-local `results/` tree. Cross-row inputs must use an
+immutable same-package/head-set `attempt://<attempt-id>/results/...` reference whose manifest and
+artifact digest still match; directory digests include empty directory names and entry types.
+Evidence and lease roots must be outside every Git worktree or bare repository. Evidence directories
+and files are private (`0700`/`0600`), controlled path identities are rechecked before finalization,
+and arbitrary commands consume a verified private staged copy rather than the mutable source-attempt
+path. Direct pytest invocations are selector-bearing and cannot certify an all-skipped run. An owned
+command lease remains held through post-command source/results verification and immutable manifest
+finalization, then is released in an outer `finally` block. A digest-bound release receipt is written
+as the last immutable marker through the verified attempt-directory inode after release; interrupted
+body work still produces a failed manifest before propagating the interrupt. Slot and claim inode
+identity plus exact attempt metadata bind normal release, and acquisition failures remove only objects
+whose ownership was established by that call.
+
+Built-in modes deterministically construct/classify repository-scoped iOS/backend worktrees,
+branches, and PRs; fingerprint complete Git-visible owner state; compare exact owner
+status/diff/fingerprint/PR #117 projections; and require exact changed-path equality. The unchanged
+checked-in validation command shape may obtain its required backend source SHA, canonical checkout,
+and immutable backend-worktree capture reference from `CHAPTERFLOW_BACKEND_HEAD`,
+`CHAPTERFLOW_BACKEND_REPOSITORY`, and `CHAPTERFLOW_BACKEND_WORKTREES_REF`; the effective two-repository
+head set, source reference, root, origin, local checkout state, and targets remain manifest-bound and
+validated. Retries are one-level, reasoned, and retain both attempts. Commands matching the checked-in simulator/device trigger set
+must hold the single command-scoped capacity lease; same-owner package claims are reentrant and a
+foreign collision returns `LOCKED` before execution.
+
+This three-file package changes no Swift/Objective-C source, UI, accessibility behavior, backend
+contract, persistence schema, entitlement, configuration, migration, deployment, external service,
+App Store, TestFlight, signing, production flag, release evidence, or PR #117 state. Exact-head local
+validation, independent review, required GitHub CI, merge ancestry, post-merge CI, protected
+fingerprints, and package-owned cleanup remain external lifecycle evidence and cannot be inferred
+from this source record alone.
