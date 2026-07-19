@@ -1,0 +1,210 @@
+{
+  "schemaVersion": 1,
+  "id": "WP-DEVICE-01",
+  "title": "Qualify signed-device behavior and exact-final performance",
+  "outcome": "The immutable final development candidate is measured on approved signed devices for Keychain/SIWA, APNs/widgets/extensions, audio/background/interruption, real-network transitions, memory, energy, launch, scrolling, images, downloads, and operator-observed VoiceOver behavior; every result is passed, failed, or blocked without a release claim.",
+  "riskTier": "R3",
+  "status": "planned",
+  "priority": "P0",
+  "workstream": "11-qualification-performance-security-ci",
+  "verifiedBase": {
+    "ios": "22da44d27bc18771f4d7db7681e17c10970ccb13",
+    "backendSource": "858d2d7ffd620a7c28cdad5a75007536ccd5b391",
+    "backendDeployed": "unknown",
+    "evidenceCutoff": "2026-07-18"
+  },
+  "evidenceAnchors": [
+    "COMPLETION_RUBRIC.md performance and device gates",
+    "WP-JOURNEY-01 immutable simulator candidate",
+    "CURRENT_STATE.md missing device/runtime proof",
+    "Config/ChapterFlow.entitlements"
+  ],
+  "blockedBy": [
+    "WP-JOURNEY-01"
+  ],
+  "blocks": [],
+  "criticalPath": true,
+  "integrationOrder": 8,
+  "ownership": {
+    "ownerLane": "wp-device-01-owner",
+    "writableOwner": "single",
+    "allowedPaths": [
+      {
+        "repo": "ios",
+        "glob": "scripts/qa/device/**"
+      }
+    ],
+    "prohibitedPaths": [
+      {
+        "repo": "ios",
+        "glob": "/Users/radinsoltani/Chapterflow-IOS/**",
+        "reason": "dirty owner checkout is read-only"
+      },
+      {
+        "repo": "ios",
+        "glob": "ChapterFlow-S-Tier-Plan/**",
+        "reason": "historical comparison corpus"
+      },
+      {
+        "repo": "ios",
+        "glob": "upgrade/**",
+        "reason": "program package lanes consume but do not mutate the plan"
+      },
+      {
+        "repo": "ios",
+        "glob": "codex/wp-rel-01 or PR #117",
+        "reason": "frozen release work"
+      },
+      {
+        "repo": "backend",
+        "glob": "deployment/infrastructure/production data",
+        "reason": "unauthorized external mutation"
+      }
+    ],
+    "interfaceContracts": [
+      "Qualification is bound to exact candidate SHA, device class, OS, configuration, scenario, budget, samples, and artifact.",
+      "A performance regression returns to its owning feature package; this lane does not patch production source.",
+      "Each authorization domain is independently resumable; blocked sublanes do not erase or prevent unaffected evidence, but package completion requires every AC to pass.",
+      "Credentials, identifiers, private content, and raw network bodies never enter evidence."
+    ]
+  },
+  "resourceLocks": [
+    "simulator-device"
+  ],
+  "estimate": {
+    "minutes": 120,
+    "totalMinutes": 390,
+    "maxSublaneMinutes": 120,
+    "plannedFiles": 6,
+    "maxFiles": 12,
+    "primaryRoots": 1,
+    "maxPrimaryRoots": 1,
+    "estimateMeaning": "minutes/maxSublaneMinutes is the maximum uninterrupted focused window; totalMinutes discloses the four independently resumable qualification sublanes.",
+    "sublanes": [
+      {
+        "id": "device-auth",
+        "minutes": 60
+      },
+      {
+        "id": "device-routing",
+        "minutes": 90
+      },
+      {
+        "id": "device-lifecycle",
+        "minutes": 120
+      },
+      {
+        "id": "device-performance-accessibility",
+        "minutes": 120
+      }
+    ],
+    "splitIf": [
+      "the outcome can integrate independently",
+      "authorization or validation differs materially",
+      "more than 12 files or 1 primary root is required",
+      "a second high-contention lock is required"
+    ]
+  },
+  "skills": {
+    "primary": [
+      "repo:swift-testing-expert",
+      "ios-skills:swiftui-performance-audit"
+    ],
+    "review": [
+      "accessibility-compliance",
+      "engineering-advanced-skills:pr-review-expert"
+    ],
+    "revalidateAtStart": true,
+    "sourceIndex": "upgrade/SKILLS.md"
+  },
+  "tools": {
+    "preferred": [
+      "XcodeBuildMCP",
+      "Instruments/xctrace",
+      "XCTest metrics",
+      "approved physical device"
+    ],
+    "fallbacks": [
+      "rg and repository-native commands",
+      "xcodebuild/SwiftPM when MCP unavailable",
+      "GitHub connector or gh read-only evidence"
+    ]
+  },
+  "handoff": {
+    "maxBytes": 12288,
+    "required": [
+      "exact base/head and canonical diff",
+      "commands with passed/failed/skipped/blocked/not run",
+      "acceptance-criterion mapping",
+      "privacy-safe artifacts and environment",
+      "review findings with severity/disposition",
+      "remaining blockers and next safe action"
+    ],
+    "stalledAfterMinutes": 20,
+    "splitOrReassignWhen": "After one bounded status request, interrupt only if no material evidence; reassign untouched disjoint work, never a second writer on the same paths."
+  },
+  "acceptanceCriteria": [
+    "AC-DEVICE-01-01",
+    "AC-DEVICE-01-02",
+    "AC-DEVICE-01-03",
+    "AC-DEVICE-01-04",
+    "AC-DEVICE-01-05",
+    "AC-DEVICE-01-06"
+  ],
+  "validationLanes": [
+    "exact-candidate manifest validation",
+    "signed-device functional matrix",
+    "exact-final performance matrix",
+    "independent exact-diff and evidence review",
+    "git diff --check",
+    "exact-head required CI"
+  ],
+  "physicalDevice": {
+    "required": true,
+    "reasons": [
+      "signed Keychain and Sign in with Apple",
+      "APNs, widgets, extensions, and background execution",
+      "audio interruption and route changes",
+      "real-network transitions, memory, energy, and exact-final performance",
+      "operator-observed VoiceOver focus, order, announcements, and recovery"
+    ]
+  },
+  "backend": {
+    "sourceRevision": "858d2d7ffd620a7c28cdad5a75007536ccd5b391",
+    "deployedRevision": "unknown",
+    "sourceChange": "none",
+    "deploymentAuthorized": false,
+    "dependency": "Runtime checks use an approved nonproduction environment only. Unknown deployed revision or missing authority blocks the applicable claim; source merge is not deployment."
+  },
+  "ownerDecisionGates": [],
+  "git": {
+    "repository": "WillSoltani/Chapterflow-IOS",
+    "branch": "codex/wp-device-01-final-qualification",
+    "worktree": "/private/tmp/Chapterflow-IOS-wp-device-01",
+    "prTitle": "WP-DEVICE-01: Qualify signed-device behavior and final performance",
+    "target": "main",
+    "focusedPR": true
+  },
+  "mergePredicate": [
+    "all acceptance criteria and invariants pass on exact head",
+    "fresh required local validation passes on exact head",
+    "independent final-diff review has no unresolved P0/P1/P2",
+    "all applicable required GitHub checks succeed",
+    "PR is conflict-free and branch protection/review requirements hold",
+    "base/head drift is reconciled and invalidated gates rerun",
+    "only declared paths/contracts/dependencies changed",
+    "backend deployment and owner/device gates are truthful",
+    "PR is not #117 and frozen branch is untouched"
+  ],
+  "cleanupPredicate": [
+    "GitHub records merge and target contains reviewed change",
+    "post-merge required CI succeeds",
+    "worktree has no live PID/open file",
+    "worktree is clean with no unmerged commit",
+    "remove with git worktree remove, never rm -rf",
+    "delete only merged package-owned local/remote branch when not a stack dependency",
+    "prune only stale package-owned metadata",
+    "reverify target ancestry, worktrees, and primary checkout fingerprint"
+  ],
+  "releaseBoundary": "Development qualification only. No deployment, App Store, TestFlight, signing/release action, PR #117 mutation, or release-readiness claim."
+}

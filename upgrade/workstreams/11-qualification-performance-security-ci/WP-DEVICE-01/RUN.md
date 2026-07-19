@@ -1,0 +1,9 @@
+# Run WP-DEVICE-01
+
+Commit candidate first. Run validation and independent review against that immutable exact head, resolve every P0/P1/P2 finding, and treat any remediation as a new head that invalidates affected gates.
+
+You are the sole qualification owner for **WP-DEVICE-01 — Qualify signed-device behavior and exact-final performance**. Read current instructions and all program/package policies. Reverify WP-JOURNEY-01 integration, exact candidate SHA, signed-build authority, device/nonproduction access, scenario manifest, budgets, skills, protected checkout, locks, and frozen PR #117.
+
+Atomically claim the package and `simulator-device` resource; use one isolated iOS worktree/branch. Edit only device scripts—never production source or status documentation. Execute auth, routing/process-boundary, lifecycle, and performance/accessibility as four independently resumable sublanes. In the last sublane, regenerate the changed-visible-surface inventory from the exact final candidate and consume its explicit append-only attempt reference; perform operator-observed physical-device VoiceOver proof for the central journey and a second inventory-driven scenario covering every other changed visible surface: auth/onboarding/paywall/account, notifications/extensions/offline, engagement/graph/social. Record each sublane checkpoint and every result as passed/failed/blocked with privacy-safe external artifacts; missing credential/device/environment/deployed evidence is `BLOCKED`, not skipped. Continue unaffected sublanes, but do not complete the package until every AC passes.
+
+Commit the candidate evidence/scripts first, bind all results to that immutable head and measured product candidate, and obtain independent evidence review. Any product fix returns to its owning package and invalidates JOURNEY/DEVICE gates. Publish/merge only under delivery predicates. No deployment, release, App Store, TestFlight, PR #117, or production mutation.

@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "defaultEditors": 1,
+  "maximumEditors": 2,
+  "acquisition": {
+    "authority": "root scheduler only",
+    "claimRoot": "/private/tmp/chapterflow-upgrade-locks",
+    "atomicPrimitive": "mkdir",
+    "requiredClaims": [
+      "package-<PACKAGE_ID>",
+      "each declared resource lock; capacity locks claim one numbered slot",
+      "each command-scoped resource lease selected by its trigger pattern before that assertion attempt"
+    ],
+    "metadata": [
+      "package ID",
+      "repository",
+      "owner task ID",
+      "branch/worktree",
+      "start time and privacy-safe heartbeat"
+    ],
+    "failure": "If atomic mkdir fails or metadata/live state conflicts, stop LOCKED; never wait, steal, or infer stale from age.",
+    "release": "Only the recorded owner removes its empty claim after merge-safe cleanup or an evidence-backed no-write abort. Recovery verifies PID/open files, worktree, branch, GitHub, and owner task before stale-claim removal.",
+    "fallback": "If atomic local claims are unavailable or editors are on different hosts, maximum concurrent editors becomes one."
+  },
+  "commandScopedLeasing": {
+    "authority": "root scheduler through the standard evidence wrapper",
+    "lock": "simulator-device",
+    "triggerPatterns": [
+      "xcodebuild test",
+      "run_native_matrix.py",
+      "scripts/qa/device/run_matrix.py",
+      "run_paired_performance.py"
+    ],
+    "claim": "Before every matching assertion attempt, atomically claim one simulator-device capacity slot and record package ID, assertion ID, attempt ID, owner task ID, PID, command digest, start time, and heartbeat.",
+    "reentrant": "If the same package owner already holds simulator-device as a declared long-lived lock, the assertion attempt reuses that claim and records the parent claim instead of acquiring a second slot.",
+    "failure": "A missing lease or collision fails the assertion LOCKED before command execution; no wait, steal, or unleased fallback is permitted.",
+    "release": "Release the attempt lease in a finally path after artifact and manifest finalization; preserve failure evidence and never release another owner or parent long-lived claim."
+  },
+  "locks": {
+    "contract-inventory": {
+      "mode": "exclusive",
+      "highContention": true,
+      "scope": [
+        "scripts/contracts/**",
+        "contract test fixtures",
+        "shared Networking endpoint definitions"
+      ],
+      "reason": "Canonical operation evidence and the current monolithic endpoint surface must not be changed by concurrent writers."
+    },
+    "composition-root": {
+      "mode": "exclusive",
+      "highContention": true,
+      "scope": [
+        "Packages/AppFeature/**"
+      ],
+      "reason": "One integration owner for session/navigation/loop composition."
+    },
+    "xcode-project": {
+      "mode": "exclusive",
+      "highContention": true,
+      "scope": [
+        "ChapterFlow.xcodeproj/**",
+        "Config/*.entitlements",
+        "native target membership"
+      ],
+      "reason": "Project and capability changes are serialized."
+    },
+    "backend-repo": {
+      "mode": "exclusive",
+      "highContention": true,
+      "scope": [
+        "/Users/radinsoltani/ChapterFlow"
+      ],
+      "reason": "One backend writer/worktree per coordinated contract."
+    },
+    "persistence-schema": {
+      "mode": "exclusive",
+      "highContention": true,
+      "scope": [
+        "Packages/Persistence schema/outbox formats"
+      ],
+      "reason": "Migration and durable-envelope changes require one owner."
+    },
+    "ci-workflows": {
+      "mode": "exclusive",
+      "highContention": true,
+      "scope": [
+        ".github/workflows/**",
+        "scripts/ci/**"
+      ],
+      "reason": "Required-check semantics change under one focused owner."
+    },
+    "simulator-device": {
+      "mode": "capacity",
+      "capacity": 1,
+      "highContention": false,
+      "commandScoped": true,
+      "scope": [
+        "booted simulator",
+        "signed device",
+        "visual baseline capture"
+      ],
+      "reason": "Validation resource only; never grants source ownership."
+    }
+  }
+}

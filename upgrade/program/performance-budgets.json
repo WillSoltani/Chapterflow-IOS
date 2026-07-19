@@ -1,0 +1,132 @@
+{
+  "schemaVersion": 1,
+  "status": "predeclared-before-implementation",
+  "source": {
+    "path": "docs/PerfBudget.md",
+    "sha256AtPlanningBase": "0761280828cbf29230a6a7a2f27b63d4725748670606e4d7639098220614ca2a",
+    "iosRevision": "22da44d27bc18771f4d7db7681e17c10970ccb13",
+    "evidenceType": "repository budget; current final-device measurements remain pending"
+  },
+  "referenceDevice": "iPhone 15 Pro",
+  "requiredDeviceClasses": [
+    "current supported compact iPhone class",
+    "current supported regular-width iPad class"
+  ],
+  "budgets": [
+    {
+      "id": "PERF-COLD-LAUNCH",
+      "metric": "cold launch to first interactive frame",
+      "operator": "lessThanOrEqual",
+      "value": 1500,
+      "unit": "milliseconds",
+      "method": "Instruments Launch template and Time Profiler using existing fixed signposts",
+      "samplePolicy": "five clean cold launches; record every sample and require each sample within budget"
+    },
+    {
+      "id": "PERF-READER-HITCH",
+      "metric": "reader scroll hitch duration rate",
+      "operator": "lessThan",
+      "value": 5,
+      "unit": "millisecondsPerSecond",
+      "method": "Instruments Hangs and Hitches plus SwiftUI profiler",
+      "samplePolicy": "three 30-second natural-scroll samples; record every sample"
+    },
+    {
+      "id": "PERF-READER-PAGINATION",
+      "metric": "reader previous/next/table-of-contents page transition latency, peak memory, and main-thread stalls",
+      "operator": "pairedBaselineNoRegression",
+      "value": "candidate p95 transition latency and peak memory no greater than current main, with zero stalls above 250 milliseconds and exact destination identity preserved",
+      "unit": "milliseconds, megabytes, countAbove250Milliseconds",
+      "method": "pinned iOS XCUITest with XCTOSSignpostMetric/XCTMemoryMetric plus Instruments Hangs trace and deterministic chapter fixtures",
+      "samplePolicy": "capture current-main first, then candidate; 30 matched previous/next/table-of-contents transitions per required device class on the same OS, toolchain, fixture, and build configuration; retain every sample, xcresult, and trace"
+    },
+    {
+      "id": "PERF-CATALOG-HITCH",
+      "metric": "Home, Library, Search, and Discover scroll hitch duration rate",
+      "operator": "pairedBaselineLessThanOrEqual",
+      "value": "current-main p95 on the same device, OS, toolchain, fixture, and network profile",
+      "unit": "millisecondsPerSecond",
+      "method": "Instruments Hangs and Hitches plus SwiftUI profiler with fixed catalog fixtures",
+      "samplePolicy": "capture current-main first, then candidate; three 30-second matched samples per surface and device class; retain all samples and require zero stalls above 250 milliseconds"
+    },
+    {
+      "id": "PERF-IMAGE-CACHE",
+      "metric": "book-cover warm-cache latency, redundant-network count, and peak memory",
+      "operator": "pairedBaselineNoRegression",
+      "value": "candidate p95 latency and peak memory no greater than current main, with zero redundant warm-cache network loads and no reused-cell image mismatch",
+      "unit": "milliseconds, megabytes, count",
+      "method": "URLProtocol counter plus privacy-safe signposts, Instruments Allocations, and deterministic cell-reuse fixture",
+      "samplePolicy": "capture current-main first, then candidate; 100 cold-to-warm transitions and three reuse-scroll repetitions per required device class"
+    },
+    {
+      "id": "PERF-MEMORY-ONE-BOOK",
+      "metric": "library and reader open with one large book",
+      "operator": "lessThanOrEqual",
+      "value": 120,
+      "unit": "megabytes",
+      "method": "Instruments Allocations and Leaks",
+      "samplePolicy": "three clean repetitions; record peak resident memory for each"
+    },
+    {
+      "id": "PERF-MEMORY-THREE-BOOKS",
+      "metric": "three large books cached",
+      "operator": "lessThanOrEqual",
+      "value": 180,
+      "unit": "megabytes",
+      "method": "Instruments Allocations and Leaks",
+      "samplePolicy": "three clean repetitions; record peak resident memory for each"
+    },
+    {
+      "id": "PERF-CHAPTER-FETCH",
+      "metric": "SwiftData chapter cache-hit fetch",
+      "operator": "lessThanOrEqual",
+      "value": 2,
+      "unit": "milliseconds",
+      "method": "privacy-safe OSLog interval around the indexed cache-hit fetch",
+      "samplePolicy": "100 cache-hit fetches; p95 must meet budget and all raw samples are retained"
+    },
+    {
+      "id": "PERF-MAIN-STALL",
+      "metric": "main-thread stalls longer than threshold",
+      "operator": "equal",
+      "value": 0,
+      "unit": "countAbove250Milliseconds",
+      "method": "Instruments Hangs during the declared central journey",
+      "samplePolicy": "full journey on each required device class; retain the trace"
+    },
+    {
+      "id": "PERF-ENERGY-JOURNEY",
+      "metric": "central-journey and background-transition energy impact",
+      "operator": "pairedBaselineNoRegression",
+      "value": "candidate exported Energy Log metrics no worse than current main for the same steps and zero unexpected background activity after cancellation/sign-out",
+      "unit": "Energy Log exported metrics and background activity count",
+      "method": "Instruments Energy Log with fixed journey signposts and airplane/offline transition profile",
+      "samplePolicy": "capture current-main first, then candidate; three matched full journeys on each required device class"
+    },
+    {
+      "id": "PERF-LONG-AUDIO",
+      "metric": "long-form narration memory slope, energy impact, and audio underrun/interruption recovery",
+      "operator": "pairedBaselineNoRegression",
+      "value": "candidate memory slope and exported energy metrics no worse than current main, zero retained superseded player graphs, and zero unrecovered underruns/interruption failures",
+      "unit": "megabytesPerMinute, Energy Log exported metrics, count",
+      "method": "30-minute fixed narration fixture with Allocations, Leaks, Energy Log, route interruption, and background signposts",
+      "samplePolicy": "capture current-main first, then candidate; two 30-minute runs on a current compact iPhone class with one declared route/interruption sequence per run"
+    },
+    {
+      "id": "PERF-DOWNLOAD-LIFECYCLE",
+      "metric": "download completion time, peak memory, energy impact, and resume integrity",
+      "operator": "pairedBaselineNoRegression",
+      "value": "candidate completion p95, peak memory, and exported energy metrics no worse than current main while resume/deletion/storage accounting remain exact",
+      "unit": "seconds, megabytes, Energy Log exported metrics, integrity count",
+      "method": "fixed-size nonprivate fixture on shaped Wi-Fi with URLSession metrics, Allocations, Energy Log, forced interruption, relaunch, and low-storage scenario",
+      "samplePolicy": "capture current-main first, then candidate; five matched downloads plus three interruption/resume runs per required device class"
+    }
+  ],
+  "graphPackagePolicy": {
+    "samples": 30,
+    "layoutP95": "candidate must be less than or equal to current-main p95 on the same device/toolchain/fixture",
+    "peakMemory": "candidate must be less than or equal to current-main peak on the same device/toolchain/fixture",
+    "mainThreadStalls": "zero stalls over 250 milliseconds"
+  },
+  "changePolicy": "Implementation lanes may tighten but never loosen or replace these budgets. A proposed relaxation is BLOCKED_OWNER_DECISION and requires a new reviewed planning revision with measured provenance before candidate work."
+}

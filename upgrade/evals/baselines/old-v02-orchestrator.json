@@ -1,0 +1,148 @@
+{
+  "schemaVersion": 1,
+  "baseline": "old-v02-orchestrator",
+  "source": {
+    "path": "/Users/radinsoltani/Chapterflow-IOS/ChapterFlow-S-Tier-Plan/revisions/v02/RUN_ME_FIRST__ULTRACODE_ORCHESTRATOR.md",
+    "sha256": "a02a72409b151523d66ebe0cfc677bb2b98390d97fb13155a0a958c99e633900"
+  },
+  "staticAnalysis": {
+    "tokens": 2568,
+    "words": 1238,
+    "lines": 84,
+    "clarity": 89,
+    "structure": 90,
+    "examples": 0,
+    "outputFormat": true
+  },
+  "semantic": {
+    "passed": 15,
+    "failed": 5,
+    "results": [
+      {
+        "caseId": "E01",
+        "status": "pass",
+        "reason": "Required fail-closed behavior is explicit or supported by the v02 prompt.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E02",
+        "status": "pass",
+        "reason": "Required fail-closed behavior is explicit or supported by the v02 prompt.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E03",
+        "status": "pass",
+        "reason": "Required fail-closed behavior is explicit or supported by the v02 prompt.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E04",
+        "status": "pass",
+        "reason": "Required fail-closed behavior is explicit or supported by the v02 prompt.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E05",
+        "status": "pass",
+        "reason": "Required fail-closed behavior is explicit or supported by the v02 prompt.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E06",
+        "status": "fail",
+        "reason": "No upgrade-content ownership check exists.",
+        "evidenceAnchor": "missing explicit behavior in evaluated prompt"
+      },
+      {
+        "caseId": "E07",
+        "status": "pass",
+        "reason": "Required fail-closed behavior is explicit or supported by the v02 prompt.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E08",
+        "status": "pass",
+        "reason": "Required fail-closed behavior is explicit or supported by the v02 prompt.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E09",
+        "status": "pass",
+        "reason": "Required fail-closed behavior is explicit or supported by the v02 prompt.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E10",
+        "status": "pass",
+        "reason": "Required fail-closed behavior is explicit or supported by the v02 prompt.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E11",
+        "status": "pass",
+        "reason": "Required fail-closed behavior is explicit or supported by the v02 prompt.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E12",
+        "status": "pass",
+        "reason": "Required fail-closed behavior is explicit or supported by the v02 prompt.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E13",
+        "status": "pass",
+        "reason": "Required fail-closed behavior is explicit or supported by the v02 prompt.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E14",
+        "status": "fail",
+        "reason": "The v02 prompt is local-only and has no exact-head PR/CI drift lifecycle.",
+        "evidenceAnchor": "missing explicit behavior in evaluated prompt"
+      },
+      {
+        "caseId": "E15",
+        "status": "fail",
+        "reason": "Four-role fan-in exists, but duplicate/conflicting-severity adjudication is not specified.",
+        "evidenceAnchor": "missing explicit behavior in evaluated prompt"
+      },
+      {
+        "caseId": "E16",
+        "status": "fail",
+        "reason": "Remote publication/auto-merge/post-merge is prohibited rather than safely executable.",
+        "evidenceAnchor": "missing explicit behavior in evaluated prompt"
+      },
+      {
+        "caseId": "E17",
+        "status": "fail",
+        "reason": "No complete PID/clean/ancestry cleanup predicate is encoded.",
+        "evidenceAnchor": "missing explicit behavior in evaluated prompt"
+      },
+      {
+        "caseId": "E18",
+        "status": "pass",
+        "reason": "Required fail-closed behavior is explicit or supported by the v02 prompt.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E19",
+        "status": "pass",
+        "reason": "Required fail-closed behavior is explicit or supported by the v02 prompt.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E20",
+        "status": "pass",
+        "reason": "Required fail-closed behavior is explicit or supported by the v02 prompt.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      }
+    ]
+  },
+  "evaluator": "root static semantic evaluation; no LLM runtime execution",
+  "limitations": [
+    "Static prompt interpretation, not implementation/runtime proof.",
+    "Referenced v02 artifact tree was inspected separately; scores do not measure its 300-file control-plane cost."
+  ]
+}

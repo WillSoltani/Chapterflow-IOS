@@ -1,0 +1,555 @@
+{
+  "schemaVersion": 1,
+  "nodes": [
+    {
+      "id": "WP-REC-01",
+      "workstream": "01-current-work-recovery",
+      "criticalPath": true,
+      "integrationOrder": 0
+    },
+    {
+      "id": "WP-CONTRACT-02",
+      "workstream": "02-contracts-and-foundations",
+      "criticalPath": true,
+      "integrationOrder": 1
+    },
+    {
+      "id": "WP-NATIVE-01",
+      "workstream": "03-native-design-accessibility-localization",
+      "criticalPath": true,
+      "integrationOrder": 1
+    },
+    {
+      "id": "WP-SHELL-02",
+      "workstream": "03-native-design-accessibility-localization",
+      "criticalPath": false,
+      "integrationOrder": 4
+    },
+    {
+      "id": "WP-AUTH-02",
+      "workstream": "04-identity-account-entitlements",
+      "criticalPath": true,
+      "integrationOrder": 2
+    },
+    {
+      "id": "WP-ACCOUNT-02",
+      "workstream": "04-identity-account-entitlements",
+      "criticalPath": true,
+      "integrationOrder": 3
+    },
+    {
+      "id": "WP-ENTRY-01",
+      "workstream": "04-identity-account-entitlements",
+      "criticalPath": false,
+      "integrationOrder": 4
+    },
+    {
+      "id": "WP-PAYWALL-01",
+      "workstream": "04-identity-account-entitlements",
+      "criticalPath": false,
+      "integrationOrder": 4
+    },
+    {
+      "id": "WP-CATALOG-01",
+      "workstream": "05-catalog-discovery",
+      "criticalPath": true,
+      "integrationOrder": 2
+    },
+    {
+      "id": "WP-READER-01",
+      "workstream": "06-reader-annotations-ai",
+      "criticalPath": true,
+      "integrationOrder": 2
+    },
+    {
+      "id": "WP-ANNOTATE-01",
+      "workstream": "06-reader-annotations-ai",
+      "criticalPath": false,
+      "integrationOrder": 3
+    },
+    {
+      "id": "WP-ASK-01",
+      "workstream": "06-reader-annotations-ai",
+      "criticalPath": false,
+      "integrationOrder": 3
+    },
+    {
+      "id": "WP-LEARN-01",
+      "workstream": "07-learning-progress-resume",
+      "criticalPath": false,
+      "integrationOrder": 3
+    },
+    {
+      "id": "WP-LOOP-01",
+      "workstream": "07-learning-progress-resume",
+      "criticalPath": true,
+      "integrationOrder": 6
+    },
+    {
+      "id": "WP-AUDIO-01",
+      "workstream": "08-media-offline",
+      "criticalPath": true,
+      "integrationOrder": 4
+    },
+    {
+      "id": "WP-OFFLINE-01",
+      "workstream": "08-media-offline",
+      "criticalPath": false,
+      "integrationOrder": 5
+    },
+    {
+      "id": "WP-EXT-01",
+      "workstream": "09-routing-notifications-extensions",
+      "criticalPath": false,
+      "integrationOrder": 4
+    },
+    {
+      "id": "WP-NOTIFY-01",
+      "workstream": "09-routing-notifications-extensions",
+      "criticalPath": false,
+      "integrationOrder": 6
+    },
+    {
+      "id": "WP-ENGAGE-01",
+      "workstream": "10-engagement-community",
+      "criticalPath": false,
+      "integrationOrder": 5
+    },
+    {
+      "id": "WP-GRAPH-01",
+      "workstream": "10-engagement-community",
+      "criticalPath": false,
+      "integrationOrder": 5
+    },
+    {
+      "id": "WP-SOCIAL-01",
+      "workstream": "10-engagement-community",
+      "criticalPath": false,
+      "integrationOrder": 4
+    },
+    {
+      "id": "WP-HARD-01",
+      "workstream": "11-qualification-performance-security-ci",
+      "criticalPath": false,
+      "integrationOrder": 1
+    },
+    {
+      "id": "WP-JOURNEY-01",
+      "workstream": "11-qualification-performance-security-ci",
+      "criticalPath": true,
+      "integrationOrder": 7
+    },
+    {
+      "id": "WP-DEVICE-01",
+      "workstream": "11-qualification-performance-security-ci",
+      "criticalPath": true,
+      "integrationOrder": 8
+    }
+  ],
+  "edges": [
+    {
+      "from": "WP-REC-01",
+      "to": "WP-CONTRACT-02",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-REC-01",
+      "to": "WP-NATIVE-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-NATIVE-01",
+      "to": "WP-AUTH-02",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-NATIVE-01",
+      "to": "WP-SHELL-02",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-AUTH-02",
+      "to": "WP-SHELL-02",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-CATALOG-01",
+      "to": "WP-SHELL-02",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-CONTRACT-02",
+      "to": "WP-AUTH-02",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-AUTH-02",
+      "to": "WP-ACCOUNT-02",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-CONTRACT-02",
+      "to": "WP-ACCOUNT-02",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-NATIVE-01",
+      "to": "WP-ENTRY-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-ACCOUNT-02",
+      "to": "WP-ENTRY-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-NATIVE-01",
+      "to": "WP-PAYWALL-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-ACCOUNT-02",
+      "to": "WP-PAYWALL-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-NATIVE-01",
+      "to": "WP-CATALOG-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-CONTRACT-02",
+      "to": "WP-CATALOG-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-NATIVE-01",
+      "to": "WP-READER-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-CONTRACT-02",
+      "to": "WP-READER-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-CONTRACT-02",
+      "to": "WP-ANNOTATE-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-READER-01",
+      "to": "WP-ANNOTATE-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-CONTRACT-02",
+      "to": "WP-ASK-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-NATIVE-01",
+      "to": "WP-ASK-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-READER-01",
+      "to": "WP-ASK-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-CONTRACT-02",
+      "to": "WP-LEARN-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-NATIVE-01",
+      "to": "WP-LEARN-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-ACCOUNT-02",
+      "to": "WP-LOOP-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-CATALOG-01",
+      "to": "WP-LOOP-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-READER-01",
+      "to": "WP-LOOP-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-ANNOTATE-01",
+      "to": "WP-LOOP-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-ASK-01",
+      "to": "WP-LOOP-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-LEARN-01",
+      "to": "WP-LOOP-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-AUDIO-01",
+      "to": "WP-LOOP-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-ENGAGE-01",
+      "to": "WP-LOOP-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-SHELL-02",
+      "to": "WP-LOOP-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-CONTRACT-02",
+      "to": "WP-AUDIO-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-READER-01",
+      "to": "WP-AUDIO-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-ASK-01",
+      "to": "WP-AUDIO-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-ACCOUNT-02",
+      "to": "WP-OFFLINE-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-CONTRACT-02",
+      "to": "WP-OFFLINE-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-ANNOTATE-01",
+      "to": "WP-OFFLINE-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-LEARN-01",
+      "to": "WP-OFFLINE-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-EXT-01",
+      "to": "WP-OFFLINE-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-ACCOUNT-02",
+      "to": "WP-EXT-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-CONTRACT-02",
+      "to": "WP-EXT-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-NATIVE-01",
+      "to": "WP-EXT-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-ACCOUNT-02",
+      "to": "WP-NOTIFY-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-NATIVE-01",
+      "to": "WP-NOTIFY-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-EXT-01",
+      "to": "WP-NOTIFY-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-ENGAGE-01",
+      "to": "WP-NOTIFY-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-NATIVE-01",
+      "to": "WP-ENGAGE-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-CONTRACT-02",
+      "to": "WP-ENGAGE-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-EXT-01",
+      "to": "WP-ENGAGE-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-LEARN-01",
+      "to": "WP-ENGAGE-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-NATIVE-01",
+      "to": "WP-GRAPH-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-CONTRACT-02",
+      "to": "WP-GRAPH-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-ASK-01",
+      "to": "WP-GRAPH-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-AUDIO-01",
+      "to": "WP-GRAPH-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-ACCOUNT-02",
+      "to": "WP-SOCIAL-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-CONTRACT-02",
+      "to": "WP-SOCIAL-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-NATIVE-01",
+      "to": "WP-SOCIAL-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-REC-01",
+      "to": "WP-HARD-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-SHELL-02",
+      "to": "WP-JOURNEY-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-ENTRY-01",
+      "to": "WP-JOURNEY-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-PAYWALL-01",
+      "to": "WP-JOURNEY-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-LOOP-01",
+      "to": "WP-JOURNEY-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-OFFLINE-01",
+      "to": "WP-JOURNEY-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-EXT-01",
+      "to": "WP-JOURNEY-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-NOTIFY-01",
+      "to": "WP-JOURNEY-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-ENGAGE-01",
+      "to": "WP-JOURNEY-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-GRAPH-01",
+      "to": "WP-JOURNEY-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-SOCIAL-01",
+      "to": "WP-JOURNEY-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-HARD-01",
+      "to": "WP-JOURNEY-01",
+      "type": "blocks"
+    },
+    {
+      "from": "WP-JOURNEY-01",
+      "to": "WP-DEVICE-01",
+      "type": "blocks"
+    }
+  ],
+  "criticalPath": [
+    "WP-REC-01",
+    "WP-CONTRACT-02",
+    "WP-READER-01",
+    "WP-AUDIO-01",
+    "WP-LOOP-01",
+    "WP-JOURNEY-01",
+    "WP-DEVICE-01"
+  ],
+  "secondaryCriticalPaths": [
+    [
+      "WP-REC-01",
+      "WP-CONTRACT-02",
+      "WP-AUTH-02",
+      "WP-ACCOUNT-02",
+      "WP-LOOP-01",
+      "WP-JOURNEY-01",
+      "WP-DEVICE-01"
+    ],
+    [
+      "WP-REC-01",
+      "WP-NATIVE-01",
+      "WP-CATALOG-01",
+      "WP-LOOP-01",
+      "WP-JOURNEY-01",
+      "WP-DEVICE-01"
+    ]
+  ],
+  "parallelPolicy": {
+    "maximumEditors": 2,
+    "requiresDisjointWriteSets": true,
+    "sharedHighContentionLockAllowed": false,
+    "atomicClaimsRequired": true,
+    "uniqueDerivedDataAndScratch": true,
+    "simulatorDeviceCapacity": 1
+  },
+  "notes": [
+    "Dependencies encode integration necessity, not thematic similarity.",
+    "Critical paths are representative edge-valid chains through join nodes; every node marked criticalPath appears in at least one chain.",
+    "Decision-gated nodes remain blocked even when dependency SHAs are integrated.",
+    "Readiness is derived from live integration state and atomic claims, never stored by package lanes.",
+    "Backend source merge never satisfies deployed-evidence gates.",
+    "WP-DEVICE-01 runs only after exact-final simulator qualification so performance and device evidence cannot go stale."
+  ]
+}
