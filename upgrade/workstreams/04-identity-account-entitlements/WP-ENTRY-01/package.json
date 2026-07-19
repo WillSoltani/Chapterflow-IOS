@@ -1,0 +1,183 @@
+{
+  "schemaVersion": 1,
+  "id": "WP-ENTRY-01",
+  "title": "Make onboarding durable, adaptive, and localized",
+  "outcome": "First-use onboarding preserves one durable current step and truthful permission/session state across interruption, relaunch, account transition, compact and regular widths, real localization, accessibility sizes, RTL, and recovery states.",
+  "riskTier": "R2",
+  "status": "planned",
+  "priority": "P1",
+  "workstream": "04-identity-account-entitlements",
+  "verifiedBase": {
+    "ios": "22da44d27bc18771f4d7db7681e17c10970ccb13",
+    "backendSource": "858d2d7ffd620a7c28cdad5a75007536ccd5b391",
+    "backendDeployed": "unknown",
+    "evidenceCutoff": "2026-07-18"
+  },
+  "evidenceAnchors": [
+    "Packages/OnboardingFeature/Sources/OnboardingFeature/OnboardingFlowView.swift",
+    "Packages/OnboardingFeature onboarding recovery and render tests"
+  ],
+  "blockedBy": [
+    "WP-NATIVE-01",
+    "WP-ACCOUNT-02"
+  ],
+  "blocks": [
+    "WP-JOURNEY-01"
+  ],
+  "criticalPath": false,
+  "integrationOrder": 4,
+  "ownership": {
+    "ownerLane": "wp-entry-01-owner",
+    "writableOwner": "single",
+    "allowedPaths": [
+      {
+        "repo": "ios",
+        "glob": "ChapterFlowUITests/UpgradeEvidence/EntryUpgradeEvidenceTests.swift"
+      },
+      {
+        "repo": "ios",
+        "glob": "Packages/OnboardingFeature/**"
+      }
+    ],
+    "prohibitedPaths": [
+      {
+        "repo": "ios",
+        "glob": "/Users/radinsoltani/Chapterflow-IOS/**",
+        "reason": "dirty owner checkout is read-only"
+      },
+      {
+        "repo": "ios",
+        "glob": "ChapterFlow-S-Tier-Plan/**",
+        "reason": "historical comparison corpus"
+      },
+      {
+        "repo": "ios",
+        "glob": "upgrade/**",
+        "reason": "program package lanes consume but do not mutate the plan"
+      },
+      {
+        "repo": "ios",
+        "glob": "codex/wp-rel-01 or PR #117",
+        "reason": "frozen release work"
+      },
+      {
+        "repo": "backend",
+        "glob": "deployment/infrastructure/production data",
+        "reason": "unauthorized external mutation"
+      }
+    ],
+    "interfaceContracts": [
+      "Onboarding completion and notification choices are durable only after their authoritative operation succeeds.",
+      "Cancellation, permission denial, offline, interruption, relaunch, and account transition remain distinct and truthful."
+    ]
+  },
+  "resourceLocks": [],
+  "estimate": {
+    "validationSupportRoots": 1,
+    "minutes": 120,
+    "plannedFiles": 10,
+    "maxFiles": 16,
+    "primaryRoots": 1,
+    "maxPrimaryRoots": 1,
+    "splitIf": [
+      "the outcome can integrate independently",
+      "authorization or validation differs materially",
+      "more than 16 files or 1 primary root are required",
+      "a high-contention lock is required"
+    ]
+  },
+  "skills": {
+    "primary": [
+      "repo:swiftui-expert-skill",
+      "repo:mobile-ios-design"
+    ],
+    "review": [
+      "accessibility-compliance",
+      "engineering-skills:code-reviewer"
+    ],
+    "revalidateAtStart": true,
+    "sourceIndex": "upgrade/SKILLS.md"
+  },
+  "tools": {
+    "preferred": [
+      "Swift Testing",
+      "XcodeBuildMCP",
+      "XCUITest",
+      "Accessibility Inspector"
+    ],
+    "fallbacks": [
+      "rg and repository-native commands",
+      "xcodebuild/SwiftPM when MCP unavailable",
+      "GitHub connector or gh read-only evidence"
+    ]
+  },
+  "handoff": {
+    "maxBytes": 12288,
+    "required": [
+      "exact base/head and canonical diff",
+      "commands with passed/failed/skipped/blocked/not run",
+      "acceptance-criterion mapping",
+      "privacy-safe artifacts and environment",
+      "review findings with severity/disposition",
+      "remaining blockers and next safe action"
+    ],
+    "stalledAfterMinutes": 20,
+    "splitOrReassignWhen": "After one bounded status request, interrupt only if no material evidence; reassign untouched disjoint work, never a second writer on the same paths."
+  },
+  "acceptanceCriteria": [
+    "AC-ENTRY-01-01",
+    "AC-ENTRY-01-02",
+    "AC-ENTRY-01-03",
+    "AC-ENTRY-01-04"
+  ],
+  "validationLanes": [
+    "owning package tests",
+    "affected dependent tests",
+    "risk-proportionate app/build/UI lane",
+    "independent exact-diff review",
+    "git diff --check",
+    "exact-head required CI"
+  ],
+  "physicalDevice": {
+    "required": false,
+    "reasons": []
+  },
+  "backend": {
+    "sourceRevision": "858d2d7ffd620a7c28cdad5a75007536ccd5b391",
+    "deployedRevision": "unknown",
+    "sourceChange": "none",
+    "deploymentAuthorized": false,
+    "dependency": "Record source, environment, deployed revision, and evidence type separately; a merge is not deployment."
+  },
+  "ownerDecisionGates": [],
+  "git": {
+    "repository": "WillSoltani/Chapterflow-IOS",
+    "branch": "codex/wp-entry-01-onboarding",
+    "worktree": "/private/tmp/Chapterflow-IOS-wp-entry-01",
+    "prTitle": "WP-ENTRY-01: Make onboarding durable and adaptive",
+    "target": "main",
+    "focusedPR": true
+  },
+  "mergePredicate": [
+    "all acceptance criteria and invariants pass on exact head",
+    "fresh required local validation passes on exact head",
+    "independent final-diff review has no unresolved P0/P1/P2",
+    "all applicable required GitHub checks succeed",
+    "PR is conflict-free and branch protection/review requirements hold",
+    "base/head drift is reconciled and invalidated gates rerun",
+    "only declared paths/contracts/dependencies changed",
+    "backend deployment and owner/device gates are truthful",
+    "PR is not #117 and frozen branch is untouched"
+  ],
+  "cleanupPredicate": [
+    "GitHub records merge and target contains reviewed change",
+    "post-merge required CI succeeds",
+    "worktree has no live PID/open file",
+    "worktree is clean with no unmerged commit",
+    "remove with git worktree remove, never rm -rf",
+    "delete only merged package-owned local/remote branch when not a stack dependency",
+    "prune only stale package-owned metadata",
+    "reverify target ancestry, worktrees, and primary checkout fingerprint"
+  ],
+  "releaseBoundary": "Development source only. No deployment, App Store, TestFlight, signing/release action, PR #117 mutation, or release-readiness claim."
+}

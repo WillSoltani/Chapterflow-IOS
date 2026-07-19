@@ -1,0 +1,230 @@
+{
+  "schemaVersion": 1,
+  "id": "WP-ACCOUNT-02",
+  "title": "Make account deletion and backend account status fail closed",
+  "outcome": "Deletion sends the exact confirmed recent-auth contract, backend account-status failure cannot authorize access, lifecycle states remain truthful, and Settings exposes App Lock only under a complete approved enforcement/recovery policy.",
+  "riskTier": "R3",
+  "status": "planned",
+  "priority": "P0",
+  "workstream": "04-identity-account-entitlements",
+  "verifiedBase": {
+    "ios": "22da44d27bc18771f4d7db7681e17c10970ccb13",
+    "backendSource": "858d2d7ffd620a7c28cdad5a75007536ccd5b391",
+    "backendDeployed": "unknown",
+    "evidenceCutoff": "2026-07-18"
+  },
+  "evidenceAnchors": [
+    "Packages/Networking/Sources/Networking/Endpoint+Account.swift",
+    "Packages/SettingsFeature account deletion flow",
+    "backend app/app/api/book/me/account/delete/route.ts",
+    "backend app/app/api/book/_lib/account-guard.ts"
+  ],
+  "blockedBy": [
+    "WP-AUTH-02",
+    "WP-CONTRACT-02"
+  ],
+  "blocks": [
+    "WP-LOOP-01",
+    "WP-OFFLINE-01",
+    "WP-EXT-01",
+    "WP-NOTIFY-01",
+    "WP-ENTRY-01",
+    "WP-PAYWALL-01",
+    "WP-SOCIAL-01"
+  ],
+  "criticalPath": true,
+  "integrationOrder": 3,
+  "ownership": {
+    "ownerLane": "wp-account-02-owner",
+    "writableOwner": "single",
+    "allowedPaths": [
+      {
+        "repo": "ios",
+        "glob": "ChapterFlowUITests/UpgradeEvidence/AccountUpgradeEvidenceTests.swift"
+      },
+      {
+        "repo": "ios",
+        "glob": "Packages/SettingsFeature/**"
+      },
+      {
+        "repo": "ios",
+        "glob": "Packages/Networking/Sources/Networking/Endpoint+Account.swift"
+      },
+      {
+        "repo": "ios",
+        "glob": "Packages/Networking/Tests/NetworkingTests/AccountContractTests.swift"
+      },
+      {
+        "repo": "backend",
+        "glob": "app/app/api/book/me/account/**"
+      },
+      {
+        "repo": "backend",
+        "glob": "app/app/api/book/_lib/account-guard.ts"
+      },
+      {
+        "repo": "backend",
+        "glob": "app/app/api/book/_lib/account-guard.test.ts"
+      }
+    ],
+    "prohibitedPaths": [
+      {
+        "repo": "ios",
+        "glob": "/Users/radinsoltani/Chapterflow-IOS/**",
+        "reason": "dirty owner checkout is read-only"
+      },
+      {
+        "repo": "ios",
+        "glob": "ChapterFlow-S-Tier-Plan/**",
+        "reason": "historical comparison corpus"
+      },
+      {
+        "repo": "ios",
+        "glob": "upgrade/**",
+        "reason": "program package lanes consume but do not mutate the plan"
+      },
+      {
+        "repo": "ios",
+        "glob": "codex/wp-rel-01 or PR #117",
+        "reason": "frozen release work"
+      },
+      {
+        "repo": "backend",
+        "glob": "deployment/infrastructure/production data",
+        "reason": "unauthorized external mutation"
+      }
+    ],
+    "interfaceContracts": [
+      "Request confirmation and recent-auth semantics match backend validation exactly.",
+      "Backend account authority fails closed; merged source is not deployed proof.",
+      "Subscription cancellation and provider revocation are reported separately."
+    ]
+  },
+  "resourceLocks": [
+    "backend-repo"
+  ],
+  "estimate": {
+    "validationSupportRoots": 1,
+    "minutes": 120,
+    "plannedFiles": 12,
+    "maxFiles": 20,
+    "primaryRoots": 3,
+    "maxPrimaryRoots": 3,
+    "splitIf": [
+      "the outcome can integrate independently",
+      "authorization or validation differs materially",
+      "more than 20 files or 3 primary roots are required",
+      "a second high-contention lock is required"
+    ]
+  },
+  "skills": {
+    "primary": [
+      "repo:swift-concurrency",
+      "repo:swift-testing-expert"
+    ],
+    "review": [
+      "insecure-defaults:insecure-defaults",
+      "differential-review:differential-review"
+    ],
+    "revalidateAtStart": true,
+    "sourceIndex": "upgrade/SKILLS.md"
+  },
+  "tools": {
+    "preferred": [
+      "Swift Testing",
+      "backend test runner",
+      "Semgrep",
+      "GitHub connector"
+    ],
+    "fallbacks": [
+      "rg and repository-native commands",
+      "xcodebuild/SwiftPM when MCP unavailable",
+      "GitHub connector or gh read-only evidence"
+    ]
+  },
+  "handoff": {
+    "maxBytes": 12288,
+    "required": [
+      "exact base/head and canonical diff",
+      "commands with passed/failed/skipped/blocked/not run",
+      "acceptance-criterion mapping",
+      "privacy-safe artifacts and environment",
+      "review findings with severity/disposition",
+      "remaining blockers and next safe action"
+    ],
+    "stalledAfterMinutes": 20,
+    "splitOrReassignWhen": "After one bounded status request, interrupt only if no material evidence; reassign untouched disjoint work, never a second writer on the same paths."
+  },
+  "acceptanceCriteria": [
+    "AC-ACCOUNT-02-01",
+    "AC-ACCOUNT-02-02",
+    "AC-ACCOUNT-02-03",
+    "AC-ACCOUNT-02-04",
+    "AC-ACCOUNT-02-05",
+    "AC-ACCOUNT-02-06",
+    "AC-ACCOUNT-02-07",
+    "AC-ACCOUNT-02-08"
+  ],
+  "validationLanes": [
+    "owning package tests",
+    "affected dependent tests",
+    "risk-proportionate app/build/UI lane",
+    "independent exact-diff review",
+    "git diff --check",
+    "exact-head required CI"
+  ],
+  "physicalDevice": {
+    "required": false,
+    "reasons": []
+  },
+  "backend": {
+    "sourceRevision": "858d2d7ffd620a7c28cdad5a75007536ccd5b391",
+    "deployedRevision": "unknown",
+    "sourceChange": "expected",
+    "deploymentAuthorized": false,
+    "dependency": "Record source, environment, deployed revision, and evidence type separately; a merge is not deployment.",
+    "git": {
+      "repository": "WillSoltani/ChapterFlow",
+      "branch": "codex/wp-account-02-delete-fail-closed-backend",
+      "worktree": "/private/tmp/ChapterFlow-wp-account-02",
+      "prTitle": "WP-ACCOUNT-02 backend: Fail closed for account status",
+      "target": "main",
+      "focusedPR": true
+    },
+    "compatibilityAndMergeOrder": "Land an additive backend source PR first when required. Merge iOS only after exact old/new compatibility is proven against the verified deployed environment; an unknown deployed revision blocks runtime-dependent completion."
+  },
+  "ownerDecisionGates": [
+    "D-LOCK-01"
+  ],
+  "git": {
+    "repository": "WillSoltani/Chapterflow-IOS",
+    "branch": "codex/wp-account-02-delete-fail-closed",
+    "worktree": "/private/tmp/Chapterflow-IOS-wp-account-02",
+    "prTitle": "WP-ACCOUNT-02: Make account deletion and backend account status fail closed",
+    "target": "main",
+    "focusedPR": true
+  },
+  "mergePredicate": [
+    "all acceptance criteria and invariants pass on exact head",
+    "fresh required local validation passes on exact head",
+    "independent final-diff review has no unresolved P0/P1/P2",
+    "all applicable required GitHub checks succeed",
+    "PR is conflict-free and branch protection/review requirements hold",
+    "base/head drift is reconciled and invalidated gates rerun",
+    "only declared paths/contracts/dependencies changed",
+    "backend deployment and owner/device gates are truthful",
+    "every affected repository PR head is reviewed and green under the declared compatibility and merge order",
+    "PR is not #117 and frozen branch is untouched"
+  ],
+  "cleanupPredicate": [
+    "GitHub records merge and target contains reviewed change",
+    "post-merge required CI succeeds",
+    "worktree has no live PID/open file",
+    "worktree is clean with no unmerged commit",
+    "remove with git worktree remove, never rm -rf",
+    "delete only merged package-owned local/remote branch when not a stack dependency",
+    "prune only stale package-owned metadata",
+    "reverify target ancestry, worktrees, and primary checkout fingerprint"
+  ],
+  "releaseBoundary": "Development source only. No deployment, App Store, TestFlight, signing/release action, PR #117 mutation, or release-readiness claim."
+}

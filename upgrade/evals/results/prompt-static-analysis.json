@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "tool": {
+    "path": "/Users/radinsoltani/.codex/plugins/cache/claude-code-skills/engineering-skills/2.9.0/skills/senior-prompt-engineer/scripts/prompt_optimizer.py",
+    "mode": "--analyze",
+    "status": "passed"
+  },
+  "sources": [
+    {
+      "path": "upgrade/prompts/LANE_RUNNER.md",
+      "sha256": "5388913883faee4ab7f9339225d1545c8b85cb14d69af715e40066e588968a61"
+    },
+    {
+      "path": "upgrade/prompts/RISK_REVIEWER.md",
+      "sha256": "64d7efefdf6cef3261d7fcc5d6e9c54e4368995d7791dfbd9c47e7e18034f110"
+    },
+    {
+      "path": "upgrade/prompts/RECOVERY_AND_RESUME.md",
+      "sha256": "cd5e149bc92848a19b0dc89e73c75258c2386ec4a51c98bda5c8393267132fbf"
+    }
+  ],
+  "old": {
+    "source": "old-v02-orchestrator",
+    "tokens": 2568,
+    "clarity": 89,
+    "structure": 90,
+    "examples": 0,
+    "outputFormat": true,
+    "semanticPass": "15/20"
+  },
+  "draftV0": {
+    "sources": 3,
+    "totalTokens": 1799,
+    "perPrompt": [
+      {
+        "name": "LANE_RUNNER",
+        "tokens": 763,
+        "clarity": 92,
+        "structure": 100
+      },
+      {
+        "name": "RISK_REVIEWER",
+        "tokens": 528,
+        "clarity": 95,
+        "structure": 90
+      },
+      {
+        "name": "RECOVERY_AND_RESUME",
+        "tokens": 508,
+        "clarity": 89,
+        "structure": 90
+      }
+    ],
+    "semanticPass": "19/20"
+  },
+  "final": {
+    "sources": 3,
+    "totalTokens": 3624,
+    "perPrompt": [
+      {
+        "name": "LANE_RUNNER",
+        "tokens": 2097,
+        "clarity": 77,
+        "structure": 100,
+        "issues": 6
+      },
+      {
+        "name": "RISK_REVIEWER",
+        "tokens": 764,
+        "clarity": 78,
+        "structure": 90,
+        "issues": 5
+      },
+      {
+        "name": "RECOVERY_AND_RESUME",
+        "tokens": 763,
+        "clarity": 86,
+        "structure": 90,
+        "issues": 3
+      }
+    ],
+    "semanticPass": "20/20 independent final"
+  },
+  "adjudication": [
+    "Analyzer repetition and few-shot suggestions are advisory; exact stop rules, evidence ledgers, and output schemas intentionally repeat safety-critical nouns.",
+    "No issue reported a missing section, missing output format, or ambiguous release boundary.",
+    "Independent semantic evaluation, not this static analyzer, determines the final 20-case behavior result."
+  ]
+}

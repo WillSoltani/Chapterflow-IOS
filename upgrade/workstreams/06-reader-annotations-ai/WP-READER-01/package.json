@@ -1,0 +1,191 @@
+{
+  "schemaVersion": 1,
+  "id": "WP-READER-01",
+  "title": "Make reading controls, chapter navigation, and preferences coherent",
+  "outcome": "Reader state has one owner; chapter/tone/depth/preference work cancels safely; controls remain reachable and accessible; chapter navigation preserves exact context across background, relaunch, and size changes.",
+  "riskTier": "R2",
+  "status": "planned",
+  "priority": "P1",
+  "workstream": "06-reader-annotations-ai",
+  "verifiedBase": {
+    "ios": "22da44d27bc18771f4d7db7681e17c10970ccb13",
+    "backendSource": "858d2d7ffd620a7c28cdad5a75007536ccd5b391",
+    "backendDeployed": "unknown",
+    "evidenceCutoff": "2026-07-18"
+  },
+  "evidenceAnchors": [
+    "ReaderModel",
+    "ReaderView",
+    "ReaderControlSurface",
+    "ChapterNavModel",
+    "ReadingFlowView"
+  ],
+  "blockedBy": [
+    "WP-NATIVE-01",
+    "WP-CONTRACT-02"
+  ],
+  "blocks": [
+    "WP-ANNOTATE-01",
+    "WP-ASK-01",
+    "WP-LOOP-01",
+    "WP-AUDIO-01"
+  ],
+  "criticalPath": true,
+  "integrationOrder": 2,
+  "ownership": {
+    "ownerLane": "wp-reader-01-owner",
+    "writableOwner": "single",
+    "allowedPaths": [
+      {
+        "repo": "ios",
+        "glob": "ChapterFlowUITests/UpgradeEvidence/ReaderUpgradeEvidenceTests.swift"
+      },
+      {
+        "repo": "ios",
+        "glob": "Packages/ReaderFeature/**"
+      }
+    ],
+    "prohibitedPaths": [
+      {
+        "repo": "ios",
+        "glob": "/Users/radinsoltani/Chapterflow-IOS/**",
+        "reason": "dirty owner checkout is read-only"
+      },
+      {
+        "repo": "ios",
+        "glob": "ChapterFlow-S-Tier-Plan/**",
+        "reason": "historical comparison corpus"
+      },
+      {
+        "repo": "ios",
+        "glob": "upgrade/**",
+        "reason": "program package lanes consume but do not mutate the plan"
+      },
+      {
+        "repo": "ios",
+        "glob": "codex/wp-rel-01 or PR #117",
+        "reason": "frozen release work"
+      },
+      {
+        "repo": "backend",
+        "glob": "deployment/infrastructure/production data",
+        "reason": "unauthorized external mutation"
+      }
+    ],
+    "interfaceContracts": [
+      "ReaderModel owns reader state and rejects stale chapter/preference completions.",
+      "Progress writes are idempotent/account-book-chapter scoped.",
+      "Reader controls use default 44-point targets or documented evidence."
+    ]
+  },
+  "resourceLocks": [],
+  "estimate": {
+    "validationSupportRoots": 1,
+    "minutes": 120,
+    "plannedFiles": 12,
+    "maxFiles": 16,
+    "primaryRoots": 1,
+    "maxPrimaryRoots": 3,
+    "splitIf": [
+      "the outcome can integrate independently",
+      "authorization or validation differs materially",
+      "more than 16 files or 3 primary roots are required",
+      "a second high-contention lock is required"
+    ]
+  },
+  "skills": {
+    "primary": [
+      "repo:swift-concurrency",
+      "repo:swiftui-expert-skill"
+    ],
+    "review": [
+      "accessibility-compliance",
+      "engineering-skills:code-reviewer"
+    ],
+    "revalidateAtStart": true,
+    "sourceIndex": "upgrade/SKILLS.md"
+  },
+  "tools": {
+    "preferred": [
+      "Swift Testing",
+      "XcodeBuildMCP",
+      "XCUITest"
+    ],
+    "fallbacks": [
+      "rg and repository-native commands",
+      "xcodebuild/SwiftPM when MCP unavailable",
+      "GitHub connector or gh read-only evidence"
+    ]
+  },
+  "handoff": {
+    "maxBytes": 12288,
+    "required": [
+      "exact base/head and canonical diff",
+      "commands with passed/failed/skipped/blocked/not run",
+      "acceptance-criterion mapping",
+      "privacy-safe artifacts and environment",
+      "review findings with severity/disposition",
+      "remaining blockers and next safe action"
+    ],
+    "stalledAfterMinutes": 20,
+    "splitOrReassignWhen": "After one bounded status request, interrupt only if no material evidence; reassign untouched disjoint work, never a second writer on the same paths."
+  },
+  "acceptanceCriteria": [
+    "AC-READER-01-01",
+    "AC-READER-01-02",
+    "AC-READER-01-03",
+    "AC-READER-01-04",
+    "AC-READER-01-05",
+    "AC-READER-01-06"
+  ],
+  "validationLanes": [
+    "owning package tests",
+    "affected dependent tests",
+    "risk-proportionate app/build/UI lane",
+    "independent exact-diff review",
+    "git diff --check",
+    "exact-head required CI"
+  ],
+  "physicalDevice": {
+    "required": false,
+    "reasons": []
+  },
+  "backend": {
+    "sourceRevision": "858d2d7ffd620a7c28cdad5a75007536ccd5b391",
+    "deployedRevision": "unknown",
+    "sourceChange": "none",
+    "deploymentAuthorized": false,
+    "dependency": "Record source, environment, deployed revision, and evidence type separately; a merge is not deployment."
+  },
+  "ownerDecisionGates": [],
+  "git": {
+    "repository": "WillSoltani/Chapterflow-IOS",
+    "branch": "codex/wp-reader-01-reader-state-controls",
+    "worktree": "/private/tmp/Chapterflow-IOS-wp-reader-01",
+    "prTitle": "WP-READER-01: Make reading controls, chapter navigation, and preferences coherent",
+    "target": "main",
+    "focusedPR": true
+  },
+  "mergePredicate": [
+    "all acceptance criteria and invariants pass on exact head",
+    "fresh required local validation passes on exact head",
+    "independent final-diff review has no unresolved P0/P1/P2",
+    "all applicable required GitHub checks succeed",
+    "PR is conflict-free and branch protection/review requirements hold",
+    "base/head drift is reconciled and invalidated gates rerun",
+    "only declared paths/contracts/dependencies changed",
+    "backend deployment and owner/device gates are truthful",
+    "PR is not #117 and frozen branch is untouched"
+  ],
+  "cleanupPredicate": [
+    "GitHub records merge and target contains reviewed change",
+    "post-merge required CI succeeds",
+    "worktree has no live PID/open file",
+    "worktree is clean with no unmerged commit",
+    "remove with git worktree remove, never rm -rf",
+    "delete only merged package-owned local/remote branch when not a stack dependency",
+    "prune only stale package-owned metadata",
+    "reverify target ancestry, worktrees, and primary checkout fingerprint"
+  ],
+  "releaseBoundary": "Development source only. No deployment, App Store, TestFlight, signing/release action, PR #117 mutation, or release-readiness claim."
+}

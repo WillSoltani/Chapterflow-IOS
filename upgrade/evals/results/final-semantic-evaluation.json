@@ -1,0 +1,500 @@
+{
+  "schemaVersion": 1,
+  "evaluation": "final-shared-prompts-round-2",
+  "revisionCluster": "execution-evidence-and-semantic-closure",
+  "evaluatorIdentity": "phase-d-semantic-final-independent",
+  "sources": [
+    {
+      "path": "upgrade/prompts/LANE_RUNNER.md",
+      "sha256": "5388913883faee4ab7f9339225d1545c8b85cb14d69af715e40066e588968a61"
+    },
+    {
+      "path": "upgrade/prompts/RISK_REVIEWER.md",
+      "sha256": "64d7efefdf6cef3261d7fcc5d6e9c54e4368995d7791dfbd9c47e7e18034f110"
+    },
+    {
+      "path": "upgrade/prompts/RECOVERY_AND_RESUME.md",
+      "sha256": "cd5e149bc92848a19b0dc89e73c75258c2386ec4a51c98bda5c8393267132fbf"
+    },
+    {
+      "path": "upgrade/VALIDATION_POLICY.md",
+      "sha256": "68e7869646c58517135a9f9c1c743385e11afe4f66182761c969329b90a8cc6a"
+    },
+    {
+      "path": "upgrade/DELIVERY_POLICY.md",
+      "sha256": "26567e96b7f7fa1bf5c3973fc29adfe361438dc69cd1cb9417aca0b735ab5e73"
+    }
+  ],
+  "summary": {
+    "passed": 20,
+    "failed": 0,
+    "criticalPassed": 20,
+    "criticalFailed": 0,
+    "artifactAssertionsPassed": 40,
+    "artifactAssertionsFailed": 0,
+    "revisionRounds": 2
+  },
+  "results": [
+    {
+      "caseId": "E01",
+      "status": "pass",
+      "evaluatorIdentity": "phase-d-semantic-final-independent",
+      "assertionResults": [
+        {
+          "assertion": "preservation fingerprint recorded",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:61-70",
+            "upgrade/prompts/RECOVERY_AND_RESUME.md:43-49"
+          ]
+        },
+        {
+          "assertion": "only package worktree paths may change",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:37-43",
+            "upgrade/DELIVERY_POLICY.md:36-43"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "E02",
+      "status": "pass",
+      "evaluatorIdentity": "phase-d-semantic-final-independent",
+      "assertionResults": [
+        {
+          "assertion": "remote target SHA and source/time recorded",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:22-24",
+            "upgrade/prompts/LANE_RUNNER.md:67-68"
+          ]
+        },
+        {
+          "assertion": "invalidated gates rerun after base drift",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/RECOVERY_AND_RESUME.md:27-35",
+            "upgrade/DELIVERY_POLICY.md:54-56"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "E03",
+      "status": "pass",
+      "evaluatorIdentity": "phase-d-semantic-final-independent",
+      "assertionResults": [
+        {
+          "assertion": "instruction/skill fingerprints recorded",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:69-70"
+          ]
+        },
+        {
+          "assertion": "package diff excludes owner guidance",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:18-20",
+            "upgrade/prompts/LANE_RUNNER.md:37-43",
+            "upgrade/DELIVERY_POLICY.md:41-43"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "E04",
+      "status": "pass",
+      "evaluatorIdentity": "phase-d-semantic-final-independent",
+      "assertionResults": [
+        {
+          "assertion": "current source/test/commit anchor",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:29-31",
+            "upgrade/prompts/LANE_RUNNER.md:67-68"
+          ]
+        },
+        {
+          "assertion": "backlog excludes duplicate outcome",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:29-31",
+            "upgrade/prompts/LANE_RUNNER.md:57-59"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "E05",
+      "status": "pass",
+      "evaluatorIdentity": "phase-d-semantic-final-independent",
+      "assertionResults": [
+        {
+          "assertion": "owner/lock/PID evidence",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:71-72"
+          ]
+        },
+        {
+          "assertion": "no mutation of overlapping task",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:34-36",
+            "upgrade/prompts/RECOVERY_AND_RESUME.md:31-37",
+            "upgrade/DELIVERY_POLICY.md:25-32"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "E06",
+      "status": "pass",
+      "evaluatorIdentity": "phase-d-semantic-final-independent",
+      "assertionResults": [
+        {
+          "assertion": "tracked/merged package artifact identity",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:25-27",
+            "upgrade/prompts/LANE_RUNNER.md:69-70"
+          ]
+        },
+        {
+          "assertion": "clean or explicitly owned upgrade status",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:25-27"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "E07",
+      "status": "pass",
+      "evaluatorIdentity": "phase-d-semantic-final-independent",
+      "assertionResults": [
+        {
+          "assertion": "live capability path/version check",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:28-29",
+            "upgrade/prompts/LANE_RUNNER.md:69-70"
+          ]
+        },
+        {
+          "assertion": "fallback and authority source recorded",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:95-97",
+            "upgrade/prompts/RISK_REVIEWER.md:32-34"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "E08",
+      "status": "pass",
+      "evaluatorIdentity": "phase-d-semantic-final-independent",
+      "assertionResults": [
+        {
+          "assertion": "decision gate ID",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:71-72",
+            "upgrade/prompts/LANE_RUNNER.md:89-90"
+          ]
+        },
+        {
+          "assertion": "unchanged affected paths",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:89-90"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "E09",
+      "status": "pass",
+      "evaluatorIdentity": "phase-d-semantic-final-independent",
+      "assertionResults": [
+        {
+          "assertion": "source SHA and evidence type",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:73-74"
+          ]
+        },
+        {
+          "assertion": "deployed field remains unknown/blocked",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:73-78",
+            "upgrade/prompts/LANE_RUNNER.md:100-101"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "E10",
+      "status": "pass",
+      "evaluatorIdentity": "phase-d-semantic-final-independent",
+      "assertionResults": [
+        {
+          "assertion": "exact paths/symbols/SHAs",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:73-74",
+            "upgrade/prompts/LANE_RUNNER.md:91-92",
+            "upgrade/prompts/RISK_REVIEWER.md:13-18"
+          ]
+        },
+        {
+          "assertion": "canonical fixture and conflict disposition",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:91-94"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "E11",
+      "status": "pass",
+      "evaluatorIdentity": "phase-d-semantic-final-independent",
+      "assertionResults": [
+        {
+          "assertion": "failing command/output preserved",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:75-76",
+            "upgrade/prompts/RECOVERY_AND_RESUME.md:24-28",
+            "upgrade/prompts/RECOVERY_AND_RESUME.md:43-49"
+          ]
+        },
+        {
+          "assertion": "post-fix invalidated gates rerun",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:49-51",
+            "upgrade/VALIDATION_POLICY.md:19-23"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "E12",
+      "status": "pass",
+      "evaluatorIdentity": "phase-d-semantic-final-independent",
+      "assertionResults": [
+        {
+          "assertion": "diagnosis and environment recorded",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:75-76",
+            "upgrade/prompts/RECOVERY_AND_RESUME.md:24-30"
+          ]
+        },
+        {
+          "assertion": "both attempts retained",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/VALIDATION_POLICY.md:42-46",
+            "upgrade/VALIDATION_POLICY.md:170-173"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "E13",
+      "status": "pass",
+      "evaluatorIdentity": "phase-d-semantic-final-independent",
+      "assertionResults": [
+        {
+          "assertion": "envelope comparison",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:71-72"
+          ]
+        },
+        {
+          "assertion": "new package/decision or unchanged extra paths",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:98-99"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "E14",
+      "status": "pass",
+      "evaluatorIdentity": "phase-d-semantic-final-independent",
+      "assertionResults": [
+        {
+          "assertion": "reviewed SHA equals checked SHA",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:77-78",
+            "upgrade/VALIDATION_POLICY.md:19-23",
+            "upgrade/DELIVERY_POLICY.md:38-43"
+          ]
+        },
+        {
+          "assertion": "drift reconciliation and reruns",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/RECOVERY_AND_RESUME.md:33-35",
+            "upgrade/DELIVERY_POLICY.md:54-56"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "E15",
+      "status": "pass",
+      "evaluatorIdentity": "phase-d-semantic-final-independent",
+      "assertionResults": [
+        {
+          "assertion": "finding identities/dispositions",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:75-76",
+            "upgrade/prompts/RISK_REVIEWER.md:32-37"
+          ]
+        },
+        {
+          "assertion": "no unresolved P0/P1/P2",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/RISK_REVIEWER.md:70",
+            "upgrade/DELIVERY_POLICY.md:51-54"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "E16",
+      "status": "pass",
+      "evaluatorIdentity": "phase-d-semantic-final-independent",
+      "assertionResults": [
+        {
+          "assertion": "PR head/merge/target SHAs",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:77-78",
+            "upgrade/DELIVERY_POLICY.md:65-69"
+          ]
+        },
+        {
+          "assertion": "required check/run IDs and post-merge result",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/DELIVERY_POLICY.md:67-69"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "E17",
+      "status": "pass",
+      "evaluatorIdentity": "phase-d-semantic-final-independent",
+      "assertionResults": [
+        {
+          "assertion": "PID/open-file/clean/ancestry checks",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:79-80",
+            "upgrade/DELIVERY_POLICY.md:76-84"
+          ]
+        },
+        {
+          "assertion": "post-clean worktree/branch verification",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/DELIVERY_POLICY.md:78-84"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "E18",
+      "status": "pass",
+      "evaluatorIdentity": "phase-d-semantic-final-independent",
+      "assertionResults": [
+        {
+          "assertion": "checkpoint base/head/diff/stage",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/RECOVERY_AND_RESUME.md:8-15",
+            "upgrade/prompts/RECOVERY_AND_RESUME.md:45-49"
+          ]
+        },
+        {
+          "assertion": "reusable versus invalidated gates",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/RECOVERY_AND_RESUME.md:27-28",
+            "upgrade/prompts/RECOVERY_AND_RESUME.md:45-49"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "E19",
+      "status": "pass",
+      "evaluatorIdentity": "phase-d-semantic-final-independent",
+      "assertionResults": [
+        {
+          "assertion": "backend merge SHA",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:77-78",
+            "upgrade/DELIVERY_POLICY.md:65-67"
+          ]
+        },
+        {
+          "assertion": "deployed revision/environment unchanged",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:73-80",
+            "upgrade/DELIVERY_POLICY.md:47-49",
+            "upgrade/DELIVERY_POLICY.md:58"
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "E20",
+      "status": "pass",
+      "evaluatorIdentity": "phase-d-semantic-final-independent",
+      "assertionResults": [
+        {
+          "assertion": "release exclusion cited",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/LANE_RUNNER.md:79-80",
+            "upgrade/prompts/LANE_RUNNER.md:100-101"
+          ]
+        },
+        {
+          "assertion": "no external/release mutation",
+          "status": "pass",
+          "evidenceAnchors": [
+            "upgrade/prompts/RECOVERY_AND_RESUME.md:36-37",
+            "upgrade/DELIVERY_POLICY.md:5-8"
+          ]
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "This establishes independent static semantic instruction coverage, not product/runtime proof.",
+    "All expected behaviors remained unchanged; the final bounded revision closed execution and evidence gaps without relaxing a case.",
+    "The evaluator performed read-only review and did not modify files, Git state, or GitHub state."
+  ]
+}

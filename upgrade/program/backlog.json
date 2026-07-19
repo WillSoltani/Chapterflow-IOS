@@ -1,0 +1,694 @@
+{
+  "schemaVersion": 1,
+  "program": "chapterflow-ios-upgrade",
+  "state": "planned-not-started",
+  "verifiedBase": {
+    "ios": "22da44d27bc18771f4d7db7681e17c10970ccb13",
+    "backendSource": "858d2d7ffd620a7c28cdad5a75007536ccd5b391",
+    "backendDeployed": "unknown",
+    "cutoff": "2026-07-18"
+  },
+  "counts": {
+    "workstreams": 11,
+    "packages": 24,
+    "decisions": 5,
+    "evaluationCases": 20
+  },
+  "readySelection": {
+    "algorithm": [
+      "base status == planned and live status is not-yet-integrated or evidence-backed reopened",
+      "package is not superseded; integrated proof is excluded unless a valid reopen record invalidates it",
+      "all blockedBy packages are integrated on the live target",
+      "owner decisions resolved",
+      "no active path, atomic package claim, or resource-lock collision",
+      "base and live instructions revalidated",
+      "sort by priority, integrationOrder, id"
+    ],
+    "initialReady": [
+      "WP-REC-01"
+    ],
+    "transitionAssertions": [
+      {
+        "name": "initial",
+        "integrated": [],
+        "expectedReady": [
+          "WP-REC-01"
+        ]
+      },
+      {
+        "name": "after-recovery",
+        "integrated": [
+          "WP-REC-01"
+        ],
+        "expectedReady": [
+          "WP-CONTRACT-02",
+          "WP-NATIVE-01",
+          "WP-HARD-01"
+        ]
+      },
+      {
+        "name": "reopen-protocol",
+        "integrated": "ALL_PACKAGES",
+        "reopened": [
+          "WP-CATALOG-01"
+        ],
+        "expectedReady": [
+          "WP-CATALOG-01"
+        ]
+      }
+    ],
+    "maximumConcurrentEditors": 2,
+    "reopenRecordSchema": {
+      "location": "$CHAPTERFLOW_EVIDENCE_ROOT/reopen/<package-id>/<head-set-digest>/reopen.json",
+      "writer": "root scheduler only; package lanes and product worktrees are read-only",
+      "immutable": true,
+      "requiredFields": [
+        "schemaVersion",
+        "packageId",
+        "failedQualificationPackage",
+        "defectId",
+        "candidateRepoHeads",
+        "evidenceAnchors",
+        "declaredVersusObservedEnvelope",
+        "invalidatedGates",
+        "ownerAndLockDisposition",
+        "observedAt"
+      ],
+      "rules": [
+        "only an existing non-superseded package ID may reopen",
+        "the original allowed paths, roots, locks, contracts, migrations, authorization, and outcome remain unchanged",
+        "scope expansion requires a reviewed plan revision before editing",
+        "integration proof and every named downstream gate are invalid until rerun on the remediated exact head set"
+      ]
+    }
+  },
+  "packages": [
+    {
+      "id": "WP-REC-01",
+      "title": "Reconcile live work and install external evidence capture",
+      "outcome": "Every active or dirty ChapterFlow worktree, branch, and open PR is classified against current main without touching owner work, and one tested standard runner binds all later package commands and artifacts to an external multi-repository head-set evidence root.",
+      "riskTier": "R2",
+      "priority": "P0",
+      "status": "planned",
+      "workstream": "01-current-work-recovery",
+      "blockedBy": [],
+      "blocks": [
+        "WP-CONTRACT-02",
+        "WP-NATIVE-01",
+        "WP-HARD-01"
+      ],
+      "criticalPath": true,
+      "integrationOrder": 0,
+      "resourceLocks": [],
+      "ownerDecisionGates": []
+    },
+    {
+      "id": "WP-CONTRACT-02",
+      "title": "Pin executable contracts for the broken central-loop operations",
+      "outcome": "Account deletion, Ask, narration-plan, and notebook operations have source-derived canonical fixtures and drift checks that expose every iOS/backend incompatibility before feature implementation.",
+      "riskTier": "R3",
+      "priority": "P0",
+      "status": "planned",
+      "workstream": "02-contracts-and-foundations",
+      "blockedBy": [
+        "WP-REC-01"
+      ],
+      "blocks": [
+        "WP-AUTH-02",
+        "WP-ACCOUNT-02",
+        "WP-CATALOG-01",
+        "WP-READER-01",
+        "WP-ANNOTATE-01",
+        "WP-ASK-01",
+        "WP-LEARN-01",
+        "WP-AUDIO-01",
+        "WP-OFFLINE-01",
+        "WP-EXT-01",
+        "WP-ENGAGE-01",
+        "WP-GRAPH-01",
+        "WP-SOCIAL-01"
+      ],
+      "criticalPath": true,
+      "integrationOrder": 1,
+      "resourceLocks": [
+        "contract-inventory"
+      ],
+      "ownerDecisionGates": []
+    },
+    {
+      "id": "WP-NATIVE-01",
+      "title": "Establish deterministic native evidence and accessibility foundations",
+      "outcome": "ChapterFlow has meaningful visual/accessibility/localization evidence plus shared focus, announcement, touch-target, motion, contrast, and state primitives that later feature packages consume without forking.",
+      "riskTier": "R2",
+      "priority": "P0",
+      "status": "planned",
+      "workstream": "03-native-design-accessibility-localization",
+      "blockedBy": [
+        "WP-REC-01"
+      ],
+      "blocks": [
+        "WP-SHELL-02",
+        "WP-AUTH-02",
+        "WP-ENTRY-01",
+        "WP-PAYWALL-01",
+        "WP-CATALOG-01",
+        "WP-READER-01",
+        "WP-ASK-01",
+        "WP-LEARN-01",
+        "WP-NOTIFY-01",
+        "WP-EXT-01",
+        "WP-ENGAGE-01",
+        "WP-GRAPH-01",
+        "WP-SOCIAL-01"
+      ],
+      "criticalPath": true,
+      "integrationOrder": 1,
+      "resourceLocks": [
+        "xcode-project",
+        "simulator-device"
+      ],
+      "ownerDecisionGates": []
+    },
+    {
+      "id": "WP-SHELL-02",
+      "title": "Compose the approved adaptive editorial app shell",
+      "outcome": "After D-IA-01, the app shell gives each top-level destination one role, composes feature-owned routes exactly once, and adapts compact/regular-width navigation without duplicating feature state or regressing iOS 18 outcomes.",
+      "riskTier": "R2",
+      "priority": "P1",
+      "status": "planned",
+      "workstream": "03-native-design-accessibility-localization",
+      "blockedBy": [
+        "WP-NATIVE-01",
+        "WP-AUTH-02",
+        "WP-CATALOG-01"
+      ],
+      "blocks": [
+        "WP-LOOP-01",
+        "WP-JOURNEY-01"
+      ],
+      "criticalPath": false,
+      "integrationOrder": 4,
+      "resourceLocks": [
+        "composition-root"
+      ],
+      "ownerDecisionGates": [
+        "D-IA-01"
+      ]
+    },
+    {
+      "id": "WP-AUTH-02",
+      "title": "Align Keychain scope and reauthentication truth",
+      "outcome": "The main entitlement source, AuthKit session, and Persistence Keychain queries share one fail-closed configuration; recent-auth and account isolation are production-completable, simulator/static proof is complete, and signed runtime proof is deferred to final device qualification.",
+      "riskTier": "R3",
+      "priority": "P0",
+      "status": "planned",
+      "workstream": "04-identity-account-entitlements",
+      "blockedBy": [
+        "WP-CONTRACT-02",
+        "WP-NATIVE-01"
+      ],
+      "blocks": [
+        "WP-ACCOUNT-02",
+        "WP-SHELL-02"
+      ],
+      "criticalPath": true,
+      "integrationOrder": 2,
+      "resourceLocks": [
+        "xcode-project"
+      ],
+      "ownerDecisionGates": []
+    },
+    {
+      "id": "WP-ACCOUNT-02",
+      "title": "Make account deletion and backend account status fail closed",
+      "outcome": "Deletion sends the exact confirmed recent-auth contract, backend account-status failure cannot authorize access, lifecycle states remain truthful, and Settings exposes App Lock only under a complete approved enforcement/recovery policy.",
+      "riskTier": "R3",
+      "priority": "P0",
+      "status": "planned",
+      "workstream": "04-identity-account-entitlements",
+      "blockedBy": [
+        "WP-AUTH-02",
+        "WP-CONTRACT-02"
+      ],
+      "blocks": [
+        "WP-LOOP-01",
+        "WP-OFFLINE-01",
+        "WP-EXT-01",
+        "WP-NOTIFY-01",
+        "WP-ENTRY-01",
+        "WP-PAYWALL-01",
+        "WP-SOCIAL-01"
+      ],
+      "criticalPath": true,
+      "integrationOrder": 3,
+      "resourceLocks": [
+        "backend-repo"
+      ],
+      "ownerDecisionGates": [
+        "D-LOCK-01"
+      ]
+    },
+    {
+      "id": "WP-ENTRY-01",
+      "title": "Make onboarding durable, adaptive, and localized",
+      "outcome": "First-use onboarding preserves one durable current step and truthful permission/session state across interruption, relaunch, account transition, compact and regular widths, real localization, accessibility sizes, RTL, and recovery states.",
+      "riskTier": "R2",
+      "priority": "P1",
+      "status": "planned",
+      "workstream": "04-identity-account-entitlements",
+      "blockedBy": [
+        "WP-NATIVE-01",
+        "WP-ACCOUNT-02"
+      ],
+      "blocks": [
+        "WP-JOURNEY-01"
+      ],
+      "criticalPath": false,
+      "integrationOrder": 4,
+      "resourceLocks": [],
+      "ownerDecisionGates": []
+    },
+    {
+      "id": "WP-PAYWALL-01",
+      "title": "Make paywall and entitlement reconciliation truthful",
+      "outcome": "Purchase, restore, pending, cancellation, offline, and already-Pro surfaces remain distinct while only verified server entitlement grants Pro; the flow is account-isolated, adaptive, accessible, and genuinely localized.",
+      "riskTier": "R3",
+      "priority": "P1",
+      "status": "planned",
+      "workstream": "04-identity-account-entitlements",
+      "blockedBy": [
+        "WP-NATIVE-01",
+        "WP-ACCOUNT-02"
+      ],
+      "blocks": [
+        "WP-JOURNEY-01"
+      ],
+      "criticalPath": false,
+      "integrationOrder": 4,
+      "resourceLocks": [],
+      "ownerDecisionGates": []
+    },
+    {
+      "id": "WP-CATALOG-01",
+      "title": "Complete the resilient catalog-to-detail journey",
+      "outcome": "Home, Library, Search, Discover, and Book Detail form one resilient LibraryFeature journey: cached/partial content survives independent failure, controls are unambiguous, stale work is rejected, and typed Start or Continue preserves exact identity without deciding top-level information architecture.",
+      "riskTier": "R2",
+      "priority": "P1",
+      "status": "planned",
+      "workstream": "05-catalog-discovery",
+      "blockedBy": [
+        "WP-NATIVE-01",
+        "WP-CONTRACT-02"
+      ],
+      "blocks": [
+        "WP-SHELL-02",
+        "WP-LOOP-01"
+      ],
+      "criticalPath": true,
+      "integrationOrder": 2,
+      "resourceLocks": [],
+      "ownerDecisionGates": []
+    },
+    {
+      "id": "WP-READER-01",
+      "title": "Make reading controls, chapter navigation, and preferences coherent",
+      "outcome": "Reader state has one owner; chapter/tone/depth/preference work cancels safely; controls remain reachable and accessible; chapter navigation preserves exact context across background, relaunch, and size changes.",
+      "riskTier": "R2",
+      "priority": "P1",
+      "status": "planned",
+      "workstream": "06-reader-annotations-ai",
+      "blockedBy": [
+        "WP-NATIVE-01",
+        "WP-CONTRACT-02"
+      ],
+      "blocks": [
+        "WP-ANNOTATE-01",
+        "WP-ASK-01",
+        "WP-LOOP-01",
+        "WP-AUDIO-01"
+      ],
+      "criticalPath": true,
+      "integrationOrder": 2,
+      "resourceLocks": [],
+      "ownerDecisionGates": []
+    },
+    {
+      "id": "WP-ANNOTATE-01",
+      "title": "Align notes, highlights, and bookmarks with one durable contract",
+      "outcome": "Notes, highlights, and bookmarks use one account-scoped mutation owner and a verified backend-compatible contract; offline writes remain recoverable and UI reports queued/syncing/failed/synced truthfully.",
+      "riskTier": "R3",
+      "priority": "P1",
+      "status": "planned",
+      "workstream": "06-reader-annotations-ai",
+      "blockedBy": [
+        "WP-CONTRACT-02",
+        "WP-READER-01"
+      ],
+      "blocks": [
+        "WP-LOOP-01",
+        "WP-OFFLINE-01"
+      ],
+      "criticalPath": false,
+      "integrationOrder": 3,
+      "resourceLocks": [
+        "persistence-schema"
+      ],
+      "ownerDecisionGates": [
+        "D-ANNOTATION-01"
+      ]
+    },
+    {
+      "id": "WP-ASK-01",
+      "title": "Make Ask streaming, privacy, and citations exact",
+      "outcome": "Ask uses the verified canonical transport and intended book/chapter/selection context, streams cancellation-safely, exposes quota/offline/error states, and routes each citation to an exact valid source.",
+      "riskTier": "R3",
+      "priority": "P1",
+      "status": "planned",
+      "workstream": "06-reader-annotations-ai",
+      "blockedBy": [
+        "WP-CONTRACT-02",
+        "WP-NATIVE-01",
+        "WP-READER-01"
+      ],
+      "blocks": [
+        "WP-LOOP-01",
+        "WP-AUDIO-01",
+        "WP-GRAPH-01"
+      ],
+      "criticalPath": false,
+      "integrationOrder": 3,
+      "resourceLocks": [
+        "contract-inventory"
+      ],
+      "ownerDecisionGates": []
+    },
+    {
+      "id": "WP-LEARN-01",
+      "title": "Unify server-graded quiz and durable review mutations",
+      "outcome": "Quiz and spaced review use server authority, a single durable mutation owner, explicit offline/pending grading, stable attempt identity, and truthful progress without optimistic local pass or duplicate submission.",
+      "riskTier": "R3",
+      "priority": "P1",
+      "status": "planned",
+      "workstream": "07-learning-progress-resume",
+      "blockedBy": [
+        "WP-CONTRACT-02",
+        "WP-NATIVE-01"
+      ],
+      "blocks": [
+        "WP-LOOP-01",
+        "WP-OFFLINE-01",
+        "WP-ENGAGE-01"
+      ],
+      "criticalPath": false,
+      "integrationOrder": 3,
+      "resourceLocks": [
+        "persistence-schema"
+      ],
+      "ownerDecisionGates": []
+    },
+    {
+      "id": "WP-LOOP-01",
+      "title": "Compose the complete learning loop and exact durable resume",
+      "outcome": "Read/listen, annotate/Ask, quiz/review, progress refresh, next chapter, relaunch, deep link, and exact resume are composed once through narrow owners with no stale or duplicate transition.",
+      "riskTier": "R3",
+      "priority": "P0",
+      "status": "planned",
+      "workstream": "07-learning-progress-resume",
+      "blockedBy": [
+        "WP-ACCOUNT-02",
+        "WP-CATALOG-01",
+        "WP-READER-01",
+        "WP-ANNOTATE-01",
+        "WP-ASK-01",
+        "WP-LEARN-01",
+        "WP-AUDIO-01",
+        "WP-ENGAGE-01",
+        "WP-SHELL-02"
+      ],
+      "blocks": [
+        "WP-JOURNEY-01"
+      ],
+      "criticalPath": true,
+      "integrationOrder": 6,
+      "resourceLocks": [
+        "composition-root"
+      ],
+      "ownerDecisionGates": []
+    },
+    {
+      "id": "WP-AUDIO-01",
+      "title": "Align narration and harden background playback",
+      "outcome": "Narration plans decode the verified contract; one media-state owner handles streaming, expired URLs, interruption, route change, backgrounding, cancellation, progress, and text-reading fallback truthfully.",
+      "riskTier": "R3",
+      "priority": "P1",
+      "status": "planned",
+      "workstream": "08-media-offline",
+      "blockedBy": [
+        "WP-CONTRACT-02",
+        "WP-READER-01",
+        "WP-ASK-01"
+      ],
+      "blocks": [
+        "WP-LOOP-01",
+        "WP-GRAPH-01"
+      ],
+      "criticalPath": true,
+      "integrationOrder": 4,
+      "resourceLocks": [
+        "contract-inventory"
+      ],
+      "ownerDecisionGates": []
+    },
+    {
+      "id": "WP-OFFLINE-01",
+      "title": "Make downloads and offline synchronization restorable",
+      "outcome": "Book assets, progress, and eligible mutations download/sync with stable identities, truthful state, bounded storage, resume/relaunch recovery, safe eviction, and no premature completion or silent loss.",
+      "riskTier": "R3",
+      "priority": "P1",
+      "status": "planned",
+      "workstream": "08-media-offline",
+      "blockedBy": [
+        "WP-ACCOUNT-02",
+        "WP-CONTRACT-02",
+        "WP-ANNOTATE-01",
+        "WP-LEARN-01",
+        "WP-EXT-01"
+      ],
+      "blocks": [
+        "WP-JOURNEY-01"
+      ],
+      "criticalPath": false,
+      "integrationOrder": 5,
+      "resourceLocks": [
+        "persistence-schema"
+      ],
+      "ownerDecisionGates": []
+    },
+    {
+      "id": "WP-EXT-01",
+      "title": "Make extension process data owner-safe and transactional",
+      "outcome": "Inbound Share/Action items remain durable and import-before-clear under approved attribution, while outbound widget/shared snapshots carry explicit opaque ownership; every cross-process envelope is versioned, account-safe, recoverable, and truthful.",
+      "riskTier": "R3",
+      "priority": "P1",
+      "status": "planned",
+      "workstream": "09-routing-notifications-extensions",
+      "blockedBy": [
+        "WP-ACCOUNT-02",
+        "WP-CONTRACT-02",
+        "WP-NATIVE-01"
+      ],
+      "blocks": [
+        "WP-ENGAGE-01",
+        "WP-NOTIFY-01",
+        "WP-OFFLINE-01",
+        "WP-JOURNEY-01"
+      ],
+      "criticalPath": false,
+      "integrationOrder": 4,
+      "resourceLocks": [
+        "persistence-schema"
+      ],
+      "ownerDecisionGates": [
+        "D-DATA-01"
+      ]
+    },
+    {
+      "id": "WP-NOTIFY-01",
+      "title": "Complete exact notification, widget, and Live Activity routing",
+      "outcome": "APNs registration state remains acknowledged and retryable; notification actions, widgets, Spotlight/Handoff, and Live Activities carry complete owner/destination identity and replay exactly once after auth.",
+      "riskTier": "R3",
+      "priority": "P1",
+      "status": "planned",
+      "workstream": "09-routing-notifications-extensions",
+      "blockedBy": [
+        "WP-ACCOUNT-02",
+        "WP-NATIVE-01",
+        "WP-EXT-01",
+        "WP-ENGAGE-01"
+      ],
+      "blocks": [
+        "WP-JOURNEY-01"
+      ],
+      "criticalPath": false,
+      "integrationOrder": 6,
+      "resourceLocks": [
+        "xcode-project"
+      ],
+      "ownerDecisionGates": []
+    },
+    {
+      "id": "WP-ENGAGE-01",
+      "title": "Make engagement surfaces adaptive, owner-safe, and exactly routed",
+      "outcome": "Dashboard, daily goal, charts, journeys, and seasonal events use restrained adaptive UI, truthful reward/progress authority, owner-bound shared snapshots, semantic summaries, and exact or truthfully unavailable routes without owning Concept Graph interaction.",
+      "riskTier": "R2",
+      "priority": "P1",
+      "status": "planned",
+      "workstream": "10-engagement-community",
+      "blockedBy": [
+        "WP-NATIVE-01",
+        "WP-CONTRACT-02",
+        "WP-EXT-01",
+        "WP-LEARN-01"
+      ],
+      "blocks": [
+        "WP-LOOP-01",
+        "WP-NOTIFY-01",
+        "WP-JOURNEY-01"
+      ],
+      "criticalPath": false,
+      "integrationOrder": 5,
+      "resourceLocks": [
+        "composition-root"
+      ],
+      "ownerDecisionGates": [
+        "D-SURFACE-01"
+      ]
+    },
+    {
+      "id": "WP-GRAPH-01",
+      "title": "Make Concept Graph understandable and operable",
+      "outcome": "Concept Graph offers a synchronized semantic outline, deterministic selection/zoom/reset, adaptive layout, and complete keyboard and VoiceOver operation without making reward or learning-authority claims.",
+      "riskTier": "R2",
+      "priority": "P1",
+      "status": "planned",
+      "workstream": "10-engagement-community",
+      "blockedBy": [
+        "WP-NATIVE-01",
+        "WP-CONTRACT-02",
+        "WP-ASK-01",
+        "WP-AUDIO-01"
+      ],
+      "blocks": [
+        "WP-JOURNEY-01"
+      ],
+      "criticalPath": false,
+      "integrationOrder": 5,
+      "resourceLocks": [],
+      "ownerDecisionGates": []
+    },
+    {
+      "id": "WP-SOCIAL-01",
+      "title": "Make community and moderation surfaces truthful and safe",
+      "outcome": "Every visible profile/pair/gift/referral/safety action has a verified backend contract and server authority, or is removed/disabled with truthful explanation; block/report privacy and failure behavior fail closed.",
+      "riskTier": "R3",
+      "priority": "P1",
+      "status": "planned",
+      "workstream": "10-engagement-community",
+      "blockedBy": [
+        "WP-ACCOUNT-02",
+        "WP-CONTRACT-02",
+        "WP-NATIVE-01"
+      ],
+      "blocks": [
+        "WP-JOURNEY-01"
+      ],
+      "criticalPath": false,
+      "integrationOrder": 4,
+      "resourceLocks": [
+        "backend-repo"
+      ],
+      "ownerDecisionGates": [
+        "D-SURFACE-01"
+      ]
+    },
+    {
+      "id": "WP-HARD-01",
+      "title": "Harden risk-selective development CI and its supply chain",
+      "outcome": "Required development CI selects complete risk-appropriate lanes with tested event planning, least privilege, immutable action refs, safe caches/artifacts, stable check identity, and no release coupling or hidden skip.",
+      "riskTier": "R3",
+      "priority": "P2",
+      "status": "planned",
+      "workstream": "11-qualification-performance-security-ci",
+      "blockedBy": [
+        "WP-REC-01"
+      ],
+      "blocks": [
+        "WP-JOURNEY-01"
+      ],
+      "criticalPath": false,
+      "integrationOrder": 1,
+      "resourceLocks": [
+        "ci-workflows"
+      ],
+      "ownerDecisionGates": []
+    },
+    {
+      "id": "WP-JOURNEY-01",
+      "title": "Qualify the deterministic simulator product journey",
+      "outcome": "The complete central loop and applicable adverse states pass deterministic simulator automation and the native evidence matrix on an immutable candidate revision; simulator-insufficient claims remain for WP-DEVICE-01.",
+      "riskTier": "R3",
+      "priority": "P0",
+      "status": "planned",
+      "workstream": "11-qualification-performance-security-ci",
+      "blockedBy": [
+        "WP-SHELL-02",
+        "WP-ENTRY-01",
+        "WP-PAYWALL-01",
+        "WP-LOOP-01",
+        "WP-OFFLINE-01",
+        "WP-EXT-01",
+        "WP-NOTIFY-01",
+        "WP-ENGAGE-01",
+        "WP-GRAPH-01",
+        "WP-SOCIAL-01",
+        "WP-HARD-01"
+      ],
+      "blocks": [
+        "WP-DEVICE-01"
+      ],
+      "criticalPath": true,
+      "integrationOrder": 7,
+      "resourceLocks": [
+        "simulator-device"
+      ],
+      "ownerDecisionGates": []
+    },
+    {
+      "id": "WP-DEVICE-01",
+      "title": "Qualify signed-device behavior and exact-final performance",
+      "outcome": "The immutable final development candidate is measured on approved signed devices for Keychain/SIWA, APNs/widgets/extensions, audio/background/interruption, real-network transitions, memory, energy, launch, scrolling, images, downloads, and operator-observed VoiceOver behavior; every result is passed, failed, or blocked without a release claim.",
+      "riskTier": "R3",
+      "priority": "P0",
+      "status": "planned",
+      "workstream": "11-qualification-performance-security-ci",
+      "blockedBy": [
+        "WP-JOURNEY-01"
+      ],
+      "blocks": [],
+      "criticalPath": true,
+      "integrationOrder": 8,
+      "resourceLocks": [
+        "simulator-device"
+      ],
+      "ownerDecisionGates": []
+    }
+  ],
+  "ownerDecisions": [
+    "D-IA-01",
+    "D-DATA-01",
+    "D-SURFACE-01",
+    "D-LOCK-01",
+    "D-ANNOTATION-01"
+  ],
+  "releaseExcluded": true
+}

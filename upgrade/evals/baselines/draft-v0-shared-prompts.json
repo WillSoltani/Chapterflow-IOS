@@ -1,0 +1,180 @@
+{
+  "schemaVersion": 1,
+  "baseline": "draft-v0-shared-prompts",
+  "sources": [
+    {
+      "path": "upgrade/prompts/LANE_RUNNER.md",
+      "sha256": "9ea6fe78a551cadb87ed3a41472e32a031e21fd21db2e1e7f2502ae7dd6f0728",
+      "analysis": {
+        "tokens": 763,
+        "words": 377,
+        "lines": 72,
+        "clarity": 92,
+        "structure": 100,
+        "examples": 1
+      }
+    },
+    {
+      "path": "upgrade/prompts/RISK_REVIEWER.md",
+      "sha256": "794e5753bc0824cccc47dcd120afee2a691d733d47b5552e7a176954116c345f",
+      "analysis": {
+        "tokens": 528,
+        "words": 260,
+        "lines": 64,
+        "clarity": 95,
+        "structure": 90,
+        "examples": 0
+      }
+    },
+    {
+      "path": "upgrade/prompts/RECOVERY_AND_RESUME.md",
+      "sha256": "36f36e1a2a01d5cdd4dc83e85129771e301f2fc17b0f768705ed13ceec3d7d98",
+      "analysis": {
+        "tokens": 508,
+        "words": 254,
+        "lines": 51,
+        "clarity": 89,
+        "structure": 90,
+        "examples": 0
+      }
+    }
+  ],
+  "semantic": {
+    "passed": 19,
+    "failed": 1,
+    "results": [
+      {
+        "caseId": "E01",
+        "status": "pass",
+        "reason": "Required behavior is explicit across the shared prompt and referenced validation/delivery policies.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E02",
+        "status": "pass",
+        "reason": "Required behavior is explicit across the shared prompt and referenced validation/delivery policies.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E03",
+        "status": "pass",
+        "reason": "Required behavior is explicit across the shared prompt and referenced validation/delivery policies.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E04",
+        "status": "pass",
+        "reason": "Required behavior is explicit across the shared prompt and referenced validation/delivery policies.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E05",
+        "status": "pass",
+        "reason": "Required behavior is explicit across the shared prompt and referenced validation/delivery policies.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E06",
+        "status": "fail",
+        "reason": "Draft runner did not explicitly distinguish merged/tracked upgrade artifacts from unrelated uncommitted upgrade content.",
+        "evidenceAnchor": "missing explicit behavior in evaluated prompt"
+      },
+      {
+        "caseId": "E07",
+        "status": "pass",
+        "reason": "Required behavior is explicit across the shared prompt and referenced validation/delivery policies.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E08",
+        "status": "pass",
+        "reason": "Required behavior is explicit across the shared prompt and referenced validation/delivery policies.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E09",
+        "status": "pass",
+        "reason": "Required behavior is explicit across the shared prompt and referenced validation/delivery policies.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E10",
+        "status": "pass",
+        "reason": "Required behavior is explicit across the shared prompt and referenced validation/delivery policies.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E11",
+        "status": "pass",
+        "reason": "Required behavior is explicit across the shared prompt and referenced validation/delivery policies.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E12",
+        "status": "pass",
+        "reason": "Required behavior is explicit across the shared prompt and referenced validation/delivery policies.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E13",
+        "status": "pass",
+        "reason": "Required behavior is explicit across the shared prompt and referenced validation/delivery policies.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E14",
+        "status": "pass",
+        "reason": "Required behavior is explicit across the shared prompt and referenced validation/delivery policies.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E15",
+        "status": "pass",
+        "reason": "Required behavior is explicit across the shared prompt and referenced validation/delivery policies.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E16",
+        "status": "pass",
+        "reason": "Required behavior is explicit across the shared prompt and referenced validation/delivery policies.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E17",
+        "status": "pass",
+        "reason": "Required behavior is explicit across the shared prompt and referenced validation/delivery policies.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E18",
+        "status": "pass",
+        "reason": "Required behavior is explicit across the shared prompt and referenced validation/delivery policies.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E19",
+        "status": "pass",
+        "reason": "Required behavior is explicit across the shared prompt and referenced validation/delivery policies.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      },
+      {
+        "caseId": "E20",
+        "status": "pass",
+        "reason": "Required behavior is explicit across the shared prompt and referenced validation/delivery policies.",
+        "evidenceAnchor": "prompt text plus controlling policy"
+      }
+    ]
+  },
+  "failureCluster": {
+    "id": "ownership-and-preservation",
+    "cases": [
+      "E06"
+    ],
+    "plannedRevision": "Add an explicit tracked/merged package-artifact and uncommitted-upgrade-drift start gate to LANE_RUNNER only."
+  },
+  "evaluator": "root static semantic evaluation before prompt revision",
+  "limitations": [
+    "Static prompt interpretation, not a model-execution benchmark.",
+    "Hashes preserve draft-v0 identity; operational prompts will be revised in place."
+  ]
+}
