@@ -98,9 +98,35 @@ support, and assigns each claim to a named primary group or an exact reviewed no
 planned-file allocations must sum exactly to `plannedFiles`. WP-NATIVE-01 additionally binds its
 parked immutable candidate base, head, tree, canonical binary-diff digest, and sorted exact path
 manifest with a mandatory `known-red-scope-only-not-runtime-approved` disposition; the binding proves
-scope and identity only, never runtime correctness or approval. The validator's `--package-diff` mode
-verifies those paths against each group allocation and the unchanged file/root maxima. A primary group normally resolves to one filesystem implementation
-root. The sole approved multi-directory group is WP-EXT-01's `extension-transaction-boundary`, containing exactly
+scope and identity only, never runtime correctness or approval. Its reviewed cap-neutral
+`pathReplacement` preserves that historical binding while exchanging exactly
+`scripts/localization/scenarios.json` for
+`scripts/localization/NativeExtensionEvidenceHost.swift`. The complete localization schema and
+static oracle move under `scripts/visual/native-matrix.json#localizationMatrix`; the retained
+`scripts/localization/validate_matrix.py` and exact AC07 project-membership validator remain in the
+future 20-path manifest. Strict historical candidate validation uses the immutable before manifest;
+ordinary future `--package-diff` validation requires exact equality with the reviewed after manifest,
+not merely any 20 files that match the same globs. Both manifests preserve the same per-claim
+allocations and unchanged file/root maxima.
+
+The extension evidence host remains validation tooling under the existing
+`scripts/localization/**` claim, not a production implementation root or a second validation-support
+root. One explicit project file reference belongs only to the Share and Action extension source
+phases, with mutually exclusive target compiler flags. Ordinary Debug and Release builds exclude the
+host and retain the production controllers. A guarded Debug evidence build supplies
+`CF_NATIVE_EXTENSION_EVIDENCE_BUILD`, includes the host, and uses
+`EXCLUDED_SOURCE_FILE_NAMES` through `CF_NATIVE_EXTENSION_EXCLUDED_SOURCES` to exclude
+`ShareViewController.swift` and `ActionViewController.swift`; the host then provides principal classes
+with the unchanged names and instantiates only the target-local DEBUG fixture seams. The existing
+controllers, Info.plists, writer paths, scheme, main app, and UI-test bundle remain outside NATIVE
+ownership. Runtime evidence must build and install the containing app with the real
+`ShareExtension.appex` and `ActionExtension.appex`, invoke each through a containing/system host and
+system extension UI, and observe the extension process. Source scanning, main app or UI-test bundle
+source imports, and static fixture claims cannot satisfy that matrix. Fixture artifacts always state
+`stateSource=fixture` and `transactionClaim=none` and never prove a write, durability, production
+success, dismissal, or app opening.
+
+A primary group normally resolves to one filesystem implementation root. The sole approved multi-directory group is WP-EXT-01's `extension-transaction-boundary`, containing exactly
 `SharedExtensionKit/**`, `ShareExtension/ShareViewController.swift`, and
 `ActionExtension/ActionViewController.swift`. Those controllers are thin production adapters for
 the same result-bearing durable-capture contract; this grouping grants no ownership of either

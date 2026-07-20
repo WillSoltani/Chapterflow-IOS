@@ -228,6 +228,66 @@
           "scripts/visual/touch_targets.py",
           "scripts/visual/validate_upgrade_ui_test_membership.py"
         ]
+      },
+      "pathReplacement": {
+        "adjudicatedMain": "6c38802db9e24d7f9843f38ea03879d4a5a72860",
+        "parkedHead": "a4569f8d316498dd8f4078cbcce3a560ea33a170",
+        "parkedTree": "cbd263f5c904b26cb6c517bf6cb21b0794289861",
+        "feasibilityEvidenceSHA256": "dda9ae97c4847367587048530531d5950c9fe98a5c747ed1d36d2e12c603507a",
+        "removedPath": "scripts/localization/scenarios.json",
+        "addedPath": "scripts/localization/NativeExtensionEvidenceHost.swift",
+        "beforePaths": [
+          "ActionExtension/ActionView.swift",
+          "ActionExtension/Localizable.xcstrings",
+          "ChapterFlow.xcodeproj/project.pbxproj",
+          "ChapterFlowUITests/UpgradeEvidence/NativeUpgradeEvidenceTests.swift",
+          "Packages/DesignSystem/Sources/DesignSystem/NativeEvidenceAccessibility.swift",
+          "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/DesignSystemSnapshotTests.swift",
+          "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/SnapshotHelper.swift",
+          "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__/gallery-dark.png",
+          "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__/gallery-light.png",
+          "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__/gallery-xxl.png",
+          "ShareExtension/Localizable.xcstrings",
+          "ShareExtension/ShareView.swift",
+          "scripts/localization/inventory.py",
+          "scripts/localization/scenarios.json",
+          "scripts/localization/validate_matrix.py",
+          "scripts/visual/native-matrix.json",
+          "scripts/visual/run_native_matrix.py",
+          "scripts/visual/run_paired_performance.py",
+          "scripts/visual/touch_targets.py",
+          "scripts/visual/validate_upgrade_ui_test_membership.py"
+        ],
+        "afterPaths": [
+          "ActionExtension/ActionView.swift",
+          "ActionExtension/Localizable.xcstrings",
+          "ChapterFlow.xcodeproj/project.pbxproj",
+          "ChapterFlowUITests/UpgradeEvidence/NativeUpgradeEvidenceTests.swift",
+          "Packages/DesignSystem/Sources/DesignSystem/NativeEvidenceAccessibility.swift",
+          "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/DesignSystemSnapshotTests.swift",
+          "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/SnapshotHelper.swift",
+          "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__/gallery-dark.png",
+          "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__/gallery-light.png",
+          "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__/gallery-xxl.png",
+          "ShareExtension/Localizable.xcstrings",
+          "ShareExtension/ShareView.swift",
+          "scripts/localization/NativeExtensionEvidenceHost.swift",
+          "scripts/localization/inventory.py",
+          "scripts/localization/validate_matrix.py",
+          "scripts/visual/native-matrix.json",
+          "scripts/visual/run_native_matrix.py",
+          "scripts/visual/run_paired_performance.py",
+          "scripts/visual/touch_targets.py",
+          "scripts/visual/validate_upgrade_ui_test_membership.py"
+        ],
+        "preservedOracles": {
+          "localizationAssertionID": "NATIVE-04-UNIT-01",
+          "localizationValidator": "scripts/localization/validate_matrix.py",
+          "mergedManifest": "scripts/visual/native-matrix.json",
+          "mergedManifestKey": "localizationMatrix",
+          "membershipAssertionID": "NATIVE-07-PROJECT-01",
+          "membershipValidator": "scripts/visual/validate_upgrade_ui_test_membership.py"
+        }
       }
     },
     "splitIf": [
@@ -236,6 +296,90 @@
       "more than 20 files or 3 primary roots are required",
       "a second high-contention lock is required"
     ]
+  },
+  "extensionEvidenceHost": {
+    "sourcePath": "scripts/localization/NativeExtensionEvidenceHost.swift",
+    "sourceTargets": [
+      "ShareExtension",
+      "ActionExtension"
+    ],
+    "forbiddenSourceTargets": [
+      "ChapterFlow",
+      "ChapterFlowUITests"
+    ],
+    "evidenceBuild": {
+      "configuration": "Debug",
+      "commonCompilationConditions": [
+        "DEBUG",
+        "CF_NATIVE_EXTENSION_EVIDENCE_BUILD"
+      ],
+      "targetCompilationConditions": {
+        "ShareExtension": "CF_NATIVE_SHARE_EVIDENCE_TARGET",
+        "ActionExtension": "CF_NATIVE_ACTION_EVIDENCE_TARGET"
+      },
+      "sourceExclusionBuildSetting": "EXCLUDED_SOURCE_FILE_NAMES",
+      "sourceExclusionVariable": "CF_NATIVE_EXTENSION_EXCLUDED_SOURCES",
+      "ordinaryExcludedSource": "NativeExtensionEvidenceHost.swift",
+      "excludedProductionSources": {
+        "ShareExtension": "ShareViewController.swift",
+        "ActionExtension": "ActionViewController.swift"
+      }
+    },
+    "principalControllers": {
+      "ShareExtension": "ShareViewController",
+      "ActionExtension": "ActionViewController"
+    },
+    "readOnlyInfoPlists": {
+      "ShareExtension": "ShareExtension/Info.plist",
+      "ActionExtension": "ActionExtension/Info.plist"
+    },
+    "productionConfigurations": {
+      "Debug": {
+        "activeEvidenceConditions": [],
+        "hostDisposition": "excluded",
+        "productionControllerDisposition": "included"
+      },
+      "Release": {
+        "activeEvidenceConditions": [],
+        "hostDisposition": "excluded",
+        "productionControllerDisposition": "included"
+      }
+    },
+    "invocation": {
+      "containingProduct": "ChapterFlow.app",
+      "extensionProducts": [
+        "ShareExtension.appex",
+        "ActionExtension.appex"
+      ],
+      "flow": [
+        "build-and-install-containing-app-with-real-appex",
+        "open-containing-or-system-host",
+        "invoke-real-appex-through-system-extension-ui",
+        "assert-extension-process-and-target-owned-fixture-state"
+      ],
+      "forbiddenSubstitutes": [
+        "source-scan-as-runtime-evidence",
+        "main-app-source-import",
+        "ui-test-source-import",
+        "static-fixture-claim-as-runtime-evidence"
+      ]
+    },
+    "fixtureEvidence": {
+      "stateSource": "fixture",
+      "transactionClaim": "none",
+      "proves": [
+        "presentation",
+        "localization",
+        "accessibility"
+      ],
+      "doesNotProve": [
+        "outbox-write",
+        "durability",
+        "committed-only-production-success",
+        "dismissal",
+        "app-opening"
+      ]
+    }
   },
   "skills": {
     "primary": [

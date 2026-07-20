@@ -20,14 +20,29 @@ ERRORS: list[str] = []
 JSON: dict[Path, object] = {}
 
 
+class DuplicateJSONKeyError(ValueError):
+    pass
+
+
 def fail(message: str) -> None:
     ERRORS.append(message)
 
 
+def unique_json_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    value: dict[str, object] = {}
+    for key, item in pairs:
+        if key in value:
+            raise DuplicateJSONKeyError(f"duplicate JSON key: {key}")
+        value[key] = item
+    return value
+
+
 def load_json(path: Path) -> object:
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
+        value = json.loads(
+            path.read_text(encoding="utf-8"), object_pairs_hook=unique_json_object,
+        )
+    except (OSError, json.JSONDecodeError, DuplicateJSONKeyError) as error:
         fail(f"invalid JSON {path.relative_to(ROOT)}: {error}")
         return {}
     JSON[path] = value
@@ -163,6 +178,300 @@ EXPECTED_NON_PRIMARY = {
 }
 
 EXPECTED_CANDIDATE_DISPOSITION = "known-red-scope-only-not-runtime-approved"
+EXPECTED_NATIVE_BEFORE_PATHS = [
+    "ActionExtension/ActionView.swift",
+    "ActionExtension/Localizable.xcstrings",
+    "ChapterFlow.xcodeproj/project.pbxproj",
+    "ChapterFlowUITests/UpgradeEvidence/NativeUpgradeEvidenceTests.swift",
+    "Packages/DesignSystem/Sources/DesignSystem/NativeEvidenceAccessibility.swift",
+    "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/DesignSystemSnapshotTests.swift",
+    "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/SnapshotHelper.swift",
+    "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__/gallery-dark.png",
+    "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__/gallery-light.png",
+    "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__/gallery-xxl.png",
+    "ShareExtension/Localizable.xcstrings",
+    "ShareExtension/ShareView.swift",
+    "scripts/localization/inventory.py",
+    "scripts/localization/scenarios.json",
+    "scripts/localization/validate_matrix.py",
+    "scripts/visual/native-matrix.json",
+    "scripts/visual/run_native_matrix.py",
+    "scripts/visual/run_paired_performance.py",
+    "scripts/visual/touch_targets.py",
+    "scripts/visual/validate_upgrade_ui_test_membership.py",
+]
+EXPECTED_NATIVE_AFTER_PATHS = [
+    "ActionExtension/ActionView.swift",
+    "ActionExtension/Localizable.xcstrings",
+    "ChapterFlow.xcodeproj/project.pbxproj",
+    "ChapterFlowUITests/UpgradeEvidence/NativeUpgradeEvidenceTests.swift",
+    "Packages/DesignSystem/Sources/DesignSystem/NativeEvidenceAccessibility.swift",
+    "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/DesignSystemSnapshotTests.swift",
+    "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/SnapshotHelper.swift",
+    "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__/gallery-dark.png",
+    "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__/gallery-light.png",
+    "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__/gallery-xxl.png",
+    "ShareExtension/Localizable.xcstrings",
+    "ShareExtension/ShareView.swift",
+    "scripts/localization/NativeExtensionEvidenceHost.swift",
+    "scripts/localization/inventory.py",
+    "scripts/localization/validate_matrix.py",
+    "scripts/visual/native-matrix.json",
+    "scripts/visual/run_native_matrix.py",
+    "scripts/visual/run_paired_performance.py",
+    "scripts/visual/touch_targets.py",
+    "scripts/visual/validate_upgrade_ui_test_membership.py",
+]
+EXPECTED_NATIVE_CANDIDATE_BINDING = {
+    "base": "cdc68d05aed931b43668253bbf19f192f78e7ad8",
+    "head": "d332ae2f9091026d879be909f631bcd31bc39c82",
+    "tree": "a525441ab1a0dd91434d4b700794a22f9a1912ed",
+    "diffSha256": "5d71334dfcdb04cd2c17323db44c239be4a1b79bcaee76ea6718f7a887a3daba",
+    "disposition": EXPECTED_CANDIDATE_DISPOSITION,
+    "paths": EXPECTED_NATIVE_BEFORE_PATHS,
+}
+EXPECTED_NATIVE_PRESERVED_ORACLES = {
+    "localizationAssertionID": "NATIVE-04-UNIT-01",
+    "localizationValidator": "scripts/localization/validate_matrix.py",
+    "mergedManifest": "scripts/visual/native-matrix.json",
+    "mergedManifestKey": "localizationMatrix",
+    "membershipAssertionID": "NATIVE-07-PROJECT-01",
+    "membershipValidator": "scripts/visual/validate_upgrade_ui_test_membership.py",
+}
+EXPECTED_NATIVE_EXTENSION_EVIDENCE_HOST = {
+    "sourcePath": "scripts/localization/NativeExtensionEvidenceHost.swift",
+    "sourceTargets": ["ShareExtension", "ActionExtension"],
+    "forbiddenSourceTargets": ["ChapterFlow", "ChapterFlowUITests"],
+    "evidenceBuild": {
+        "configuration": "Debug",
+        "commonCompilationConditions": ["DEBUG", "CF_NATIVE_EXTENSION_EVIDENCE_BUILD"],
+        "targetCompilationConditions": {
+            "ShareExtension": "CF_NATIVE_SHARE_EVIDENCE_TARGET",
+            "ActionExtension": "CF_NATIVE_ACTION_EVIDENCE_TARGET",
+        },
+        "sourceExclusionBuildSetting": "EXCLUDED_SOURCE_FILE_NAMES",
+        "sourceExclusionVariable": "CF_NATIVE_EXTENSION_EXCLUDED_SOURCES",
+        "ordinaryExcludedSource": "NativeExtensionEvidenceHost.swift",
+        "excludedProductionSources": {
+            "ShareExtension": "ShareViewController.swift",
+            "ActionExtension": "ActionViewController.swift",
+        },
+    },
+    "principalControllers": {
+        "ShareExtension": "ShareViewController",
+        "ActionExtension": "ActionViewController",
+    },
+    "readOnlyInfoPlists": {
+        "ShareExtension": "ShareExtension/Info.plist",
+        "ActionExtension": "ActionExtension/Info.plist",
+    },
+    "productionConfigurations": {
+        "Debug": {
+            "activeEvidenceConditions": [],
+            "hostDisposition": "excluded",
+            "productionControllerDisposition": "included",
+        },
+        "Release": {
+            "activeEvidenceConditions": [],
+            "hostDisposition": "excluded",
+            "productionControllerDisposition": "included",
+        },
+    },
+    "invocation": {
+        "containingProduct": "ChapterFlow.app",
+        "extensionProducts": ["ShareExtension.appex", "ActionExtension.appex"],
+        "flow": [
+            "build-and-install-containing-app-with-real-appex",
+            "open-containing-or-system-host",
+            "invoke-real-appex-through-system-extension-ui",
+            "assert-extension-process-and-target-owned-fixture-state",
+        ],
+        "forbiddenSubstitutes": [
+            "source-scan-as-runtime-evidence",
+            "main-app-source-import",
+            "ui-test-source-import",
+            "static-fixture-claim-as-runtime-evidence",
+        ],
+    },
+    "fixtureEvidence": {
+        "stateSource": "fixture",
+        "transactionClaim": "none",
+        "proves": ["presentation", "localization", "accessibility"],
+        "doesNotProve": [
+            "outbox-write",
+            "durability",
+            "committed-only-production-success",
+            "dismissal",
+            "app-opening",
+        ],
+    },
+}
+EXPECTED_REVISED_OWNERSHIP = {
+    "WP-NATIVE-01": [
+        "Packages/DesignSystem/**",
+        "ShareExtension/ShareView.swift",
+        "ShareExtension/Localizable.xcstrings",
+        "ActionExtension/ActionView.swift",
+        "ActionExtension/Localizable.xcstrings",
+        "ChapterFlowUITests/UpgradeEvidence/NativeUpgradeEvidenceTests.swift",
+        "ChapterFlow.xcodeproj/project.pbxproj",
+        "scripts/visual/**",
+        "scripts/localization/**",
+    ],
+    "WP-EXT-01": [
+        "ShareExtension/ShareViewController.swift",
+        "ActionExtension/ActionViewController.swift",
+        "SharedExtensionKit/**",
+        "Packages/Persistence/Sources/Persistence/PendingExtensionItem.swift",
+        "Packages/Persistence/Sources/Persistence/ExtensionOutbox.swift",
+        "Packages/Persistence/Sources/Persistence/SharedAppStateSnapshot.swift",
+        "Packages/Persistence/Sources/Persistence/SharedStateWriter.swift",
+        "Packages/Persistence/Tests/PersistenceTests/ExtensionOutboxTests.swift",
+        "Packages/Persistence/Tests/PersistenceTests/SharedSnapshotOwnershipTests.swift",
+        "Packages/AppFeature/Sources/AppFeature/AppModel+Extensions.swift",
+        "Packages/AppFeature/Tests/AppFeatureTests/ExtensionImportTests.swift",
+        "ChapterFlowUITests/UpgradeEvidence/ExtensionUpgradeEvidenceTests.swift",
+    ],
+    "WP-READER-01": [
+        "Packages/ReaderFeature/**",
+        "ChapterFlowUITests/UpgradeEvidence/ReaderUpgradeEvidenceTests.swift",
+    ],
+}
+EXPECTED_REVISED_GRAPH = {
+    "WP-NATIVE-01": {
+        "blockedBy": ["WP-REC-01"],
+        "blocks": [
+            "WP-SHELL-02", "WP-AUTH-02", "WP-ENTRY-01", "WP-PAYWALL-01",
+            "WP-CATALOG-01", "WP-READER-01", "WP-ASK-01", "WP-LEARN-01",
+            "WP-NOTIFY-01", "WP-EXT-01", "WP-ENGAGE-01", "WP-GRAPH-01",
+            "WP-SOCIAL-01",
+        ],
+        "resourceLocks": ["xcode-project", "simulator-device"],
+    },
+    "WP-EXT-01": {
+        "blockedBy": ["WP-ACCOUNT-02", "WP-CONTRACT-02", "WP-NATIVE-01"],
+        "blocks": ["WP-ENGAGE-01", "WP-NOTIFY-01", "WP-OFFLINE-01", "WP-JOURNEY-01"],
+        "resourceLocks": ["persistence-schema"],
+    },
+    "WP-READER-01": {
+        "blockedBy": ["WP-NATIVE-01", "WP-CONTRACT-02"],
+        "blocks": ["WP-ANNOTATE-01", "WP-ASK-01", "WP-LOOP-01", "WP-AUDIO-01"],
+        "resourceLocks": [],
+    },
+}
+EXPECTED_REVISED_CAPS = {
+    "WP-NATIVE-01": (20, 20, 3, 3, 1),
+    "WP-EXT-01": (17, 20, 3, 3, 1),
+    "WP-READER-01": (12, 16, 1, 3, 1),
+}
+NATIVE_AC07_COMMAND = (
+    "python3 scripts/visual/validate_upgrade_ui_test_membership.py "
+    "--project ChapterFlow.xcodeproj/project.pbxproj "
+    "--root ChapterFlowUITests/UpgradeEvidence --require-target ChapterFlowUITests "
+    "--extension-evidence-host scripts/localization/NativeExtensionEvidenceHost.swift "
+    "--require-extension-target ShareExtension --require-extension-target ActionExtension "
+    "--forbid-extension-target ChapterFlow --forbid-extension-target ChapterFlowUITests "
+    "--require-target-flag ShareExtension=CF_NATIVE_SHARE_EVIDENCE_TARGET "
+    "--require-target-flag ActionExtension=CF_NATIVE_ACTION_EVIDENCE_TARGET "
+    "--ordinary-excluded-source NativeExtensionEvidenceHost.swift "
+    "--show-build-settings-project ChapterFlow.xcodeproj --scheme ChapterFlow "
+    "--configuration Debug "
+    "--require-build-setting ShareExtension:EXCLUDED_SOURCE_FILE_NAMES=NativeExtensionEvidenceHost.swift "
+    "--require-build-setting ActionExtension:EXCLUDED_SOURCE_FILE_NAMES=NativeExtensionEvidenceHost.swift "
+    "--output results/native/ui-test-membership.json"
+)
+NATIVE_AC04_UNIT_COMMAND = (
+    "python3 scripts/localization/validate_matrix.py "
+    "--manifest scripts/visual/native-matrix.json --manifest-key localizationMatrix "
+    "--candidate <SHA> --output results/native/localization.json"
+)
+NATIVE_AC04_EXTENSION_COMMAND = (
+    "python3 scripts/visual/run_native_matrix.py --project ChapterFlow.xcodeproj "
+    "--scheme ChapterFlow "
+    "--test ChapterFlowUITests/NativeEvidenceTests/testShareActionLocalizedAccessibilityMatrix "
+    "--iphone-udid <PINNED_IPHONE_UDID> --ipad-udid <PINNED_IPAD_UDID> "
+    "--scenarios scripts/visual/native-matrix.json "
+    "--derived-data /private/tmp/Chapterflow-DD-native-extensions-<SHA> "
+    "--require-dimensions light,dark,compact-iphone,regular-ipad,accessibility,voiceover,"
+    "increased-contrast,reduce-motion,reduce-transparency,real-locale,pseudo-long,rtl,keyboard-pointer "
+    "--extension-evidence-host scripts/localization/NativeExtensionEvidenceHost.swift "
+    "--extension-evidence-condition CF_NATIVE_EXTENSION_EVIDENCE_BUILD "
+    "--source-exclusion-variable CF_NATIVE_EXTENSION_EXCLUDED_SOURCES "
+    "--exclude-production-source ShareViewController.swift "
+    "--exclude-production-source ActionViewController.swift "
+    "--require-appex ShareExtension.appex --require-appex ActionExtension.appex "
+    "--require-containing-or-system-host-invocation "
+    "--output results/native/extension-localization-matrix"
+)
+NATIVE_AC04_BOUNDARY_COMMAND = (
+    "xcodebuild test -project ChapterFlow.xcodeproj -scheme ChapterFlow -configuration Debug "
+    "-derivedDataPath /private/tmp/Chapterflow-DD-native-extension-boundary-<SHA> "
+    "-destination 'platform=iOS Simulator,id=<PINNED_UDID>' "
+    "-resultBundlePath results/native/extension-presentation-boundary.xcresult "
+    "-only-testing:ChapterFlowUITests/NativeEvidenceTests/"
+    "testExtensionPresentationResultInputSeparatesFixtureAndLegacyProduction "
+    "-parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO "
+    "SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) CF_NATIVE_EXTENSION_EVIDENCE_BUILD' "
+    "CF_NATIVE_EXTENSION_EXCLUDED_SOURCES='ShareViewController.swift ActionViewController.swift'"
+)
+NATIVE_AC04_BUILD_BOUNDARY_COMMAND = (
+    "python3 scripts/visual/run_native_matrix.py --project ChapterFlow.xcodeproj "
+    "--scheme ChapterFlow --extension-build-boundary "
+    "--base <BASE_SHA> --candidate <SHA> "
+    "--ordinary-configuration Debug --ordinary-configuration Release "
+    "--evidence-configuration Debug "
+    "--derived-data /private/tmp/Chapterflow-DD-native-extension-build-boundary-<SHA> "
+    "--extension-evidence-host scripts/localization/NativeExtensionEvidenceHost.swift "
+    "--extension-evidence-condition CF_NATIVE_EXTENSION_EVIDENCE_BUILD "
+    "--source-exclusion-variable CF_NATIVE_EXTENSION_EXCLUDED_SOURCES "
+    "--require-production-source ShareExtension:ShareExtension/ShareViewController.swift "
+    "--require-production-source ActionExtension:ActionExtension/ActionViewController.swift "
+    "--exclude-production-source ShareExtension:ShareViewController.swift "
+    "--exclude-production-source ActionExtension:ActionViewController.swift "
+    "--require-ordinary-host-exclusion --require-evidence-host-inclusion "
+    "--require-evidence-production-source-exclusion --require-evidence-marker-separation "
+    "--require-unchanged-info-plist ShareExtension/Info.plist "
+    "--require-unchanged-info-plist ActionExtension/Info.plist "
+    "--require-principal-class ShareExtension=ShareViewController "
+    "--require-principal-class ActionExtension=ActionViewController "
+    "--require-appex ShareExtension.appex --require-appex ActionExtension.appex "
+    "--negative-build-case ShareExtension:missing-debug "
+    "--negative-build-case ActionExtension:missing-debug "
+    "--negative-build-case ShareExtension:missing-evidence-condition "
+    "--negative-build-case ActionExtension:missing-evidence-condition "
+    "--negative-build-case ShareExtension:missing-target-flag "
+    "--negative-build-case ActionExtension:missing-target-flag "
+    "--negative-build-case ShareExtension:dual-target-flags "
+    "--negative-build-case ActionExtension:dual-target-flags "
+    "--negative-build-case ShareExtension:cross-wired-target-flag "
+    "--negative-build-case ActionExtension:cross-wired-target-flag "
+    "--negative-build-case ShareExtension:controller-host-collision "
+    "--negative-build-case ActionExtension:controller-host-collision "
+    "--negative-build-case ShareExtension:release-evidence-reachability "
+    "--negative-build-case ActionExtension:release-evidence-reachability "
+    "--output results/native/extension-build-boundary"
+)
+EXPECTED_NATIVE_ASSERTION_COMMANDS = {
+    "NATIVE-04-UNIT-01": NATIVE_AC04_UNIT_COMMAND,
+    "NATIVE-04-EXTENSION-02": NATIVE_AC04_EXTENSION_COMMAND,
+    "NATIVE-04-PRODUCTION-BOUNDARY-03": NATIVE_AC04_BOUNDARY_COMMAND,
+    "NATIVE-04-BUILD-BOUNDARY-04": NATIVE_AC04_BUILD_BOUNDARY_COMMAND,
+    "NATIVE-07-PROJECT-01": NATIVE_AC07_COMMAND,
+}
+EXPECTED_NATIVE_ASSERTION_AC = {
+    "NATIVE-04-UNIT-01": "AC-NATIVE-01-04",
+    "NATIVE-04-EXTENSION-02": "AC-NATIVE-01-04",
+    "NATIVE-04-PRODUCTION-BOUNDARY-03": "AC-NATIVE-01-04",
+    "NATIVE-04-BUILD-BOUNDARY-04": "AC-NATIVE-01-04",
+    "NATIVE-07-PROJECT-01": "AC-NATIVE-01-07",
+}
+EXPECTED_NATIVE_ASSERTION_ROW_SHA256 = {
+    "NATIVE-04-UNIT-01": "76382608cc88d69f790643f9adf610345ceb6a5982f65905390fd5181c5d0d58",
+    "NATIVE-04-EXTENSION-02": "ae8cce33a2acbc6e81e9309bab0ff4b46c5d96a385ae71aec16863eb14154562",
+    "NATIVE-04-PRODUCTION-BOUNDARY-03": "4ae66895eb655e124e542118c55288eb75d53ca2bdf46cb864ac3ca8a86bc9dc",
+    "NATIVE-04-BUILD-BOUNDARY-04": "674ff0d6722edd7dc18abed7ebba06f68b1cd6feeb0dca99449e6e5a66a2ba5f",
+    "NATIVE-07-PROJECT-01": "56b1d628a1f8a25aa0fd35fcfda3ab253509e23bc9a418c7c286c8b8e9f3f999",
+}
 EXPECTED_PERFORMANCE_BUDGET_DIGESTS = {
     "PERF-COLD-LAUNCH": "db0518f9180f9fe4f4eb4bd332d97649956823ef04127df5b84c6b2e8b6f0259",
     "PERF-READER-HITCH": "064d0451ffa7b2773504463a5145aea9310a04ecaab1777e871698e5d1a553ca",
@@ -248,6 +557,65 @@ def implementation_root(claim: tuple[str, str]) -> tuple[str, str]:
     return repo, parts[0]
 
 
+def native_path_replacement_issues(
+    package: dict, candidate: object, replacement: object,
+) -> list[str]:
+    issues: list[str] = []
+    if not isinstance(replacement, dict):
+        return ["WP-NATIVE-01 rootAccounting.pathReplacement must be an object"]
+    expected_fields = {
+        "adjudicatedMain", "parkedHead", "parkedTree", "feasibilityEvidenceSHA256",
+        "removedPath", "addedPath", "beforePaths", "afterPaths", "preservedOracles",
+    }
+    if set(replacement) != expected_fields:
+        issues.append("WP-NATIVE-01 pathReplacement must contain the exact reviewed fields")
+    expected_identity = {
+        "adjudicatedMain": "6c38802db9e24d7f9843f38ea03879d4a5a72860",
+        "parkedHead": "a4569f8d316498dd8f4078cbcce3a560ea33a170",
+        "parkedTree": "cbd263f5c904b26cb6c517bf6cb21b0794289861",
+        "feasibilityEvidenceSHA256": "dda9ae97c4847367587048530531d5950c9fe98a5c747ed1d36d2e12c603507a",
+    }
+    for field, expected in expected_identity.items():
+        if replacement.get(field) != expected:
+            issues.append(f"WP-NATIVE-01 pathReplacement.{field} drifted from the adjudicated evidence")
+    removed = replacement.get("removedPath")
+    added = replacement.get("addedPath")
+    if removed != "scripts/localization/scenarios.json":
+        issues.append("WP-NATIVE-01 pathReplacement removedPath must retire scenarios.json")
+    if added != "scripts/localization/NativeExtensionEvidenceHost.swift":
+        issues.append("WP-NATIVE-01 pathReplacement addedPath must be the DEBUG extension evidence host")
+
+    before = replacement.get("beforePaths")
+    after = replacement.get("afterPaths")
+    candidate_paths = candidate.get("paths") if isinstance(candidate, dict) else None
+    if before != candidate_paths:
+        issues.append("WP-NATIVE-01 pathReplacement beforePaths must preserve candidateBinding.paths")
+    if before != EXPECTED_NATIVE_BEFORE_PATHS:
+        issues.append("WP-NATIVE-01 pathReplacement beforePaths drifted from the immutable 20-path manifest")
+    if after != EXPECTED_NATIVE_AFTER_PATHS:
+        issues.append("WP-NATIVE-01 pathReplacement afterPaths drifted from the exact replacement manifest")
+    for label, paths in (("beforePaths", before), ("afterPaths", after)):
+        if not isinstance(paths, list):
+            issues.append(f"WP-NATIVE-01 pathReplacement {label} must be a list")
+            continue
+        if paths != sorted(paths):
+            issues.append(f"WP-NATIVE-01 pathReplacement {label} must be sorted")
+        if len(paths) != 20 or len(set(map(str, paths))) != 20:
+            issues.append(f"WP-NATIVE-01 pathReplacement {label} must contain exactly 20 unique paths")
+        issues.extend(candidate_path_issues(package, paths))
+    if (
+        isinstance(before, list) and isinstance(after, list)
+        and all(isinstance(path, str) for path in before + after)
+    ):
+        removed_set = set(before) - set(after)
+        added_set = set(after) - set(before)
+        if removed_set != {removed} or added_set != {added}:
+            issues.append("WP-NATIVE-01 pathReplacement must exchange exactly one removed and one added path")
+    if replacement.get("preservedOracles") != EXPECTED_NATIVE_PRESERVED_ORACLES:
+        issues.append("WP-NATIVE-01 pathReplacement weakens or drifts a preserved validation oracle")
+    return issues
+
+
 def root_accounting_issues(package_id: str, allowed: object, estimate: object) -> list[str]:
     issues: list[str] = []
     if not isinstance(allowed, list):
@@ -268,7 +636,7 @@ def root_accounting_issues(package_id: str, allowed: object, estimate: object) -
     accounting = estimate.get("rootAccounting")
     if not isinstance(accounting, dict):
         return issues + [f"{package_id} rootAccounting must be an object"]
-    if set(accounting) - {"primaryGroups", "nonPrimaryPaths", "candidateBinding"}:
+    if set(accounting) - {"primaryGroups", "nonPrimaryPaths", "candidateBinding", "pathReplacement"}:
         issues.append(f"{package_id} rootAccounting contains unknown fields")
     groups = accounting.get("primaryGroups")
     non_primary = accounting.get("nonPrimaryPaths")
@@ -397,6 +765,13 @@ def root_accounting_issues(package_id: str, allowed: object, estimate: object) -
             ))
             if not isinstance(paths, list) or len(paths) != planned_files:
                 issues.append("WP-NATIVE-01 candidateBinding path count must equal plannedFiles")
+            if candidate != EXPECTED_NATIVE_CANDIDATE_BINDING:
+                issues.append("WP-NATIVE-01 candidateBinding must preserve the immutable known-red identity")
+        issues.extend(native_path_replacement_issues(
+            {"id": package_id, "estimate": estimate},
+            candidate,
+            accounting.get("pathReplacement"),
+        ))
     elif candidate is not None:
         issues.append(f"{package_id} must not carry an unrelated candidateBinding")
     return issues
@@ -595,6 +970,640 @@ def validate_root_accounting_self_tests(packages: dict[str, dict]) -> list[dict[
     return results
 
 
+def live_markdown_lines(
+    markdown: str, structure_issues: list[str] | None = None,
+) -> list[str]:
+    """Return executable prose, excluding HTML comments and fenced examples."""
+    lines: list[str] = []
+    in_comment = False
+    fence: tuple[str, int] | None = None
+    for raw_line in markdown.splitlines():
+        if fence is not None:
+            fence_character, opening_length = fence
+            indentation = len(raw_line) - len(raw_line.lstrip(" "))
+            closing = raw_line[indentation:]
+            if indentation <= 3 and not closing.startswith("\t") and re.fullmatch(
+                rf"{re.escape(fence_character)}{{{opening_length},}}\s*", closing,
+            ):
+                fence = None
+            continue
+
+        visible: list[str] = []
+        cursor = 0
+        while cursor < len(raw_line):
+            if in_comment:
+                end = raw_line.find("-->", cursor)
+                if end < 0:
+                    cursor = len(raw_line)
+                    break
+                in_comment = False
+                cursor = end + 3
+                continue
+            start = raw_line.find("<!--", cursor)
+            if start < 0:
+                visible.append(raw_line[cursor:])
+                break
+            visible.append(raw_line[cursor:start])
+            in_comment = True
+            cursor = start + 4
+
+        live_line = "".join(visible)
+        indentation = len(live_line) - len(live_line.lstrip(" "))
+        stripped = live_line[indentation:]
+        if not in_comment:
+            opening = (
+                re.match(r"^(`{3,}|~{3,})(.*)$", stripped)
+                if indentation <= 3 and not stripped.startswith("\t")
+                else None
+            )
+            if opening is not None:
+                run, info = opening.groups()
+                if run[0] != "`" or "`" not in info:
+                    fence = (run[0], len(run))
+                    continue
+        lines.append(live_line)
+    if structure_issues is not None:
+        if in_comment:
+            structure_issues.append("WP-NATIVE-01 VALIDATE has an unterminated HTML comment")
+        if fence is not None:
+            structure_issues.append("WP-NATIVE-01 VALIDATE has an unterminated fenced block")
+    return lines
+
+
+def acceptance_evidence_lines(native_validate: str) -> tuple[list[str], list[str]]:
+    issues: list[str] = []
+    live_lines = live_markdown_lines(native_validate, issues)
+    headings = [
+        index for index, line in enumerate(live_lines)
+        if line.strip() == "## Acceptance evidence"
+    ]
+    if len(headings) != 1:
+        return [], ["WP-NATIVE-01 VALIDATE must contain one live Acceptance evidence section"]
+    start = headings[0] + 1
+    end = len(live_lines)
+    for index in range(start, len(live_lines)):
+        if re.match(r"^##\s+", live_lines[index].strip()):
+            end = index
+            break
+    section = live_lines[start:end]
+    cursor = 0
+    while cursor < len(section) and not section[cursor].strip():
+        cursor += 1
+    expected_header = (
+        "| AC | Assertion ID | Exact command and selector | Expected oracle | Required artifact |"
+    )
+    if cursor >= len(section) or section[cursor].strip() != expected_header:
+        issues.append("WP-NATIVE-01 Acceptance evidence table header drifted")
+    separator_index = cursor + 1
+    if separator_index >= len(section) or not re.fullmatch(
+        r"\|(?:\s*:?-{3,}:?\s*\|){5}", section[separator_index].strip()
+    ):
+        issues.append("WP-NATIVE-01 Acceptance evidence table separator drifted")
+    table_lines = section[cursor:separator_index + 1]
+    table_ended = False
+    for line in section[separator_index + 1:]:
+        if line.startswith("|"):
+            if table_ended:
+                issues.append("WP-NATIVE-01 Acceptance evidence rows must be contiguous")
+            else:
+                table_lines.append(line)
+        else:
+            table_ended = True
+    return table_lines, issues
+
+
+def native_assertion_command_issues(native_validate: str) -> list[str]:
+    section, issues = acceptance_evidence_lines(native_validate)
+    rows_by_assertion: dict[str, list[list[str]]] = {}
+    for line in section:
+        if not line.startswith("|"):
+            continue
+        cells = [cell.strip() for cell in line.split("|")[1:-1]]
+        if len(cells) < 3:
+            continue
+        rows_by_assertion.setdefault(cells[1], []).append(cells)
+    for assertion_id, expected_command in EXPECTED_NATIVE_ASSERTION_COMMANDS.items():
+        rows = rows_by_assertion.get(assertion_id, [])
+        if len(rows) != 1:
+            issues.append(f"{assertion_id} must have exactly one validation row")
+            continue
+        cells = rows[0]
+        if len(cells) != 5:
+            issues.append(f"{assertion_id} validation row must contain exactly five cells")
+            continue
+        if cells[0] != EXPECTED_NATIVE_ASSERTION_AC[assertion_id]:
+            issues.append(f"{assertion_id} AC mapping drifted from the exact reviewed row")
+        command_cell = cells[2]
+        match = re.fullmatch(r"`([^`]*)`", command_cell)
+        if match is None:
+            issues.append(f"{assertion_id} command cell must contain one literal command")
+        elif match.group(1) != expected_command:
+            issues.append(f"{assertion_id} command drifted from the exact reviewed literal")
+        row_digest = hashlib.sha256("\x1f".join(cells).encode("utf-8")).hexdigest()
+        if row_digest != EXPECTED_NATIVE_ASSERTION_ROW_SHA256[assertion_id]:
+            issues.append(f"{assertion_id} full validation row drifted from the exact reviewed row")
+    return issues
+
+
+def native_extension_host_issues(
+    packages: dict[str, dict],
+    native_contract: str,
+    native_validate: str,
+    reader_contract: str,
+) -> list[str]:
+    issues: list[str] = []
+    if len(packages) != 24:
+        issues.append("extension evidence host revision must preserve exactly 24 packages")
+    native = packages.get("WP-NATIVE-01")
+    if not isinstance(native, dict):
+        return issues + ["extension evidence host revision requires WP-NATIVE-01"]
+
+    host = native.get("extensionEvidenceHost")
+    if not isinstance(host, dict):
+        issues.append("WP-NATIVE-01 extensionEvidenceHost must be an object")
+    else:
+        if host.get("sourcePath") != "scripts/localization/NativeExtensionEvidenceHost.swift":
+            issues.append("extension evidence host source is absent from the exact replacement path")
+        if host.get("sourceTargets") != ["ShareExtension", "ActionExtension"]:
+            issues.append("extension evidence host must compile only in both extension targets")
+        if host.get("forbiddenSourceTargets") != ["ChapterFlow", "ChapterFlowUITests"]:
+            issues.append("extension evidence host must forbid main-app and UI-test source membership")
+        evidence_build = host.get("evidenceBuild")
+        if not isinstance(evidence_build, dict):
+            issues.append("extension evidence host evidenceBuild must be an object")
+        else:
+            conditions = evidence_build.get("commonCompilationConditions")
+            if conditions != ["DEBUG", "CF_NATIVE_EXTENSION_EVIDENCE_BUILD"]:
+                issues.append("extension evidence host requires DEBUG plus the exact evidence condition")
+            if evidence_build.get("targetCompilationConditions") != {
+                "ShareExtension": "CF_NATIVE_SHARE_EVIDENCE_TARGET",
+                "ActionExtension": "CF_NATIVE_ACTION_EVIDENCE_TARGET",
+            }:
+                issues.append("extension evidence host target compilation conditions drifted")
+            if evidence_build.get("sourceExclusionBuildSetting") != "EXCLUDED_SOURCE_FILE_NAMES":
+                issues.append("extension evidence host source exclusion build setting drifted")
+            if evidence_build.get("sourceExclusionVariable") != "CF_NATIVE_EXTENSION_EXCLUDED_SOURCES":
+                issues.append("extension evidence host exclusion variable drifted")
+            if evidence_build.get("ordinaryExcludedSource") != "NativeExtensionEvidenceHost.swift":
+                issues.append("ordinary builds must exclude the extension evidence host")
+            if evidence_build.get("excludedProductionSources") != {
+                "ShareExtension": "ShareViewController.swift",
+                "ActionExtension": "ActionViewController.swift",
+            }:
+                issues.append("evidence build must exclude both production extension controllers")
+        production = host.get("productionConfigurations")
+        expected_production = EXPECTED_NATIVE_EXTENSION_EVIDENCE_HOST["productionConfigurations"]
+        if production != expected_production:
+            issues.append("production Debug and Release must exclude the host and include controllers")
+        if host.get("principalControllers") != {
+            "ShareExtension": "ShareViewController",
+            "ActionExtension": "ActionViewController",
+        }:
+            issues.append("extension evidence host principal controller names drifted")
+        if host.get("readOnlyInfoPlists") != {
+            "ShareExtension": "ShareExtension/Info.plist",
+            "ActionExtension": "ActionExtension/Info.plist",
+        }:
+            issues.append("extension evidence host must preserve both production Info.plists read-only")
+        invocation = host.get("invocation")
+        if not isinstance(invocation, dict) or invocation.get("flow") != EXPECTED_NATIVE_EXTENSION_EVIDENCE_HOST["invocation"]["flow"]:
+            issues.append("extension evidence must invoke each real appex through containing/system host UI")
+        elif invocation.get("forbiddenSubstitutes") != EXPECTED_NATIVE_EXTENSION_EVIDENCE_HOST["invocation"]["forbiddenSubstitutes"]:
+            issues.append("extension evidence host forbidden runtime substitutes drifted")
+        fixture = host.get("fixtureEvidence")
+        if not isinstance(fixture, dict) or fixture.get("stateSource") != "fixture" or fixture.get("transactionClaim") != "none":
+            issues.append("extension fixture evidence must state stateSource=fixture and transactionClaim=none")
+        elif fixture.get("doesNotProve") != EXPECTED_NATIVE_EXTENSION_EVIDENCE_HOST["fixtureEvidence"]["doesNotProve"]:
+            issues.append("extension fixture evidence must not claim transaction, durability, dismissal, or app opening")
+        if host != EXPECTED_NATIVE_EXTENSION_EVIDENCE_HOST:
+            issues.append("WP-NATIVE-01 extensionEvidenceHost drifted from the exact reviewed contract")
+
+    for package_id, expected_paths in EXPECTED_REVISED_OWNERSHIP.items():
+        package = packages.get(package_id)
+        if not isinstance(package, dict):
+            issues.append(f"extension evidence host revision requires {package_id}")
+            continue
+        allowed = package.get("ownership", {}).get("allowedPaths", [])
+        actual_paths = [claim.get("glob") for claim in allowed if isinstance(claim, dict)]
+        if actual_paths != expected_paths:
+            issues.append(f"{package_id} ownership drifted during extension evidence host reconsolidation")
+        expected_graph = EXPECTED_REVISED_GRAPH[package_id]
+        for field in ("blockedBy", "blocks", "resourceLocks"):
+            if package.get(field) != expected_graph[field]:
+                issues.append(f"{package_id} {field} drifted during extension evidence host reconsolidation")
+        estimate = package.get("estimate", {})
+        actual_caps = (
+            estimate.get("plannedFiles"), estimate.get("maxFiles"),
+            estimate.get("primaryRoots"), estimate.get("maxPrimaryRoots"),
+            estimate.get("validationSupportRoots"),
+        )
+        if actual_caps != EXPECTED_REVISED_CAPS[package_id]:
+            issues.append(f"{package_id} file/root caps drifted during extension evidence host reconsolidation")
+
+    required_contract_markers = (
+        "scripts/localization/NativeExtensionEvidenceHost.swift",
+        "CF_NATIVE_EXTENSION_EVIDENCE_BUILD",
+        "CF_NATIVE_SHARE_EVIDENCE_TARGET",
+        "CF_NATIVE_ACTION_EVIDENCE_TARGET",
+        "EXCLUDED_SOURCE_FILE_NAMES",
+        "CF_NATIVE_EXTENSION_EXCLUDED_SOURCES",
+        "ShareViewController.swift",
+        "ActionViewController.swift",
+        "ShareExtension.appex",
+        "ActionExtension.appex",
+        "containing/system host",
+        "stateSource=fixture",
+        "transactionClaim=none",
+        "source scanning",
+        "main app or UI-test bundle",
+    )
+    for marker in required_contract_markers:
+        if marker.lower() not in native_contract.lower():
+            issues.append(f"WP-NATIVE-01 extension host contract omits {marker}")
+    if "--manifest-key localizationMatrix" not in native_validate:
+        issues.append("WP-NATIVE-01 localization oracle was not moved to localizationMatrix")
+    issues.extend(native_assertion_command_issues(native_validate))
+    for marker in ("reader-toolbar.depth-option", "reader-toolbar.tone-option", "WP-READER-01"):
+        if marker not in reader_contract:
+            issues.append(f"WP-READER-01 touch-target ownership contract omits {marker}")
+    return issues
+
+
+def validate_native_extension_host_self_tests(packages: dict[str, dict]) -> list[dict[str, object]]:
+    native_root = ROOT / "workstreams/03-native-design-accessibility-localization/WP-NATIVE-01"
+    reader_root = ROOT / "workstreams/06-reader-annotations-ai/WP-READER-01"
+    native_contract = "\n".join(
+        (native_root / name).read_text(encoding="utf-8")
+        for name in ("SPEC.md", "RUN.md", "VALIDATE.md")
+    )
+    native_validate = (native_root / "VALIDATE.md").read_text(encoding="utf-8")
+    reader_contract = "\n".join(
+        (reader_root / name).read_text(encoding="utf-8")
+        for name in ("SPEC.md", "RUN.md", "VALIDATE.md")
+    )
+
+    def collect(
+        mutated: dict[str, dict],
+        contract: str = native_contract,
+        validate: str = native_validate,
+        reader_text: str = reader_contract,
+    ) -> list[str]:
+        native = mutated.get("WP-NATIVE-01", {})
+        ownership = native.get("ownership", {}) if isinstance(native, dict) else {}
+        estimate = native.get("estimate", {}) if isinstance(native, dict) else {}
+        issues = root_accounting_issues(
+            "WP-NATIVE-01",
+            ownership.get("allowedPaths") if isinstance(ownership, dict) else None,
+            estimate,
+        )
+        issues.extend(native_extension_host_issues(mutated, contract, validate, reader_text))
+        return issues
+
+    cases: list[tuple[str, dict[str, dict], str, str, str, str]] = []
+
+    def add(case_id: str, mutated: dict[str, dict], expected: str,
+            contract: str = native_contract, validate: str = native_validate,
+            reader_text: str = reader_contract) -> None:
+        cases.append((case_id, mutated, expected, contract, validate, reader_text))
+
+    def mutate_validation_cell(assertion_id: str, cell_index: int, value: str) -> str:
+        row = next(
+            line for line in native_validate.splitlines()
+            if f"| {assertion_id} |" in line
+        )
+        cells = [cell.strip() for cell in row.split("|")[1:-1]]
+        cells[cell_index] = value
+        replacement = "| " + " | ".join(cells) + " |"
+        return native_validate.replace(row, replacement, 1)
+
+    missing_replacement = copy.deepcopy(packages)
+    del missing_replacement["WP-NATIVE-01"]["estimate"]["rootAccounting"]["pathReplacement"]
+    add("missing-replacement", missing_replacement, "pathReplacement")
+
+    path_21 = copy.deepcopy(packages)
+    path_21["WP-NATIVE-01"]["estimate"]["rootAccounting"]["pathReplacement"]["afterPaths"].append(
+        "scripts/localization/UnexpectedEvidenceHost.swift"
+    )
+    add("twenty-first-path", path_21, "exactly 20 unique paths")
+
+    duplicate_host = copy.deepcopy(packages)
+    duplicate_host["WP-NATIVE-01"]["estimate"]["rootAccounting"]["pathReplacement"]["afterPaths"].append(
+        "scripts/localization/NativeExtensionEvidenceHost.swift"
+    )
+    add("duplicate-host-path", duplicate_host, "exactly 20 unique paths")
+
+    missing_host = copy.deepcopy(packages)
+    after = missing_host["WP-NATIVE-01"]["estimate"]["rootAccounting"]["pathReplacement"]["afterPaths"]
+    after[after.index("scripts/localization/NativeExtensionEvidenceHost.swift")] = "scripts/localization/scenarios.json"
+    after.sort()
+    add("missing-host-path", missing_host, "afterPaths drifted")
+
+    weakened_oracle = copy.deepcopy(packages)
+    weakened_oracle["WP-NATIVE-01"]["estimate"]["rootAccounting"]["pathReplacement"]["preservedOracles"]["mergedManifestKey"] = "staticClaim"
+    add("weakened-localization-oracle", weakened_oracle, "weakens or drifts")
+
+    missing_membership = copy.deepcopy(packages)
+    after = missing_membership["WP-NATIVE-01"]["estimate"]["rootAccounting"]["pathReplacement"]["afterPaths"]
+    after.remove("scripts/visual/validate_upgrade_ui_test_membership.py")
+    add("missing-ac07-validator", missing_membership, "afterPaths drifted")
+
+    controller_claim = copy.deepcopy(packages)
+    controller_claim["WP-NATIVE-01"]["ownership"]["allowedPaths"].append(
+        {"repo": "ios", "glob": "ShareExtension/ShareViewController.swift"}
+    )
+    add("production-controller-ownership", controller_claim, "ownership drifted")
+
+    plist_claim = copy.deepcopy(packages)
+    plist_claim["WP-NATIVE-01"]["ownership"]["allowedPaths"].append(
+        {"repo": "ios", "glob": "ActionExtension/Info.plist"}
+    )
+    add("production-plist-ownership", plist_claim, "ownership drifted")
+
+    production_reachable = copy.deepcopy(packages)
+    production_reachable["WP-NATIVE-01"]["extensionEvidenceHost"]["productionConfigurations"]["Debug"]["hostDisposition"] = "included"
+    add("production-host-reachable", production_reachable, "Production Debug and Release".lower())
+
+    missing_debug = copy.deepcopy(packages)
+    missing_debug["WP-NATIVE-01"]["extensionEvidenceHost"]["evidenceBuild"]["commonCompilationConditions"] = ["CF_NATIVE_EXTENSION_EVIDENCE_BUILD"]
+    add("missing-debug-condition", missing_debug, "requires DEBUG")
+
+    missing_evidence = copy.deepcopy(packages)
+    missing_evidence["WP-NATIVE-01"]["extensionEvidenceHost"]["evidenceBuild"]["commonCompilationConditions"] = ["DEBUG"]
+    add("missing-evidence-condition", missing_evidence, "exact evidence condition")
+
+    cross_wired_target = copy.deepcopy(packages)
+    cross_wired_target["WP-NATIVE-01"]["extensionEvidenceHost"]["evidenceBuild"]["targetCompilationConditions"]["ActionExtension"] = "CF_NATIVE_SHARE_EVIDENCE_TARGET"
+    add("cross-wired-target-condition", cross_wired_target, "target compilation conditions")
+
+    missing_controller_exclusion = copy.deepcopy(packages)
+    del missing_controller_exclusion["WP-NATIVE-01"]["extensionEvidenceHost"]["evidenceBuild"]["excludedProductionSources"]["ActionExtension"]
+    add("missing-controller-exclusion", missing_controller_exclusion, "exclude both production")
+
+    main_import = copy.deepcopy(packages)
+    main_import["WP-NATIVE-01"]["extensionEvidenceHost"]["sourceTargets"].append("ChapterFlow")
+    add("main-app-source-import", main_import, "compile only in both extension targets")
+
+    ui_import = copy.deepcopy(packages)
+    ui_import["WP-NATIVE-01"]["extensionEvidenceHost"]["sourceTargets"].append("ChapterFlowUITests")
+    add("ui-test-source-import", ui_import, "compile only in both extension targets")
+
+    static_invocation = copy.deepcopy(packages)
+    static_invocation["WP-NATIVE-01"]["extensionEvidenceHost"]["invocation"]["flow"] = ["source-scan-as-runtime-evidence"]
+    add("static-invocation", static_invocation, "real appex")
+
+    transaction_claim = copy.deepcopy(packages)
+    transaction_claim["WP-NATIVE-01"]["extensionEvidenceHost"]["fixtureEvidence"]["transactionClaim"] = "durable"
+    add("fixture-transaction-claim", transaction_claim, "transactionClaim=none")
+
+    changed_locks = copy.deepcopy(packages)
+    changed_locks["WP-NATIVE-01"]["resourceLocks"].append("persistence-schema")
+    add("changed-locks", changed_locks, "resourceLocks drifted")
+
+    changed_dag = copy.deepcopy(packages)
+    changed_dag["WP-READER-01"]["blockedBy"].remove("WP-NATIVE-01")
+    add("changed-dag-direction", changed_dag, "blockedBy drifted")
+
+    changed_count = copy.deepcopy(packages)
+    changed_count.pop("WP-SOCIAL-01")
+    add("changed-package-count", changed_count, "exactly 24 packages")
+
+    changed_caps = copy.deepcopy(packages)
+    changed_caps["WP-NATIVE-01"]["estimate"]["maxFiles"] = 21
+    add("changed-native-cap", changed_caps, "file/root caps drifted")
+
+    ext_broadened = copy.deepcopy(packages)
+    ext_broadened["WP-EXT-01"]["ownership"]["allowedPaths"].append(
+        {"repo": "ios", "glob": "ShareExtension/ShareView.swift"}
+    )
+    add("ext-ownership-broadened", ext_broadened, "WP-EXT-01 ownership drifted")
+
+    reader_broadened = copy.deepcopy(packages)
+    reader_broadened["WP-READER-01"]["ownership"]["allowedPaths"].append(
+        {"repo": "ios", "glob": "ActionExtension/ActionView.swift"}
+    )
+    add("reader-ownership-broadened", reader_broadened, "WP-READER-01 ownership drifted")
+
+    static_extension_validate = native_validate.replace(
+        f"`{NATIVE_AC04_EXTENSION_COMMAND}`",
+        f"`{NATIVE_AC04_UNIT_COMMAND}`",
+    )
+    add(
+        "extension-runtime-static-substitution", copy.deepcopy(packages),
+        "NATIVE-04-EXTENSION-02 command drifted",
+        validate=static_extension_validate,
+    )
+    extension_row_in_comment = static_extension_validate.replace(
+        "\n\nEvery selector requires",
+        "\n<!--\n"
+        "| AC-NATIVE-01-04 | NATIVE-04-EXTENSION-02 | "
+        f"`{NATIVE_AC04_EXTENSION_COMMAND}` | relocated non-executable row | none |\n"
+        "-->\n\nEvery selector requires",
+        1,
+    )
+    add(
+        "extension-row-relocated-into-html-comment", copy.deepcopy(packages),
+        "NATIVE-04-EXTENSION-02 command drifted",
+        validate=extension_row_in_comment,
+    )
+    relocated_ac07_validate = native_validate.replace(
+        f"`{NATIVE_AC07_COMMAND}`",
+        f"`{NATIVE_AC04_UNIT_COMMAND}`",
+    ) + f"\n<!-- relocated but non-executable: {NATIVE_AC07_COMMAND} -->\n"
+    add(
+        "ac07-command-relocated", copy.deepcopy(packages),
+        "NATIVE-07-PROJECT-01 command drifted",
+        validate=relocated_ac07_validate,
+    )
+    ac07_row_in_fence = native_validate.replace(
+        f"`{NATIVE_AC07_COMMAND}`",
+        f"`{NATIVE_AC04_UNIT_COMMAND}`",
+        1,
+    ).replace(
+        "\n\nEvery selector requires",
+        "\n```text\n"
+        "| AC-NATIVE-01-07 | NATIVE-07-PROJECT-01 | "
+        f"`{NATIVE_AC07_COMMAND}` | relocated non-executable row | none |\n"
+        "```\n\nEvery selector requires",
+        1,
+    )
+    add(
+        "ac07-row-relocated-into-fenced-code", copy.deepcopy(packages),
+        "NATIVE-07-PROJECT-01 command drifted",
+        validate=ac07_row_in_fence,
+    )
+    extension_live_row = next(
+        line for line in native_validate.splitlines()
+        if "| NATIVE-04-EXTENSION-02 |" in line
+    )
+    four_backtick_relocation = native_validate.replace(
+        extension_live_row + "\n", "", 1,
+    ).replace(
+        "\n\nEvery selector requires",
+        "\n````text\n```\n"
+        "| AC-NATIVE-01-04 | NATIVE-04-EXTENSION-02 | "
+        f"`{NATIVE_AC04_EXTENSION_COMMAND}` | falsely exposed row | none |\n"
+        "\nEvery selector requires",
+        1,
+    )
+    add(
+        "extension-row-after-short-fence-close", copy.deepcopy(packages),
+        "unterminated fenced block",
+        validate=four_backtick_relocation,
+    )
+    blank_relocation = native_validate.replace(
+        extension_live_row + "\n", "", 1,
+    ).replace(
+        "\n\nEvery selector requires",
+        "\n\n| AC-NATIVE-01-04 | NATIVE-04-EXTENSION-02 | "
+        f"`{NATIVE_AC04_EXTENSION_COMMAND}` | noncontiguous row | none |\n"
+        "Every selector requires",
+        1,
+    )
+    add(
+        "extension-row-relocated-after-table-blank", copy.deepcopy(packages),
+        "Acceptance evidence rows must be contiguous",
+        validate=blank_relocation,
+    )
+    add(
+        "unterminated-validation-html-comment", copy.deepcopy(packages),
+        "unterminated HTML comment",
+        validate=native_validate + "\n<!--\n",
+    )
+    add(
+        "unterminated-validation-fenced-block", copy.deepcopy(packages),
+        "unterminated fenced block",
+        validate=native_validate + "\n```text\n",
+    )
+    add(
+        "duplicate-live-acceptance-heading", copy.deepcopy(packages),
+        "one live Acceptance evidence section",
+        validate=native_validate + "\n## Acceptance evidence\n",
+    )
+    weakened_unit_validate = native_validate.replace(
+        "--manifest-key localizationMatrix", "--manifest-key staticClaim", 1,
+    )
+    add(
+        "localization-row-weakened", copy.deepcopy(packages),
+        "NATIVE-04-UNIT-01 command drifted",
+        validate=weakened_unit_validate,
+    )
+    weakened_boundary_validate = native_validate.replace(
+        "CF_NATIVE_EXTENSION_EXCLUDED_SOURCES='ShareViewController.swift ActionViewController.swift'",
+        "CF_NATIVE_EXTENSION_EXCLUDED_SOURCES=''",
+        1,
+    )
+    add(
+        "boundary-controller-exclusion-weakened", copy.deepcopy(packages),
+        "NATIVE-04-PRODUCTION-BOUNDARY-03 command drifted",
+        validate=weakened_boundary_validate,
+    )
+    build_boundary_row = next(
+        line for line in native_validate.splitlines()
+        if "| NATIVE-04-BUILD-BOUNDARY-04 |" in line
+    )
+    removed_build_boundary_validate = native_validate.replace(
+        build_boundary_row + "\n", "", 1,
+    )
+    add(
+        "extension-build-boundary-row-removed", copy.deepcopy(packages),
+        "NATIVE-04-BUILD-BOUNDARY-04 must have exactly one validation row",
+        validate=removed_build_boundary_validate,
+    )
+    weakened_build_boundary_validate = native_validate.replace(
+        "--ordinary-configuration Debug --ordinary-configuration Release ",
+        "--ordinary-configuration Debug ",
+        1,
+    )
+    add(
+        "extension-build-boundary-release-removed", copy.deepcopy(packages),
+        "NATIVE-04-BUILD-BOUNDARY-04 command drifted",
+        validate=weakened_build_boundary_validate,
+    )
+    weakened_build_boundary_debug_validate = native_validate.replace(
+        "--ordinary-configuration Debug --ordinary-configuration Release ",
+        "--ordinary-configuration Release ",
+        1,
+    )
+    add(
+        "extension-build-boundary-debug-removed", copy.deepcopy(packages),
+        "NATIVE-04-BUILD-BOUNDARY-04 command drifted",
+        validate=weakened_build_boundary_debug_validate,
+    )
+    weakened_evidence_boundary_validate = native_validate.replace(
+        "--evidence-configuration Debug ", "", 1,
+    )
+    add(
+        "extension-build-boundary-evidence-removed", copy.deepcopy(packages),
+        "NATIVE-04-BUILD-BOUNDARY-04 command drifted",
+        validate=weakened_evidence_boundary_validate,
+    )
+    weakened_project_membership_validate = native_validate.replace(
+        "--require-extension-target ShareExtension --require-extension-target ActionExtension ",
+        "--require-extension-target ShareExtension ",
+        1,
+    )
+    add(
+        "extension-project-membership-weakened", copy.deepcopy(packages),
+        "NATIVE-07-PROJECT-01 command drifted",
+        validate=weakened_project_membership_validate,
+    )
+    weakened_show_settings_validate = native_validate.replace(
+        "--show-build-settings-project ChapterFlow.xcodeproj ", "", 1,
+    )
+    add(
+        "extension-show-build-settings-removed", copy.deepcopy(packages),
+        "NATIVE-07-PROJECT-01 command drifted",
+        validate=weakened_show_settings_validate,
+    )
+    for assertion_id in EXPECTED_NATIVE_ASSERTION_COMMANDS:
+        add(
+            f"{assertion_id.lower()}-oracle-weakened", copy.deepcopy(packages),
+            f"{assertion_id} full validation row drifted",
+            validate=mutate_validation_cell(assertion_id, 3, "command exits zero"),
+        )
+    add(
+        "extension-build-boundary-artifact-weakened", copy.deepcopy(packages),
+        "NATIVE-04-BUILD-BOUNDARY-04 full validation row drifted",
+        validate=mutate_validation_cell(
+            "NATIVE-04-BUILD-BOUNDARY-04", 4, "`results/native/fake.json`",
+        ),
+    )
+    add(
+        "extension-build-boundary-ac-remapped", copy.deepcopy(packages),
+        "NATIVE-04-BUILD-BOUNDARY-04 AC mapping drifted",
+        validate=mutate_validation_cell(
+            "NATIVE-04-BUILD-BOUNDARY-04", 0, "AC-NATIVE-01-07",
+        ),
+    )
+    add(
+        "reader-touch-ownership-removed", copy.deepcopy(packages), "touch-target ownership contract omits",
+        reader_text=reader_contract.replace("reader-toolbar.depth-option", "reader-toolbar.removed-option"),
+    )
+
+    results: list[dict[str, object]] = []
+    duplicate_key_issues: list[str] = []
+    try:
+        unique_json_object([("pathReplacement", {}), ("pathReplacement", {})])
+    except DuplicateJSONKeyError as error:
+        duplicate_key_issues.append(str(error))
+    duplicate_key_matched = any("duplicate JSON key: pathReplacement" in issue for issue in duplicate_key_issues)
+    results.append({
+        "case": "duplicate-replacement-key",
+        "expected": "duplicate JSON key: pathReplacement",
+        "matched": duplicate_key_matched,
+        "issues": duplicate_key_issues,
+    })
+    if not duplicate_key_matched:
+        fail("extension-evidence-host self-test duplicate-replacement-key did not fail")
+    for case_id, mutated, expected, contract, validate, reader_text in cases:
+        issues = collect(mutated, contract, validate, reader_text)
+        matched = any(expected.lower() in issue.lower() for issue in issues)
+        results.append({"case": case_id, "expected": expected, "matched": matched, "issues": issues})
+        if not matched:
+            fail(f"extension-evidence-host self-test {case_id} did not fail with {expected!r}")
+    return results
+
+
 def validate_container_shape_self_tests(
     packages: dict[str, dict], backlog: dict,
 ) -> list[dict[str, object]]:
@@ -664,6 +1673,7 @@ def validate_candidate_diff(package: dict, base: str, head: str, require_binding
     estimate = package.get("estimate", {})
     accounting = estimate.get("rootAccounting", {}) if isinstance(estimate, dict) else {}
     binding = accounting.get("candidateBinding") if isinstance(accounting, dict) else None
+    replacement = accounting.get("pathReplacement") if isinstance(accounting, dict) else None
     if not isinstance(binding, dict):
         fail(f"{package_id} has no candidateBinding for --package-diff")
         return
@@ -696,6 +1706,10 @@ def validate_candidate_diff(package: dict, base: str, head: str, require_binding
         )
         if require_binding and actual_paths != binding.get("paths"):
             fail(f"{package_id} candidate path manifest drift")
+        if not require_binding and package_id == "WP-NATIVE-01":
+            expected_after = replacement.get("afterPaths") if isinstance(replacement, dict) else None
+            if actual_paths != expected_after:
+                fail(f"{package_id} remediation path manifest drift from adjudicated replacement")
         for issue in candidate_path_issues(package, actual_paths):
             fail(issue)
 
@@ -839,6 +1853,7 @@ def validate_packages(backlog: dict, locks_doc: dict) -> dict[str, dict]:
         spec = (path.parent / "SPEC.md").read_text(encoding="utf-8")
         validate = (path.parent / "VALIDATE.md").read_text(encoding="utf-8")
         run = (path.parent / "RUN.md").read_text(encoding="utf-8")
+        live_validate_lines = live_markdown_lines(validate)
         assertion_ids: set[str] = set()
         for criterion in package_criteria:
             if criterion in criteria:
@@ -846,7 +1861,7 @@ def validate_packages(backlog: dict, locks_doc: dict) -> dict[str, dict]:
             criteria.add(criterion)
             if criterion not in spec or criterion not in validate:
                 fail(f"{package_id} criterion missing from SPEC/VALIDATE: {criterion}")
-            rows = [line for line in validate.splitlines() if line.startswith(f"| {criterion} |")]
+            rows = [line for line in live_validate_lines if line.startswith(f"| {criterion} |")]
             if not rows:
                 fail(f"{package_id} has no atomic evidence row for {criterion}")
             for row in rows:
@@ -875,10 +1890,11 @@ def validate_packages(backlog: dict, locks_doc: dict) -> dict[str, dict]:
                     }
                     if "--derived-data" not in command:
                         fail(f"{package_id} {criterion} native matrix omits isolated --derived-data")
-                    dimension_match = re.search(r"--require-dimensions ([^ `|]+)", command)
-                    dimensions = set(dimension_match.group(1).split(",")) if dimension_match else set()
-                    if dimensions != required_dimensions:
-                        fail(f"{package_id} {criterion} native matrix dimension contract drift")
+                    if "--extension-build-boundary" not in command:
+                        dimension_match = re.search(r"--require-dimensions ([^ `|]+)", command)
+                        dimensions = set(dimension_match.group(1).split(",")) if dimension_match else set()
+                        if dimensions != required_dimensions:
+                            fail(f"{package_id} {criterion} native matrix dimension contract drift")
                 if "scripts/validation/run_evidence.py" in command:
                     if "--assertion " not in command or "--attempt " not in command:
                         fail(f"{package_id} {criterion} direct evidence-runner invocation omits assertion/attempt identity")
@@ -1879,6 +2895,7 @@ def validate_final_remediation_contracts(packages: dict[str, dict], locks_doc: d
         (native_root / name).read_text(encoding="utf-8")
         for name in ("SPEC.md", "RUN.md", "VALIDATE.md")
     )
+    native_validate = (native_root / "VALIDATE.md").read_text(encoding="utf-8")
     ext_contract = "\n".join(
         (ext_root / name).read_text(encoding="utf-8")
         for name in ("SPEC.md", "RUN.md", "VALIDATE.md")
@@ -1911,6 +2928,11 @@ def validate_final_remediation_contracts(packages: dict[str, dict], locks_doc: d
     ):
         if marker not in reader_contract:
             fail(f"WP-READER-01 target closure omits {marker}")
+
+    for issue in native_extension_host_issues(
+        packages, native_contract, native_validate, reader_contract,
+    ):
+        fail(issue)
 
     reader = packages.get("WP-READER-01", {})
     if "WP-NATIVE-01" not in reader.get("blockedBy", []) or "WP-NATIVE-01" not in ext.get("blockedBy", []):
@@ -1973,6 +2995,7 @@ def main() -> int:
     root_accounting_results: list[dict[str, object]] = []
     performance_budget_results: list[dict[str, object]] = []
     container_shape_results: list[dict[str, object]] = []
+    native_extension_host_results: list[dict[str, object]] = []
     if not all(isinstance(value, dict) for value in (backlog, dag, locks_doc)):
         fail("program JSON documents must be objects")
     else:
@@ -1984,6 +3007,7 @@ def main() -> int:
         if not ERRORS:
             root_accounting_results = validate_root_accounting_self_tests(packages)
             container_shape_results = validate_container_shape_self_tests(packages, backlog)
+            native_extension_host_results = validate_native_extension_host_self_tests(packages)
         validate_graph(backlog, dag, locks_doc, packages)
         validate_evaluations(backlog)
         performance_budget_results = validate_performance_budgets(packages)
@@ -2029,6 +3053,7 @@ def main() -> int:
             "containerShapes": container_shape_results,
             "performanceBudgets": performance_budget_results,
             "rootAccounting": root_accounting_results,
+            "extensionEvidenceHost": native_extension_host_results,
         }, indent=2, sort_keys=True))
     return 0
 
