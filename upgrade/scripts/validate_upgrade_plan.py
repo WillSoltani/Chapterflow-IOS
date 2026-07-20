@@ -368,6 +368,16 @@ NATIVE_AC07_COMMAND = (
     "python3 scripts/visual/validate_upgrade_ui_test_membership.py "
     "--project ChapterFlow.xcodeproj/project.pbxproj "
     "--root ChapterFlowUITests/UpgradeEvidence --require-target ChapterFlowUITests "
+    "--extension-evidence-host scripts/localization/NativeExtensionEvidenceHost.swift "
+    "--require-extension-target ShareExtension --require-extension-target ActionExtension "
+    "--forbid-extension-target ChapterFlow --forbid-extension-target ChapterFlowUITests "
+    "--require-target-flag ShareExtension=CF_NATIVE_SHARE_EVIDENCE_TARGET "
+    "--require-target-flag ActionExtension=CF_NATIVE_ACTION_EVIDENCE_TARGET "
+    "--ordinary-excluded-source NativeExtensionEvidenceHost.swift "
+    "--show-build-settings-project ChapterFlow.xcodeproj --scheme ChapterFlow "
+    "--configuration Debug "
+    "--require-build-setting ShareExtension:EXCLUDED_SOURCE_FILE_NAMES=NativeExtensionEvidenceHost.swift "
+    "--require-build-setting ActionExtension:EXCLUDED_SOURCE_FILE_NAMES=NativeExtensionEvidenceHost.swift "
     "--output results/native/ui-test-membership.json"
 )
 NATIVE_AC04_UNIT_COMMAND = (
@@ -404,10 +414,48 @@ NATIVE_AC04_BOUNDARY_COMMAND = (
     "SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) CF_NATIVE_EXTENSION_EVIDENCE_BUILD' "
     "CF_NATIVE_EXTENSION_EXCLUDED_SOURCES='ShareViewController.swift ActionViewController.swift'"
 )
+NATIVE_AC04_BUILD_BOUNDARY_COMMAND = (
+    "python3 scripts/visual/run_native_matrix.py --project ChapterFlow.xcodeproj "
+    "--scheme ChapterFlow --extension-build-boundary "
+    "--base <BASE_SHA> --candidate <SHA> "
+    "--ordinary-configuration Debug --ordinary-configuration Release "
+    "--evidence-configuration Debug "
+    "--derived-data /private/tmp/Chapterflow-DD-native-extension-build-boundary-<SHA> "
+    "--extension-evidence-host scripts/localization/NativeExtensionEvidenceHost.swift "
+    "--extension-evidence-condition CF_NATIVE_EXTENSION_EVIDENCE_BUILD "
+    "--source-exclusion-variable CF_NATIVE_EXTENSION_EXCLUDED_SOURCES "
+    "--require-production-source ShareExtension:ShareExtension/ShareViewController.swift "
+    "--require-production-source ActionExtension:ActionExtension/ActionViewController.swift "
+    "--exclude-production-source ShareExtension:ShareViewController.swift "
+    "--exclude-production-source ActionExtension:ActionViewController.swift "
+    "--require-ordinary-host-exclusion --require-evidence-host-inclusion "
+    "--require-evidence-production-source-exclusion --require-evidence-marker-separation "
+    "--require-unchanged-info-plist ShareExtension/Info.plist "
+    "--require-unchanged-info-plist ActionExtension/Info.plist "
+    "--require-principal-class ShareExtension=ShareViewController "
+    "--require-principal-class ActionExtension=ActionViewController "
+    "--require-appex ShareExtension.appex --require-appex ActionExtension.appex "
+    "--negative-build-case ShareExtension:missing-debug "
+    "--negative-build-case ActionExtension:missing-debug "
+    "--negative-build-case ShareExtension:missing-evidence-condition "
+    "--negative-build-case ActionExtension:missing-evidence-condition "
+    "--negative-build-case ShareExtension:missing-target-flag "
+    "--negative-build-case ActionExtension:missing-target-flag "
+    "--negative-build-case ShareExtension:dual-target-flags "
+    "--negative-build-case ActionExtension:dual-target-flags "
+    "--negative-build-case ShareExtension:cross-wired-target-flag "
+    "--negative-build-case ActionExtension:cross-wired-target-flag "
+    "--negative-build-case ShareExtension:controller-host-collision "
+    "--negative-build-case ActionExtension:controller-host-collision "
+    "--negative-build-case ShareExtension:release-evidence-reachability "
+    "--negative-build-case ActionExtension:release-evidence-reachability "
+    "--output results/native/extension-build-boundary"
+)
 EXPECTED_NATIVE_ASSERTION_COMMANDS = {
     "NATIVE-04-UNIT-01": NATIVE_AC04_UNIT_COMMAND,
     "NATIVE-04-EXTENSION-02": NATIVE_AC04_EXTENSION_COMMAND,
     "NATIVE-04-PRODUCTION-BOUNDARY-03": NATIVE_AC04_BOUNDARY_COMMAND,
+    "NATIVE-04-BUILD-BOUNDARY-04": NATIVE_AC04_BUILD_BOUNDARY_COMMAND,
     "NATIVE-07-PROJECT-01": NATIVE_AC07_COMMAND,
 }
 EXPECTED_PERFORMANCE_BUDGET_DIGESTS = {
@@ -908,10 +956,112 @@ def validate_root_accounting_self_tests(packages: dict[str, dict]) -> list[dict[
     return results
 
 
-def native_assertion_command_issues(native_validate: str) -> list[str]:
+def live_markdown_lines(
+    markdown: str, structure_issues: list[str] | None = None,
+) -> list[str]:
+    """Return executable prose, excluding HTML comments and fenced examples."""
+    lines: list[str] = []
+    in_comment = False
+    fence: tuple[str, int] | None = None
+    for raw_line in markdown.splitlines():
+        if fence is not None:
+            fence_character, opening_length = fence
+            indentation = len(raw_line) - len(raw_line.lstrip(" "))
+            closing = raw_line[indentation:]
+            if indentation <= 3 and not closing.startswith("\t") and re.fullmatch(
+                rf"{re.escape(fence_character)}{{{opening_length},}}\s*", closing,
+            ):
+                fence = None
+            continue
+
+        visible: list[str] = []
+        cursor = 0
+        while cursor < len(raw_line):
+            if in_comment:
+                end = raw_line.find("-->", cursor)
+                if end < 0:
+                    cursor = len(raw_line)
+                    break
+                in_comment = False
+                cursor = end + 3
+                continue
+            start = raw_line.find("<!--", cursor)
+            if start < 0:
+                visible.append(raw_line[cursor:])
+                break
+            visible.append(raw_line[cursor:start])
+            in_comment = True
+            cursor = start + 4
+
+        live_line = "".join(visible)
+        indentation = len(live_line) - len(live_line.lstrip(" "))
+        stripped = live_line[indentation:]
+        if not in_comment:
+            opening = (
+                re.match(r"^(`{3,}|~{3,})(.*)$", stripped)
+                if indentation <= 3 and not stripped.startswith("\t")
+                else None
+            )
+            if opening is not None:
+                run, info = opening.groups()
+                if run[0] != "`" or "`" not in info:
+                    fence = (run[0], len(run))
+                    continue
+        lines.append(live_line)
+    if structure_issues is not None:
+        if in_comment:
+            structure_issues.append("WP-NATIVE-01 VALIDATE has an unterminated HTML comment")
+        if fence is not None:
+            structure_issues.append("WP-NATIVE-01 VALIDATE has an unterminated fenced block")
+    return lines
+
+
+def acceptance_evidence_lines(native_validate: str) -> tuple[list[str], list[str]]:
     issues: list[str] = []
+    live_lines = live_markdown_lines(native_validate, issues)
+    headings = [
+        index for index, line in enumerate(live_lines)
+        if line.strip() == "## Acceptance evidence"
+    ]
+    if len(headings) != 1:
+        return [], ["WP-NATIVE-01 VALIDATE must contain one live Acceptance evidence section"]
+    start = headings[0] + 1
+    end = len(live_lines)
+    for index in range(start, len(live_lines)):
+        if re.match(r"^##\s+", live_lines[index].strip()):
+            end = index
+            break
+    section = live_lines[start:end]
+    cursor = 0
+    while cursor < len(section) and not section[cursor].strip():
+        cursor += 1
+    expected_header = (
+        "| AC | Assertion ID | Exact command and selector | Expected oracle | Required artifact |"
+    )
+    if cursor >= len(section) or section[cursor].strip() != expected_header:
+        issues.append("WP-NATIVE-01 Acceptance evidence table header drifted")
+    separator_index = cursor + 1
+    if separator_index >= len(section) or not re.fullmatch(
+        r"\|(?:\s*:?-{3,}:?\s*\|){5}", section[separator_index].strip()
+    ):
+        issues.append("WP-NATIVE-01 Acceptance evidence table separator drifted")
+    table_lines = section[cursor:separator_index + 1]
+    table_ended = False
+    for line in section[separator_index + 1:]:
+        if line.startswith("|"):
+            if table_ended:
+                issues.append("WP-NATIVE-01 Acceptance evidence rows must be contiguous")
+            else:
+                table_lines.append(line)
+        else:
+            table_ended = True
+    return table_lines, issues
+
+
+def native_assertion_command_issues(native_validate: str) -> list[str]:
+    section, issues = acceptance_evidence_lines(native_validate)
     rows_by_assertion: dict[str, list[list[str]]] = {}
-    for line in native_validate.splitlines():
+    for line in section:
         if not line.startswith("|"):
             continue
         cells = [cell.strip() for cell in line.split("|")[1:-1]]
@@ -1211,6 +1361,19 @@ def validate_native_extension_host_self_tests(packages: dict[str, dict]) -> list
         "NATIVE-04-EXTENSION-02 command drifted",
         validate=static_extension_validate,
     )
+    extension_row_in_comment = static_extension_validate.replace(
+        "\n\nEvery selector requires",
+        "\n<!--\n"
+        "| AC-NATIVE-01-04 | NATIVE-04-EXTENSION-02 | "
+        f"`{NATIVE_AC04_EXTENSION_COMMAND}` | relocated non-executable row | none |\n"
+        "-->\n\nEvery selector requires",
+        1,
+    )
+    add(
+        "extension-row-relocated-into-html-comment", copy.deepcopy(packages),
+        "NATIVE-04-EXTENSION-02 command drifted",
+        validate=extension_row_in_comment,
+    )
     relocated_ac07_validate = native_validate.replace(
         f"`{NATIVE_AC07_COMMAND}`",
         f"`{NATIVE_AC04_UNIT_COMMAND}`",
@@ -1219,6 +1382,71 @@ def validate_native_extension_host_self_tests(packages: dict[str, dict]) -> list
         "ac07-command-relocated", copy.deepcopy(packages),
         "NATIVE-07-PROJECT-01 command drifted",
         validate=relocated_ac07_validate,
+    )
+    ac07_row_in_fence = native_validate.replace(
+        f"`{NATIVE_AC07_COMMAND}`",
+        f"`{NATIVE_AC04_UNIT_COMMAND}`",
+        1,
+    ).replace(
+        "\n\nEvery selector requires",
+        "\n```text\n"
+        "| AC-NATIVE-01-07 | NATIVE-07-PROJECT-01 | "
+        f"`{NATIVE_AC07_COMMAND}` | relocated non-executable row | none |\n"
+        "```\n\nEvery selector requires",
+        1,
+    )
+    add(
+        "ac07-row-relocated-into-fenced-code", copy.deepcopy(packages),
+        "NATIVE-07-PROJECT-01 command drifted",
+        validate=ac07_row_in_fence,
+    )
+    extension_live_row = next(
+        line for line in native_validate.splitlines()
+        if "| NATIVE-04-EXTENSION-02 |" in line
+    )
+    four_backtick_relocation = native_validate.replace(
+        extension_live_row + "\n", "", 1,
+    ).replace(
+        "\n\nEvery selector requires",
+        "\n````text\n```\n"
+        "| AC-NATIVE-01-04 | NATIVE-04-EXTENSION-02 | "
+        f"`{NATIVE_AC04_EXTENSION_COMMAND}` | falsely exposed row | none |\n"
+        "\nEvery selector requires",
+        1,
+    )
+    add(
+        "extension-row-after-short-fence-close", copy.deepcopy(packages),
+        "unterminated fenced block",
+        validate=four_backtick_relocation,
+    )
+    blank_relocation = native_validate.replace(
+        extension_live_row + "\n", "", 1,
+    ).replace(
+        "\n\nEvery selector requires",
+        "\n\n| AC-NATIVE-01-04 | NATIVE-04-EXTENSION-02 | "
+        f"`{NATIVE_AC04_EXTENSION_COMMAND}` | noncontiguous row | none |\n"
+        "Every selector requires",
+        1,
+    )
+    add(
+        "extension-row-relocated-after-table-blank", copy.deepcopy(packages),
+        "Acceptance evidence rows must be contiguous",
+        validate=blank_relocation,
+    )
+    add(
+        "unterminated-validation-html-comment", copy.deepcopy(packages),
+        "unterminated HTML comment",
+        validate=native_validate + "\n<!--\n",
+    )
+    add(
+        "unterminated-validation-fenced-block", copy.deepcopy(packages),
+        "unterminated fenced block",
+        validate=native_validate + "\n```text\n",
+    )
+    add(
+        "duplicate-live-acceptance-heading", copy.deepcopy(packages),
+        "one live Acceptance evidence section",
+        validate=native_validate + "\n## Acceptance evidence\n",
     )
     weakened_unit_validate = native_validate.replace(
         "--manifest-key localizationMatrix", "--manifest-key staticClaim", 1,
@@ -1237,6 +1465,64 @@ def validate_native_extension_host_self_tests(packages: dict[str, dict]) -> list
         "boundary-controller-exclusion-weakened", copy.deepcopy(packages),
         "NATIVE-04-PRODUCTION-BOUNDARY-03 command drifted",
         validate=weakened_boundary_validate,
+    )
+    build_boundary_row = next(
+        line for line in native_validate.splitlines()
+        if "| NATIVE-04-BUILD-BOUNDARY-04 |" in line
+    )
+    removed_build_boundary_validate = native_validate.replace(
+        build_boundary_row + "\n", "", 1,
+    )
+    add(
+        "extension-build-boundary-row-removed", copy.deepcopy(packages),
+        "NATIVE-04-BUILD-BOUNDARY-04 must have exactly one validation row",
+        validate=removed_build_boundary_validate,
+    )
+    weakened_build_boundary_validate = native_validate.replace(
+        "--ordinary-configuration Debug --ordinary-configuration Release ",
+        "--ordinary-configuration Debug ",
+        1,
+    )
+    add(
+        "extension-build-boundary-release-removed", copy.deepcopy(packages),
+        "NATIVE-04-BUILD-BOUNDARY-04 command drifted",
+        validate=weakened_build_boundary_validate,
+    )
+    weakened_build_boundary_debug_validate = native_validate.replace(
+        "--ordinary-configuration Debug --ordinary-configuration Release ",
+        "--ordinary-configuration Release ",
+        1,
+    )
+    add(
+        "extension-build-boundary-debug-removed", copy.deepcopy(packages),
+        "NATIVE-04-BUILD-BOUNDARY-04 command drifted",
+        validate=weakened_build_boundary_debug_validate,
+    )
+    weakened_evidence_boundary_validate = native_validate.replace(
+        "--evidence-configuration Debug ", "", 1,
+    )
+    add(
+        "extension-build-boundary-evidence-removed", copy.deepcopy(packages),
+        "NATIVE-04-BUILD-BOUNDARY-04 command drifted",
+        validate=weakened_evidence_boundary_validate,
+    )
+    weakened_project_membership_validate = native_validate.replace(
+        "--require-extension-target ShareExtension --require-extension-target ActionExtension ",
+        "--require-extension-target ShareExtension ",
+        1,
+    )
+    add(
+        "extension-project-membership-weakened", copy.deepcopy(packages),
+        "NATIVE-07-PROJECT-01 command drifted",
+        validate=weakened_project_membership_validate,
+    )
+    weakened_show_settings_validate = native_validate.replace(
+        "--show-build-settings-project ChapterFlow.xcodeproj ", "", 1,
+    )
+    add(
+        "extension-show-build-settings-removed", copy.deepcopy(packages),
+        "NATIVE-07-PROJECT-01 command drifted",
+        validate=weakened_show_settings_validate,
     )
     add(
         "reader-touch-ownership-removed", copy.deepcopy(packages), "touch-target ownership contract omits",
@@ -1516,6 +1802,7 @@ def validate_packages(backlog: dict, locks_doc: dict) -> dict[str, dict]:
         spec = (path.parent / "SPEC.md").read_text(encoding="utf-8")
         validate = (path.parent / "VALIDATE.md").read_text(encoding="utf-8")
         run = (path.parent / "RUN.md").read_text(encoding="utf-8")
+        live_validate_lines = live_markdown_lines(validate)
         assertion_ids: set[str] = set()
         for criterion in package_criteria:
             if criterion in criteria:
@@ -1523,7 +1810,7 @@ def validate_packages(backlog: dict, locks_doc: dict) -> dict[str, dict]:
             criteria.add(criterion)
             if criterion not in spec or criterion not in validate:
                 fail(f"{package_id} criterion missing from SPEC/VALIDATE: {criterion}")
-            rows = [line for line in validate.splitlines() if line.startswith(f"| {criterion} |")]
+            rows = [line for line in live_validate_lines if line.startswith(f"| {criterion} |")]
             if not rows:
                 fail(f"{package_id} has no atomic evidence row for {criterion}")
             for row in rows:
@@ -1552,10 +1839,11 @@ def validate_packages(backlog: dict, locks_doc: dict) -> dict[str, dict]:
                     }
                     if "--derived-data" not in command:
                         fail(f"{package_id} {criterion} native matrix omits isolated --derived-data")
-                    dimension_match = re.search(r"--require-dimensions ([^ `|]+)", command)
-                    dimensions = set(dimension_match.group(1).split(",")) if dimension_match else set()
-                    if dimensions != required_dimensions:
-                        fail(f"{package_id} {criterion} native matrix dimension contract drift")
+                    if "--extension-build-boundary" not in command:
+                        dimension_match = re.search(r"--require-dimensions ([^ `|]+)", command)
+                        dimensions = set(dimension_match.group(1).split(",")) if dimension_match else set()
+                        if dimensions != required_dimensions:
+                            fail(f"{package_id} {criterion} native matrix dimension contract drift")
                 if "scripts/validation/run_evidence.py" in command:
                     if "--assertion " not in command or "--attempt " not in command:
                         fail(f"{package_id} {criterion} direct evidence-runner invocation omits assertion/attempt identity")
