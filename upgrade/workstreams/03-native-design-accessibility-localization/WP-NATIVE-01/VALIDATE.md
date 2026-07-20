@@ -25,6 +25,8 @@ Every selector requires `matched >= 1`, `failed = 0`, `skipped = 0`, and no disa
 - `swift test --package-path Packages/DesignSystem --parallel`
 - repository-standard unsigned Debug simulator build
 - scenario/artifact JSON Schema validation, candidate-head intended-path/secret scan, `git diff --check`, independent review, required CI, merge ancestry, and post-merge CI
+- `python3 -B upgrade/scripts/validate_upgrade_plan.py --package-diff WP-NATIVE-01 --base cdc68d05aed931b43668253bbf19f192f78e7ad8 --head d332ae2f9091026d879be909f631bcd31bc39c82 --require-candidate-binding` binds the parked continuation candidate's exact tree, canonical binary diff digest, 20 paths, per-group allocations, and unchanged 20-file/three-root maxima before implementation resumes
+- `python3 -B upgrade/scripts/validate_upgrade_plan.py --package-diff WP-NATIVE-01 --base <BASE_SHA> --head <SHA>` fail-closed accounts any later remediation/rebase candidate against the same ordered claims, allocations, and unchanged maxima without treating the parked identity as final runtime proof
 
 Any silent baseline skip, unassigned inventory item, assumed target measurement, owner assignment reported
 as compliance, unexplained target exception, fixture evidence reported as transaction proof, candidate

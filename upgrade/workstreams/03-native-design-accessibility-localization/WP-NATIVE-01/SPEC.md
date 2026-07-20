@@ -19,9 +19,10 @@ Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend
 7. Own and localize Share/Action capture, signed-out, pending, error, and success presentation in
    target-owned catalogs with at least one real non-English translation. Exercise each state through
    deterministic injected fixtures across locale, RTL, focus, announcement, non-color,
-   motion/transparency, contrast, and target scenarios. A NATIVE success fixture proves rendering
-   only. Production success remains unreachable from a void or unverified callback, and this package
-   does not add, remove, reorder, or reinterpret outbox, dismissal, or app-open transaction behavior.
+   motion/transparency, contrast, and target scenarios. The fixture-only state API is separate from a
+   source-compatible production initializer/callback boundary. A NATIVE success fixture proves
+   rendering only; this package does not add, remove, reorder, reinterpret, or validate production
+   outbox, success, dismissal, or app-open transaction behavior.
 8. Provide a deterministic paired iOS performance runner that builds current-main before candidate,
    pins device/OS/toolchain/fixture, uses XCUITest metrics plus declared Instruments templates,
    retains raw samples/xcresults/traces, and consumes but cannot relax the predeclared budgets.
@@ -88,16 +89,18 @@ Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend
 The harness and shared primitives do not own feature redesign or product authority. This package's
 visible product edit is limited to Share/Action localization and accessibility presentation; it does
 not change their outbox transaction semantics. Presentation-state names do not imply transaction
-success. Until WP-EXT-01 integrates, a void or unverified production callback cannot trigger success
-copy, a success announcement, dismissal, or app opening as proof of persistence; if preserving that
-boundary requires a transaction-path edit, stop `BLOCKED_SCOPE_REPLAN`. Evidence contains no private
-content, identifiers, or tokens. Feature packages generate their own candidate-head artifacts and
-close their assigned inventory; `reader-toolbar.depth-option` and `reader-toolbar.tone-option` remain
-open for WP-READER-01 until its exact-head evidence closes them. The synchronized UI-test group grants
-ownership only to each exact package-declared test file; later packages never edit the project or
-another package's tests. iOS 18 retains the same user outcome as enhanced APIs; there is no universal
-spacing-grid claim. Revert harness, project membership, primitives, extension localization, metadata,
-and baselines together; never retain silent skips or mass-approved baselines.
+success. Until WP-EXT-01 integrates, NATIVE preserves the existing source-compatible production
+initializer/callback behavior and makes no claim that it proves persistence. WP-EXT-01 exclusively
+owns the result-bearing writer/controller transition and all production durability, success,
+announcement, dismissal, and app-open truth; NATIVE must stop before changing that transaction path.
+Evidence contains no private content, identifiers, or tokens. Feature packages generate their own
+candidate-head artifacts and close their assigned inventory; `reader-toolbar.depth-option` and
+`reader-toolbar.tone-option` remain open for WP-READER-01 until its exact-head evidence closes them.
+The synchronized UI-test group grants ownership only to each exact package-declared test file; later
+packages never edit the project or another package's tests. iOS 18 retains the same user outcome as
+enhanced APIs; there is no universal spacing-grid claim. Revert harness, project membership,
+primitives, extension localization, metadata, and baselines together; never retain silent skips or
+mass-approved baselines.
 
 ## Test plan and definition of done
 

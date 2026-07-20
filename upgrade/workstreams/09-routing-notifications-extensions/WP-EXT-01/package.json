@@ -42,10 +42,6 @@
     "allowedPaths": [
       {
         "repo": "ios",
-        "glob": "ChapterFlowUITests/UpgradeEvidence/ExtensionUpgradeEvidenceTests.swift"
-      },
-      {
-        "repo": "ios",
         "glob": "ShareExtension/ShareViewController.swift"
       },
       {
@@ -87,6 +83,10 @@
       {
         "repo": "ios",
         "glob": "Packages/AppFeature/Tests/AppFeatureTests/ExtensionImportTests.swift"
+      },
+      {
+        "repo": "ios",
+        "glob": "ChapterFlowUITests/UpgradeEvidence/ExtensionUpgradeEvidenceTests.swift"
       }
     ],
     "prohibitedPaths": [
@@ -140,37 +140,71 @@
       "primaryGroups": [
         {
           "id": "extension-transaction-boundary",
-          "paths": [
-            "ShareExtension/ShareViewController.swift",
-            "ActionExtension/ActionViewController.swift",
-            "SharedExtensionKit/**"
+          "claims": [
+            {
+              "repo": "ios",
+              "glob": "ShareExtension/ShareViewController.swift"
+            },
+            {
+              "repo": "ios",
+              "glob": "ActionExtension/ActionViewController.swift"
+            },
+            {
+              "repo": "ios",
+              "glob": "SharedExtensionKit/**"
+            }
           ],
           "plannedFiles": 8
         },
         {
           "id": "persistence-envelope",
-          "paths": [
-            "Packages/Persistence/Sources/Persistence/PendingExtensionItem.swift",
-            "Packages/Persistence/Sources/Persistence/ExtensionOutbox.swift",
-            "Packages/Persistence/Sources/Persistence/SharedAppStateSnapshot.swift",
-            "Packages/Persistence/Sources/Persistence/SharedStateWriter.swift",
-            "Packages/Persistence/Tests/PersistenceTests/ExtensionOutboxTests.swift",
-            "Packages/Persistence/Tests/PersistenceTests/SharedSnapshotOwnershipTests.swift"
+          "claims": [
+            {
+              "repo": "ios",
+              "glob": "Packages/Persistence/Sources/Persistence/PendingExtensionItem.swift"
+            },
+            {
+              "repo": "ios",
+              "glob": "Packages/Persistence/Sources/Persistence/ExtensionOutbox.swift"
+            },
+            {
+              "repo": "ios",
+              "glob": "Packages/Persistence/Sources/Persistence/SharedAppStateSnapshot.swift"
+            },
+            {
+              "repo": "ios",
+              "glob": "Packages/Persistence/Sources/Persistence/SharedStateWriter.swift"
+            },
+            {
+              "repo": "ios",
+              "glob": "Packages/Persistence/Tests/PersistenceTests/ExtensionOutboxTests.swift"
+            },
+            {
+              "repo": "ios",
+              "glob": "Packages/Persistence/Tests/PersistenceTests/SharedSnapshotOwnershipTests.swift"
+            }
           ],
           "plannedFiles": 6
         },
         {
           "id": "app-import",
-          "paths": [
-            "Packages/AppFeature/Sources/AppFeature/AppModel+Extensions.swift",
-            "Packages/AppFeature/Tests/AppFeatureTests/ExtensionImportTests.swift"
+          "claims": [
+            {
+              "repo": "ios",
+              "glob": "Packages/AppFeature/Sources/AppFeature/AppModel+Extensions.swift"
+            },
+            {
+              "repo": "ios",
+              "glob": "Packages/AppFeature/Tests/AppFeatureTests/ExtensionImportTests.swift"
+            }
           ],
           "plannedFiles": 2
         }
       ],
       "nonPrimaryPaths": [
         {
-          "path": "ChapterFlowUITests/UpgradeEvidence/ExtensionUpgradeEvidenceTests.swift",
+          "repo": "ios",
+          "glob": "ChapterFlowUITests/UpgradeEvidence/ExtensionUpgradeEvidenceTests.swift",
           "class": "validation-support",
           "plannedFiles": 1
         }

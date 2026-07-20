@@ -49,22 +49,6 @@
       },
       {
         "repo": "ios",
-        "glob": "ChapterFlowUITests/UpgradeEvidence/NativeUpgradeEvidenceTests.swift"
-      },
-      {
-        "repo": "ios",
-        "glob": "ChapterFlow.xcodeproj/project.pbxproj"
-      },
-      {
-        "repo": "ios",
-        "glob": "scripts/visual/**"
-      },
-      {
-        "repo": "ios",
-        "glob": "scripts/localization/**"
-      },
-      {
-        "repo": "ios",
         "glob": "ShareExtension/ShareView.swift"
       },
       {
@@ -78,6 +62,22 @@
       {
         "repo": "ios",
         "glob": "ActionExtension/Localizable.xcstrings"
+      },
+      {
+        "repo": "ios",
+        "glob": "ChapterFlowUITests/UpgradeEvidence/NativeUpgradeEvidenceTests.swift"
+      },
+      {
+        "repo": "ios",
+        "glob": "ChapterFlow.xcodeproj/project.pbxproj"
+      },
+      {
+        "repo": "ios",
+        "glob": "scripts/visual/**"
+      },
+      {
+        "repo": "ios",
+        "glob": "scripts/localization/**"
       }
     ],
     "prohibitedPaths": [
@@ -113,8 +113,8 @@
       "Baselines change only with an explained design/behavior change.",
       "Each feature package closes its own localization/adaptation findings against the shared inventory.",
       "This package owns target-owned Share/Action catalogs, localized copy, visual/accessibility rendering, and deterministic fixtures for capture, signed-out, pending, error, and success states.",
-      "A deterministic Share/Action success fixture records stateSource=fixture and transactionClaim=none; WP-NATIVE-01 never infers success from a void or unverified callback and never claims outbox durability, import, dismissal, or app-open ordering.",
-      "WP-EXT-01 owns result-bearing capture callbacks, production controller transaction wiring, and durable-success/failure validation; it consumes the integrated NATIVE presentation without changing its copy, catalogs, layout, focus order, announcements, target policy, motion/transparency behavior, or non-color semantics.",
+      "A deterministic Share/Action success fixture records stateSource=fixture and transactionClaim=none; WP-NATIVE-01 makes no production durability, success, dismissal, or app-open claim.",
+      "WP-NATIVE-01 preserves a source-compatible production initializer/callback boundary until WP-EXT-01; WP-EXT-01 exclusively owns result-bearing capture callbacks, production controller transaction wiring, and durable-success/failure/dismissal/app-open validation while consuming the integrated NATIVE presentation without changing its copy, catalogs, layout, focus order, announcements, target policy, motion/transparency behavior, or non-color semantics.",
       "The touch-target inventory distinguishes verified-compliant, verified-exception, owner-closure-required, and unverified; owner assignment is never compliance, and WP-READER-01 closes reader-toolbar.depth-option and reader-toolbar.tone-option.",
       "The paired iOS performance runner builds current-main first and candidate second, pins device/OS/toolchain/fixture, retains every sample/xcresult/trace, and never authors or relaxes a budget."
     ]
@@ -126,7 +126,7 @@
   "estimate": {
     "validationSupportRoots": 1,
     "minutes": 120,
-    "plannedFiles": 16,
+    "plannedFiles": 20,
     "maxFiles": 20,
     "primaryRoots": 3,
     "maxPrimaryRoots": 3,
@@ -134,50 +134,97 @@
       "primaryGroups": [
         {
           "id": "design-system",
-          "paths": [
-            "Packages/DesignSystem/**"
+          "claims": [
+            {
+              "repo": "ios",
+              "glob": "Packages/DesignSystem/**"
+            }
           ],
-          "plannedFiles": 5
+          "plannedFiles": 6
         },
         {
           "id": "share-presentation",
-          "paths": [
-            "ShareExtension/ShareView.swift",
-            "ShareExtension/Localizable.xcstrings"
+          "claims": [
+            {
+              "repo": "ios",
+              "glob": "ShareExtension/ShareView.swift"
+            },
+            {
+              "repo": "ios",
+              "glob": "ShareExtension/Localizable.xcstrings"
+            }
           ],
           "plannedFiles": 2
         },
         {
           "id": "action-presentation",
-          "paths": [
-            "ActionExtension/ActionView.swift",
-            "ActionExtension/Localizable.xcstrings"
+          "claims": [
+            {
+              "repo": "ios",
+              "glob": "ActionExtension/ActionView.swift"
+            },
+            {
+              "repo": "ios",
+              "glob": "ActionExtension/Localizable.xcstrings"
+            }
           ],
           "plannedFiles": 2
         }
       ],
       "nonPrimaryPaths": [
         {
-          "path": "ChapterFlowUITests/UpgradeEvidence/NativeUpgradeEvidenceTests.swift",
+          "repo": "ios",
+          "glob": "ChapterFlowUITests/UpgradeEvidence/NativeUpgradeEvidenceTests.swift",
           "class": "validation-support",
           "plannedFiles": 1
         },
         {
-          "path": "ChapterFlow.xcodeproj/project.pbxproj",
+          "repo": "ios",
+          "glob": "ChapterFlow.xcodeproj/project.pbxproj",
           "class": "project-configuration",
           "plannedFiles": 1
         },
         {
-          "path": "scripts/visual/**",
+          "repo": "ios",
+          "glob": "scripts/visual/**",
           "class": "validation-tooling",
-          "plannedFiles": 3
+          "plannedFiles": 5
         },
         {
-          "path": "scripts/localization/**",
+          "repo": "ios",
+          "glob": "scripts/localization/**",
           "class": "validation-tooling",
-          "plannedFiles": 2
+          "plannedFiles": 3
         }
-      ]
+      ],
+      "candidateBinding": {
+        "base": "cdc68d05aed931b43668253bbf19f192f78e7ad8",
+        "head": "d332ae2f9091026d879be909f631bcd31bc39c82",
+        "tree": "a525441ab1a0dd91434d4b700794a22f9a1912ed",
+        "diffSha256": "5d71334dfcdb04cd2c17323db44c239be4a1b79bcaee76ea6718f7a887a3daba",
+        "paths": [
+          "ActionExtension/ActionView.swift",
+          "ActionExtension/Localizable.xcstrings",
+          "ChapterFlow.xcodeproj/project.pbxproj",
+          "ChapterFlowUITests/UpgradeEvidence/NativeUpgradeEvidenceTests.swift",
+          "Packages/DesignSystem/Sources/DesignSystem/NativeEvidenceAccessibility.swift",
+          "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/DesignSystemSnapshotTests.swift",
+          "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/SnapshotHelper.swift",
+          "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__/gallery-dark.png",
+          "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__/gallery-light.png",
+          "Packages/DesignSystem/Tests/DesignSystemSnapshotTests/__Snapshots__/gallery-xxl.png",
+          "ShareExtension/Localizable.xcstrings",
+          "ShareExtension/ShareView.swift",
+          "scripts/localization/inventory.py",
+          "scripts/localization/scenarios.json",
+          "scripts/localization/validate_matrix.py",
+          "scripts/visual/native-matrix.json",
+          "scripts/visual/run_native_matrix.py",
+          "scripts/visual/run_paired_performance.py",
+          "scripts/visual/touch_targets.py",
+          "scripts/visual/validate_upgrade_ui_test_membership.py"
+        ]
+      }
     },
     "splitIf": [
       "the outcome can integrate independently",

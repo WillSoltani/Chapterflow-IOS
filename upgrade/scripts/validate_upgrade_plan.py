@@ -3,10 +3,13 @@
 
 from __future__ import annotations
 
+import argparse
+import copy
 import fnmatch
 import hashlib
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -137,6 +140,448 @@ def globs_overlap(first: str, second: str) -> bool:
     return first_prefix.startswith(second_prefix) or second_prefix.startswith(first_prefix)
 
 
+REVISED_ROOT_PACKAGES = {"WP-NATIVE-01", "WP-EXT-01", "WP-READER-01"}
+EXTENSION_TRANSACTION_CLAIMS = {
+    ("ios", "ShareExtension/ShareViewController.swift"),
+    ("ios", "ActionExtension/ActionViewController.swift"),
+    ("ios", "SharedExtensionKit/**"),
+}
+EXPECTED_NON_PRIMARY = {
+    "WP-NATIVE-01": [
+        ("ios", "ChapterFlowUITests/UpgradeEvidence/NativeUpgradeEvidenceTests.swift", "validation-support"),
+        ("ios", "ChapterFlow.xcodeproj/project.pbxproj", "project-configuration"),
+        ("ios", "scripts/visual/**", "validation-tooling"),
+        ("ios", "scripts/localization/**", "validation-tooling"),
+    ],
+    "WP-EXT-01": [
+        ("ios", "ChapterFlowUITests/UpgradeEvidence/ExtensionUpgradeEvidenceTests.swift", "validation-support"),
+    ],
+    "WP-READER-01": [
+        ("ios", "ChapterFlowUITests/UpgradeEvidence/ReaderUpgradeEvidenceTests.swift", "validation-support"),
+    ],
+}
+
+
+def canonical_relative_glob(value: object, context: str, issues: list[str]) -> str | None:
+    if not isinstance(value, str) or not value:
+        issues.append(f"{context} must be a non-empty string")
+        return None
+    if value.startswith("/") or "\\" in value or "\0" in value or "//" in value:
+        issues.append(f"{context} must be a canonical repository-relative glob")
+        return None
+    parts = value.split("/")
+    if any(part in {"", ".", ".."} for part in parts):
+        issues.append(f"{context} contains a noncanonical path segment")
+        return None
+    if value in {"*", "**", "**/*"}:
+        issues.append(f"{context} must not be a repository catch-all")
+        return None
+    return value
+
+
+def claim_identity(value: object, context: str, issues: list[str]) -> tuple[str, str] | None:
+    if not isinstance(value, dict):
+        issues.append(f"{context} must be an object")
+        return None
+    if set(value) != {"repo", "glob"}:
+        issues.append(f"{context} must contain exactly repo and glob")
+        return None
+    repo = value.get("repo")
+    if repo not in {"ios", "backend"}:
+        issues.append(f"{context}.repo must be ios or backend")
+        return None
+    glob = canonical_relative_glob(value.get("glob"), f"{context}.glob", issues)
+    return (repo, glob) if glob is not None else None
+
+
+def implementation_root(claim: tuple[str, str]) -> tuple[str, str]:
+    repo, glob = claim
+    parts = glob.split("/")
+    if parts[0] == "Packages" and len(parts) >= 2:
+        return repo, "/".join(parts[:2])
+    return repo, parts[0]
+
+
+def root_accounting_issues(package_id: str, allowed: object, estimate: object) -> list[str]:
+    issues: list[str] = []
+    if not isinstance(allowed, list):
+        return [f"{package_id} allowedPaths must be a list"]
+    if not isinstance(estimate, dict):
+        return [f"{package_id} estimate must be an object"]
+
+    allowed_claims: list[tuple[str, str]] = []
+    for index, value in enumerate(allowed):
+        identity = claim_identity(value, f"{package_id} allowedPaths[{index}]", issues)
+        if identity is not None:
+            allowed_claims.append(identity)
+    if len(allowed_claims) != len(set(allowed_claims)):
+        issues.append(f"{package_id} allowedPaths repeats a repo/glob claim")
+    if any(repo != "ios" for repo, _ in allowed_claims):
+        issues.append(f"{package_id} root-accounted revision may claim only ios paths")
+
+    accounting = estimate.get("rootAccounting")
+    if not isinstance(accounting, dict):
+        return issues + [f"{package_id} rootAccounting must be an object"]
+    if set(accounting) - {"primaryGroups", "nonPrimaryPaths", "candidateBinding"}:
+        issues.append(f"{package_id} rootAccounting contains unknown fields")
+    groups = accounting.get("primaryGroups")
+    non_primary = accounting.get("nonPrimaryPaths")
+    roots = estimate.get("primaryRoots")
+    if not isinstance(groups, list):
+        issues.append(f"{package_id} rootAccounting.primaryGroups must be a list")
+        groups = []
+    if not isinstance(roots, int) or len(groups) != roots:
+        issues.append(f"{package_id} rootAccounting must declare exactly primaryRoots groups")
+    if not isinstance(non_primary, list):
+        issues.append(f"{package_id} rootAccounting.nonPrimaryPaths must be a list")
+        non_primary = []
+
+    assigned: list[tuple[str, str]] = []
+    allocations: dict[str, int] = {}
+    group_ids: set[str] = set()
+    for index, group in enumerate(groups):
+        context = f"{package_id} rootAccounting.primaryGroups[{index}]"
+        if not isinstance(group, dict):
+            issues.append(f"{context} must be an object")
+            continue
+        if set(group) != {"id", "claims", "plannedFiles"}:
+            issues.append(f"{context} must contain exactly id, claims, and plannedFiles")
+        group_id = group.get("id")
+        if not isinstance(group_id, str) or not group_id or group_id in group_ids:
+            issues.append(f"{context}.id must be unique and non-empty")
+            group_id = f"invalid-group-{index}"
+        group_ids.add(group_id)
+        claims = group.get("claims")
+        if not isinstance(claims, list) or not claims:
+            issues.append(f"{context}.claims must be a non-empty list")
+            claims = []
+        parsed_claims: list[tuple[str, str]] = []
+        for claim_index, value in enumerate(claims):
+            identity = claim_identity(value, f"{context}.claims[{claim_index}]", issues)
+            if identity is not None:
+                parsed_claims.append(identity)
+        assigned.extend(parsed_claims)
+        group_files = group.get("plannedFiles")
+        if not isinstance(group_files, int) or isinstance(group_files, bool) or group_files < 1:
+            issues.append(f"{context}.plannedFiles must be a positive integer")
+        else:
+            allocations[f"primary:{group_id}"] = group_files
+        roots_in_group = {implementation_root(claim) for claim in parsed_claims}
+        if len(roots_in_group) > 1 and not (
+            package_id == "WP-EXT-01"
+            and group_id == "extension-transaction-boundary"
+            and set(parsed_claims) == EXTENSION_TRANSACTION_CLAIMS
+            and len(parsed_claims) == len(EXTENSION_TRANSACTION_CLAIMS)
+        ):
+            issues.append(f"{package_id} rootAccounting group {group_id} crosses implementation roots")
+
+    non_primary_identities: list[tuple[str, str, str]] = []
+    validation_support_count = 0
+    for index, item in enumerate(non_primary):
+        context = f"{package_id} rootAccounting.nonPrimaryPaths[{index}]"
+        if not isinstance(item, dict):
+            issues.append(f"{context} must be an object")
+            continue
+        if set(item) != {"repo", "glob", "class", "plannedFiles"}:
+            issues.append(f"{context} must contain exactly repo, glob, class, and plannedFiles")
+        identity = claim_identity(
+            {"repo": item.get("repo"), "glob": item.get("glob")},
+            context,
+            issues,
+        )
+        path_class = item.get("class")
+        if path_class not in {"validation-support", "validation-tooling", "project-configuration"}:
+            issues.append(f"{context}.class is invalid")
+        if identity is not None and isinstance(path_class, str):
+            assigned.append(identity)
+            non_primary_identities.append((*identity, path_class))
+            if path_class == "validation-support":
+                validation_support_count += 1
+            path_files = item.get("plannedFiles")
+            if not isinstance(path_files, int) or isinstance(path_files, bool) or path_files < 1:
+                issues.append(f"{context}.plannedFiles must be a positive integer")
+            else:
+                allocations[f"non-primary:{identity[0]}:{identity[1]}"] = path_files
+
+    if non_primary_identities != EXPECTED_NON_PRIMARY.get(package_id, []):
+        issues.append(f"{package_id} non-primary claims drift from the exact reviewed set")
+    if validation_support_count != estimate.get("validationSupportRoots"):
+        issues.append(f"{package_id} rootAccounting validation-support count drift")
+    if len(assigned) != len(set(assigned)):
+        issues.append(f"{package_id} rootAccounting assigns a repo/glob claim more than once")
+    if assigned != allowed_claims:
+        issues.append(f"{package_id} ordered rootAccounting claims drift from allowedPaths")
+    planned_files = estimate.get("plannedFiles")
+    if not isinstance(planned_files, int) or sum(allocations.values()) != planned_files:
+        issues.append(f"{package_id} rootAccounting planned-file allocation does not equal plannedFiles")
+
+    candidate = accounting.get("candidateBinding")
+    if package_id == "WP-NATIVE-01":
+        if not isinstance(candidate, dict):
+            issues.append("WP-NATIVE-01 rootAccounting.candidateBinding must be an object")
+        else:
+            expected_fields = {"base", "head", "tree", "diffSha256", "paths"}
+            if set(candidate) != expected_fields:
+                issues.append("WP-NATIVE-01 candidateBinding must contain exact identity and path fields")
+            for field in ("base", "head", "tree"):
+                if not re.fullmatch(r"[0-9a-f]{40}", str(candidate.get(field, ""))):
+                    issues.append(f"WP-NATIVE-01 candidateBinding.{field} must be a full lowercase SHA")
+            if candidate.get("base") == candidate.get("head"):
+                issues.append("WP-NATIVE-01 candidateBinding base and head must differ")
+            if not re.fullmatch(r"[0-9a-f]{64}", str(candidate.get("diffSha256", ""))):
+                issues.append("WP-NATIVE-01 candidateBinding.diffSha256 must be a SHA-256 digest")
+            paths = candidate.get("paths")
+            if isinstance(paths, list) and paths != sorted(paths):
+                issues.append("WP-NATIVE-01 candidateBinding.paths must be sorted")
+            issues.extend(candidate_path_issues(
+                {
+                    "id": package_id,
+                    "estimate": estimate,
+                },
+                paths,
+            ))
+            if not isinstance(paths, list) or len(paths) != planned_files:
+                issues.append("WP-NATIVE-01 candidateBinding path count must equal plannedFiles")
+    elif candidate is not None:
+        issues.append(f"{package_id} must not carry an unrelated candidateBinding")
+    return issues
+
+
+def accounting_buckets(package: dict) -> tuple[list[tuple[tuple[str, str], str, int]], list[str]]:
+    issues: list[str] = []
+    estimate = package.get("estimate", {})
+    accounting = estimate.get("rootAccounting", {}) if isinstance(estimate, dict) else {}
+    if not isinstance(accounting, dict):
+        return [], [f"{package.get('id')} rootAccounting must be an object"]
+    buckets: list[tuple[tuple[str, str], str, int]] = []
+    groups = accounting.get("primaryGroups", [])
+    if not isinstance(groups, list):
+        return [], [f"{package.get('id')} rootAccounting.primaryGroups must be a list"]
+    for group in groups:
+        if not isinstance(group, dict):
+            continue
+        group_id = group.get("id")
+        allocation = group.get("plannedFiles")
+        claims = group.get("claims", [])
+        if not isinstance(claims, list):
+            issues.append(f"{package.get('id')} primary claims must be a list")
+            continue
+        for value in claims:
+            identity = claim_identity(value, f"{package.get('id')} primary claim", issues)
+            if identity is not None and isinstance(group_id, str) and isinstance(allocation, int):
+                buckets.append((identity, f"primary:{group_id}", allocation))
+    non_primary = accounting.get("nonPrimaryPaths", [])
+    if not isinstance(non_primary, list):
+        return buckets, issues + [f"{package.get('id')} rootAccounting.nonPrimaryPaths must be a list"]
+    for item in non_primary:
+        if not isinstance(item, dict):
+            continue
+        identity = claim_identity(
+            {"repo": item.get("repo"), "glob": item.get("glob")},
+            f"{package.get('id')} non-primary claim",
+            issues,
+        )
+        allocation = item.get("plannedFiles")
+        if identity is not None and isinstance(allocation, int):
+            buckets.append((identity, f"non-primary:{identity[0]}:{identity[1]}", allocation))
+    return buckets, issues
+
+
+def candidate_path_issues(package: dict, paths: object) -> list[str]:
+    package_id = package.get("id", "unknown")
+    issues: list[str] = []
+    if not isinstance(paths, list) or not paths:
+        return [f"{package_id} candidate path manifest must be a non-empty list"]
+    buckets, bucket_issues = accounting_buckets(package)
+    issues.extend(bucket_issues)
+    counts: dict[str, int] = {}
+    seen: set[str] = set()
+    for index, raw_path in enumerate(paths):
+        path = canonical_relative_glob(raw_path, f"{package_id} candidatePaths[{index}]", issues)
+        if path is None:
+            continue
+        if any(token in path for token in "*?["):
+            issues.append(f"{package_id} candidate path must be exact: {path}")
+            continue
+        if path in seen:
+            issues.append(f"{package_id} candidate path is duplicated: {path}")
+            continue
+        seen.add(path)
+        matches = [
+            (bucket_id, allocation)
+            for (repo, glob), bucket_id, allocation in buckets
+            if repo == "ios" and fnmatch.fnmatchcase(path, glob)
+        ]
+        if len(matches) != 1:
+            issues.append(f"{package_id} candidate path must match exactly one accounted claim: {path}")
+            continue
+        bucket_id, allocation = matches[0]
+        counts[bucket_id] = counts.get(bucket_id, 0) + 1
+        if counts[bucket_id] > allocation:
+            issues.append(f"{package_id} candidate exceeds {bucket_id} file allocation")
+    estimate = package.get("estimate", {})
+    max_files = estimate.get("maxFiles") if isinstance(estimate, dict) else None
+    if not isinstance(max_files, int) or len(seen) > max_files:
+        issues.append(f"{package_id} candidate exceeds maxFiles")
+    touched_primary = {bucket for bucket in counts if bucket.startswith("primary:")}
+    max_roots = estimate.get("maxPrimaryRoots") if isinstance(estimate, dict) else None
+    if not isinstance(max_roots, int) or len(touched_primary) > max_roots:
+        issues.append(f"{package_id} candidate exceeds maxPrimaryRoots")
+    return issues
+
+
+def validate_root_accounting_self_tests(packages: dict[str, dict]) -> list[dict[str, object]]:
+    """Mutation checks prove malformed or understated accounting fails deterministically."""
+    native = packages.get("WP-NATIVE-01")
+    if not isinstance(native, dict):
+        fail("root-accounting self-tests require WP-NATIVE-01")
+        return []
+
+    cases: list[tuple[str, dict, str]] = []
+    results: list[dict[str, object]] = []
+
+    duplicate = copy.deepcopy(native)
+    duplicate["ownership"]["allowedPaths"].append(
+        copy.deepcopy(duplicate["ownership"]["allowedPaths"][0])
+    )
+    cases.append(("duplicate-claim", duplicate, "repeats a repo/glob claim"))
+
+    malformed_repo = copy.deepcopy(native)
+    malformed_repo["ownership"]["allowedPaths"][0]["repo"] = "mobile"
+    cases.append(("malformed-repo", malformed_repo, ".repo must be ios or backend"))
+
+    traversal = copy.deepcopy(native)
+    traversal["ownership"]["allowedPaths"][0]["glob"] = "Packages/../Secrets/**"
+    cases.append(("path-traversal", traversal, "noncanonical path segment"))
+
+    broad_support = copy.deepcopy(native)
+    broad_support["ownership"]["allowedPaths"][5]["glob"] = "ChapterFlowUITests/UpgradeEvidence/**"
+    broad_support["estimate"]["rootAccounting"]["nonPrimaryPaths"][0]["glob"] = (
+        "ChapterFlowUITests/UpgradeEvidence/**"
+    )
+    cases.append(("broad-validation-support", broad_support, "exact reviewed set"))
+
+    understated = copy.deepcopy(native)
+    understated["estimate"]["rootAccounting"]["nonPrimaryPaths"][2]["plannedFiles"] = 4
+    cases.append(("understated-wildcard", understated, "planned-file allocation"))
+
+    malformed_shape = copy.deepcopy(native)
+    malformed_shape["estimate"]["rootAccounting"] = []
+    cases.append(("malformed-shape", malformed_shape, "must be an object"))
+
+    for case_id, mutated, expected in cases:
+        issues = root_accounting_issues(
+            "WP-NATIVE-01",
+            mutated.get("ownership", {}).get("allowedPaths"),
+            mutated.get("estimate"),
+        )
+        matched = any(expected in issue for issue in issues)
+        results.append({"case": case_id, "expected": expected, "matched": matched, "issues": issues})
+        if not matched:
+            fail(f"root-accounting self-test {case_id} did not fail with {expected!r}")
+
+    duplicate_paths = copy.deepcopy(
+        native.get("estimate", {}).get("rootAccounting", {}).get("candidateBinding", {}).get("paths", [])
+    )
+    if duplicate_paths:
+        duplicate_paths.append(duplicate_paths[0])
+        duplicate_issues = candidate_path_issues(native, duplicate_paths)
+        duplicate_matched = any("duplicated" in issue for issue in duplicate_issues)
+        results.append({
+            "case": "candidate-duplicate-path",
+            "expected": "duplicated",
+            "matched": duplicate_matched,
+            "issues": duplicate_issues,
+        })
+        if not duplicate_matched:
+            fail("candidate-path self-test duplicate-path did not fail")
+
+    outside_paths = copy.deepcopy(
+        native.get("estimate", {}).get("rootAccounting", {}).get("candidateBinding", {}).get("paths", [])
+    )
+    if outside_paths:
+        outside_paths[0] = "ChapterFlow/Unauthorized.swift"
+        outside_issues = candidate_path_issues(native, outside_paths)
+        outside_matched = any("exactly one accounted claim" in issue for issue in outside_issues)
+        results.append({
+            "case": "candidate-outside-scope",
+            "expected": "exactly one accounted claim",
+            "matched": outside_matched,
+            "issues": outside_issues,
+        })
+        if not outside_matched:
+            fail("candidate-path self-test outside-scope did not fail")
+    return results
+
+
+def run_git(arguments: list[str]) -> tuple[bytes | None, str | None]:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(ROOT.parent), *arguments],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except OSError as error:
+        return None, str(error)
+    if result.returncode != 0:
+        detail = result.stderr.decode("utf-8", errors="replace").strip()
+        return None, detail or f"git exited {result.returncode}"
+    return result.stdout, None
+
+
+def validate_candidate_diff(package: dict, base: str, head: str, require_binding: bool) -> None:
+    package_id = package.get("id", "unknown")
+    if not re.fullmatch(r"[0-9a-f]{40}", base) or not re.fullmatch(r"[0-9a-f]{40}", head):
+        fail(f"{package_id} --base and --head must be full lowercase SHAs")
+        return
+    estimate = package.get("estimate", {})
+    accounting = estimate.get("rootAccounting", {}) if isinstance(estimate, dict) else {}
+    binding = accounting.get("candidateBinding") if isinstance(accounting, dict) else None
+    if not isinstance(binding, dict):
+        fail(f"{package_id} has no candidateBinding for --package-diff")
+        return
+    if require_binding and (binding.get("base") != base or binding.get("head") != head):
+        fail(f"{package_id} requested candidate identities drift from candidateBinding")
+
+    ancestor_output, ancestor_error = run_git(["merge-base", "--is-ancestor", base, head])
+    if ancestor_error is not None:
+        fail(f"{package_id} base is not an ancestor of head: {ancestor_error}")
+    elif ancestor_output not in {b"", None}:
+        fail(f"{package_id} unexpected merge-base output")
+
+    tree_output, tree_error = run_git(["rev-parse", f"{head}^{{tree}}"])
+    if tree_error is not None:
+        fail(f"{package_id} cannot resolve candidate tree: {tree_error}")
+    else:
+        actual_tree = tree_output.decode("ascii", errors="replace").strip()
+        if require_binding and actual_tree != binding.get("tree"):
+            fail(f"{package_id} candidate tree drift: {actual_tree}")
+
+    paths_output, paths_error = run_git(["diff", "--name-only", "-z", base, head, "--"])
+    actual_paths: list[str] = []
+    if paths_error is not None:
+        fail(f"{package_id} cannot read candidate paths: {paths_error}")
+    else:
+        actual_paths = sorted(
+            value.decode("utf-8", errors="strict")
+            for value in paths_output.split(b"\0")
+            if value
+        )
+        if require_binding and actual_paths != binding.get("paths"):
+            fail(f"{package_id} candidate path manifest drift")
+        for issue in candidate_path_issues(package, actual_paths):
+            fail(issue)
+
+    diff_output, diff_error = run_git(["diff", "--binary", base, head, "--"])
+    if diff_error is not None:
+        fail(f"{package_id} cannot read canonical binary diff: {diff_error}")
+    else:
+        digest = hashlib.sha256(diff_output).hexdigest()
+        if require_binding and digest != binding.get("diffSha256"):
+            fail(f"{package_id} canonical binary diff digest drift: {digest}")
+
+
 def validate_packages(backlog: dict, locks_doc: dict) -> dict[str, dict]:
     package_paths = sorted(ROOT.glob("workstreams/*/WP-*/package.json"))
     packages: dict[str, dict] = {}
@@ -189,8 +634,14 @@ def validate_packages(backlog: dict, locks_doc: dict) -> dict[str, dict]:
         allowed = package.get("ownership", {}).get("allowedPaths", [])
         if not allowed:
             fail(f"{package_id} has no allowed paths")
-        for claim in allowed:
-            glob = claim.get("glob", "") if isinstance(claim, dict) else ""
+        for claim_index, claim in enumerate(allowed if isinstance(allowed, list) else []):
+            claim_issues: list[str] = []
+            identity = claim_identity(claim, f"{package_id} allowedPaths[{claim_index}]", claim_issues)
+            for issue in claim_issues:
+                fail(issue)
+            if identity is None:
+                continue
+            _, glob = identity
             if glob in banned_broad_paths:
                 fail(f"{package_id} has overbroad write claim: {glob}")
             if glob.startswith("upgrade/") or glob.startswith("/Users/radinsoltani/Chapterflow-IOS"):
@@ -220,108 +671,9 @@ def validate_packages(backlog: dict, locks_doc: dict) -> dict[str, dict]:
         if not all(isinstance(value, int) for value in (roots, max_roots)) or not (1 <= roots <= max_roots <= 3):
             fail(f"{package_id} root envelope must satisfy 1 <= roots <= max <= 3")
 
-        if package_id in {"WP-NATIVE-01", "WP-EXT-01", "WP-READER-01"}:
-            accounting = estimate.get("rootAccounting", {})
-            groups = accounting.get("primaryGroups", [])
-            non_primary = accounting.get("nonPrimaryPaths", [])
-            if not isinstance(groups, list) or len(groups) != roots:
-                fail(f"{package_id} rootAccounting must declare exactly primaryRoots groups")
-                groups = []
-            if not isinstance(non_primary, list):
-                fail(f"{package_id} rootAccounting.nonPrimaryPaths must be a list")
-                non_primary = []
-
-            allowed_globs = {
-                claim.get("glob") for claim in allowed
-                if isinstance(claim, dict) and claim.get("repo") == "ios"
-            }
-            assigned: list[str] = []
-            planned_allocation = 0
-            group_ids: set[str] = set()
-
-            def implementation_root(glob: str) -> str:
-                parts = glob.split("/")
-                if parts and parts[0] == "Packages" and len(parts) >= 2:
-                    return "/".join(parts[:2])
-                return parts[0] if parts else ""
-
-            approved_multi_root = {
-                "ShareExtension/ShareViewController.swift",
-                "ActionExtension/ActionViewController.swift",
-                "SharedExtensionKit/**",
-            }
-            for group in groups:
-                if not isinstance(group, dict):
-                    fail(f"{package_id} rootAccounting primary group must be an object")
-                    continue
-                group_id = group.get("id")
-                group_paths = group.get("paths", [])
-                group_files = group.get("plannedFiles")
-                if not isinstance(group_id, str) or not group_id or group_id in group_ids:
-                    fail(f"{package_id} rootAccounting primary group IDs must be unique and non-empty")
-                else:
-                    group_ids.add(group_id)
-                if not isinstance(group_paths, list) or not group_paths:
-                    fail(f"{package_id} rootAccounting group {group_id} has no paths")
-                    group_paths = []
-                if not isinstance(group_files, int) or group_files < 1:
-                    fail(f"{package_id} rootAccounting group {group_id} needs positive plannedFiles")
-                else:
-                    planned_allocation += group_files
-                assigned.extend(path for path in group_paths if isinstance(path, str))
-                root_keys = {implementation_root(path) for path in group_paths if isinstance(path, str)}
-                if len(root_keys) > 1 and not (
-                    package_id == "WP-EXT-01"
-                    and group_id == "extension-transaction-boundary"
-                    and set(group_paths) == approved_multi_root
-                ):
-                    fail(f"{package_id} rootAccounting group {group_id} crosses implementation roots")
-
-            allowed_non_primary_classes = {
-                "validation-support", "validation-tooling", "project-configuration"
-            }
-            validation_support_paths = 0
-            for item in non_primary:
-                if not isinstance(item, dict):
-                    fail(f"{package_id} rootAccounting non-primary entry must be an object")
-                    continue
-                path_value = item.get("path")
-                path_class = item.get("class")
-                path_files = item.get("plannedFiles")
-                if not isinstance(path_value, str) or not path_value:
-                    fail(f"{package_id} rootAccounting non-primary path must be non-empty")
-                    continue
-                assigned.append(path_value)
-                if path_class not in allowed_non_primary_classes:
-                    fail(f"{package_id} rootAccounting has invalid non-primary class {path_class}")
-                if path_class == "validation-support":
-                    validation_support_paths += 1
-                    if not path_value.startswith("ChapterFlowUITests/UpgradeEvidence/"):
-                        fail(f"{package_id} validation-support path is outside UpgradeEvidence")
-                elif path_class == "validation-tooling" and not path_value.startswith("scripts/"):
-                    fail(f"{package_id} validation-tooling path is outside scripts")
-                elif path_class == "project-configuration" and not path_value.startswith("ChapterFlow.xcodeproj/"):
-                    fail(f"{package_id} project-configuration path is outside the Xcode project")
-                if not isinstance(path_files, int) or path_files < 1:
-                    fail(f"{package_id} rootAccounting non-primary path needs positive plannedFiles")
-                else:
-                    planned_allocation += path_files
-
-            if validation_support_paths != estimate.get("validationSupportRoots"):
-                fail(f"{package_id} rootAccounting validation-support count drift")
-            if len(assigned) != len(set(assigned)):
-                fail(f"{package_id} rootAccounting assigns a path more than once")
-            if set(assigned) != allowed_globs:
-                fail(
-                    f"{package_id} rootAccounting path drift; "
-                    f"missing={sorted(allowed_globs - set(assigned))}, "
-                    f"extra={sorted(set(assigned) - allowed_globs)}"
-                )
-            if planned_allocation != planned_files:
-                fail(
-                    f"{package_id} rootAccounting planned-file allocation "
-                    f"{planned_allocation} != plannedFiles {planned_files}"
-                )
+        if package_id in REVISED_ROOT_PACKAGES:
+            for issue in root_accounting_issues(package_id, allowed, estimate):
+                fail(issue)
 
         primary_skills = package.get("skills", {}).get("primary", [])
         review_skills = package.get("skills", {}).get("review", [])
@@ -778,13 +1130,87 @@ def validate_evaluations(backlog: dict) -> None:
         fail("draft-v0 baseline must retain the single pre-revision failure")
 
 
-def validate_performance_budgets() -> None:
+def performance_commands(package_id: str, packages: dict[str, dict]) -> list[str]:
+    package = packages.get(package_id, {})
+    workstream = package.get("workstream") if isinstance(package, dict) else None
+    if not isinstance(workstream, str):
+        return []
+    path = ROOT / "workstreams" / workstream / package_id / "VALIDATE.md"
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as error:
+        fail(f"cannot read {package_id} performance contract: {error}")
+        return []
+    return re.findall(r"`([^`]*scripts/visual/run_paired_performance\.py[^`]*)`", text)
+
+
+def command_option(tokens: list[str], option: str) -> str | None:
+    indexes = [index for index, token in enumerate(tokens) if token == option]
+    if len(indexes) != 1:
+        return None
+    index = indexes[0]
+    return tokens[index + 1] if index + 1 < len(tokens) else None
+
+
+def validate_performance_consumer_contracts(
+    packages: dict[str, dict],
+    budgets_by_id: dict[str, dict],
+) -> None:
+    native_commands = performance_commands("WP-NATIVE-01", packages)
+    if len(native_commands) != 1:
+        fail("WP-NATIVE-01 must declare exactly one paired-runner self-test command")
+    else:
+        native_tokens = native_commands[0].split()
+        if "--self-test" not in native_tokens:
+            fail("WP-NATIVE-01 paired runner contract must include --self-test")
+        if command_option(native_tokens, "--budget-manifest") != "upgrade/program/performance-budgets.json":
+            fail("WP-NATIVE-01 paired runner self-test must consume the canonical budget manifest")
+        if "--graph-policy" in native_tokens:
+            fail("WP-NATIVE-01 paired runner contract retains legacy --graph-policy")
+
+    consumers = {
+        "WP-READER-01": ("PERF-READER-PAGINATION", {"--iphone-udid", "--ipad-udid"}),
+        "WP-GRAPH-01": ("PERF-GRAPH-INTERACTION", {"--iphone-udid"}),
+    }
+    for package_id, (budget_id, device_options) in consumers.items():
+        commands = performance_commands(package_id, packages)
+        if len(commands) != 1:
+            fail(f"{package_id} must declare exactly one paired-runner consumer command")
+            continue
+        tokens = commands[0].split()
+        required_options = {
+            "--project", "--scheme", "--base", "--candidate", "--test", "--samples",
+            "--derived-data-root", "--result-bundle-root", "--instruments-template",
+            "--budget-manifest", "--budget-id", "--output",
+        } | device_options
+        missing = sorted(option for option in required_options if command_option(tokens, option) is None)
+        if missing:
+            fail(f"{package_id} paired-runner command omits unique valued options: {missing}")
+        if command_option(tokens, "--budget-manifest") != "upgrade/program/performance-budgets.json":
+            fail(f"{package_id} paired-runner command uses a noncanonical budget manifest")
+        if command_option(tokens, "--budget-id") != budget_id:
+            fail(f"{package_id} paired-runner command must bind {budget_id}")
+        if command_option(tokens, "--samples") != "30":
+            fail(f"{package_id} paired-runner command must retain 30 paired samples")
+        if command_option(tokens, "--instruments-template") != "Hangs":
+            fail(f"{package_id} paired-runner command must retain the Hangs trace")
+        if "--graph-policy" in tokens:
+            fail(f"{package_id} paired-runner command retains legacy --graph-policy")
+        budget = budgets_by_id.get(budget_id)
+        if not isinstance(budget, dict) or not str(budget.get("operator", "")).startswith("pairedBaseline"):
+            fail(f"{package_id} budget ID does not resolve to a paired budget")
+
+
+def validate_performance_budgets(packages: dict[str, dict]) -> None:
     path = ROOT / "program/performance-budgets.json"
     document = JSON.get(path, {})
     if not isinstance(document, dict):
         fail("performance budgets must be a JSON object")
         return
     source = document.get("source", {})
+    if not isinstance(source, dict):
+        fail("performance budget source must be an object")
+        source = {}
     source_path = ROOT.parent / str(source.get("path", ""))
     if not source_path.is_file():
         fail("performance budget source path is missing")
@@ -794,12 +1220,15 @@ def validate_performance_budgets() -> None:
             fail("performance budget source hash drift")
     required_ids = {
         "PERF-COLD-LAUNCH", "PERF-READER-HITCH", "PERF-CATALOG-HITCH",
-        "PERF-READER-PAGINATION",
+        "PERF-READER-PAGINATION", "PERF-GRAPH-INTERACTION",
         "PERF-IMAGE-CACHE", "PERF-MEMORY-ONE-BOOK", "PERF-MEMORY-THREE-BOOKS",
         "PERF-CHAPTER-FETCH", "PERF-MAIN-STALL", "PERF-ENERGY-JOURNEY",
         "PERF-LONG-AUDIO", "PERF-DOWNLOAD-LIFECYCLE",
     }
     budgets = document.get("budgets", [])
+    if not isinstance(budgets, list):
+        fail("performance budgets must be a list")
+        budgets = []
     ids = [budget.get("id") for budget in budgets if isinstance(budget, dict)]
     if set(ids) != required_ids or len(ids) != len(set(ids)):
         fail("performance budget IDs must be unique and cover every declared device metric")
@@ -818,6 +1247,12 @@ def validate_performance_budgets() -> None:
         fail("performance budgets must name compact-iPhone and regular-iPad device classes")
     if "never loosen" not in str(document.get("changePolicy", "")):
         fail("performance budget change policy must fail closed on relaxation")
+    budgets_by_id = {
+        str(budget.get("id")): budget
+        for budget in budgets
+        if isinstance(budget, dict) and isinstance(budget.get("id"), str)
+    }
+    validate_performance_consumer_contracts(packages, budgets_by_id)
 
 
 def validate_final_remediation_contracts(packages: dict[str, dict], locks_doc: dict) -> None:
@@ -922,6 +1357,10 @@ def validate_final_remediation_contracts(packages: dict[str, dict], locks_doc: d
     }
     if native_paths & controller_paths:
         fail("WP-NATIVE-01 presentation ownership must not include production extension controllers")
+    if native.get("estimate", {}).get("plannedFiles") != 20 or native.get("estimate", {}).get("maxFiles") != 20:
+        fail("WP-NATIVE-01 parked candidate must bind exactly 20 files inside the unchanged 20-file cap")
+    if native.get("estimate", {}).get("primaryRoots") != 3 or native.get("estimate", {}).get("maxPrimaryRoots") != 3:
+        fail("WP-NATIVE-01 must remain inside the unchanged three-root cap")
 
     ext = packages.get("WP-EXT-01", {})
     ext_paths = {claim.get("glob") for claim in ext.get("ownership", {}).get("allowedPaths", [])}
@@ -951,6 +1390,9 @@ def validate_final_remediation_contracts(packages: dict[str, dict], locks_doc: d
     )
     for marker in (
         "stateSource=fixture", "transactionClaim=none", "owner-closure-required",
+        "source-compatible production initializer/callback boundary",
+        "production durability/success/dismiss/open claim",
+        "--package-diff WP-NATIVE-01",
         "reader-toolbar.depth-option", "reader-toolbar.tone-option",
     ):
         if marker not in native_contract:
@@ -983,7 +1425,11 @@ def validate_final_remediation_contracts(packages: dict[str, dict], locks_doc: d
         fail("WP-LEARN-01 must own and precede real localized Review resources")
 
     graph_validate = (ROOT / "workstreams/10-engagement-community/WP-GRAPH-01/VALIDATE.md").read_text(encoding="utf-8")
-    for marker in ("run_paired_performance.py", "--samples 30", "--instruments-template Hangs", ".xcresult"):
+    for marker in (
+        "run_paired_performance.py", "--samples 30", "--instruments-template Hangs",
+        "--budget-manifest upgrade/program/performance-budgets.json",
+        "--budget-id PERF-GRAPH-INTERACTION", ".xcresult",
+    ):
         if marker not in graph_validate:
             fail(f"WP-GRAPH-01 performance proof omits {marker}")
     device_validate = (ROOT / "workstreams/11-qualification-performance-security-ci/WP-DEVICE-01/VALIDATE.md").read_text(encoding="utf-8")
@@ -999,7 +1445,18 @@ def validate_final_remediation_contracts(packages: dict[str, dict], locks_doc: d
         fail("WP-AUTH-02 retains nonexistent AuthKit Keychain/TokenStore anchors")
 
 
+def parse_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--package-diff", metavar="PACKAGE_ID")
+    parser.add_argument("--base", metavar="FULL_SHA")
+    parser.add_argument("--head", metavar="FULL_SHA")
+    parser.add_argument("--require-candidate-binding", action="store_true")
+    parser.add_argument("--show-root-accounting-negative-tests", action="store_true")
+    return parser.parse_args()
+
+
 def main() -> int:
+    arguments = parse_arguments()
     require_files()
     validate_text_integrity()
     for path in sorted(ROOT.rglob("*.json")):
@@ -1008,14 +1465,33 @@ def main() -> int:
     backlog = JSON.get(ROOT / "program/backlog.json", {})
     dag = JSON.get(ROOT / "program/dependency-dag.json", {})
     locks_doc = JSON.get(ROOT / "program/resource-locks.json", {})
+    root_accounting_results: list[dict[str, object]] = []
     if not all(isinstance(value, dict) for value in (backlog, dag, locks_doc)):
         fail("program JSON documents must be objects")
     else:
         packages = validate_packages(backlog, locks_doc)
+        root_accounting_results = validate_root_accounting_self_tests(packages)
         validate_graph(backlog, dag, locks_doc, packages)
         validate_evaluations(backlog)
-        validate_performance_budgets()
+        validate_performance_budgets(packages)
         validate_final_remediation_contracts(packages, locks_doc)
+        if arguments.package_diff is not None:
+            package = packages.get(arguments.package_diff)
+            if package is None:
+                fail(f"unknown --package-diff package: {arguments.package_diff}")
+            elif arguments.base is None or arguments.head is None:
+                fail("--package-diff requires --base and --head")
+            else:
+                validate_candidate_diff(
+                    package,
+                    arguments.base,
+                    arguments.head,
+                    arguments.require_candidate_binding,
+                )
+        elif arguments.base is not None or arguments.head is not None:
+            fail("--base/--head require --package-diff")
+        elif arguments.require_candidate_binding:
+            fail("--require-candidate-binding requires --package-diff")
     validate_links()
 
     if ERRORS:
@@ -1027,6 +1503,14 @@ def main() -> int:
     workstream_count = backlog.get("counts", {}).get("workstreams")
     case_count = backlog.get("counts", {}).get("evaluationCases")
     print(f"PASS: upgrade plan validated ({workstream_count} workstreams, {package_count} packages, {case_count} eval cases)")
+    if arguments.package_diff is not None:
+        disposition = "bound" if arguments.require_candidate_binding else "accounted"
+        print(
+            f"PASS: {arguments.package_diff} candidate diff {disposition} "
+            f"({arguments.base}..{arguments.head})"
+        )
+    if arguments.show_root_accounting_negative_tests:
+        print(json.dumps(root_accounting_results, indent=2, sort_keys=True))
     return 0
 
 

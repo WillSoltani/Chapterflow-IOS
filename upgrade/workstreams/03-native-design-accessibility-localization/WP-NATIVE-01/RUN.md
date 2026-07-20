@@ -13,9 +13,11 @@ Atomically claim the package, `xcode-project`, and `simulator-device`, then crea
    truthful compliance, explicit exceptions, and owner-closure-required findings; assign
    `reader-toolbar.depth-option` and `reader-toolbar.tone-option` to WP-READER-01 without marking them compliant;
 5. implement target-owned localized Share/Action capture, signed-out, pending, error, and success
-   presentation plus deterministic fixtures. Keep production success unreachable from void/unverified
-   callbacks, label fixture evidence `stateSource=fixture` and `transactionClaim=none`, and stop before
-   any result-bearing outbox/controller wiring owned by WP-EXT-01;
+   presentation plus deterministic fixtures. Preserve a source-compatible production
+   initializer/callback boundary, label fixture evidence `stateSource=fixture` and
+   `transactionClaim=none`, make no production durability/success/dismiss/open claim, and stop before
+   any result-bearing outbox/controller wiring or production transaction validation owned exclusively
+   by WP-EXT-01;
 6. add the paired current-main/candidate iOS performance runner with pinned device/toolchain/fixture,
    isolated builds, retained XCTest/Instruments artifacts, and fail-closed budget consumption;
 7. publish exact scenario/artifact schemas for later feature packages.

@@ -42,11 +42,11 @@
     "allowedPaths": [
       {
         "repo": "ios",
-        "glob": "ChapterFlowUITests/UpgradeEvidence/ReaderUpgradeEvidenceTests.swift"
+        "glob": "Packages/ReaderFeature/**"
       },
       {
         "repo": "ios",
-        "glob": "Packages/ReaderFeature/**"
+        "glob": "ChapterFlowUITests/UpgradeEvidence/ReaderUpgradeEvidenceTests.swift"
       }
     ],
     "prohibitedPaths": [
@@ -95,15 +95,19 @@
       "primaryGroups": [
         {
           "id": "reader-feature",
-          "paths": [
-            "Packages/ReaderFeature/**"
+          "claims": [
+            {
+              "repo": "ios",
+              "glob": "Packages/ReaderFeature/**"
+            }
           ],
           "plannedFiles": 11
         }
       ],
       "nonPrimaryPaths": [
         {
-          "path": "ChapterFlowUITests/UpgradeEvidence/ReaderUpgradeEvidenceTests.swift",
+          "repo": "ios",
+          "glob": "ChapterFlowUITests/UpgradeEvidence/ReaderUpgradeEvidenceTests.swift",
           "class": "validation-support",
           "plannedFiles": 1
         }
