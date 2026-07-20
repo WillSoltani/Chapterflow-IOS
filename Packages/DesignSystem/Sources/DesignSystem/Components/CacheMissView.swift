@@ -36,7 +36,10 @@ public struct CacheMissView: View {
                 .foregroundStyle(Color.cfTertiaryLabel)
         } actions: {
             if let onDownload {
-                Button("Download Book", action: onDownload)
+                Button(action: onDownload) {
+                    Text("Download Book")
+                        .frame(minWidth: 44, minHeight: 44)
+                }
                     .buttonStyle(.borderedProminent)
                     .tint(Color.cfAccent)
                     .accessibilityLabel("Download book for offline access")
