@@ -39,14 +39,17 @@ public struct CFEmptyState: View {
 #if swift(>=6.2)
                     if #available(iOS 26, macOS 26, *) {
                         Button(label, action: action)
+                            .frame(minWidth: 44, minHeight: 44)
                             .buttonStyle(.glass)
                     } else {
                         Button(label, action: action)
+                            .frame(minWidth: 44, minHeight: 44)
                             .buttonStyle(.bordered)
                             .tint(.cfAccent)
                     }
 #else
                     Button(label, action: action)
+                        .frame(minWidth: 44, minHeight: 44)
                         .buttonStyle(.bordered)
                         .tint(.cfAccent)
 #endif
