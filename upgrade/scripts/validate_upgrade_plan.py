@@ -458,6 +458,20 @@ EXPECTED_NATIVE_ASSERTION_COMMANDS = {
     "NATIVE-04-BUILD-BOUNDARY-04": NATIVE_AC04_BUILD_BOUNDARY_COMMAND,
     "NATIVE-07-PROJECT-01": NATIVE_AC07_COMMAND,
 }
+EXPECTED_NATIVE_ASSERTION_AC = {
+    "NATIVE-04-UNIT-01": "AC-NATIVE-01-04",
+    "NATIVE-04-EXTENSION-02": "AC-NATIVE-01-04",
+    "NATIVE-04-PRODUCTION-BOUNDARY-03": "AC-NATIVE-01-04",
+    "NATIVE-04-BUILD-BOUNDARY-04": "AC-NATIVE-01-04",
+    "NATIVE-07-PROJECT-01": "AC-NATIVE-01-07",
+}
+EXPECTED_NATIVE_ASSERTION_ROW_SHA256 = {
+    "NATIVE-04-UNIT-01": "76382608cc88d69f790643f9adf610345ceb6a5982f65905390fd5181c5d0d58",
+    "NATIVE-04-EXTENSION-02": "ae8cce33a2acbc6e81e9309bab0ff4b46c5d96a385ae71aec16863eb14154562",
+    "NATIVE-04-PRODUCTION-BOUNDARY-03": "4ae66895eb655e124e542118c55288eb75d53ca2bdf46cb864ac3ca8a86bc9dc",
+    "NATIVE-04-BUILD-BOUNDARY-04": "674ff0d6722edd7dc18abed7ebba06f68b1cd6feeb0dca99449e6e5a66a2ba5f",
+    "NATIVE-07-PROJECT-01": "56b1d628a1f8a25aa0fd35fcfda3ab253509e23bc9a418c7c286c8b8e9f3f999",
+}
 EXPECTED_PERFORMANCE_BUDGET_DIGESTS = {
     "PERF-COLD-LAUNCH": "db0518f9180f9fe4f4eb4bd332d97649956823ef04127df5b84c6b2e8b6f0259",
     "PERF-READER-HITCH": "064d0451ffa7b2773504463a5145aea9310a04ecaab1777e871698e5d1a553ca",
@@ -1073,14 +1087,21 @@ def native_assertion_command_issues(native_validate: str) -> list[str]:
         if len(rows) != 1:
             issues.append(f"{assertion_id} must have exactly one validation row")
             continue
-        command_cell = rows[0][2]
+        cells = rows[0]
+        if len(cells) != 5:
+            issues.append(f"{assertion_id} validation row must contain exactly five cells")
+            continue
+        if cells[0] != EXPECTED_NATIVE_ASSERTION_AC[assertion_id]:
+            issues.append(f"{assertion_id} AC mapping drifted from the exact reviewed row")
+        command_cell = cells[2]
         match = re.fullmatch(r"`([^`]*)`", command_cell)
         if match is None:
             issues.append(f"{assertion_id} command cell must contain one literal command")
-            continue
-        actual_command = match.group(1)
-        if actual_command != expected_command:
+        elif match.group(1) != expected_command:
             issues.append(f"{assertion_id} command drifted from the exact reviewed literal")
+        row_digest = hashlib.sha256("\x1f".join(cells).encode("utf-8")).hexdigest()
+        if row_digest != EXPECTED_NATIVE_ASSERTION_ROW_SHA256[assertion_id]:
+            issues.append(f"{assertion_id} full validation row drifted from the exact reviewed row")
     return issues
 
 
@@ -1244,6 +1265,16 @@ def validate_native_extension_host_self_tests(packages: dict[str, dict]) -> list
             contract: str = native_contract, validate: str = native_validate,
             reader_text: str = reader_contract) -> None:
         cases.append((case_id, mutated, expected, contract, validate, reader_text))
+
+    def mutate_validation_cell(assertion_id: str, cell_index: int, value: str) -> str:
+        row = next(
+            line for line in native_validate.splitlines()
+            if f"| {assertion_id} |" in line
+        )
+        cells = [cell.strip() for cell in row.split("|")[1:-1]]
+        cells[cell_index] = value
+        replacement = "| " + " | ".join(cells) + " |"
+        return native_validate.replace(row, replacement, 1)
 
     missing_replacement = copy.deepcopy(packages)
     del missing_replacement["WP-NATIVE-01"]["estimate"]["rootAccounting"]["pathReplacement"]
@@ -1523,6 +1554,26 @@ def validate_native_extension_host_self_tests(packages: dict[str, dict]) -> list
         "extension-show-build-settings-removed", copy.deepcopy(packages),
         "NATIVE-07-PROJECT-01 command drifted",
         validate=weakened_show_settings_validate,
+    )
+    for assertion_id in EXPECTED_NATIVE_ASSERTION_COMMANDS:
+        add(
+            f"{assertion_id.lower()}-oracle-weakened", copy.deepcopy(packages),
+            f"{assertion_id} full validation row drifted",
+            validate=mutate_validation_cell(assertion_id, 3, "command exits zero"),
+        )
+    add(
+        "extension-build-boundary-artifact-weakened", copy.deepcopy(packages),
+        "NATIVE-04-BUILD-BOUNDARY-04 full validation row drifted",
+        validate=mutate_validation_cell(
+            "NATIVE-04-BUILD-BOUNDARY-04", 4, "`results/native/fake.json`",
+        ),
+    )
+    add(
+        "extension-build-boundary-ac-remapped", copy.deepcopy(packages),
+        "NATIVE-04-BUILD-BOUNDARY-04 AC mapping drifted",
+        validate=mutate_validation_cell(
+            "NATIVE-04-BUILD-BOUNDARY-04", 0, "AC-NATIVE-01-07",
+        ),
     )
     add(
         "reader-touch-ownership-removed", copy.deepcopy(packages), "touch-target ownership contract omits",
