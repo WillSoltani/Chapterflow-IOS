@@ -451,11 +451,16 @@ NATIVE_AC04_BUILD_BOUNDARY_COMMAND = (
     "--negative-build-case ActionExtension:release-evidence-reachability "
     "--output results/native/extension-build-boundary"
 )
+NATIVE_AC06_TARGETS_REGRESSION_COMMAND = (
+    "python3 scripts/visual/touch_targets.py --self-test "
+    "--output results/native/touch-target-scanner-regressions.json"
+)
 EXPECTED_NATIVE_ASSERTION_COMMANDS = {
     "NATIVE-04-UNIT-01": NATIVE_AC04_UNIT_COMMAND,
     "NATIVE-04-EXTENSION-02": NATIVE_AC04_EXTENSION_COMMAND,
     "NATIVE-04-PRODUCTION-BOUNDARY-03": NATIVE_AC04_BOUNDARY_COMMAND,
     "NATIVE-04-BUILD-BOUNDARY-04": NATIVE_AC04_BUILD_BOUNDARY_COMMAND,
+    "NATIVE-06-TARGETS-REGRESSION-02": NATIVE_AC06_TARGETS_REGRESSION_COMMAND,
     "NATIVE-07-PROJECT-01": NATIVE_AC07_COMMAND,
 }
 EXPECTED_NATIVE_ASSERTION_AC = {
@@ -463,6 +468,7 @@ EXPECTED_NATIVE_ASSERTION_AC = {
     "NATIVE-04-EXTENSION-02": "AC-NATIVE-01-04",
     "NATIVE-04-PRODUCTION-BOUNDARY-03": "AC-NATIVE-01-04",
     "NATIVE-04-BUILD-BOUNDARY-04": "AC-NATIVE-01-04",
+    "NATIVE-06-TARGETS-REGRESSION-02": "AC-NATIVE-01-06",
     "NATIVE-07-PROJECT-01": "AC-NATIVE-01-07",
 }
 EXPECTED_NATIVE_ASSERTION_ROW_SHA256 = {
@@ -470,6 +476,7 @@ EXPECTED_NATIVE_ASSERTION_ROW_SHA256 = {
     "NATIVE-04-EXTENSION-02": "ae8cce33a2acbc6e81e9309bab0ff4b46c5d96a385ae71aec16863eb14154562",
     "NATIVE-04-PRODUCTION-BOUNDARY-03": "4ae66895eb655e124e542118c55288eb75d53ca2bdf46cb864ac3ca8a86bc9dc",
     "NATIVE-04-BUILD-BOUNDARY-04": "674ff0d6722edd7dc18abed7ebba06f68b1cd6feeb0dca99449e6e5a66a2ba5f",
+    "NATIVE-06-TARGETS-REGRESSION-02": "2a283eec9501b2944390a9a1ed2db142b23e35a953fabbef7b346aafce1e3661",
     "NATIVE-07-PROJECT-01": "56b1d628a1f8a25aa0fd35fcfda3ab253509e23bc9a418c7c286c8b8e9f3f999",
 }
 EXPECTED_PERFORMANCE_BUDGET_DIGESTS = {
@@ -1508,6 +1515,46 @@ def validate_native_extension_host_self_tests(packages: dict[str, dict]) -> list
         "extension-build-boundary-row-removed", copy.deepcopy(packages),
         "NATIVE-04-BUILD-BOUNDARY-04 must have exactly one validation row",
         validate=removed_build_boundary_validate,
+    )
+    targets_regression_row = next(
+        line for line in native_validate.splitlines()
+        if "| NATIVE-06-TARGETS-REGRESSION-02 |" in line
+    )
+    removed_targets_regression_validate = native_validate.replace(
+        targets_regression_row + "\n", "", 1,
+    )
+    add(
+        "touch-target-regression-row-removed", copy.deepcopy(packages),
+        "NATIVE-06-TARGETS-REGRESSION-02 must have exactly one validation row",
+        validate=removed_targets_regression_validate,
+    )
+    malformed_targets_regression_validate = native_validate.replace(
+        targets_regression_row,
+        targets_regression_row[:-1] + "| unexpected |",
+        1,
+    )
+    add(
+        "touch-target-regression-row-malformed", copy.deepcopy(packages),
+        "NATIVE-06-TARGETS-REGRESSION-02 validation row must contain exactly five cells",
+        validate=malformed_targets_regression_validate,
+    )
+    altered_targets_regression_validate = mutate_validation_cell(
+        "NATIVE-06-TARGETS-REGRESSION-02", 2,
+        "`python3 scripts/visual/touch_targets.py --self-test --allow-skips "
+        "--output results/native/touch-target-scanner-regressions.json`",
+    )
+    add(
+        "touch-target-regression-command-altered", copy.deepcopy(packages),
+        "NATIVE-06-TARGETS-REGRESSION-02 command drifted",
+        validate=altered_targets_regression_validate,
+    )
+    remapped_targets_regression_validate = mutate_validation_cell(
+        "NATIVE-06-TARGETS-REGRESSION-02", 0, "AC-NATIVE-01-05",
+    )
+    add(
+        "touch-target-regression-ac-remapped", copy.deepcopy(packages),
+        "NATIVE-06-TARGETS-REGRESSION-02 AC mapping drifted",
+        validate=remapped_targets_regression_validate,
     )
     weakened_build_boundary_validate = native_validate.replace(
         "--ordinary-configuration Debug --ordinary-configuration Release ",
