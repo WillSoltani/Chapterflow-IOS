@@ -3,10 +3,14 @@
 
 from __future__ import annotations
 
+import argparse
+import copy
 import fnmatch
 import hashlib
 import json
 import re
+import shlex
+import subprocess
 import sys
 from pathlib import Path
 
@@ -137,6 +141,573 @@ def globs_overlap(first: str, second: str) -> bool:
     return first_prefix.startswith(second_prefix) or second_prefix.startswith(first_prefix)
 
 
+REVISED_ROOT_PACKAGES = {"WP-NATIVE-01", "WP-EXT-01", "WP-READER-01"}
+EXTENSION_TRANSACTION_CLAIMS = {
+    ("ios", "ShareExtension/ShareViewController.swift"),
+    ("ios", "ActionExtension/ActionViewController.swift"),
+    ("ios", "SharedExtensionKit/**"),
+}
+EXPECTED_NON_PRIMARY = {
+    "WP-NATIVE-01": [
+        ("ios", "ChapterFlowUITests/UpgradeEvidence/NativeUpgradeEvidenceTests.swift", "validation-support"),
+        ("ios", "ChapterFlow.xcodeproj/project.pbxproj", "project-configuration"),
+        ("ios", "scripts/visual/**", "validation-tooling"),
+        ("ios", "scripts/localization/**", "validation-tooling"),
+    ],
+    "WP-EXT-01": [
+        ("ios", "ChapterFlowUITests/UpgradeEvidence/ExtensionUpgradeEvidenceTests.swift", "validation-support"),
+    ],
+    "WP-READER-01": [
+        ("ios", "ChapterFlowUITests/UpgradeEvidence/ReaderUpgradeEvidenceTests.swift", "validation-support"),
+    ],
+}
+
+EXPECTED_CANDIDATE_DISPOSITION = "known-red-scope-only-not-runtime-approved"
+EXPECTED_PERFORMANCE_BUDGET_DIGESTS = {
+    "PERF-COLD-LAUNCH": "db0518f9180f9fe4f4eb4bd332d97649956823ef04127df5b84c6b2e8b6f0259",
+    "PERF-READER-HITCH": "064d0451ffa7b2773504463a5145aea9310a04ecaab1777e871698e5d1a553ca",
+    "PERF-READER-PAGINATION": "6beb7bba8c466eacc3ddd9deccf1dc598e127e07792ae1825ff5d694a109523a",
+    "PERF-GRAPH-INTERACTION": "2637cf7db209ff5de6ffec13528d2f3a089a206edb1919b1f48f61444db650a6",
+    "PERF-CATALOG-HITCH": "cbd9e02863a3c983cb22c161b6e46e60af3cf19cf6d79d952fe98feae7f37884",
+    "PERF-IMAGE-CACHE": "2bdd456e74475632809d623afae30096395f44865af48cd9fa46578bc9e75d8d",
+    "PERF-MEMORY-ONE-BOOK": "07c382193c3daf7dc2df6e0344feb492cef3a81944eb89a84e55cff4bebdfa7c",
+    "PERF-MEMORY-THREE-BOOKS": "f457a50dfa4ad4533329e6700320127deeb927a75e37cd57172f0d11d77eef24",
+    "PERF-CHAPTER-FETCH": "27797a78ae31b536df944a082accce8aa5dad92506971ea52f5c803289d87eb2",
+    "PERF-MAIN-STALL": "457110be50ef79edf7e8f9e24f85be221a5edc659d582d4b38d9c804e6d6b351",
+    "PERF-ENERGY-JOURNEY": "c9baa57da97e605d0bbcff72e8cc56a9a0e9b2206a3a35a5a758a916f5939e1f",
+    "PERF-LONG-AUDIO": "848d2880376e9018f0844df99a8b6670048f2b3797766a23265632e0d0daaa91",
+    "PERF-DOWNLOAD-LIFECYCLE": "2bda08604ed50d64dcb60fe1e7268912842d823ffa27e6417967ce9d9c7aea00",
+}
+NUMERIC_PERFORMANCE_CEILINGS = {
+    "PERF-COLD-LAUNCH": ("lessThanOrEqual", 1500),
+    "PERF-READER-HITCH": ("lessThan", 5),
+    "PERF-MEMORY-ONE-BOOK": ("lessThanOrEqual", 120),
+    "PERF-MEMORY-THREE-BOOKS": ("lessThanOrEqual", 180),
+    "PERF-CHAPTER-FETCH": ("lessThanOrEqual", 2),
+    "PERF-MAIN-STALL": ("equal", 0),
+}
+
+
+def package_container_issues(package_id: str, package: object) -> list[str]:
+    if not isinstance(package, dict):
+        return [f"{package_id} package must be an object"]
+    issues: list[str] = []
+    ownership = package.get("ownership")
+    if not isinstance(ownership, dict):
+        issues.append(f"{package_id} ownership must be an object")
+    elif not isinstance(ownership.get("allowedPaths"), list):
+        issues.append(f"{package_id} allowedPaths must be a list")
+    if not isinstance(package.get("estimate"), dict):
+        issues.append(f"{package_id} estimate must be an object")
+    return issues
+
+
+def backlog_container_issues(backlog: object) -> list[str]:
+    if not isinstance(backlog, dict):
+        return ["backlog must be an object"]
+    return [] if isinstance(backlog.get("counts"), dict) else ["backlog counts must be an object"]
+
+
+def canonical_relative_glob(value: object, context: str, issues: list[str]) -> str | None:
+    if not isinstance(value, str) or not value:
+        issues.append(f"{context} must be a non-empty string")
+        return None
+    if value.startswith("/") or "\\" in value or "\0" in value or "//" in value:
+        issues.append(f"{context} must be a canonical repository-relative glob")
+        return None
+    parts = value.split("/")
+    if any(part in {"", ".", ".."} for part in parts):
+        issues.append(f"{context} contains a noncanonical path segment")
+        return None
+    if value in {"*", "**", "**/*"}:
+        issues.append(f"{context} must not be a repository catch-all")
+        return None
+    return value
+
+
+def claim_identity(value: object, context: str, issues: list[str]) -> tuple[str, str] | None:
+    if not isinstance(value, dict):
+        issues.append(f"{context} must be an object")
+        return None
+    if set(value) != {"repo", "glob"}:
+        issues.append(f"{context} must contain exactly repo and glob")
+        return None
+    repo = value.get("repo")
+    if not isinstance(repo, str) or repo not in {"ios", "backend"}:
+        issues.append(f"{context}.repo must be ios or backend")
+        return None
+    glob = canonical_relative_glob(value.get("glob"), f"{context}.glob", issues)
+    return (repo, glob) if glob is not None else None
+
+
+def implementation_root(claim: tuple[str, str]) -> tuple[str, str]:
+    repo, glob = claim
+    parts = glob.split("/")
+    if parts[0] == "Packages" and len(parts) >= 2:
+        return repo, "/".join(parts[:2])
+    return repo, parts[0]
+
+
+def root_accounting_issues(package_id: str, allowed: object, estimate: object) -> list[str]:
+    issues: list[str] = []
+    if not isinstance(allowed, list):
+        return [f"{package_id} allowedPaths must be a list"]
+    if not isinstance(estimate, dict):
+        return [f"{package_id} estimate must be an object"]
+
+    allowed_claims: list[tuple[str, str]] = []
+    for index, value in enumerate(allowed):
+        identity = claim_identity(value, f"{package_id} allowedPaths[{index}]", issues)
+        if identity is not None:
+            allowed_claims.append(identity)
+    if len(allowed_claims) != len(set(allowed_claims)):
+        issues.append(f"{package_id} allowedPaths repeats a repo/glob claim")
+    if any(repo != "ios" for repo, _ in allowed_claims):
+        issues.append(f"{package_id} root-accounted revision may claim only ios paths")
+
+    accounting = estimate.get("rootAccounting")
+    if not isinstance(accounting, dict):
+        return issues + [f"{package_id} rootAccounting must be an object"]
+    if set(accounting) - {"primaryGroups", "nonPrimaryPaths", "candidateBinding"}:
+        issues.append(f"{package_id} rootAccounting contains unknown fields")
+    groups = accounting.get("primaryGroups")
+    non_primary = accounting.get("nonPrimaryPaths")
+    roots = estimate.get("primaryRoots")
+    if not isinstance(groups, list):
+        issues.append(f"{package_id} rootAccounting.primaryGroups must be a list")
+        groups = []
+    if not isinstance(roots, int) or len(groups) != roots:
+        issues.append(f"{package_id} rootAccounting must declare exactly primaryRoots groups")
+    if not isinstance(non_primary, list):
+        issues.append(f"{package_id} rootAccounting.nonPrimaryPaths must be a list")
+        non_primary = []
+
+    assigned: list[tuple[str, str]] = []
+    allocations: dict[str, int] = {}
+    group_ids: set[str] = set()
+    for index, group in enumerate(groups):
+        context = f"{package_id} rootAccounting.primaryGroups[{index}]"
+        if not isinstance(group, dict):
+            issues.append(f"{context} must be an object")
+            continue
+        if set(group) != {"id", "claims", "plannedFiles"}:
+            issues.append(f"{context} must contain exactly id, claims, and plannedFiles")
+        group_id = group.get("id")
+        if not isinstance(group_id, str) or not group_id or group_id in group_ids:
+            issues.append(f"{context}.id must be unique and non-empty")
+            group_id = f"invalid-group-{index}"
+        group_ids.add(group_id)
+        claims = group.get("claims")
+        if not isinstance(claims, list) or not claims:
+            issues.append(f"{context}.claims must be a non-empty list")
+            claims = []
+        parsed_claims: list[tuple[str, str]] = []
+        for claim_index, value in enumerate(claims):
+            identity = claim_identity(value, f"{context}.claims[{claim_index}]", issues)
+            if identity is not None:
+                parsed_claims.append(identity)
+        assigned.extend(parsed_claims)
+        group_files = group.get("plannedFiles")
+        if not isinstance(group_files, int) or isinstance(group_files, bool) or group_files < 1:
+            issues.append(f"{context}.plannedFiles must be a positive integer")
+        else:
+            allocations[f"primary:{group_id}"] = group_files
+        roots_in_group = {implementation_root(claim) for claim in parsed_claims}
+        if len(roots_in_group) > 1 and not (
+            package_id == "WP-EXT-01"
+            and group_id == "extension-transaction-boundary"
+            and set(parsed_claims) == EXTENSION_TRANSACTION_CLAIMS
+            and len(parsed_claims) == len(EXTENSION_TRANSACTION_CLAIMS)
+        ):
+            issues.append(f"{package_id} rootAccounting group {group_id} crosses implementation roots")
+
+    non_primary_identities: list[tuple[str, str, str]] = []
+    validation_support_count = 0
+    for index, item in enumerate(non_primary):
+        context = f"{package_id} rootAccounting.nonPrimaryPaths[{index}]"
+        if not isinstance(item, dict):
+            issues.append(f"{context} must be an object")
+            continue
+        if set(item) != {"repo", "glob", "class", "plannedFiles"}:
+            issues.append(f"{context} must contain exactly repo, glob, class, and plannedFiles")
+        identity = claim_identity(
+            {"repo": item.get("repo"), "glob": item.get("glob")},
+            context,
+            issues,
+        )
+        path_class = item.get("class")
+        if not isinstance(path_class, str) or path_class not in {
+            "validation-support", "validation-tooling", "project-configuration",
+        }:
+            issues.append(f"{context}.class is invalid")
+        if identity is not None and isinstance(path_class, str):
+            assigned.append(identity)
+            non_primary_identities.append((*identity, path_class))
+            if path_class == "validation-support":
+                validation_support_count += 1
+            path_files = item.get("plannedFiles")
+            if not isinstance(path_files, int) or isinstance(path_files, bool) or path_files < 1:
+                issues.append(f"{context}.plannedFiles must be a positive integer")
+            else:
+                allocations[f"non-primary:{identity[0]}:{identity[1]}"] = path_files
+
+    if non_primary_identities != EXPECTED_NON_PRIMARY.get(package_id, []):
+        issues.append(f"{package_id} non-primary claims drift from the exact reviewed set")
+    if validation_support_count != estimate.get("validationSupportRoots"):
+        issues.append(f"{package_id} rootAccounting validation-support count drift")
+    if len(assigned) != len(set(assigned)):
+        issues.append(f"{package_id} rootAccounting assigns a repo/glob claim more than once")
+    if assigned != allowed_claims:
+        issues.append(f"{package_id} ordered rootAccounting claims drift from allowedPaths")
+    planned_files = estimate.get("plannedFiles")
+    if not isinstance(planned_files, int) or sum(allocations.values()) != planned_files:
+        issues.append(f"{package_id} rootAccounting planned-file allocation does not equal plannedFiles")
+
+    candidate = accounting.get("candidateBinding")
+    if package_id == "WP-NATIVE-01":
+        if not isinstance(candidate, dict):
+            issues.append("WP-NATIVE-01 rootAccounting.candidateBinding must be an object")
+        else:
+            expected_fields = {"base", "head", "tree", "diffSha256", "paths", "disposition"}
+            if set(candidate) != expected_fields:
+                issues.append(
+                    "WP-NATIVE-01 candidateBinding must contain exact identity, disposition, and path fields"
+                )
+            for field in ("base", "head", "tree"):
+                if not re.fullmatch(r"[0-9a-f]{40}", str(candidate.get(field, ""))):
+                    issues.append(f"WP-NATIVE-01 candidateBinding.{field} must be a full lowercase SHA")
+            if candidate.get("base") == candidate.get("head"):
+                issues.append("WP-NATIVE-01 candidateBinding base and head must differ")
+            if not re.fullmatch(r"[0-9a-f]{64}", str(candidate.get("diffSha256", ""))):
+                issues.append("WP-NATIVE-01 candidateBinding.diffSha256 must be a SHA-256 digest")
+            if candidate.get("disposition") != EXPECTED_CANDIDATE_DISPOSITION:
+                issues.append("WP-NATIVE-01 candidateBinding must remain known-red and scope-only")
+            paths = candidate.get("paths")
+            if isinstance(paths, list):
+                if not all(isinstance(path, str) for path in paths):
+                    issues.append("WP-NATIVE-01 candidateBinding.paths must contain only strings")
+                elif paths != sorted(paths):
+                    issues.append("WP-NATIVE-01 candidateBinding.paths must be sorted")
+            issues.extend(candidate_path_issues(
+                {
+                    "id": package_id,
+                    "estimate": estimate,
+                },
+                paths,
+            ))
+            if not isinstance(paths, list) or len(paths) != planned_files:
+                issues.append("WP-NATIVE-01 candidateBinding path count must equal plannedFiles")
+    elif candidate is not None:
+        issues.append(f"{package_id} must not carry an unrelated candidateBinding")
+    return issues
+
+
+def accounting_buckets(package: dict) -> tuple[list[tuple[tuple[str, str], str, int]], list[str]]:
+    issues: list[str] = []
+    estimate = package.get("estimate", {})
+    accounting = estimate.get("rootAccounting", {}) if isinstance(estimate, dict) else {}
+    if not isinstance(accounting, dict):
+        return [], [f"{package.get('id')} rootAccounting must be an object"]
+    buckets: list[tuple[tuple[str, str], str, int]] = []
+    groups = accounting.get("primaryGroups", [])
+    if not isinstance(groups, list):
+        return [], [f"{package.get('id')} rootAccounting.primaryGroups must be a list"]
+    for group in groups:
+        if not isinstance(group, dict):
+            continue
+        group_id = group.get("id")
+        allocation = group.get("plannedFiles")
+        claims = group.get("claims", [])
+        if not isinstance(claims, list):
+            issues.append(f"{package.get('id')} primary claims must be a list")
+            continue
+        for value in claims:
+            identity = claim_identity(value, f"{package.get('id')} primary claim", issues)
+            if identity is not None and isinstance(group_id, str) and isinstance(allocation, int):
+                buckets.append((identity, f"primary:{group_id}", allocation))
+    non_primary = accounting.get("nonPrimaryPaths", [])
+    if not isinstance(non_primary, list):
+        return buckets, issues + [f"{package.get('id')} rootAccounting.nonPrimaryPaths must be a list"]
+    for item in non_primary:
+        if not isinstance(item, dict):
+            continue
+        identity = claim_identity(
+            {"repo": item.get("repo"), "glob": item.get("glob")},
+            f"{package.get('id')} non-primary claim",
+            issues,
+        )
+        allocation = item.get("plannedFiles")
+        if identity is not None and isinstance(allocation, int):
+            buckets.append((identity, f"non-primary:{identity[0]}:{identity[1]}", allocation))
+    return buckets, issues
+
+
+def candidate_path_issues(package: dict, paths: object) -> list[str]:
+    package_id = package.get("id", "unknown")
+    issues: list[str] = []
+    if not isinstance(paths, list) or not paths:
+        return [f"{package_id} candidate path manifest must be a non-empty list"]
+    buckets, bucket_issues = accounting_buckets(package)
+    issues.extend(bucket_issues)
+    counts: dict[str, int] = {}
+    seen: set[str] = set()
+    for index, raw_path in enumerate(paths):
+        path = canonical_relative_glob(raw_path, f"{package_id} candidatePaths[{index}]", issues)
+        if path is None:
+            continue
+        if any(token in path for token in "*?["):
+            issues.append(f"{package_id} candidate path must be exact: {path}")
+            continue
+        if path in seen:
+            issues.append(f"{package_id} candidate path is duplicated: {path}")
+            continue
+        seen.add(path)
+        matches = [
+            (bucket_id, allocation)
+            for (repo, glob), bucket_id, allocation in buckets
+            if repo == "ios" and fnmatch.fnmatchcase(path, glob)
+        ]
+        if len(matches) != 1:
+            issues.append(f"{package_id} candidate path must match exactly one accounted claim: {path}")
+            continue
+        bucket_id, allocation = matches[0]
+        counts[bucket_id] = counts.get(bucket_id, 0) + 1
+        if counts[bucket_id] > allocation:
+            issues.append(f"{package_id} candidate exceeds {bucket_id} file allocation")
+    estimate = package.get("estimate", {})
+    max_files = estimate.get("maxFiles") if isinstance(estimate, dict) else None
+    if not isinstance(max_files, int) or len(seen) > max_files:
+        issues.append(f"{package_id} candidate exceeds maxFiles")
+    touched_primary = {bucket for bucket in counts if bucket.startswith("primary:")}
+    max_roots = estimate.get("maxPrimaryRoots") if isinstance(estimate, dict) else None
+    if not isinstance(max_roots, int) or len(touched_primary) > max_roots:
+        issues.append(f"{package_id} candidate exceeds maxPrimaryRoots")
+    return issues
+
+
+def validate_root_accounting_self_tests(packages: dict[str, dict]) -> list[dict[str, object]]:
+    """Mutation checks prove malformed or understated accounting fails deterministically."""
+    native = packages.get("WP-NATIVE-01")
+    if not isinstance(native, dict):
+        fail("root-accounting self-tests require WP-NATIVE-01")
+        return []
+
+    cases: list[tuple[str, dict, str]] = []
+    results: list[dict[str, object]] = []
+
+    duplicate = copy.deepcopy(native)
+    duplicate["ownership"]["allowedPaths"].append(
+        copy.deepcopy(duplicate["ownership"]["allowedPaths"][0])
+    )
+    cases.append(("duplicate-claim", duplicate, "repeats a repo/glob claim"))
+
+    malformed_repo = copy.deepcopy(native)
+    malformed_repo["ownership"]["allowedPaths"][0]["repo"] = "mobile"
+    cases.append(("malformed-repo", malformed_repo, ".repo must be ios or backend"))
+
+    repo_list = copy.deepcopy(native)
+    repo_list["ownership"]["allowedPaths"][0]["repo"] = ["ios"]
+    cases.append(("repo-list", repo_list, ".repo must be ios or backend"))
+
+    repo_object = copy.deepcopy(native)
+    repo_object["ownership"]["allowedPaths"][0]["repo"] = {"name": "ios"}
+    cases.append(("repo-object", repo_object, ".repo must be ios or backend"))
+
+    traversal = copy.deepcopy(native)
+    traversal["ownership"]["allowedPaths"][0]["glob"] = "Packages/../Secrets/**"
+    cases.append(("path-traversal", traversal, "noncanonical path segment"))
+
+    broad_support = copy.deepcopy(native)
+    broad_support["ownership"]["allowedPaths"][5]["glob"] = "ChapterFlowUITests/UpgradeEvidence/**"
+    broad_support["estimate"]["rootAccounting"]["nonPrimaryPaths"][0]["glob"] = (
+        "ChapterFlowUITests/UpgradeEvidence/**"
+    )
+    cases.append(("broad-validation-support", broad_support, "exact reviewed set"))
+
+    understated = copy.deepcopy(native)
+    understated["estimate"]["rootAccounting"]["nonPrimaryPaths"][2]["plannedFiles"] = 4
+    cases.append(("understated-wildcard", understated, "planned-file allocation"))
+
+    malformed_shape = copy.deepcopy(native)
+    malformed_shape["estimate"]["rootAccounting"] = []
+    cases.append(("malformed-shape", malformed_shape, "must be an object"))
+
+    class_list = copy.deepcopy(native)
+    class_list["estimate"]["rootAccounting"]["nonPrimaryPaths"][0]["class"] = [
+        "validation-support"
+    ]
+    cases.append(("class-list", class_list, ".class is invalid"))
+
+    class_object = copy.deepcopy(native)
+    class_object["estimate"]["rootAccounting"]["nonPrimaryPaths"][0]["class"] = {
+        "name": "validation-support"
+    }
+    cases.append(("class-object", class_object, ".class is invalid"))
+
+    mixed_candidate_paths = copy.deepcopy(native)
+    mixed_candidate_paths["estimate"]["rootAccounting"]["candidateBinding"]["paths"][0] = [
+        "ActionExtension/ActionView.swift"
+    ]
+    cases.append(("candidate-mixed-path-types", mixed_candidate_paths, "paths must contain only strings"))
+
+    for case_id, mutated, expected in cases:
+        issues = root_accounting_issues(
+            "WP-NATIVE-01",
+            mutated.get("ownership", {}).get("allowedPaths"),
+            mutated.get("estimate"),
+        )
+        matched = any(expected in issue for issue in issues)
+        results.append({"case": case_id, "expected": expected, "matched": matched, "issues": issues})
+        if not matched:
+            fail(f"root-accounting self-test {case_id} did not fail with {expected!r}")
+
+    duplicate_paths = copy.deepcopy(
+        native.get("estimate", {}).get("rootAccounting", {}).get("candidateBinding", {}).get("paths", [])
+    )
+    if duplicate_paths:
+        duplicate_paths.append(duplicate_paths[0])
+        duplicate_issues = candidate_path_issues(native, duplicate_paths)
+        duplicate_matched = any("duplicated" in issue for issue in duplicate_issues)
+        results.append({
+            "case": "candidate-duplicate-path",
+            "expected": "duplicated",
+            "matched": duplicate_matched,
+            "issues": duplicate_issues,
+        })
+        if not duplicate_matched:
+            fail("candidate-path self-test duplicate-path did not fail")
+
+    outside_paths = copy.deepcopy(
+        native.get("estimate", {}).get("rootAccounting", {}).get("candidateBinding", {}).get("paths", [])
+    )
+    if outside_paths:
+        outside_paths[0] = "ChapterFlow/Unauthorized.swift"
+        outside_issues = candidate_path_issues(native, outside_paths)
+        outside_matched = any("exactly one accounted claim" in issue for issue in outside_issues)
+        results.append({
+            "case": "candidate-outside-scope",
+            "expected": "exactly one accounted claim",
+            "matched": outside_matched,
+            "issues": outside_issues,
+        })
+        if not outside_matched:
+            fail("candidate-path self-test outside-scope did not fail")
+    return results
+
+
+def validate_container_shape_self_tests(
+    packages: dict[str, dict], backlog: dict,
+) -> list[dict[str, object]]:
+    native = packages.get("WP-NATIVE-01")
+    if not isinstance(native, dict):
+        fail("container-shape self-tests require WP-NATIVE-01")
+        return []
+    package_cases: list[tuple[str, dict, str]] = []
+
+    estimate_list = copy.deepcopy(native)
+    estimate_list["estimate"] = []
+    package_cases.append(("estimate-list", estimate_list, "estimate must be an object"))
+
+    ownership_list = copy.deepcopy(native)
+    ownership_list["ownership"] = []
+    package_cases.append(("ownership-list", ownership_list, "ownership must be an object"))
+
+    allowed_paths_null = copy.deepcopy(native)
+    allowed_paths_null["ownership"]["allowedPaths"] = None
+    package_cases.append(("allowed-paths-null", allowed_paths_null, "allowedPaths must be a list"))
+
+    results: list[dict[str, object]] = []
+    for case_id, mutated, expected in package_cases:
+        issues = package_container_issues("WP-NATIVE-01", mutated)
+        matched = any(expected in issue for issue in issues)
+        results.append({"case": case_id, "expected": expected, "matched": matched, "issues": issues})
+        if not matched:
+            fail(f"container-shape self-test {case_id} did not fail with {expected!r}")
+
+    backlog_counts = copy.deepcopy(backlog)
+    backlog_counts["counts"] = []
+    issues = backlog_container_issues(backlog_counts)
+    expected = "backlog counts must be an object"
+    matched = expected in issues
+    results.append({
+        "case": "backlog-counts-list",
+        "expected": expected,
+        "matched": matched,
+        "issues": issues,
+    })
+    if not matched:
+        fail("container-shape self-test backlog-counts-list did not fail")
+    return results
+
+
+def run_git(arguments: list[str]) -> tuple[bytes | None, str | None]:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(ROOT.parent), *arguments],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except OSError as error:
+        return None, str(error)
+    if result.returncode != 0:
+        detail = result.stderr.decode("utf-8", errors="replace").strip()
+        return None, detail or f"git exited {result.returncode}"
+    return result.stdout, None
+
+
+def validate_candidate_diff(package: dict, base: str, head: str, require_binding: bool) -> None:
+    package_id = package.get("id", "unknown")
+    if not re.fullmatch(r"[0-9a-f]{40}", base) or not re.fullmatch(r"[0-9a-f]{40}", head):
+        fail(f"{package_id} --base and --head must be full lowercase SHAs")
+        return
+    estimate = package.get("estimate", {})
+    accounting = estimate.get("rootAccounting", {}) if isinstance(estimate, dict) else {}
+    binding = accounting.get("candidateBinding") if isinstance(accounting, dict) else None
+    if not isinstance(binding, dict):
+        fail(f"{package_id} has no candidateBinding for --package-diff")
+        return
+    if require_binding and (binding.get("base") != base or binding.get("head") != head):
+        fail(f"{package_id} requested candidate identities drift from candidateBinding")
+
+    ancestor_output, ancestor_error = run_git(["merge-base", "--is-ancestor", base, head])
+    if ancestor_error is not None:
+        fail(f"{package_id} base is not an ancestor of head: {ancestor_error}")
+    elif ancestor_output not in {b"", None}:
+        fail(f"{package_id} unexpected merge-base output")
+
+    tree_output, tree_error = run_git(["rev-parse", f"{head}^{{tree}}"])
+    if tree_error is not None:
+        fail(f"{package_id} cannot resolve candidate tree: {tree_error}")
+    else:
+        actual_tree = tree_output.decode("ascii", errors="replace").strip()
+        if require_binding and actual_tree != binding.get("tree"):
+            fail(f"{package_id} candidate tree drift: {actual_tree}")
+
+    paths_output, paths_error = run_git(["diff", "--name-only", "-z", base, head, "--"])
+    actual_paths: list[str] = []
+    if paths_error is not None:
+        fail(f"{package_id} cannot read candidate paths: {paths_error}")
+    else:
+        actual_paths = sorted(
+            value.decode("utf-8", errors="strict")
+            for value in paths_output.split(b"\0")
+            if value
+        )
+        if require_binding and actual_paths != binding.get("paths"):
+            fail(f"{package_id} candidate path manifest drift")
+        for issue in candidate_path_issues(package, actual_paths):
+            fail(issue)
+
+    diff_output, diff_error = run_git(["diff", "--binary", base, head, "--"])
+    if diff_error is not None:
+        fail(f"{package_id} cannot read canonical binary diff: {diff_error}")
+    else:
+        digest = hashlib.sha256(diff_output).hexdigest()
+        if require_binding and digest != binding.get("diffSha256"):
+            fail(f"{package_id} canonical binary diff digest drift: {digest}")
+
+
 def validate_packages(backlog: dict, locks_doc: dict) -> dict[str, dict]:
     package_paths = sorted(ROOT.glob("workstreams/*/WP-*/package.json"))
     packages: dict[str, dict] = {}
@@ -172,6 +743,20 @@ def validate_packages(backlog: dict, locks_doc: dict) -> dict[str, dict]:
         if package_id in packages:
             fail(f"duplicate package ID: {package_id}")
         packages[package_id] = package
+        for issue in package_container_issues(package_id, package):
+            fail(issue)
+        ownership = package.get("ownership")
+        if not isinstance(ownership, dict):
+            ownership = {}
+            package["ownership"] = ownership
+        allowed = ownership.get("allowedPaths")
+        if not isinstance(allowed, list):
+            allowed = []
+            ownership["allowedPaths"] = allowed
+        estimate = package.get("estimate")
+        if not isinstance(estimate, dict):
+            estimate = {}
+            package["estimate"] = estimate
         if path.parent.name != package_id:
             fail(f"directory/ID mismatch: {path.parent.name} != {package_id}")
         if path.parents[1].name != package.get("workstream"):
@@ -180,27 +765,32 @@ def validate_packages(backlog: dict, locks_doc: dict) -> dict[str, dict]:
             if not (path.parent / companion).is_file():
                 fail(f"{package_id} missing {companion}")
 
-        owner = package.get("ownership", {}).get("ownerLane")
-        if not owner or owner in owners:
+        owner = ownership.get("ownerLane")
+        if not isinstance(owner, str) or not owner or owner in owners:
             fail(f"{package_id} must have a unique non-empty owner lane")
-        owners.add(owner)
-        if package.get("ownership", {}).get("writableOwner") != "single":
+        else:
+            owners.add(owner)
+        if ownership.get("writableOwner") != "single":
             fail(f"{package_id} writableOwner must be single")
-        allowed = package.get("ownership", {}).get("allowedPaths", [])
         if not allowed:
             fail(f"{package_id} has no allowed paths")
-        for claim in allowed:
-            glob = claim.get("glob", "") if isinstance(claim, dict) else ""
+        for claim_index, claim in enumerate(allowed if isinstance(allowed, list) else []):
+            claim_issues: list[str] = []
+            identity = claim_identity(claim, f"{package_id} allowedPaths[{claim_index}]", claim_issues)
+            for issue in claim_issues:
+                fail(issue)
+            if identity is None:
+                continue
+            _, glob = identity
             if glob in banned_broad_paths:
                 fail(f"{package_id} has overbroad write claim: {glob}")
             if glob.startswith("upgrade/") or glob.startswith("/Users/radinsoltani/Chapterflow-IOS"):
                 fail(f"{package_id} claims prohibited plan/owner path: {glob}")
-        prohibited_text = json.dumps(package.get("ownership", {}).get("prohibitedPaths", []))
+        prohibited_text = json.dumps(ownership.get("prohibitedPaths", []))
         for marker in ("upgrade/**", "/Users/radinsoltani/Chapterflow-IOS/**", "#117"):
             if marker not in prohibited_text:
                 fail(f"{package_id} prohibited paths omit {marker}")
 
-        estimate = package.get("estimate", {})
         minutes = estimate.get("minutes")
         planned_files = estimate.get("plannedFiles")
         max_files = estimate.get("maxFiles")
@@ -219,6 +809,10 @@ def validate_packages(backlog: dict, locks_doc: dict) -> dict[str, dict]:
             fail(f"{package_id} file envelope must satisfy 1 <= planned <= max <= 20")
         if not all(isinstance(value, int) for value in (roots, max_roots)) or not (1 <= roots <= max_roots <= 3):
             fail(f"{package_id} root envelope must satisfy 1 <= roots <= max <= 3")
+
+        if package_id in REVISED_ROOT_PACKAGES:
+            for issue in root_accounting_issues(package_id, allowed, estimate):
+                fail(issue)
 
         primary_skills = package.get("skills", {}).get("primary", [])
         review_skills = package.get("skills", {}).get("review", [])
@@ -675,46 +1269,489 @@ def validate_evaluations(backlog: dict) -> None:
         fail("draft-v0 baseline must retain the single pre-revision failure")
 
 
-def validate_performance_budgets() -> None:
+def performance_commands(package_id: str, packages: dict[str, dict]) -> list[str]:
+    package = packages.get(package_id, {})
+    workstream = package.get("workstream") if isinstance(package, dict) else None
+    if not isinstance(workstream, str):
+        return []
+    path = ROOT / "workstreams" / workstream / package_id / "VALIDATE.md"
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as error:
+        fail(f"cannot read {package_id} performance contract: {error}")
+        return []
+    return re.findall(r"`([^`]*scripts/visual/run_paired_performance\.py[^`]*)`", text)
+
+
+def command_option(tokens: list[str], option: str) -> str | None:
+    values = command_options(tokens, option)
+    return values[0] if len(values) == 1 else None
+
+
+def command_options(tokens: list[str], option: str) -> list[str]:
+    values: list[str] = []
+    for index, token in enumerate(tokens):
+        if token == option and index + 1 < len(tokens) and not tokens[index + 1].startswith("--"):
+            values.append(tokens[index + 1])
+    return values
+
+
+def split_performance_command(command: str, package_id: str) -> list[str]:
+    try:
+        return shlex.split(command)
+    except ValueError as error:
+        fail(f"{package_id} paired-runner command cannot be parsed: {error}")
+        return []
+
+
+def performance_command_shape_issues(
+    tokens: list[str],
+    *,
+    flags: dict[str, int],
+    valued_options: dict[str, int],
+) -> list[str]:
+    issues: list[str] = []
+    if tokens[:2] != ["python3", "scripts/visual/run_paired_performance.py"]:
+        issues.append("must start with exact python3 paired-runner executable")
+        return issues
+    observed_flags = {option: 0 for option in flags}
+    observed_values = {option: 0 for option in valued_options}
+    index = 2
+    while index < len(tokens):
+        token = tokens[index]
+        if token in flags:
+            observed_flags[token] += 1
+            index += 1
+            continue
+        if token in valued_options:
+            if index + 1 >= len(tokens) or tokens[index + 1].startswith("--"):
+                issues.append(f"{token} must have one value")
+                index += 1
+                continue
+            observed_values[token] += 1
+            index += 2
+            continue
+        issues.append(f"contains unexpected token {token!r}")
+        index += 1
+    for option, expected in flags.items():
+        if observed_flags[option] != expected:
+            issues.append(f"{option} must occur exactly {expected} time(s)")
+    for option, expected in valued_options.items():
+        if observed_values[option] != expected:
+            issues.append(f"{option} must occur exactly {expected} time(s)")
+    return issues
+
+
+def validate_performance_consumer_contracts(
+    packages: dict[str, dict],
+    budgets_by_id: dict[str, dict],
+) -> None:
+    native_commands = performance_commands("WP-NATIVE-01", packages)
+    if len(native_commands) != 1:
+        fail("WP-NATIVE-01 must declare exactly one paired-runner self-test command")
+    else:
+        native_tokens = split_performance_command(native_commands[0], "WP-NATIVE-01")
+        for issue in performance_command_shape_issues(
+            native_tokens,
+            flags={"--self-test": 1},
+            valued_options={
+                "--self-test-budget-id": 2,
+                "--budget-manifest": 1,
+                "--output": 1,
+            },
+        ):
+            fail(f"WP-NATIVE-01 paired-runner command {issue}")
+        native_allowed = {
+            "--self-test", "--self-test-budget-id", "--budget-manifest", "--output",
+        }
+        native_options = {token for token in native_tokens if token.startswith("--")}
+        if native_options != native_allowed:
+            fail("WP-NATIVE-01 paired runner self-test options drift from the canonical interface")
+        if "--self-test" not in native_tokens:
+            fail("WP-NATIVE-01 paired runner contract must include --self-test")
+        if command_option(native_tokens, "--budget-manifest") != "upgrade/program/performance-budgets.json":
+            fail("WP-NATIVE-01 paired runner self-test must consume the canonical budget manifest")
+        if command_options(native_tokens, "--self-test-budget-id") != [
+            "PERF-READER-PAGINATION", "PERF-GRAPH-INTERACTION",
+        ]:
+            fail("WP-NATIVE-01 paired runner self-test must exercise Reader then Graph consumers")
+        forbidden = {"--base", "--candidate", "--result-bundle-root", "--graph-policy"}
+        if forbidden & set(native_tokens):
+            fail("WP-NATIVE-01 paired runner contract retains an incompatible legacy option")
+
+    consumers = {
+        "WP-READER-01": {
+            "budget": "PERF-READER-PAGINATION",
+            "devices": ["--iphone-udid", "--ipad-udid"],
+            "fixture": "reader-pagination-hermetic-v1",
+            "test": "ChapterFlowUITests/ReaderPerformanceTests/testPaginationBudget",
+            "derivedData": "/private/tmp/Chapterflow-DD-reader-pagination-<SHA>",
+            "output": "results/reader/pagination-performance",
+        },
+        "WP-GRAPH-01": {
+            "budget": "PERF-GRAPH-INTERACTION",
+            "devices": ["--iphone-udid"],
+            "fixture": "concept-graph-hermetic-v1",
+            "test": "ChapterFlowUITests/GraphUpgradeEvidenceTests/testConceptGraphPerformanceBudgets",
+            "derivedData": "/private/tmp/Chapterflow-DD-graph-perf-<SHA>",
+            "output": "results/graph/performance",
+        },
+    }
+    for package_id, expected in consumers.items():
+        budget_id = expected["budget"]
+        commands = performance_commands(package_id, packages)
+        if len(commands) != 1:
+            fail(f"{package_id} must declare exactly one paired-runner consumer command")
+            continue
+        tokens = split_performance_command(commands[0], package_id)
+        required_options = {
+            "--project", "--scheme", "--main-worktree", "--candidate-worktree",
+            "--main-sha", "--candidate-sha", "--test", "--samples",
+            "--operating-system", "--toolchain-id", "--fixture", "--derived-data-root",
+            "--budget-manifest", "--budget-id", "--output",
+        } | set(expected["devices"])
+        allowed_options = required_options | {"--instruments-template"}
+        for issue in performance_command_shape_issues(
+            tokens,
+            flags={},
+            valued_options={
+                **{option: 1 for option in required_options},
+                "--instruments-template": 2,
+            },
+        ):
+            fail(f"{package_id} paired-runner command {issue}")
+        actual_options = {token for token in tokens if token.startswith("--")}
+        if actual_options != allowed_options:
+            fail(f"{package_id} paired-runner options drift from the canonical interface")
+        missing = sorted(option for option in required_options if command_option(tokens, option) is None)
+        if missing:
+            fail(f"{package_id} paired-runner command omits unique valued options: {missing}")
+        for option in ("--iphone-udid", "--ipad-udid"):
+            present = command_option(tokens, option) is not None
+            if present != (option in expected["devices"]):
+                fail(f"{package_id} paired-runner device options drift from its budget")
+        expected_values = {
+            "--project": "ChapterFlow.xcodeproj",
+            "--scheme": "ChapterFlow",
+            "--main-worktree": "<CURRENT_MAIN_WORKTREE>",
+            "--candidate-worktree": "<CANDIDATE_WORKTREE>",
+            "--main-sha": "<CURRENT_MAIN_SHA>",
+            "--candidate-sha": "<SHA>",
+            "--test": expected["test"],
+            "--samples": "30",
+            "--operating-system": "<PINNED_OS>",
+            "--toolchain-id": "<PINNED_TOOLCHAIN_ID>",
+            "--fixture": expected["fixture"],
+            "--derived-data-root": expected["derivedData"],
+            "--budget-manifest": "upgrade/program/performance-budgets.json",
+            "--budget-id": budget_id,
+            "--output": expected["output"],
+        }
+        for option, value in expected_values.items():
+            if command_option(tokens, option) != value:
+                fail(f"{package_id} paired-runner {option} must be {value}")
+        if command_options(tokens, "--instruments-template") != ["Hangs", "SwiftUI"]:
+            fail(f"{package_id} paired-runner must retain ordered Hangs and SwiftUI traces")
+        if command_option(tokens, "--iphone-udid") != "<PINNED_IPHONE_UDID>":
+            fail(f"{package_id} paired-runner must pin the declared iPhone device")
+        if "--ipad-udid" in expected["devices"] and command_option(
+            tokens, "--ipad-udid"
+        ) != "<PINNED_IPAD_UDID>":
+            fail(f"{package_id} paired-runner must pin the declared iPad device")
+        if command_option(tokens, "--budget-manifest") != "upgrade/program/performance-budgets.json":
+            fail(f"{package_id} paired-runner command uses a noncanonical budget manifest")
+        if command_option(tokens, "--budget-id") != budget_id:
+            fail(f"{package_id} paired-runner command must bind {budget_id}")
+        output = command_option(tokens, "--output")
+        if output is None or output.endswith(".json"):
+            fail(f"{package_id} paired-runner output must be an artifact directory")
+        forbidden = {"--base", "--candidate", "--result-bundle-root", "--graph-policy"}
+        if forbidden & set(tokens):
+            fail(f"{package_id} paired-runner command retains an incompatible legacy option")
+        budget = budgets_by_id.get(budget_id)
+        if not isinstance(budget, dict) or not str(budget.get("operator", "")).startswith("pairedBaseline"):
+            fail(f"{package_id} budget ID does not resolve to a paired budget")
+            continue
+        execution = budget.get("pairedExecution")
+        if not isinstance(execution, dict):
+            fail(f"{package_id} budget lacks structured pairedExecution")
+            continue
+        expected_device_classes = [
+            "compact-iphone",
+            *(["regular-ipad"] if "--ipad-udid" in expected["devices"] else []),
+        ]
+        if execution.get("order") != ["current-main", "candidate"]:
+            fail(f"{package_id} budget order must be current-main then candidate")
+        if execution.get("samples") != 30:
+            fail(f"{package_id} budget sample count must be 30")
+        if execution.get("deviceClasses") != expected_device_classes:
+            fail(f"{package_id} budget device classes drift from its consumer command")
+        if execution.get("instrumentTemplates") != ["Hangs", "SwiftUI"]:
+            fail(f"{package_id} budget trace templates drift from its consumer command")
+        if execution.get("fixture") != expected["fixture"]:
+            fail(f"{package_id} budget fixture drifts from its consumer command")
+
+
+def validate_performance_command_self_tests(
+    packages: dict[str, dict],
+) -> list[dict[str, object]]:
+    native_commands = performance_commands("WP-NATIVE-01", packages)
+    reader_commands = performance_commands("WP-READER-01", packages)
+    if len(native_commands) != 1 or len(reader_commands) != 1:
+        fail("performance-command self-tests require canonical NATIVE and READER commands")
+        return []
+    native_tokens = split_performance_command(native_commands[0], "WP-NATIVE-01")
+    reader_tokens = split_performance_command(reader_commands[0], "WP-READER-01")
+    reader_valued = {
+        option: 1
+        for option in (
+            "--project", "--scheme", "--main-worktree", "--candidate-worktree",
+            "--main-sha", "--candidate-sha", "--test", "--samples", "--iphone-udid",
+            "--ipad-udid", "--operating-system", "--toolchain-id", "--fixture",
+            "--derived-data-root", "--budget-manifest", "--budget-id", "--output",
+        )
+    }
+    reader_valued["--instruments-template"] = 2
+    cases = [
+        (
+            "echo-prefix",
+            ["echo", *reader_tokens],
+            {},
+            reader_valued,
+            "exact python3 paired-runner executable",
+        ),
+        (
+            "extra-positional-suffix",
+            [*reader_tokens, "EXTRA_POSITIONAL"],
+            {},
+            reader_valued,
+            "unexpected token",
+        ),
+        (
+            "duplicate-self-test-flag",
+            [*native_tokens, "--self-test"],
+            {"--self-test": 1},
+            {"--self-test-budget-id": 2, "--budget-manifest": 1, "--output": 1},
+            "--self-test must occur exactly 1 time",
+        ),
+    ]
+    results: list[dict[str, object]] = []
+    for case_id, tokens, flags, valued_options, expected in cases:
+        issues = performance_command_shape_issues(
+            tokens,
+            flags=flags,
+            valued_options=valued_options,
+        )
+        matched = any(expected in issue for issue in issues)
+        results.append({"case": case_id, "expected": expected, "matched": matched, "issues": issues})
+        if not matched:
+            fail(f"performance-command self-test {case_id} did not fail with {expected!r}")
+    return results
+
+
+def performance_budget_issues(document: object) -> list[str]:
+    issues: list[str] = []
+    if not isinstance(document, dict):
+        return ["performance budgets must be a JSON object"]
+    if document.get("schemaVersion") != 1:
+        issues.append("performance budget schemaVersion must remain 1")
+    if document.get("status") != "predeclared-before-implementation":
+        issues.append("performance budget status must remain predeclared-before-implementation")
+    source = document.get("source")
+    if not isinstance(source, dict):
+        issues.append("performance budget source must be an object")
+    else:
+        expected_source = {
+            "path": "docs/PerfBudget.md",
+            "sha256AtPlanningBase": "0761280828cbf29230a6a7a2f27b63d4725748670606e4d7639098220614ca2a",
+            "iosRevision": "22da44d27bc18771f4d7db7681e17c10970ccb13",
+            "evidenceType": "repository budget; current final-device measurements remain pending",
+        }
+        if source != expected_source:
+            issues.append("performance budget source metadata drift")
+    if document.get("referenceDevice") != "iPhone 15 Pro":
+        issues.append("performance budget reference device drift")
+    if document.get("requiredDeviceClasses") != [
+        "current supported compact iPhone class",
+        "current supported regular-width iPad class",
+    ]:
+        issues.append("performance budget required device classes drift")
+    expected_change_policy = (
+        "Implementation lanes may tighten but never loosen or replace these budgets. "
+        "A proposed relaxation is BLOCKED_OWNER_DECISION and requires a new reviewed planning "
+        "revision with measured provenance before candidate work."
+    )
+    if document.get("changePolicy") != expected_change_policy:
+        issues.append("performance budget change policy drift")
+
+    budgets = document.get("budgets")
+    if not isinstance(budgets, list):
+        return issues + ["performance budgets must be a list"]
+    valid_ids: list[str] = []
+    budgets_by_id: dict[str, dict] = {}
+    for index, budget in enumerate(budgets):
+        if not isinstance(budget, dict):
+            issues.append(f"performance budget entry {index} must be an object")
+            continue
+        budget_id = budget.get("id")
+        if not isinstance(budget_id, str) or not budget_id:
+            issues.append(f"performance budget entry {index} id must be a non-empty string")
+            continue
+        valid_ids.append(budget_id)
+        if budget_id in budgets_by_id:
+            issues.append(f"performance budget ID is duplicated: {budget_id}")
+        else:
+            budgets_by_id[budget_id] = budget
+        for field in ("metric", "operator", "unit", "method", "samplePolicy"):
+            if not isinstance(budget.get(field), str) or not budget.get(field):
+                issues.append(f"performance budget {budget_id} {field} must be a non-empty string")
+        value = budget.get("value")
+        if isinstance(value, bool) or not isinstance(value, (int, float, str)) or value == "":
+            issues.append(f"performance budget {budget_id} value has an invalid type")
+        expected_digest = EXPECTED_PERFORMANCE_BUDGET_DIGESTS.get(budget_id)
+        digest = hashlib.sha256(
+            json.dumps(budget, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        if expected_digest is None or digest != expected_digest:
+            issues.append(f"performance budget {budget_id} semantic fingerprint drift")
+
+        numeric = NUMERIC_PERFORMANCE_CEILINGS.get(budget_id)
+        if numeric is not None:
+            operator, ceiling = numeric
+            if budget.get("operator") != operator:
+                issues.append(f"performance budget {budget_id} numeric operator drift")
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                issues.append(f"performance budget {budget_id} numeric value must be a number")
+            elif operator == "equal" and value != ceiling:
+                issues.append(f"performance budget {budget_id} must remain exactly {ceiling}")
+            elif operator != "equal" and value > ceiling:
+                issues.append(f"performance budget {budget_id} exceeds reviewed ceiling {ceiling}")
+
+        if str(budget.get("operator", "")).startswith("pairedBaseline"):
+            sample_policy = budget.get("samplePolicy")
+            if not isinstance(sample_policy, str) or "current-main first" not in sample_policy:
+                issues.append(f"paired budget {budget_id} lacks baseline-before-candidate policy")
+
+    if set(valid_ids) != set(EXPECTED_PERFORMANCE_BUDGET_DIGESTS) or len(valid_ids) != len(set(valid_ids)):
+        issues.append("performance budget IDs must be unique and cover every declared device metric")
+
+    expected_paired = {
+        "PERF-READER-PAGINATION": {
+            "order": ["current-main", "candidate"],
+            "samples": 30,
+            "deviceClasses": ["compact-iphone", "regular-ipad"],
+            "instrumentTemplates": ["Hangs", "SwiftUI"],
+            "fixture": "reader-pagination-hermetic-v1",
+        },
+        "PERF-GRAPH-INTERACTION": {
+            "order": ["current-main", "candidate"],
+            "samples": 30,
+            "deviceClasses": ["compact-iphone"],
+            "instrumentTemplates": ["Hangs", "SwiftUI"],
+            "fixture": "concept-graph-hermetic-v1",
+        },
+    }
+    for budget_id, execution in expected_paired.items():
+        budget = budgets_by_id.get(budget_id)
+        if not isinstance(budget, dict) or budget.get("pairedExecution") != execution:
+            issues.append(f"performance budget {budget_id} structured paired execution drift")
+    return issues
+
+
+def validate_performance_budget_self_tests(document: object) -> list[dict[str, object]]:
+    if not isinstance(document, dict):
+        fail("performance-budget self-tests require an object")
+        return []
+    cases: list[tuple[str, object, str]] = []
+
+    graph_as_reader = copy.deepcopy(document)
+    reader = next(item for item in graph_as_reader["budgets"] if item.get("id") == "PERF-READER-PAGINATION")
+    graph_index = next(
+        index for index, item in enumerate(graph_as_reader["budgets"])
+        if item.get("id") == "PERF-GRAPH-INTERACTION"
+    )
+    graph_as_reader["budgets"][graph_index] = {**copy.deepcopy(reader), "id": "PERF-GRAPH-INTERACTION"}
+    cases.append(("graph-replaced-with-reader-semantics", graph_as_reader, "semantic fingerprint drift"))
+
+    relaxed = copy.deepcopy(document)
+    next(item for item in relaxed["budgets"] if item.get("id") == "PERF-COLD-LAUNCH")["value"] = 1501
+    cases.append(("numeric-budget-relaxation", relaxed, "exceeds reviewed ceiling"))
+
+    reversed_order = copy.deepcopy(document)
+    next(
+        item for item in reversed_order["budgets"]
+        if item.get("id") == "PERF-READER-PAGINATION"
+    )["pairedExecution"]["order"] = ["candidate", "current-main"]
+    cases.append(("candidate-first-order", reversed_order, "structured paired execution drift"))
+
+    malformed_id = copy.deepcopy(document)
+    malformed_id["budgets"][0]["id"] = {"not": "hashable"}
+    cases.append(("malformed-budget-id", malformed_id, "id must be a non-empty string"))
+
+    malformed_field = copy.deepcopy(document)
+    malformed_field["budgets"][0]["metric"] = ["not", "a", "string"]
+    cases.append(("malformed-budget-field", malformed_field, "metric must be a non-empty string"))
+
+    malformed_source = copy.deepcopy(document)
+    malformed_source["source"]["path"] = ["docs/PerfBudget.md"]
+    cases.append(("malformed-budget-source", malformed_source, "source metadata drift"))
+
+    malformed_devices = copy.deepcopy(document)
+    malformed_devices["requiredDeviceClasses"] = ["compact", {"device": "ipad"}]
+    cases.append(("malformed-device-classes", malformed_devices, "required device classes drift"))
+
+    schema_drift = copy.deepcopy(document)
+    schema_drift["schemaVersion"] = 999
+    cases.append(("budget-schema-drift", schema_drift, "schemaVersion must remain 1"))
+
+    status_drift = copy.deepcopy(document)
+    status_drift["status"] = "runtime-authored"
+    cases.append((
+        "budget-status-drift",
+        status_drift,
+        "status must remain predeclared-before-implementation",
+    ))
+
+    results: list[dict[str, object]] = []
+    for case_id, mutated, expected in cases:
+        issues = performance_budget_issues(mutated)
+        matched = any(expected in issue for issue in issues)
+        results.append({"case": case_id, "expected": expected, "matched": matched, "issues": issues})
+        if not matched:
+            fail(f"performance-budget self-test {case_id} did not fail with {expected!r}")
+    return results
+
+
+def validate_performance_budgets(packages: dict[str, dict]) -> list[dict[str, object]]:
     path = ROOT / "program/performance-budgets.json"
     document = JSON.get(path, {})
-    if not isinstance(document, dict):
-        fail("performance budgets must be a JSON object")
-        return
-    source = document.get("source", {})
-    source_path = ROOT.parent / str(source.get("path", ""))
-    if not source_path.is_file():
-        fail("performance budget source path is missing")
-    else:
-        digest = hashlib.sha256(source_path.read_bytes()).hexdigest()
-        if digest != source.get("sha256AtPlanningBase"):
-            fail("performance budget source hash drift")
-    required_ids = {
-        "PERF-COLD-LAUNCH", "PERF-READER-HITCH", "PERF-CATALOG-HITCH",
-        "PERF-READER-PAGINATION",
-        "PERF-IMAGE-CACHE", "PERF-MEMORY-ONE-BOOK", "PERF-MEMORY-THREE-BOOKS",
-        "PERF-CHAPTER-FETCH", "PERF-MAIN-STALL", "PERF-ENERGY-JOURNEY",
-        "PERF-LONG-AUDIO", "PERF-DOWNLOAD-LIFECYCLE",
-    }
+    budget_issues = performance_budget_issues(document)
+    for issue in budget_issues:
+        fail(issue)
+    if budget_issues or not isinstance(document, dict):
+        return []
+    source = document.get("source")
+    if isinstance(source, dict) and isinstance(source.get("path"), str):
+        source_path = ROOT.parent / source["path"]
+        if not source_path.is_file():
+            fail("performance budget source path is missing")
+        else:
+            digest = hashlib.sha256(source_path.read_bytes()).hexdigest()
+            if digest != source.get("sha256AtPlanningBase"):
+                fail("performance budget source hash drift")
     budgets = document.get("budgets", [])
-    ids = [budget.get("id") for budget in budgets if isinstance(budget, dict)]
-    if set(ids) != required_ids or len(ids) != len(set(ids)):
-        fail("performance budget IDs must be unique and cover every declared device metric")
-    for budget in budgets:
-        if not isinstance(budget, dict):
-            fail("performance budget entry must be an object")
-            continue
-        for field in ("id", "metric", "operator", "value", "unit", "method", "samplePolicy"):
-            if budget.get(field) in (None, "", []):
-                fail(f"performance budget {budget.get('id')} omits {field}")
-        if str(budget.get("operator", "")).startswith("pairedBaseline"):
-            sample_policy = str(budget.get("samplePolicy", ""))
-            if "current-main first" not in sample_policy or "candidate" not in sample_policy:
-                fail(f"paired budget {budget.get('id')} lacks fixed baseline-before-candidate policy")
-    if len(document.get("requiredDeviceClasses", [])) < 2:
-        fail("performance budgets must name compact-iPhone and regular-iPad device classes")
-    if "never loosen" not in str(document.get("changePolicy", "")):
-        fail("performance budget change policy must fail closed on relaxation")
+    budgets_by_id = {
+        str(budget.get("id")): budget
+        for budget in budgets
+        if isinstance(budgets, list)
+        and isinstance(budget, dict)
+        and isinstance(budget.get("id"), str)
+    }
+    validate_performance_consumer_contracts(packages, budgets_by_id)
+    return [
+        *validate_performance_budget_self_tests(document),
+        *validate_performance_command_self_tests(packages),
+    ]
 
 
 def validate_final_remediation_contracts(packages: dict[str, dict], locks_doc: dict) -> None:
@@ -813,6 +1850,73 @@ def validate_final_remediation_contracts(packages: dict[str, dict], locks_doc: d
     }
     if not required_extension_paths.issubset(native_paths) or "WP-EXT-01" not in native.get("blocks", []):
         fail("WP-NATIVE-01 must own and precede real Share/Action localization")
+    controller_paths = {
+        "ShareExtension/ShareViewController.swift",
+        "ActionExtension/ActionViewController.swift",
+    }
+    if native_paths & controller_paths:
+        fail("WP-NATIVE-01 presentation ownership must not include production extension controllers")
+    if native.get("estimate", {}).get("plannedFiles") != 20 or native.get("estimate", {}).get("maxFiles") != 20:
+        fail("WP-NATIVE-01 parked candidate must bind exactly 20 files inside the unchanged 20-file cap")
+    if native.get("estimate", {}).get("primaryRoots") != 3 or native.get("estimate", {}).get("maxPrimaryRoots") != 3:
+        fail("WP-NATIVE-01 must remain inside the unchanged three-root cap")
+
+    ext = packages.get("WP-EXT-01", {})
+    ext_paths = {claim.get("glob") for claim in ext.get("ownership", {}).get("allowedPaths", [])}
+    if not controller_paths.issubset(ext_paths) or ext_paths & required_extension_paths:
+        fail("WP-EXT-01 must own only the two production controllers, not NATIVE views/catalogs")
+    if ext.get("estimate", {}).get("plannedFiles") != 17 or ext.get("estimate", {}).get("maxFiles") != 20:
+        fail("WP-EXT-01 result wiring must remain at 17 planned files inside the unchanged 20-file cap")
+    if ext.get("estimate", {}).get("primaryRoots") != 3 or ext.get("estimate", {}).get("maxPrimaryRoots") != 3:
+        fail("WP-EXT-01 result wiring must remain inside the unchanged three-root cap")
+    if "AC-EXT-01-08" not in ext.get("acceptanceCriteria", []):
+        fail("WP-EXT-01 must fail closed on Share/Action capture failure transitions")
+
+    native_root = ROOT / "workstreams/03-native-design-accessibility-localization/WP-NATIVE-01"
+    ext_root = ROOT / "workstreams/09-routing-notifications-extensions/WP-EXT-01"
+    reader_root = ROOT / "workstreams/06-reader-annotations-ai/WP-READER-01"
+    native_contract = "\n".join(
+        (native_root / name).read_text(encoding="utf-8")
+        for name in ("SPEC.md", "RUN.md", "VALIDATE.md")
+    )
+    ext_contract = "\n".join(
+        (ext_root / name).read_text(encoding="utf-8")
+        for name in ("SPEC.md", "RUN.md", "VALIDATE.md")
+    )
+    reader_contract = "\n".join(
+        (reader_root / name).read_text(encoding="utf-8")
+        for name in ("SPEC.md", "RUN.md", "VALIDATE.md")
+    )
+    for marker in (
+        "stateSource=fixture", "transactionClaim=none", "owner-closure-required",
+        "ExtensionPresentationResultInput", "DEBUG/test-only",
+        "testExtensionPresentationResultInputSeparatesFixtureAndLegacyProduction",
+        "--output results/native/ui-test-membership.json",
+        "production durability/success/dismiss/open claim",
+        "--package-diff WP-NATIVE-01",
+        "reader-toolbar.depth-option", "reader-toolbar.tone-option",
+    ):
+        if marker not in native_contract:
+            fail(f"WP-NATIVE-01 presentation/inventory boundary omits {marker}")
+    for marker in (
+        "ExtensionPresentationResultInput", "fresh reopen/decode",
+        "testShareAndActionSuccessFollowsDurableCommit",
+        "testShareAndActionFailuresNeverShowSuccessOrDismiss", "AC-EXT-01-08",
+    ):
+        if marker not in ext_contract:
+            fail(f"WP-EXT-01 durable-result boundary omits {marker}")
+    for marker in (
+        "reader-toolbar.depth-option", "reader-toolbar.tone-option",
+        "READER-03-TARGETS-02", "--owner-package WP-READER-01",
+    ):
+        if marker not in reader_contract:
+            fail(f"WP-READER-01 target closure omits {marker}")
+
+    reader = packages.get("WP-READER-01", {})
+    if "WP-NATIVE-01" not in reader.get("blockedBy", []) or "WP-NATIVE-01" not in ext.get("blockedBy", []):
+        fail("NATIVE must retain its existing dependency direction into READER and EXT")
+    if len(packages) != 24:
+        fail("NATIVE/EXT/READER revision must preserve the 24-package hard cap")
     learn = packages.get("WP-LEARN-01", {})
     learn_paths = {claim.get("glob") for claim in learn.get("ownership", {}).get("allowedPaths", [])}
     required_review_paths = {
@@ -823,7 +1927,13 @@ def validate_final_remediation_contracts(packages: dict[str, dict], locks_doc: d
         fail("WP-LEARN-01 must own and precede real localized Review resources")
 
     graph_validate = (ROOT / "workstreams/10-engagement-community/WP-GRAPH-01/VALIDATE.md").read_text(encoding="utf-8")
-    for marker in ("run_paired_performance.py", "--samples 30", "--instruments-template Hangs", ".xcresult"):
+    for marker in (
+        "run_paired_performance.py", "--main-worktree", "--candidate-worktree",
+        "--main-sha", "--candidate-sha", "--samples 30", "--instruments-template Hangs",
+        "--instruments-template SwiftUI", "--operating-system", "--toolchain-id",
+        "--budget-manifest upgrade/program/performance-budgets.json",
+        "--budget-id PERF-GRAPH-INTERACTION", ".xcresult",
+    ):
         if marker not in graph_validate:
             fail(f"WP-GRAPH-01 performance proof omits {marker}")
     device_validate = (ROOT / "workstreams/11-qualification-performance-security-ci/WP-DEVICE-01/VALIDATE.md").read_text(encoding="utf-8")
@@ -839,7 +1949,19 @@ def validate_final_remediation_contracts(packages: dict[str, dict], locks_doc: d
         fail("WP-AUTH-02 retains nonexistent AuthKit Keychain/TokenStore anchors")
 
 
+def parse_arguments() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--package-diff", metavar="PACKAGE_ID")
+    parser.add_argument("--base", metavar="FULL_SHA")
+    parser.add_argument("--head", metavar="FULL_SHA")
+    parser.add_argument("--require-candidate-binding", action="store_true")
+    parser.add_argument("--show-root-accounting-negative-tests", action="store_true")
+    parser.add_argument("--show-remediation-negative-tests", action="store_true")
+    return parser.parse_args()
+
+
 def main() -> int:
+    arguments = parse_arguments()
     require_files()
     validate_text_integrity()
     for path in sorted(ROOT.rglob("*.json")):
@@ -848,14 +1970,41 @@ def main() -> int:
     backlog = JSON.get(ROOT / "program/backlog.json", {})
     dag = JSON.get(ROOT / "program/dependency-dag.json", {})
     locks_doc = JSON.get(ROOT / "program/resource-locks.json", {})
+    root_accounting_results: list[dict[str, object]] = []
+    performance_budget_results: list[dict[str, object]] = []
+    container_shape_results: list[dict[str, object]] = []
     if not all(isinstance(value, dict) for value in (backlog, dag, locks_doc)):
         fail("program JSON documents must be objects")
     else:
+        for issue in backlog_container_issues(backlog):
+            fail(issue)
+        if not isinstance(backlog.get("counts"), dict):
+            backlog["counts"] = {}
         packages = validate_packages(backlog, locks_doc)
+        if not ERRORS:
+            root_accounting_results = validate_root_accounting_self_tests(packages)
+            container_shape_results = validate_container_shape_self_tests(packages, backlog)
         validate_graph(backlog, dag, locks_doc, packages)
         validate_evaluations(backlog)
-        validate_performance_budgets()
+        performance_budget_results = validate_performance_budgets(packages)
         validate_final_remediation_contracts(packages, locks_doc)
+        if arguments.package_diff is not None:
+            package = packages.get(arguments.package_diff)
+            if package is None:
+                fail(f"unknown --package-diff package: {arguments.package_diff}")
+            elif arguments.base is None or arguments.head is None:
+                fail("--package-diff requires --base and --head")
+            else:
+                validate_candidate_diff(
+                    package,
+                    arguments.base,
+                    arguments.head,
+                    arguments.require_candidate_binding,
+                )
+        elif arguments.base is not None or arguments.head is not None:
+            fail("--base/--head require --package-diff")
+        elif arguments.require_candidate_binding:
+            fail("--require-candidate-binding requires --package-diff")
     validate_links()
 
     if ERRORS:
@@ -867,6 +2016,20 @@ def main() -> int:
     workstream_count = backlog.get("counts", {}).get("workstreams")
     case_count = backlog.get("counts", {}).get("evaluationCases")
     print(f"PASS: upgrade plan validated ({workstream_count} workstreams, {package_count} packages, {case_count} eval cases)")
+    if arguments.package_diff is not None:
+        disposition = "bound" if arguments.require_candidate_binding else "accounted"
+        print(
+            f"PASS: {arguments.package_diff} candidate diff {disposition} "
+            f"({arguments.base}..{arguments.head})"
+        )
+    if arguments.show_root_accounting_negative_tests:
+        print(json.dumps(root_accounting_results, indent=2, sort_keys=True))
+    if arguments.show_remediation_negative_tests:
+        print(json.dumps({
+            "containerShapes": container_shape_results,
+            "performanceBudgets": performance_budget_results,
+            "rootAccounting": root_accounting_results,
+        }, indent=2, sort_keys=True))
     return 0
 
 

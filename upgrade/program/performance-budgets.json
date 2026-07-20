@@ -37,8 +37,48 @@
       "operator": "pairedBaselineNoRegression",
       "value": "candidate p95 transition latency and peak memory no greater than current main, with zero stalls above 250 milliseconds and exact destination identity preserved",
       "unit": "milliseconds, megabytes, countAbove250Milliseconds",
-      "method": "pinned iOS XCUITest with XCTOSSignpostMetric/XCTMemoryMetric plus Instruments Hangs trace and deterministic chapter fixtures",
-      "samplePolicy": "capture current-main first, then candidate; 30 matched previous/next/table-of-contents transitions per required device class on the same OS, toolchain, fixture, and build configuration; retain every sample, xcresult, and trace"
+      "method": "pinned iOS XCUITest with XCTOSSignpostMetric/XCTMemoryMetric plus Instruments Hangs and SwiftUI traces and deterministic chapter fixtures",
+      "samplePolicy": "capture current-main first, then candidate; 30 matched previous/next/table-of-contents transitions per required device class on the same OS, toolchain, fixture, and build configuration; retain every sample, xcresult, and trace",
+      "pairedExecution": {
+        "order": [
+          "current-main",
+          "candidate"
+        ],
+        "samples": 30,
+        "deviceClasses": [
+          "compact-iphone",
+          "regular-ipad"
+        ],
+        "instrumentTemplates": [
+          "Hangs",
+          "SwiftUI"
+        ],
+        "fixture": "reader-pagination-hermetic-v1"
+      }
+    },
+    {
+      "id": "PERF-GRAPH-INTERACTION",
+      "metric": "concept-graph layout and interaction latency, peak memory, stale-work rejection, and main-thread stalls",
+      "operator": "pairedBaselineNoRegression",
+      "value": "candidate p95 layout and interaction latency and peak memory no greater than current main, stale work rejected, and zero stalls above 250 milliseconds",
+      "unit": "milliseconds, megabytes, countAbove250Milliseconds, staleCommitCount",
+      "method": "pinned iOS XCUITest with XCTOSSignpostMetric/XCTMemoryMetric plus Instruments Hangs and SwiftUI traces and deterministic concept-graph fixtures",
+      "samplePolicy": "capture current-main first, then candidate; 30 matched graph layout and interaction samples on the same compact-iPhone device, OS, toolchain, fixture, and build configuration; retain every sample, xcresult, and trace",
+      "pairedExecution": {
+        "order": [
+          "current-main",
+          "candidate"
+        ],
+        "samples": 30,
+        "deviceClasses": [
+          "compact-iphone"
+        ],
+        "instrumentTemplates": [
+          "Hangs",
+          "SwiftUI"
+        ],
+        "fixture": "concept-graph-hermetic-v1"
+      }
     },
     {
       "id": "PERF-CATALOG-HITCH",
@@ -122,11 +162,5 @@
       "samplePolicy": "capture current-main first, then candidate; five matched downloads plus three interruption/resume runs per required device class"
     }
   ],
-  "graphPackagePolicy": {
-    "samples": 30,
-    "layoutP95": "candidate must be less than or equal to current-main p95 on the same device/toolchain/fixture",
-    "peakMemory": "candidate must be less than or equal to current-main peak on the same device/toolchain/fixture",
-    "mainThreadStalls": "zero stalls over 250 milliseconds"
-  },
   "changePolicy": "Implementation lanes may tighten but never loosen or replace these budgets. A proposed relaxation is BLOCKED_OWNER_DECISION and requires a new reviewed planning revision with measured provenance before candidate work."
 }

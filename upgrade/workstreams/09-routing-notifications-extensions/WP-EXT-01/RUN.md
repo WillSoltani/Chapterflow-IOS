@@ -20,12 +20,22 @@ You are the sole implementation owner for **WP-EXT-01 — Make extension process
 ## Implement
 
 1. Resolve D-DATA-01 and version the minimum extension-safe envelope without exposing the main app store.
-2. Keep capture truthful while signed out or protected data is unavailable; claim saved only after durable outbox write.
+2. Make the SharedExtensionKit capture API result-bearing and fail-closed, then wire the two exact
+   Share/Action controllers through WP-NATIVE-01's target-local
+   `ExtensionPresentationResultInput` production result-provider overload. Retire the legacy void
+   initializer at both controller call sites, keep DEBUG/test-only fixture injection unreachable from
+   production, and do not edit or redeclare either NATIVE view, catalog, or presentation type. Map
+   committed only after complete write plus fresh reopen/decode of the exact mutation; only then
+   announce success and perform controller-owned dismiss/open. Preserve input and show localized
+   retry/error on every failure.
 3. On app import, read, validate, authorize attribution, persist under the exact account, then clear only that accepted item.
 4. Quarantine malformed/unknown/foreign items with privacy-safe diagnostics and explicit recovery/discard behavior.
 5. Prove deterministic transaction boundaries and publish stable final-device scenarios for WP-DEVICE-01.
 6. Add opaque owner identity to shared snapshot model/writer with fail-closed legacy migration and a narrow publisher/reader interface.
-7. Validate signed-out/error/success Share/Action localization/accessibility/native evidence; stop and split/replan before any undeclared UI-target edit.
+7. Validate signed-out/pending/failure/committed Share/Action localization/accessibility/native
+   evidence against real production result transitions, including exact typed-seam consumption and
+   absence of both legacy and fixture-only construction in production. Do not edit ShareView.swift,
+   ActionView.swift, or either catalog; stop and split/replan before any other UI-target edit.
 
 Establish deterministic red evidence first for confirmed defects when feasible. Edit only `package.json.ownership.allowedPaths`; stay within the time/file/root envelope. Stop and split/replan before scope, authorization, contract, migration, or lock expansion. Preserve server authority, account isolation, cancellation, accessibility, localization, privacy, and the release exclusion.
 

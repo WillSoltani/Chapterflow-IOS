@@ -2,7 +2,10 @@
 
 ## Problem and verified root cause
 
-Reader has substantial models and views, but composition wires only quiz. Control targets are often below the default 44 points, some motion ignores Reduce Motion, and stale chapter/preference work plus exact relaunch navigation lack end-to-end proof.
+Reader has substantial models and views, but composition wires only quiz. The NATIVE inventory
+identifies `reader-toolbar.depth-option` and `reader-toolbar.tone-option` at verified 36-point minima,
+below the 44-point default. Other motion, stale chapter/preference work, and exact relaunch navigation
+also lack end-to-end proof.
 
 Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend source `858d2d7ffd620a7c28cdad5a75007536ccd5b391`; deployed backend remains unknown. Revalidate every anchor on the lane's exact base before editing.
 
@@ -10,7 +13,11 @@ Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend
 
 1. Confirm one ReaderModel owner and retain/cancel every lifetime-sensitive chapter, preference, and progress task.
 2. Reject stale chapter/tone/depth results and treat CancellationError separately.
-3. Make controls reachable at default target sizes, with VoiceOver focus/order, Reduce Motion/Transparency, and keyboard/pointer support.
+3. Make every Reader control reachable at the 44-point default, including raising
+   `ReaderToolbar.depthButton` and `ReaderToolbar.toneButton` from their verified 36-point minima to
+   measured 44×44-or-larger hit regions. Preserve VoiceOver order/focus, localized labels, Reduce
+   Motion/Transparency, keyboard/pointer behavior, compact layout, AX text, long text, and RTL. No
+   exception is authorized for either named finding.
 4. Persist reader preferences and position under account/book/chapter/variant identity with debounced durable writes.
 5. Prove table of contents, previous/next chapter, background/foreground, relaunch, and adaptive reader layout.
 6. Prove account A → sign out → account B cancels reader tasks and clears A's chapter, variant,
@@ -32,9 +39,14 @@ Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend
 
 ### AC-READER-01-03
 
-- Given Reader controls are rendered under VoiceOver, AX text, Reduce Motion, and compact/regular width
-- When interaction runs
-- Then targets, order, focus, announcements, and equivalent actions remain usable
+- Given inherited findings `reader-toolbar.depth-option` and `reader-toolbar.tone-option` plus all
+  Reader controls rendered under compact/regular width, AX and long localized text, RTL, VoiceOver,
+  Reduce Motion, and Reduce Transparency
+- When geometry and interaction validation runs
+- Then every depth/tone option exposes a measured hit region of at least 44×44 points without overlap
+  or unreachable content; order, focus, localized names/values, selected traits, announcements, and
+  equivalent keyboard/pointer actions remain usable; and the Reader-owned inventory contains zero
+  `owner-closure-required` findings for both stable IDs
 
 ### AC-READER-01-04
 
@@ -95,7 +107,8 @@ Cover first chapter, cached/partial, malformed block, offline, cancellation, rep
 2. swift test --package-path Packages/Persistence --parallel when keys change.
 3. swift test --package-path Packages/AppFeature --parallel.
 4. targeted Reader XCUITests including relaunch and stale chapter.
-5. WP-NATIVE-01 Reader accessibility/adaptive matrix.
+5. WP-NATIVE-01 Reader accessibility/adaptive matrix plus exact owner-filtered closure of
+   `reader-toolbar.depth-option` and `reader-toolbar.tone-option` with no exception.
 
 ## Definition of done
 

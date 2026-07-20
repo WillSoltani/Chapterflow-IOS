@@ -17,6 +17,10 @@
     "ReaderModel",
     "ReaderView",
     "ReaderControlSurface",
+    "ReaderToolbar.depthButton",
+    "ReaderToolbar.toneButton",
+    "reader-toolbar.depth-option",
+    "reader-toolbar.tone-option",
     "ChapterNavModel",
     "ReadingFlowView"
   ],
@@ -38,11 +42,11 @@
     "allowedPaths": [
       {
         "repo": "ios",
-        "glob": "ChapterFlowUITests/UpgradeEvidence/ReaderUpgradeEvidenceTests.swift"
+        "glob": "Packages/ReaderFeature/**"
       },
       {
         "repo": "ios",
-        "glob": "Packages/ReaderFeature/**"
+        "glob": "ChapterFlowUITests/UpgradeEvidence/ReaderUpgradeEvidenceTests.swift"
       }
     ],
     "prohibitedPaths": [
@@ -75,7 +79,8 @@
     "interfaceContracts": [
       "ReaderModel owns reader state and rejects stale chapter/preference completions.",
       "Progress writes are idempotent/account-book-chapter scoped.",
-      "Reader controls use default 44-point targets or documented evidence."
+      "Reader controls use default 44-point targets or documented evidence.",
+      "WP-READER-01 closes inherited NATIVE findings reader-toolbar.depth-option and reader-toolbar.tone-option with measured 44x44-or-larger hit regions in compact, regular, AX, long-text, and RTL fixtures; no exception is preauthorized for either finding."
     ]
   },
   "resourceLocks": [],
@@ -86,6 +91,28 @@
     "maxFiles": 16,
     "primaryRoots": 1,
     "maxPrimaryRoots": 3,
+    "rootAccounting": {
+      "primaryGroups": [
+        {
+          "id": "reader-feature",
+          "claims": [
+            {
+              "repo": "ios",
+              "glob": "Packages/ReaderFeature/**"
+            }
+          ],
+          "plannedFiles": 11
+        }
+      ],
+      "nonPrimaryPaths": [
+        {
+          "repo": "ios",
+          "glob": "ChapterFlowUITests/UpgradeEvidence/ReaderUpgradeEvidenceTests.swift",
+          "class": "validation-support",
+          "plannedFiles": 1
+        }
+      ]
+    },
     "splitIf": [
       "the outcome can integrate independently",
       "authorization or validation differs materially",

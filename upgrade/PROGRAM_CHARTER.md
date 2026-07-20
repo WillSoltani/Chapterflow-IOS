@@ -91,6 +91,32 @@ fake path and call the package complete.
 and participates in collision checks; broad UI-test globs and later `project.pbxproj` edits are
 forbidden. This exception cannot be used for production source, shared fixtures, or another test root.
 
+For the reviewed NATIVE/EXT/READER ownership revision, `estimate.rootAccounting` is mandatory and
+machine-validated. It preserves every ordered `(repo, glob)` claim exactly once, rejects malformed
+repositories, traversal, noncanonical paths, catch-alls, duplicate assignments, and broad validation
+support, and assigns each claim to a named primary group or an exact reviewed non-primary class. Its
+planned-file allocations must sum exactly to `plannedFiles`. WP-NATIVE-01 additionally binds its
+parked immutable candidate base, head, tree, canonical binary-diff digest, and sorted exact path
+manifest with a mandatory `known-red-scope-only-not-runtime-approved` disposition; the binding proves
+scope and identity only, never runtime correctness or approval. The validator's `--package-diff` mode
+verifies those paths against each group allocation and the unchanged file/root maxima. A primary group normally resolves to one filesystem implementation
+root. The sole approved multi-directory group is WP-EXT-01's `extension-transaction-boundary`, containing exactly
+`SharedExtensionKit/**`, `ShareExtension/ShareViewController.swift`, and
+`ActionExtension/ActionViewController.swift`. Those controllers are thin production adapters for
+the same result-bearing durable-capture contract; this grouping grants no ownership of either
+extension view, catalog, or another target file. The validator rejects every other cross-root group,
+unclassified path, duplicate assignment, catch-all, candidate drift, or file-allocation mismatch. This is a bounded
+reconsolidation inside WP-EXT-01's unchanged three-root and twenty-file maxima, not a general root
+exception or permission to widen another package.
+
+The paired performance manifest is also fail closed. Every reviewed budget entry has a canonical
+semantic fingerprint; source-backed numeric ceilings may not relax, and Reader/Graph paired budgets
+carry distinct structured order, sample, device-class, trace-template, and fixture joins. The
+NATIVE-owned runner exposes one canonical worktree-and-expected-HEAD interface and must self-test the
+complete Reader and Graph consumer plans. Missing, duplicate, legacy, cross-wired, candidate-first,
+or semantically changed inputs fail before measurement. A fingerprint update is itself a reviewed
+planning revision, including when a later lane proposes a tighter budget.
+
 ## Qualification remediation lifecycle
 
 Package source metadata is immutable planning intent; live state is derived from Git and evidence as
