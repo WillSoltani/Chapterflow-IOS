@@ -9,6 +9,7 @@ import fnmatch
 import hashlib
 import json
 import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -161,6 +162,31 @@ EXPECTED_NON_PRIMARY = {
     ],
 }
 
+EXPECTED_CANDIDATE_DISPOSITION = "known-red-scope-only-not-runtime-approved"
+EXPECTED_PERFORMANCE_BUDGET_DIGESTS = {
+    "PERF-COLD-LAUNCH": "db0518f9180f9fe4f4eb4bd332d97649956823ef04127df5b84c6b2e8b6f0259",
+    "PERF-READER-HITCH": "064d0451ffa7b2773504463a5145aea9310a04ecaab1777e871698e5d1a553ca",
+    "PERF-READER-PAGINATION": "6beb7bba8c466eacc3ddd9deccf1dc598e127e07792ae1825ff5d694a109523a",
+    "PERF-GRAPH-INTERACTION": "2637cf7db209ff5de6ffec13528d2f3a089a206edb1919b1f48f61444db650a6",
+    "PERF-CATALOG-HITCH": "cbd9e02863a3c983cb22c161b6e46e60af3cf19cf6d79d952fe98feae7f37884",
+    "PERF-IMAGE-CACHE": "2bdd456e74475632809d623afae30096395f44865af48cd9fa46578bc9e75d8d",
+    "PERF-MEMORY-ONE-BOOK": "07c382193c3daf7dc2df6e0344feb492cef3a81944eb89a84e55cff4bebdfa7c",
+    "PERF-MEMORY-THREE-BOOKS": "f457a50dfa4ad4533329e6700320127deeb927a75e37cd57172f0d11d77eef24",
+    "PERF-CHAPTER-FETCH": "27797a78ae31b536df944a082accce8aa5dad92506971ea52f5c803289d87eb2",
+    "PERF-MAIN-STALL": "457110be50ef79edf7e8f9e24f85be221a5edc659d582d4b38d9c804e6d6b351",
+    "PERF-ENERGY-JOURNEY": "c9baa57da97e605d0bbcff72e8cc56a9a0e9b2206a3a35a5a758a916f5939e1f",
+    "PERF-LONG-AUDIO": "848d2880376e9018f0844df99a8b6670048f2b3797766a23265632e0d0daaa91",
+    "PERF-DOWNLOAD-LIFECYCLE": "2bda08604ed50d64dcb60fe1e7268912842d823ffa27e6417967ce9d9c7aea00",
+}
+NUMERIC_PERFORMANCE_CEILINGS = {
+    "PERF-COLD-LAUNCH": ("lessThanOrEqual", 1500),
+    "PERF-READER-HITCH": ("lessThan", 5),
+    "PERF-MEMORY-ONE-BOOK": ("lessThanOrEqual", 120),
+    "PERF-MEMORY-THREE-BOOKS": ("lessThanOrEqual", 180),
+    "PERF-CHAPTER-FETCH": ("lessThanOrEqual", 2),
+    "PERF-MAIN-STALL": ("equal", 0),
+}
+
 
 def canonical_relative_glob(value: object, context: str, issues: list[str]) -> str | None:
     if not isinstance(value, str) or not value:
@@ -187,7 +213,7 @@ def claim_identity(value: object, context: str, issues: list[str]) -> tuple[str,
         issues.append(f"{context} must contain exactly repo and glob")
         return None
     repo = value.get("repo")
-    if repo not in {"ios", "backend"}:
+    if not isinstance(repo, str) or repo not in {"ios", "backend"}:
         issues.append(f"{context}.repo must be ios or backend")
         return None
     glob = canonical_relative_glob(value.get("glob"), f"{context}.glob", issues)
@@ -290,7 +316,9 @@ def root_accounting_issues(package_id: str, allowed: object, estimate: object) -
             issues,
         )
         path_class = item.get("class")
-        if path_class not in {"validation-support", "validation-tooling", "project-configuration"}:
+        if not isinstance(path_class, str) or path_class not in {
+            "validation-support", "validation-tooling", "project-configuration",
+        }:
             issues.append(f"{context}.class is invalid")
         if identity is not None and isinstance(path_class, str):
             assigned.append(identity)
@@ -320,9 +348,11 @@ def root_accounting_issues(package_id: str, allowed: object, estimate: object) -
         if not isinstance(candidate, dict):
             issues.append("WP-NATIVE-01 rootAccounting.candidateBinding must be an object")
         else:
-            expected_fields = {"base", "head", "tree", "diffSha256", "paths"}
+            expected_fields = {"base", "head", "tree", "diffSha256", "paths", "disposition"}
             if set(candidate) != expected_fields:
-                issues.append("WP-NATIVE-01 candidateBinding must contain exact identity and path fields")
+                issues.append(
+                    "WP-NATIVE-01 candidateBinding must contain exact identity, disposition, and path fields"
+                )
             for field in ("base", "head", "tree"):
                 if not re.fullmatch(r"[0-9a-f]{40}", str(candidate.get(field, ""))):
                     issues.append(f"WP-NATIVE-01 candidateBinding.{field} must be a full lowercase SHA")
@@ -330,9 +360,14 @@ def root_accounting_issues(package_id: str, allowed: object, estimate: object) -
                 issues.append("WP-NATIVE-01 candidateBinding base and head must differ")
             if not re.fullmatch(r"[0-9a-f]{64}", str(candidate.get("diffSha256", ""))):
                 issues.append("WP-NATIVE-01 candidateBinding.diffSha256 must be a SHA-256 digest")
+            if candidate.get("disposition") != EXPECTED_CANDIDATE_DISPOSITION:
+                issues.append("WP-NATIVE-01 candidateBinding must remain known-red and scope-only")
             paths = candidate.get("paths")
-            if isinstance(paths, list) and paths != sorted(paths):
-                issues.append("WP-NATIVE-01 candidateBinding.paths must be sorted")
+            if isinstance(paths, list):
+                if not all(isinstance(path, str) for path in paths):
+                    issues.append("WP-NATIVE-01 candidateBinding.paths must contain only strings")
+                elif paths != sorted(paths):
+                    issues.append("WP-NATIVE-01 candidateBinding.paths must be sorted")
             issues.extend(candidate_path_issues(
                 {
                     "id": package_id,
@@ -450,6 +485,14 @@ def validate_root_accounting_self_tests(packages: dict[str, dict]) -> list[dict[
     malformed_repo["ownership"]["allowedPaths"][0]["repo"] = "mobile"
     cases.append(("malformed-repo", malformed_repo, ".repo must be ios or backend"))
 
+    repo_list = copy.deepcopy(native)
+    repo_list["ownership"]["allowedPaths"][0]["repo"] = ["ios"]
+    cases.append(("repo-list", repo_list, ".repo must be ios or backend"))
+
+    repo_object = copy.deepcopy(native)
+    repo_object["ownership"]["allowedPaths"][0]["repo"] = {"name": "ios"}
+    cases.append(("repo-object", repo_object, ".repo must be ios or backend"))
+
     traversal = copy.deepcopy(native)
     traversal["ownership"]["allowedPaths"][0]["glob"] = "Packages/../Secrets/**"
     cases.append(("path-traversal", traversal, "noncanonical path segment"))
@@ -468,6 +511,24 @@ def validate_root_accounting_self_tests(packages: dict[str, dict]) -> list[dict[
     malformed_shape = copy.deepcopy(native)
     malformed_shape["estimate"]["rootAccounting"] = []
     cases.append(("malformed-shape", malformed_shape, "must be an object"))
+
+    class_list = copy.deepcopy(native)
+    class_list["estimate"]["rootAccounting"]["nonPrimaryPaths"][0]["class"] = [
+        "validation-support"
+    ]
+    cases.append(("class-list", class_list, ".class is invalid"))
+
+    class_object = copy.deepcopy(native)
+    class_object["estimate"]["rootAccounting"]["nonPrimaryPaths"][0]["class"] = {
+        "name": "validation-support"
+    }
+    cases.append(("class-object", class_object, ".class is invalid"))
+
+    mixed_candidate_paths = copy.deepcopy(native)
+    mixed_candidate_paths["estimate"]["rootAccounting"]["candidateBinding"]["paths"][0] = [
+        "ActionExtension/ActionView.swift"
+    ]
+    cases.append(("candidate-mixed-path-types", mixed_candidate_paths, "paths must contain only strings"))
 
     for case_id, mutated, expected in cases:
         issues = root_accounting_issues(
@@ -1145,11 +1206,24 @@ def performance_commands(package_id: str, packages: dict[str, dict]) -> list[str
 
 
 def command_option(tokens: list[str], option: str) -> str | None:
-    indexes = [index for index, token in enumerate(tokens) if token == option]
-    if len(indexes) != 1:
-        return None
-    index = indexes[0]
-    return tokens[index + 1] if index + 1 < len(tokens) else None
+    values = command_options(tokens, option)
+    return values[0] if len(values) == 1 else None
+
+
+def command_options(tokens: list[str], option: str) -> list[str]:
+    values: list[str] = []
+    for index, token in enumerate(tokens):
+        if token == option and index + 1 < len(tokens) and not tokens[index + 1].startswith("--"):
+            values.append(tokens[index + 1])
+    return values
+
+
+def split_performance_command(command: str, package_id: str) -> list[str]:
+    try:
+        return shlex.split(command)
+    except ValueError as error:
+        fail(f"{package_id} paired-runner command cannot be parsed: {error}")
+        return []
 
 
 def validate_performance_consumer_contracts(
@@ -1160,99 +1234,313 @@ def validate_performance_consumer_contracts(
     if len(native_commands) != 1:
         fail("WP-NATIVE-01 must declare exactly one paired-runner self-test command")
     else:
-        native_tokens = native_commands[0].split()
+        native_tokens = split_performance_command(native_commands[0], "WP-NATIVE-01")
+        native_allowed = {
+            "--self-test", "--self-test-budget-id", "--budget-manifest", "--output",
+        }
+        native_options = {token for token in native_tokens if token.startswith("--")}
+        if native_options != native_allowed:
+            fail("WP-NATIVE-01 paired runner self-test options drift from the canonical interface")
         if "--self-test" not in native_tokens:
             fail("WP-NATIVE-01 paired runner contract must include --self-test")
         if command_option(native_tokens, "--budget-manifest") != "upgrade/program/performance-budgets.json":
             fail("WP-NATIVE-01 paired runner self-test must consume the canonical budget manifest")
-        if "--graph-policy" in native_tokens:
-            fail("WP-NATIVE-01 paired runner contract retains legacy --graph-policy")
+        if command_options(native_tokens, "--self-test-budget-id") != [
+            "PERF-READER-PAGINATION", "PERF-GRAPH-INTERACTION",
+        ]:
+            fail("WP-NATIVE-01 paired runner self-test must exercise Reader then Graph consumers")
+        forbidden = {"--base", "--candidate", "--result-bundle-root", "--graph-policy"}
+        if forbidden & set(native_tokens):
+            fail("WP-NATIVE-01 paired runner contract retains an incompatible legacy option")
 
     consumers = {
-        "WP-READER-01": ("PERF-READER-PAGINATION", {"--iphone-udid", "--ipad-udid"}),
-        "WP-GRAPH-01": ("PERF-GRAPH-INTERACTION", {"--iphone-udid"}),
+        "WP-READER-01": {
+            "budget": "PERF-READER-PAGINATION",
+            "devices": ["--iphone-udid", "--ipad-udid"],
+            "fixture": "reader-pagination-hermetic-v1",
+            "test": "ChapterFlowUITests/ReaderPerformanceTests/testPaginationBudget",
+            "derivedData": "/private/tmp/Chapterflow-DD-reader-pagination-<SHA>",
+            "output": "results/reader/pagination-performance",
+        },
+        "WP-GRAPH-01": {
+            "budget": "PERF-GRAPH-INTERACTION",
+            "devices": ["--iphone-udid"],
+            "fixture": "concept-graph-hermetic-v1",
+            "test": "ChapterFlowUITests/GraphUpgradeEvidenceTests/testConceptGraphPerformanceBudgets",
+            "derivedData": "/private/tmp/Chapterflow-DD-graph-perf-<SHA>",
+            "output": "results/graph/performance",
+        },
     }
-    for package_id, (budget_id, device_options) in consumers.items():
+    for package_id, expected in consumers.items():
+        budget_id = expected["budget"]
         commands = performance_commands(package_id, packages)
         if len(commands) != 1:
             fail(f"{package_id} must declare exactly one paired-runner consumer command")
             continue
-        tokens = commands[0].split()
+        tokens = split_performance_command(commands[0], package_id)
         required_options = {
-            "--project", "--scheme", "--base", "--candidate", "--test", "--samples",
-            "--derived-data-root", "--result-bundle-root", "--instruments-template",
+            "--project", "--scheme", "--main-worktree", "--candidate-worktree",
+            "--main-sha", "--candidate-sha", "--test", "--samples",
+            "--operating-system", "--toolchain-id", "--fixture", "--derived-data-root",
             "--budget-manifest", "--budget-id", "--output",
-        } | device_options
+        } | set(expected["devices"])
+        allowed_options = required_options | {"--instruments-template"}
+        actual_options = {token for token in tokens if token.startswith("--")}
+        if actual_options != allowed_options:
+            fail(f"{package_id} paired-runner options drift from the canonical interface")
         missing = sorted(option for option in required_options if command_option(tokens, option) is None)
         if missing:
             fail(f"{package_id} paired-runner command omits unique valued options: {missing}")
+        for option in ("--iphone-udid", "--ipad-udid"):
+            present = command_option(tokens, option) is not None
+            if present != (option in expected["devices"]):
+                fail(f"{package_id} paired-runner device options drift from its budget")
+        expected_values = {
+            "--project": "ChapterFlow.xcodeproj",
+            "--scheme": "ChapterFlow",
+            "--main-worktree": "<CURRENT_MAIN_WORKTREE>",
+            "--candidate-worktree": "<CANDIDATE_WORKTREE>",
+            "--main-sha": "<CURRENT_MAIN_SHA>",
+            "--candidate-sha": "<SHA>",
+            "--test": expected["test"],
+            "--samples": "30",
+            "--operating-system": "<PINNED_OS>",
+            "--toolchain-id": "<PINNED_TOOLCHAIN_ID>",
+            "--fixture": expected["fixture"],
+            "--derived-data-root": expected["derivedData"],
+            "--budget-manifest": "upgrade/program/performance-budgets.json",
+            "--budget-id": budget_id,
+            "--output": expected["output"],
+        }
+        for option, value in expected_values.items():
+            if command_option(tokens, option) != value:
+                fail(f"{package_id} paired-runner {option} must be {value}")
+        if command_options(tokens, "--instruments-template") != ["Hangs", "SwiftUI"]:
+            fail(f"{package_id} paired-runner must retain ordered Hangs and SwiftUI traces")
+        if command_option(tokens, "--iphone-udid") != "<PINNED_IPHONE_UDID>":
+            fail(f"{package_id} paired-runner must pin the declared iPhone device")
+        if "--ipad-udid" in expected["devices"] and command_option(
+            tokens, "--ipad-udid"
+        ) != "<PINNED_IPAD_UDID>":
+            fail(f"{package_id} paired-runner must pin the declared iPad device")
         if command_option(tokens, "--budget-manifest") != "upgrade/program/performance-budgets.json":
             fail(f"{package_id} paired-runner command uses a noncanonical budget manifest")
         if command_option(tokens, "--budget-id") != budget_id:
             fail(f"{package_id} paired-runner command must bind {budget_id}")
-        if command_option(tokens, "--samples") != "30":
-            fail(f"{package_id} paired-runner command must retain 30 paired samples")
-        if command_option(tokens, "--instruments-template") != "Hangs":
-            fail(f"{package_id} paired-runner command must retain the Hangs trace")
-        if "--graph-policy" in tokens:
-            fail(f"{package_id} paired-runner command retains legacy --graph-policy")
+        output = command_option(tokens, "--output")
+        if output is None or output.endswith(".json"):
+            fail(f"{package_id} paired-runner output must be an artifact directory")
+        forbidden = {"--base", "--candidate", "--result-bundle-root", "--graph-policy"}
+        if forbidden & set(tokens):
+            fail(f"{package_id} paired-runner command retains an incompatible legacy option")
         budget = budgets_by_id.get(budget_id)
         if not isinstance(budget, dict) or not str(budget.get("operator", "")).startswith("pairedBaseline"):
             fail(f"{package_id} budget ID does not resolve to a paired budget")
+            continue
+        execution = budget.get("pairedExecution")
+        if not isinstance(execution, dict):
+            fail(f"{package_id} budget lacks structured pairedExecution")
+            continue
+        expected_device_classes = [
+            "compact-iphone",
+            *(["regular-ipad"] if "--ipad-udid" in expected["devices"] else []),
+        ]
+        if execution.get("order") != ["current-main", "candidate"]:
+            fail(f"{package_id} budget order must be current-main then candidate")
+        if execution.get("samples") != 30:
+            fail(f"{package_id} budget sample count must be 30")
+        if execution.get("deviceClasses") != expected_device_classes:
+            fail(f"{package_id} budget device classes drift from its consumer command")
+        if execution.get("instrumentTemplates") != ["Hangs", "SwiftUI"]:
+            fail(f"{package_id} budget trace templates drift from its consumer command")
+        if execution.get("fixture") != expected["fixture"]:
+            fail(f"{package_id} budget fixture drifts from its consumer command")
 
 
-def validate_performance_budgets(packages: dict[str, dict]) -> None:
+def performance_budget_issues(document: object) -> list[str]:
+    issues: list[str] = []
+    if not isinstance(document, dict):
+        return ["performance budgets must be a JSON object"]
+    source = document.get("source")
+    if not isinstance(source, dict):
+        issues.append("performance budget source must be an object")
+    else:
+        expected_source = {
+            "path": "docs/PerfBudget.md",
+            "sha256AtPlanningBase": "0761280828cbf29230a6a7a2f27b63d4725748670606e4d7639098220614ca2a",
+            "iosRevision": "22da44d27bc18771f4d7db7681e17c10970ccb13",
+            "evidenceType": "repository budget; current final-device measurements remain pending",
+        }
+        if source != expected_source:
+            issues.append("performance budget source metadata drift")
+    if document.get("referenceDevice") != "iPhone 15 Pro":
+        issues.append("performance budget reference device drift")
+    if document.get("requiredDeviceClasses") != [
+        "current supported compact iPhone class",
+        "current supported regular-width iPad class",
+    ]:
+        issues.append("performance budget required device classes drift")
+    expected_change_policy = (
+        "Implementation lanes may tighten but never loosen or replace these budgets. "
+        "A proposed relaxation is BLOCKED_OWNER_DECISION and requires a new reviewed planning "
+        "revision with measured provenance before candidate work."
+    )
+    if document.get("changePolicy") != expected_change_policy:
+        issues.append("performance budget change policy drift")
+
+    budgets = document.get("budgets")
+    if not isinstance(budgets, list):
+        return issues + ["performance budgets must be a list"]
+    valid_ids: list[str] = []
+    budgets_by_id: dict[str, dict] = {}
+    for index, budget in enumerate(budgets):
+        if not isinstance(budget, dict):
+            issues.append(f"performance budget entry {index} must be an object")
+            continue
+        budget_id = budget.get("id")
+        if not isinstance(budget_id, str) or not budget_id:
+            issues.append(f"performance budget entry {index} id must be a non-empty string")
+            continue
+        valid_ids.append(budget_id)
+        if budget_id in budgets_by_id:
+            issues.append(f"performance budget ID is duplicated: {budget_id}")
+        else:
+            budgets_by_id[budget_id] = budget
+        for field in ("metric", "operator", "unit", "method", "samplePolicy"):
+            if not isinstance(budget.get(field), str) or not budget.get(field):
+                issues.append(f"performance budget {budget_id} {field} must be a non-empty string")
+        value = budget.get("value")
+        if isinstance(value, bool) or not isinstance(value, (int, float, str)) or value == "":
+            issues.append(f"performance budget {budget_id} value has an invalid type")
+        expected_digest = EXPECTED_PERFORMANCE_BUDGET_DIGESTS.get(budget_id)
+        digest = hashlib.sha256(
+            json.dumps(budget, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest()
+        if expected_digest is None or digest != expected_digest:
+            issues.append(f"performance budget {budget_id} semantic fingerprint drift")
+
+        numeric = NUMERIC_PERFORMANCE_CEILINGS.get(budget_id)
+        if numeric is not None:
+            operator, ceiling = numeric
+            if budget.get("operator") != operator:
+                issues.append(f"performance budget {budget_id} numeric operator drift")
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                issues.append(f"performance budget {budget_id} numeric value must be a number")
+            elif operator == "equal" and value != ceiling:
+                issues.append(f"performance budget {budget_id} must remain exactly {ceiling}")
+            elif operator != "equal" and value > ceiling:
+                issues.append(f"performance budget {budget_id} exceeds reviewed ceiling {ceiling}")
+
+        if str(budget.get("operator", "")).startswith("pairedBaseline"):
+            sample_policy = budget.get("samplePolicy")
+            if not isinstance(sample_policy, str) or "current-main first" not in sample_policy:
+                issues.append(f"paired budget {budget_id} lacks baseline-before-candidate policy")
+
+    if set(valid_ids) != set(EXPECTED_PERFORMANCE_BUDGET_DIGESTS) or len(valid_ids) != len(set(valid_ids)):
+        issues.append("performance budget IDs must be unique and cover every declared device metric")
+
+    expected_paired = {
+        "PERF-READER-PAGINATION": {
+            "order": ["current-main", "candidate"],
+            "samples": 30,
+            "deviceClasses": ["compact-iphone", "regular-ipad"],
+            "instrumentTemplates": ["Hangs", "SwiftUI"],
+            "fixture": "reader-pagination-hermetic-v1",
+        },
+        "PERF-GRAPH-INTERACTION": {
+            "order": ["current-main", "candidate"],
+            "samples": 30,
+            "deviceClasses": ["compact-iphone"],
+            "instrumentTemplates": ["Hangs", "SwiftUI"],
+            "fixture": "concept-graph-hermetic-v1",
+        },
+    }
+    for budget_id, execution in expected_paired.items():
+        budget = budgets_by_id.get(budget_id)
+        if not isinstance(budget, dict) or budget.get("pairedExecution") != execution:
+            issues.append(f"performance budget {budget_id} structured paired execution drift")
+    return issues
+
+
+def validate_performance_budget_self_tests(document: object) -> list[dict[str, object]]:
+    if not isinstance(document, dict):
+        fail("performance-budget self-tests require an object")
+        return []
+    cases: list[tuple[str, object, str]] = []
+
+    graph_as_reader = copy.deepcopy(document)
+    reader = next(item for item in graph_as_reader["budgets"] if item.get("id") == "PERF-READER-PAGINATION")
+    graph_index = next(
+        index for index, item in enumerate(graph_as_reader["budgets"])
+        if item.get("id") == "PERF-GRAPH-INTERACTION"
+    )
+    graph_as_reader["budgets"][graph_index] = {**copy.deepcopy(reader), "id": "PERF-GRAPH-INTERACTION"}
+    cases.append(("graph-replaced-with-reader-semantics", graph_as_reader, "semantic fingerprint drift"))
+
+    relaxed = copy.deepcopy(document)
+    next(item for item in relaxed["budgets"] if item.get("id") == "PERF-COLD-LAUNCH")["value"] = 1501
+    cases.append(("numeric-budget-relaxation", relaxed, "exceeds reviewed ceiling"))
+
+    reversed_order = copy.deepcopy(document)
+    next(
+        item for item in reversed_order["budgets"]
+        if item.get("id") == "PERF-READER-PAGINATION"
+    )["pairedExecution"]["order"] = ["candidate", "current-main"]
+    cases.append(("candidate-first-order", reversed_order, "structured paired execution drift"))
+
+    malformed_id = copy.deepcopy(document)
+    malformed_id["budgets"][0]["id"] = {"not": "hashable"}
+    cases.append(("malformed-budget-id", malformed_id, "id must be a non-empty string"))
+
+    malformed_field = copy.deepcopy(document)
+    malformed_field["budgets"][0]["metric"] = ["not", "a", "string"]
+    cases.append(("malformed-budget-field", malformed_field, "metric must be a non-empty string"))
+
+    malformed_source = copy.deepcopy(document)
+    malformed_source["source"]["path"] = ["docs/PerfBudget.md"]
+    cases.append(("malformed-budget-source", malformed_source, "source metadata drift"))
+
+    malformed_devices = copy.deepcopy(document)
+    malformed_devices["requiredDeviceClasses"] = ["compact", {"device": "ipad"}]
+    cases.append(("malformed-device-classes", malformed_devices, "required device classes drift"))
+
+    results: list[dict[str, object]] = []
+    for case_id, mutated, expected in cases:
+        issues = performance_budget_issues(mutated)
+        matched = any(expected in issue for issue in issues)
+        results.append({"case": case_id, "expected": expected, "matched": matched, "issues": issues})
+        if not matched:
+            fail(f"performance-budget self-test {case_id} did not fail with {expected!r}")
+    return results
+
+
+def validate_performance_budgets(packages: dict[str, dict]) -> list[dict[str, object]]:
     path = ROOT / "program/performance-budgets.json"
     document = JSON.get(path, {})
-    if not isinstance(document, dict):
-        fail("performance budgets must be a JSON object")
-        return
-    source = document.get("source", {})
-    if not isinstance(source, dict):
-        fail("performance budget source must be an object")
-        source = {}
-    source_path = ROOT.parent / str(source.get("path", ""))
-    if not source_path.is_file():
-        fail("performance budget source path is missing")
-    else:
-        digest = hashlib.sha256(source_path.read_bytes()).hexdigest()
-        if digest != source.get("sha256AtPlanningBase"):
-            fail("performance budget source hash drift")
-    required_ids = {
-        "PERF-COLD-LAUNCH", "PERF-READER-HITCH", "PERF-CATALOG-HITCH",
-        "PERF-READER-PAGINATION", "PERF-GRAPH-INTERACTION",
-        "PERF-IMAGE-CACHE", "PERF-MEMORY-ONE-BOOK", "PERF-MEMORY-THREE-BOOKS",
-        "PERF-CHAPTER-FETCH", "PERF-MAIN-STALL", "PERF-ENERGY-JOURNEY",
-        "PERF-LONG-AUDIO", "PERF-DOWNLOAD-LIFECYCLE",
-    }
+    budget_issues = performance_budget_issues(document)
+    for issue in budget_issues:
+        fail(issue)
+    if budget_issues or not isinstance(document, dict):
+        return []
+    source = document.get("source")
+    if isinstance(source, dict) and isinstance(source.get("path"), str):
+        source_path = ROOT.parent / source["path"]
+        if not source_path.is_file():
+            fail("performance budget source path is missing")
+        else:
+            digest = hashlib.sha256(source_path.read_bytes()).hexdigest()
+            if digest != source.get("sha256AtPlanningBase"):
+                fail("performance budget source hash drift")
     budgets = document.get("budgets", [])
-    if not isinstance(budgets, list):
-        fail("performance budgets must be a list")
-        budgets = []
-    ids = [budget.get("id") for budget in budgets if isinstance(budget, dict)]
-    if set(ids) != required_ids or len(ids) != len(set(ids)):
-        fail("performance budget IDs must be unique and cover every declared device metric")
-    for budget in budgets:
-        if not isinstance(budget, dict):
-            fail("performance budget entry must be an object")
-            continue
-        for field in ("id", "metric", "operator", "value", "unit", "method", "samplePolicy"):
-            if budget.get(field) in (None, "", []):
-                fail(f"performance budget {budget.get('id')} omits {field}")
-        if str(budget.get("operator", "")).startswith("pairedBaseline"):
-            sample_policy = str(budget.get("samplePolicy", ""))
-            if "current-main first" not in sample_policy or "candidate" not in sample_policy:
-                fail(f"paired budget {budget.get('id')} lacks fixed baseline-before-candidate policy")
-    if len(document.get("requiredDeviceClasses", [])) < 2:
-        fail("performance budgets must name compact-iPhone and regular-iPad device classes")
-    if "never loosen" not in str(document.get("changePolicy", "")):
-        fail("performance budget change policy must fail closed on relaxation")
     budgets_by_id = {
         str(budget.get("id")): budget
         for budget in budgets
-        if isinstance(budget, dict) and isinstance(budget.get("id"), str)
+        if isinstance(budgets, list)
+        and isinstance(budget, dict)
+        and isinstance(budget.get("id"), str)
     }
     validate_performance_consumer_contracts(packages, budgets_by_id)
+    return validate_performance_budget_self_tests(document)
 
 
 def validate_final_remediation_contracts(packages: dict[str, dict], locks_doc: dict) -> None:
@@ -1390,7 +1678,8 @@ def validate_final_remediation_contracts(packages: dict[str, dict], locks_doc: d
     )
     for marker in (
         "stateSource=fixture", "transactionClaim=none", "owner-closure-required",
-        "source-compatible production initializer/callback boundary",
+        "ExtensionPresentationResultInput", "DEBUG/test-only",
+        "testExtensionPresentationResultInputSeparatesFixtureAndLegacyProduction",
         "production durability/success/dismiss/open claim",
         "--package-diff WP-NATIVE-01",
         "reader-toolbar.depth-option", "reader-toolbar.tone-option",
@@ -1398,7 +1687,8 @@ def validate_final_remediation_contracts(packages: dict[str, dict], locks_doc: d
         if marker not in native_contract:
             fail(f"WP-NATIVE-01 presentation/inventory boundary omits {marker}")
     for marker in (
-        "fresh reopen/decode", "testShareAndActionSuccessFollowsDurableCommit",
+        "ExtensionPresentationResultInput", "fresh reopen/decode",
+        "testShareAndActionSuccessFollowsDurableCommit",
         "testShareAndActionFailuresNeverShowSuccessOrDismiss", "AC-EXT-01-08",
     ):
         if marker not in ext_contract:
@@ -1426,7 +1716,9 @@ def validate_final_remediation_contracts(packages: dict[str, dict], locks_doc: d
 
     graph_validate = (ROOT / "workstreams/10-engagement-community/WP-GRAPH-01/VALIDATE.md").read_text(encoding="utf-8")
     for marker in (
-        "run_paired_performance.py", "--samples 30", "--instruments-template Hangs",
+        "run_paired_performance.py", "--main-worktree", "--candidate-worktree",
+        "--main-sha", "--candidate-sha", "--samples 30", "--instruments-template Hangs",
+        "--instruments-template SwiftUI", "--operating-system", "--toolchain-id",
         "--budget-manifest upgrade/program/performance-budgets.json",
         "--budget-id PERF-GRAPH-INTERACTION", ".xcresult",
     ):
@@ -1452,6 +1744,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--head", metavar="FULL_SHA")
     parser.add_argument("--require-candidate-binding", action="store_true")
     parser.add_argument("--show-root-accounting-negative-tests", action="store_true")
+    parser.add_argument("--show-remediation-negative-tests", action="store_true")
     return parser.parse_args()
 
 
@@ -1466,6 +1759,7 @@ def main() -> int:
     dag = JSON.get(ROOT / "program/dependency-dag.json", {})
     locks_doc = JSON.get(ROOT / "program/resource-locks.json", {})
     root_accounting_results: list[dict[str, object]] = []
+    performance_budget_results: list[dict[str, object]] = []
     if not all(isinstance(value, dict) for value in (backlog, dag, locks_doc)):
         fail("program JSON documents must be objects")
     else:
@@ -1473,7 +1767,7 @@ def main() -> int:
         root_accounting_results = validate_root_accounting_self_tests(packages)
         validate_graph(backlog, dag, locks_doc, packages)
         validate_evaluations(backlog)
-        validate_performance_budgets(packages)
+        performance_budget_results = validate_performance_budgets(packages)
         validate_final_remediation_contracts(packages, locks_doc)
         if arguments.package_diff is not None:
             package = packages.get(arguments.package_diff)
@@ -1511,6 +1805,11 @@ def main() -> int:
         )
     if arguments.show_root_accounting_negative_tests:
         print(json.dumps(root_accounting_results, indent=2, sort_keys=True))
+    if arguments.show_remediation_negative_tests:
+        print(json.dumps({
+            "performanceBudgets": performance_budget_results,
+            "rootAccounting": root_accounting_results,
+        }, indent=2, sort_keys=True))
     return 0
 
 

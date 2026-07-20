@@ -16,19 +16,24 @@ Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend
 
 1. Resolve D-DATA-01 and version the minimum extension-safe envelope without exposing the main app store.
 2. Introduce a result-bearing Share/Action capture contract and wire both production extension
-   controllers to it. Return `committed` only after a complete versioned item is durably written and a
-   fresh reader reopens/decodes the exact mutation. Show and announce success, dismiss, or open the app
-   only after `committed`; failure or cancellation retains recoverable input and exposes localized
-   retry/error presentation without false success.
+   controllers through NATIVE's exact target-local `ExtensionPresentationResultInput` production
+   result-provider overload. Retire the source-compatible legacy void initializer at both production
+   call sites without editing or redeclaring either view, catalog, or presentation type. Return and map
+   `committed` only after a complete versioned item is durably written and a fresh reader reopens/
+   decodes the exact mutation. Show and announce success, dismiss, or open the app only after
+   `committed`; failure or cancellation retains recoverable input and exposes localized retry/error
+   presentation without false success. DEBUG/test-only fixture injection remains unavailable to both
+   production controllers.
 3. On app import, read, validate, authorize attribution, persist under the exact account, then clear only that accepted item.
 4. Quarantine malformed/unknown/foreign items with privacy-safe diagnostics and explicit recovery/discard behavior.
 5. Prove interruption, duplicate import, relaunch, and A→B deterministically; publish stable process-kill scenarios for exact-final device rerun in WP-DEVICE-01.
 6. Version outbound shared snapshots with an opaque owner from the authoritative account scope; the
    model/writer reject missing owner and publish the interface consumed later by WP-ENGAGE-01/NOTIFY-01.
-7. Consume WP-NATIVE-01's integrated Share/Action catalogs and presentation states without changing
-   their copy, layout, or accessibility semantics. Own only the production result adapter in the two
-   exact extension controllers plus the durable writer, and validate committed and declared failure
-   transitions in every mandatory native dimension; this package never edits the extension views or catalogs.
+7. Consume WP-NATIVE-01's integrated Share/Action catalogs and
+   `ExtensionPresentationResultInput` without changing their copy, layout, type declaration, or
+   accessibility semantics. Own only the production result provider/adapter in the two exact extension
+   controllers plus the durable writer, and validate committed and declared failure transitions in
+   every mandatory native dimension; this package never edits the extension views or catalogs.
 
 ## Acceptance criteria
 
@@ -37,8 +42,10 @@ Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend
 - Given Share and Action capture use a result-bearing writer while signed out or the app is absent
 - When the writer commits a complete versioned item
 - Then `committed` is returned only after fresh reopen/decode verifies the exact mutation; only then
-  does the inherited localized success state appear and announce once, followed exactly once by the
-  declared dismissal or app-open action
+  does each controller map into the NATIVE-owned `ExtensionPresentationResultInput.committed`, the
+  inherited localized success state appear and announce once, followed exactly once by the declared
+  controller-owned dismissal or app-open action; neither production controller uses the legacy void
+  initializer or DEBUG/test-only fixture injection
 
 ### AC-EXT-01-02
 
@@ -100,7 +107,7 @@ Cover signed out, protected data unavailable, low storage, extension timeout, ma
 - **Localization:** All changed user/accessibility copy is localized and tested with long text and RTL where visible.
 - **Performance:** Do not block the main actor with file/JSON/image/network work; measure before making a performance claim and retain cancellation.
 - **Observability:** Use fixed privacy-safe events and request IDs where diagnostic value exists; instrumentation failure cannot change product behavior.
-- **Domain:** Extensions write an extension-safe file/outbox only; AppFeature performs account-authorized import; neither extension opens main SwiftData. Persistence owns both inbound/outbound versioned envelopes. WP-NATIVE-01 owns Share/Action views, catalogs, and presentation semantics; WP-EXT-01 owns the result-bearing writer and the two exact production controller adapters; WP-ENGAGE-01 and WP-NOTIFY-01 own publisher/reader conformance after this package.
+- **Domain:** Extensions write an extension-safe file/outbox only; AppFeature performs account-authorized import; neither extension opens main SwiftData. Persistence owns both inbound/outbound versioned envelopes. WP-NATIVE-01 owns Share/Action views, catalogs, and target-local `ExtensionPresentationResultInput`; WP-EXT-01 owns the result-bearing writer, result mapping, and the two exact production controller adapters, and retires the legacy void initializer without editing NATIVE-owned files; WP-ENGAGE-01 and WP-NOTIFY-01 own publisher/reader conformance after this package.
 
 ## Contract, compatibility, migration, rollout, and rollback
 

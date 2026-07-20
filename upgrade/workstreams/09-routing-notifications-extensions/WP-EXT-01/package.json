@@ -121,9 +121,10 @@
       "Ownerless items remain quarantined unless D-DATA-01 authorizes attribution.",
       "Extensions do not open the main app SwiftData store.",
       "Every outbound private shared snapshot carries an opaque owner; WP-ENGAGE-01 publishes it and WP-NOTIFY-01 reads it after this schema integrates.",
-      "WP-NATIVE-01 supplies integrated real-localized Share/Action presentation, catalogs, and an explicit pending/committed/failure presentation boundary; this package does not edit those views or catalogs.",
+      "WP-NATIVE-01 supplies integrated real-localized Share/Action presentation, catalogs, and each target-local transaction-agnostic ExtensionPresentationResultInput with pending, committed, and failure(retryable); this package does not edit or redeclare those views, catalogs, or presentation types.",
+      "Both production controllers retire the source-compatible legacy void initializer and consume the NATIVE production result-provider overload; DEBUG/test-only fixture injection remains unreachable from production construction.",
       "The extension capture API is result-bearing and fail-closed: it returns committed only after the complete versioned envelope crosses the declared durability boundary and a fresh reader reopens and decodes the exact mutation.",
-      "Share/Action production controllers map committed to the inherited success state and exactly one success announcement before dismissal or app opening; every non-committed result preserves recoverable input and maps to inherited pending/error/retry presentation without false success."
+      "Share/Action production controllers map the durable writer result into ExtensionPresentationResultInput; committed reaches the inherited success state and exactly one success announcement before controller-owned dismissal or app opening, while every non-committed result preserves recoverable input and maps to inherited pending/failure/retry presentation without false success."
     ]
   },
   "resourceLocks": [

@@ -16,16 +16,26 @@ Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend
 6. Add one project-owned filesystem-synchronized `ChapterFlowUITests/UpgradeEvidence` source group so
    later packages can create only their declared exact Swift test file without editing the Xcode
    project or sharing a broad UI-test write root.
-7. Own and localize Share/Action capture, signed-out, pending, error, and success presentation in
-   target-owned catalogs with at least one real non-English translation. Exercise each state through
-   deterministic injected fixtures across locale, RTL, focus, announcement, non-color,
-   motion/transparency, contrast, and target scenarios. The fixture-only state API is separate from a
-   source-compatible production initializer/callback boundary. A NATIVE success fixture proves
-   rendering only; this package does not add, remove, reorder, reinterpret, or validate production
-   outbox, success, dismissal, or app-open transaction behavior.
-8. Provide a deterministic paired iOS performance runner that builds current-main before candidate,
-   pins device/OS/toolchain/fixture, uses XCUITest metrics plus declared Instruments templates,
-   retains raw samples/xcresults/traces, and consumes but cannot relax the predeclared budgets.
+7. Own and localize Share/Action capture, signed-out, pending, failure, and committed presentation in
+   target-owned catalogs with at least one real non-English translation. Each target-local view owns
+   the transaction-agnostic `ExtensionPresentationResultInput` with exactly `pending`, `committed`,
+   and `failure(retryable)` presentation outcomes. A separate DEBUG/test-only initializer injects
+   those states across locale, RTL, focus, announcement, non-color, motion/transparency, contrast,
+   and target scenarios; production construction cannot select fixture state. Preserve the existing
+   production initializer labels and void callback types for source compatibility, but make that
+   legacy path fail closed: it never invokes the void capture/completion callback, enters committed
+   or success, announces success, dismisses, or opens; it clears busy state, retains payload/note,
+   leaves Cancel available, and exposes localized retry/error. Also expose a distinct production
+   result-provider overload that accepts `ExtensionPresentationResultInput` without performing or
+   interpreting a transaction. WP-EXT-01 alone supplies that provider and owns production durability,
+   result mapping, success/failure proof, dismissal, and app opening.
+8. Provide a deterministic paired iOS performance runner with one canonical fail-closed CLI. It
+   verifies exact current-main/candidate worktrees and expected HEADs, builds current-main before
+   candidate, consumes the selected structured budget ID, pins the budget-declared device classes,
+   OS, toolchain, fixture, samples, and Hangs/SwiftUI templates, isolates DerivedData, and retains raw
+   samples/xcresults/traces below one artifact directory. Its self-test parses and plans the complete
+   Reader and Graph consumer fixtures and rejects missing, unknown, duplicate, relaxed, legacy, or
+   cross-wired inputs; the runner never authors or relaxes a predeclared budget.
 
 ## Acceptance criteria
 
@@ -56,6 +66,15 @@ Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend
   announcements, and non-color status are preserved; each artifact records the executed inputs,
   `stateSource: fixture`, and `transactionClaim: none`, and claims no durable write, import,
   dismissal, or app-open ordering
+
+- Given the existing Share/Action production initializer labels and void callback types plus the
+  target-local `ExtensionPresentationResultInput` production result-provider overload
+- When the legacy and fixture-boundary XCUITest runs against both extension targets
+- Then existing controller construction compiles unchanged; the legacy Save/Ask path invokes no void
+  capture/completion callback, never reaches committed/success or a success announcement, never
+  dismisses/opens, clears busy state, retains payload/note, and offers localized retry/error plus
+  Cancel; fixture injection is DEBUG/test-only and unreachable from production construction; and the
+  typed production seam remains consumable by WP-EXT-01 without editing either view or catalog
 
 ### AC-NATIVE-01-05
 
@@ -89,10 +108,13 @@ Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend
 The harness and shared primitives do not own feature redesign or product authority. This package's
 visible product edit is limited to Share/Action localization and accessibility presentation; it does
 not change their outbox transaction semantics. Presentation-state names do not imply transaction
-success. Until WP-EXT-01 integrates, NATIVE preserves the existing source-compatible production
-initializer/callback behavior and makes no claim that it proves persistence. WP-EXT-01 exclusively
-owns the result-bearing writer/controller transition and all production durability, success,
-announcement, dismissal, and app-open truth; NATIVE must stop before changing that transaction path.
+success. Until WP-EXT-01 integrates, NATIVE preserves the existing production initializer signature,
+not its unsafe void-success behavior: the legacy capture path fails immediately and visibly without
+invoking its void callback, retains recoverable input, clears busy state, and leaves Cancel available,
+so the temporary degradation neither hangs nor silently loses data. The DEBUG/test-only fixture
+initializer cannot be selected by production construction. WP-EXT-01 exclusively owns the
+result-bearing writer/controller transition and all production durability, success, announcement,
+dismissal, and app-open truth; NATIVE must stop before changing that transaction path.
 Evidence contains no private content, identifiers, or tokens. Feature packages generate their own
 candidate-head artifacts and close their assigned inventory; `reader-toolbar.depth-option` and
 `reader-toolbar.tone-option` remain open for WP-READER-01 until its exact-head evidence closes them.
