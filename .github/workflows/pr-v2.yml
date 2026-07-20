@@ -5,7 +5,7 @@ name: CI — Required
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
   push:
     branches: [main]
   merge_group:
@@ -152,15 +152,27 @@ jobs:
           failure_category=none
           if [[ "$CHECKOUT_OUTCOME" == failure ]]; then
             failure_category=checkout
+          elif [[ "$CHECKOUT_OUTCOME" == cancelled ]]; then
+            failure_category=checkout-cancelled
           elif [[ "$PLANNER_OUTCOME" == failure ]]; then
             failure_category=planner
+          elif [[ "$PLANNER_OUTCOME" == cancelled ]]; then
+            failure_category=planner-cancelled
           elif [[ "$UNIT_TESTS_OUTCOME" == failure ]]; then
             failure_category=planner-tests
+          elif [[ "$UNIT_TESTS_OUTCOME" == cancelled ]]; then
+            failure_category=planner-tests-cancelled
           elif [[ "$REPOSITORY_CHECKS_OUTCOME" == failure ]]; then
             failure_category=repository-checks
+          elif [[ "$REPOSITORY_CHECKS_OUTCOME" == cancelled ]]; then
+            failure_category=repository-checks-cancelled
           elif [[ ! -f "$PLAN_PATH" ]]; then
             failure_category=planner-output-missing
           fi
+          printf 'failure_category=%s\ncheckout=%s\nplanner=%s\nplanner_tests=%s\nrepository_checks=%s\n' \
+            "$failure_category" "$CHECKOUT_OUTCOME" "$PLANNER_OUTCOME" \
+            "$UNIT_TESTS_OUTCOME" "$REPOSITORY_CHECKS_OUTCOME" \
+            > "$RUNNER_TEMP/ci-plan-diagnostic.txt"
           if [[ ! -f "$PLAN_PATH" ]]; then
             {
               echo "### CI plan"
@@ -188,12 +200,14 @@ jobs:
           PY
 
       - name: Upload planner diagnostics on failure
-        if: ${{ failure() }}
+        if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ci-plan-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/ci-plan.json
-          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/ci-plan.json
+            ${{ runner.temp }}/ci-plan-diagnostic.txt
+          if-no-files-found: error
           retention-days: 5
 
   contract-semantics:
@@ -296,8 +310,12 @@ jobs:
           failure_category=none
           if [[ "$CHECKOUT_OUTCOME" == failure ]]; then
             failure_category=checkout
+          elif [[ "$CHECKOUT_OUTCOME" == cancelled ]]; then
+            failure_category=checkout-cancelled
           elif [[ "$VERIFY_OUTCOME" == failure ]]; then
             failure_category=contract-semantics-or-policy
+          elif [[ "$VERIFY_OUTCOME" == cancelled ]]; then
+            failure_category=contract-semantics-or-policy-cancelled
           fi
           {
             echo "### Native contract semantics"
@@ -365,11 +383,20 @@ jobs:
           failure_category=none
           if [[ "$CHECKOUT_OUTCOME" == failure ]]; then
             failure_category=checkout
+          elif [[ "$CHECKOUT_OUTCOME" == cancelled ]]; then
+            failure_category=checkout-cancelled
           elif [[ "$INSTALL_OUTCOME" == failure ]]; then
             failure_category=tool-install-or-infrastructure
+          elif [[ "$INSTALL_OUTCOME" == cancelled ]]; then
+            failure_category=tool-install-or-infrastructure-cancelled
           elif [[ "$LINT_OUTCOME" == failure ]]; then
             failure_category=lint-or-source
+          elif [[ "$LINT_OUTCOME" == cancelled ]]; then
+            failure_category=lint-or-source-cancelled
           fi
+          printf 'failure_category=%s\ncheckout=%s\ninstall=%s\nlint=%s\n' \
+            "$failure_category" "$CHECKOUT_OUTCOME" "$INSTALL_OUTCOME" "$LINT_OUTCOME" \
+            > "$RUNNER_TEMP/lint-diagnostic.txt"
           {
             echo "### Lint"
             echo "- SwiftLint: ${SWIFTLINT_VERSION} (checksum verified)"
@@ -381,12 +408,14 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload lint log on failure
-        if: ${{ failure() }}
+        if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: lint-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/swiftlint.log
-          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/swiftlint.log
+            ${{ runner.temp }}/lint-diagnostic.txt
+          if-no-files-found: error
           retention-days: 5
 
   package-tests:
@@ -457,31 +486,61 @@ jobs:
       - name: Summarize package shard
         if: ${{ always() }}
         env:
-          CACHE_HIT: ${{ steps.source-cache.outputs.cache-hit || 'disabled-or-miss' }}
+          CACHE_HIT: ${{ steps.source-cache.outputs.cache-hit }}
           CACHE_SIZE_OUTCOME: ${{ steps.cache-size.outcome }}
           CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
           ESTIMATED_SECONDS: ${{ matrix.estimated_seconds }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_MODE: ${{ inputs.mode || 'affected' }}
           PACKAGE_OUTCOME: ${{ steps.packages.outcome }}
           SETUP_OUTCOME: ${{ steps.setup.outcome }}
           SHARD: ${{ matrix.shard }}
           SOURCE_CACHE_OUTCOME: ${{ steps.source-cache.outcome }}
         shell: bash
         run: |
+          cache_status=unavailable
+          if [[ "$EVENT_NAME" == workflow_dispatch && "$INPUT_MODE" == clean ]]; then
+            cache_status=disabled-clean-mode
+          elif [[ "$SOURCE_CACHE_OUTCOME" == failure ]]; then
+            cache_status=restore-failed
+          elif [[ "$SOURCE_CACHE_OUTCOME" == cancelled ]]; then
+            cache_status=restore-cancelled
+          elif [[ "$SOURCE_CACHE_OUTCOME" == skipped ]]; then
+            cache_status=not-run
+          elif [[ "$SOURCE_CACHE_OUTCOME" == success && "$CACHE_HIT" == true ]]; then
+            cache_status=hit
+          elif [[ "$SOURCE_CACHE_OUTCOME" == success && "$CACHE_HIT" == false ]]; then
+            cache_status=miss
+          fi
           failure_category=none
           if [[ "$CHECKOUT_OUTCOME" == failure ]]; then
             failure_category=checkout
+          elif [[ "$CHECKOUT_OUTCOME" == cancelled ]]; then
+            failure_category=checkout-cancelled
           elif [[ "$SETUP_OUTCOME" == failure ]]; then
             failure_category=toolchain-or-setup
+          elif [[ "$SETUP_OUTCOME" == cancelled ]]; then
+            failure_category=toolchain-or-setup-cancelled
           elif [[ "$SOURCE_CACHE_OUTCOME" == failure ]]; then
             failure_category=cache-restore-or-infrastructure
+          elif [[ "$SOURCE_CACHE_OUTCOME" == cancelled ]]; then
+            failure_category=cache-restore-or-infrastructure-cancelled
           elif [[ "$PACKAGE_OUTCOME" == failure ]]; then
             failure_category=package-test-or-source
+          elif [[ "$PACKAGE_OUTCOME" == cancelled ]]; then
+            failure_category=package-test-or-source-cancelled
           elif [[ "$CACHE_SIZE_OUTCOME" == failure ]]; then
             failure_category=cache-measurement
+          elif [[ "$CACHE_SIZE_OUTCOME" == cancelled ]]; then
+            failure_category=cache-measurement-cancelled
           fi
+          printf 'failure_category=%s\ncache_status=%s\ncheckout=%s\nsetup=%s\ncache_restore=%s\npackages=%s\ncache_size=%s\n' \
+            "$failure_category" "$cache_status" "$CHECKOUT_OUTCOME" "$SETUP_OUTCOME" \
+            "$SOURCE_CACHE_OUTCOME" "$PACKAGE_OUTCOME" "$CACHE_SIZE_OUTCOME" \
+            > "$RUNNER_TEMP/package-diagnostic-${SHARD}.txt"
           {
             echo "### Package cache — ${SHARD}"
-            echo "- Cache result: ${CACHE_HIT}"
+            echo "- Cache result: ${cache_status}"
             echo "- Source cache size: ${{ steps.cache-size.outputs.bytes || 'unreported' }} bytes"
             echo "- Explicit source-cache budget: ${SOURCE_CACHE_BUDGET_BYTES} bytes"
             echo "- Historical shard estimate: ${ESTIMATED_SECONDS}s"
@@ -491,14 +550,15 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload package logs on failure
-        if: ${{ failure() }}
+        if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: package-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             ${{ runner.temp }}/package-logs-${{ matrix.shard }}
             ${{ runner.temp }}/package-metrics-${{ matrix.shard }}.json
-          if-no-files-found: ignore
+            ${{ runner.temp }}/package-diagnostic-${{ matrix.shard }}.txt
+          if-no-files-found: error
           retention-days: 5
 
   app-and-ui:
@@ -512,6 +572,7 @@ jobs:
       build_for_testing_seconds: ${{ steps.build-for-testing.outputs.duration }}
       cache_bytes: ${{ steps.cache-size.outputs.bytes }}
       cache_hit: ${{ steps.source-cache.outputs.cache-hit }}
+      cache_status: ${{ steps.summary.outputs.cache-status }}
       compile_boundary_result: ${{ steps.compile-boundaries.outcome }}
       resolve_seconds: ${{ steps.resolve.outputs.duration }}
       setup_seconds: ${{ steps.setup.outputs.setup-seconds }}
@@ -733,18 +794,24 @@ jobs:
             ${{ runner.os }}-${{ steps.setup.outputs.arch }}-${{ env.CACHE_SCHEMA }}-${{ steps.setup.outputs.toolchain-key }}-${{ hashFiles('**/Package.swift', '**/Package.resolved') }}
 
       - name: Summarize app and UI validation
+        id: summary
         if: ${{ always() }}
         env:
+          APP_BUILD_OUTCOME: ${{ steps.app-build.outcome }}
+          BUILD_FOR_TESTING_OUTCOME: ${{ steps.build-for-testing.outcome }}
           CACHE_SAVE_OUTCOME: ${{ steps.cache-save.outcome }}
           CACHE_SIZE_OUTCOME: ${{ steps.cache-size.outcome }}
-          CACHE_HIT: ${{ steps.source-cache.outputs.cache-hit || 'disabled-or-miss' }}
+          CACHE_HIT: ${{ steps.source-cache.outputs.cache-hit }}
           CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
           COMPILE_BOUNDARY_OUTCOME: ${{ steps.compile-boundaries.outcome }}
+          EVENT_NAME: ${{ github.event_name }}
           GRAPH_OUTCOME: ${{ steps.graph.outcome }}
+          INPUT_MODE: ${{ inputs.mode || 'affected' }}
           RESOLVE_OUTCOME: ${{ steps.resolve.outcome }}
           SETUP_OUTCOME: ${{ steps.setup.outcome }}
           SIMULATOR_OUTCOME: ${{ steps.simulator.outcome }}
           SOURCE_CACHE_OUTCOME: ${{ steps.source-cache.outcome }}
+          UI_TEST_OUTCOME: ${{ steps.ui-tests.outcome }}
         shell: bash
         run: |
           tests="unreported"
@@ -752,35 +819,78 @@ jobs:
             tests="$(grep -Eo 'Executed [0-9]+ tests?.*' "$RUNNER_TEMP/xcodebuild-ui-tests.log" | tail -1 || true)"
             [[ -n "$tests" ]] || tests="unreported"
           fi
+          cache_status=unavailable
+          if [[ "$EVENT_NAME" == workflow_dispatch && "$INPUT_MODE" == clean ]]; then
+            cache_status=disabled-clean-mode
+          elif [[ "$SOURCE_CACHE_OUTCOME" == failure ]]; then
+            cache_status=restore-failed
+          elif [[ "$SOURCE_CACHE_OUTCOME" == cancelled ]]; then
+            cache_status=restore-cancelled
+          elif [[ "$SOURCE_CACHE_OUTCOME" == skipped ]]; then
+            cache_status=not-run
+          elif [[ "$SOURCE_CACHE_OUTCOME" == success && "$CACHE_HIT" == true ]]; then
+            cache_status=hit
+          elif [[ "$SOURCE_CACHE_OUTCOME" == success && "$CACHE_HIT" == false ]]; then
+            cache_status=miss
+          fi
+          echo "cache-status=$cache_status" >> "$GITHUB_OUTPUT"
           failure_category=none
           if [[ "$CHECKOUT_OUTCOME" == failure ]]; then
             failure_category=checkout
+          elif [[ "$CHECKOUT_OUTCOME" == cancelled ]]; then
+            failure_category=checkout-cancelled
           elif [[ "$SETUP_OUTCOME" == failure ]]; then
             failure_category=toolchain-or-setup
+          elif [[ "$SETUP_OUTCOME" == cancelled ]]; then
+            failure_category=toolchain-or-setup-cancelled
           elif [[ "$SOURCE_CACHE_OUTCOME" == failure ]]; then
             failure_category=cache-or-infrastructure
+          elif [[ "$SOURCE_CACHE_OUTCOME" == cancelled ]]; then
+            failure_category=cache-or-infrastructure-cancelled
           elif [[ "$COMPILE_BOUNDARY_OUTCOME" == failure ]]; then
             failure_category=compile-boundary
+          elif [[ "$COMPILE_BOUNDARY_OUTCOME" == cancelled ]]; then
+            failure_category=compile-boundary-cancelled
           elif [[ "$GRAPH_OUTCOME" == failure ]]; then
             failure_category=package-graph
+          elif [[ "$GRAPH_OUTCOME" == cancelled ]]; then
+            failure_category=package-graph-cancelled
           elif [[ "$RESOLVE_OUTCOME" == failure ]]; then
             failure_category=dependency-resolution
+          elif [[ "$RESOLVE_OUTCOME" == cancelled ]]; then
+            failure_category=dependency-resolution-cancelled
           elif [[ "$SIMULATOR_OUTCOME" == failure ]]; then
             failure_category=simulator
-          elif [[ "${{ steps.build-for-testing.outcome }}" == failure || "${{ steps.app-build.outcome }}" == failure ]]; then
+          elif [[ "$SIMULATOR_OUTCOME" == cancelled ]]; then
+            failure_category=simulator-cancelled
+          elif [[ "$BUILD_FOR_TESTING_OUTCOME" == failure || "$APP_BUILD_OUTCOME" == failure ]]; then
             failure_category=app-build-or-source
-          elif [[ "${{ steps.ui-tests.outcome }}" == failure ]]; then
+          elif [[ "$BUILD_FOR_TESTING_OUTCOME" == cancelled || "$APP_BUILD_OUTCOME" == cancelled ]]; then
+            failure_category=app-build-or-source-cancelled
+          elif [[ "$UI_TEST_OUTCOME" == failure ]]; then
             failure_category=ui-test
+          elif [[ "$UI_TEST_OUTCOME" == cancelled ]]; then
+            failure_category=ui-test-cancelled
           elif [[ "$CACHE_SIZE_OUTCOME" == failure ]]; then
             failure_category=cache-measurement
+          elif [[ "$CACHE_SIZE_OUTCOME" == cancelled ]]; then
+            failure_category=cache-measurement-cancelled
           elif [[ "$CACHE_SAVE_OUTCOME" == failure ]]; then
             failure_category=cache-save-or-infrastructure
+          elif [[ "$CACHE_SAVE_OUTCOME" == cancelled ]]; then
+            failure_category=cache-save-or-infrastructure-cancelled
           fi
+          printf 'failure_category=%s\ncache_status=%s\ncheckout=%s\nsetup=%s\ncache_restore=%s\ncompile_boundaries=%s\ngraph=%s\nresolve=%s\nsimulator=%s\nbuild_for_testing=%s\nui_tests=%s\napp_build=%s\ncache_size=%s\ncache_save=%s\n' \
+            "$failure_category" "$cache_status" "$CHECKOUT_OUTCOME" "$SETUP_OUTCOME" \
+            "$SOURCE_CACHE_OUTCOME" "$COMPILE_BOUNDARY_OUTCOME" "$GRAPH_OUTCOME" \
+            "$RESOLVE_OUTCOME" "$SIMULATOR_OUTCOME" "$BUILD_FOR_TESTING_OUTCOME" \
+            "$UI_TEST_OUTCOME" "$APP_BUILD_OUTCOME" "$CACHE_SIZE_OUTCOME" \
+            "$CACHE_SAVE_OUTCOME" > "$RUNNER_TEMP/app-ui-diagnostic.txt"
           {
             echo "### App and UI"
             echo "- Planned app / UI: ${{ needs.plan.outputs.run_app_build }} / ${{ needs.plan.outputs.run_ui_tests }}"
             echo "- WP-DEV-01 compile boundaries: ${COMPILE_BOUNDARY_OUTCOME}"
-            echo "- Source cache: ${CACHE_HIT}"
+            echo "- Source cache: ${cache_status}"
             echo "- Source cache size: ${{ steps.cache-size.outputs.human || 'unreported' }} (${{ steps.cache-size.outputs.bytes || '0' }} bytes)"
             echo "- Setup duration: ${{ steps.setup.outputs.setup-seconds || 'unreported' }}s"
             echo "- Dependency resolution duration: ${{ steps.resolve.outputs.duration || 'unreported' }}s"
@@ -795,7 +905,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload app and UI diagnostics on failure
-        if: ${{ failure() }}
+        if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: app-ui-${{ github.run_id }}-${{ github.run_attempt }}
@@ -805,7 +915,8 @@ jobs:
             ${{ runner.temp }}/xcodebuild-build-for-testing.log
             ${{ runner.temp }}/xcodebuild-resolve.log
             ${{ runner.temp }}/xcodebuild-ui-tests.log
-          if-no-files-found: ignore
+            ${{ runner.temp }}/app-ui-diagnostic.txt
+          if-no-files-found: error
           retention-days: 5
 
   required:
@@ -816,10 +927,25 @@ jobs:
     timeout-minutes: 5
 
     steps:
+      - name: Checkout exact revision
+        id: checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
       - name: Verify every planned result
         id: verify
         env:
           APP_RESULT: ${{ needs.app-and-ui.result }}
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || 'origin/main' }}
+          CI_EVENT_NAME: ${{ github.event_name }}
+          CI_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+          CI_INPUT_MODE: ${{ inputs.mode || 'affected' }}
+          CI_INPUT_PACKAGES: ${{ inputs.packages || '' }}
+          CI_INPUT_SHARDS: ${{ inputs.package_shards || '2' }}
+          CI_INPUT_UI: ${{ inputs.ui || 'auto' }}
+          CI_LABELS_JSON: ${{ toJSON(github.event.pull_request.labels.*.name) }}
           COMPILE_BOUNDARY_RESULT: ${{ needs.app-and-ui.outputs.compile_boundary_result }}
           CONTRACT_PROOF: ${{ needs.contract-semantics.outputs.proof }}
           CONTRACT_RESULT: ${{ needs.contract-semantics.result }}
@@ -828,113 +954,7 @@ jobs:
           PLAN_JSON: ${{ needs.plan.outputs.plan_json }}
           PLAN_RESULT: ${{ needs.plan.result }}
         shell: bash
-        run: |
-          python3 - <<'PY'
-          import json, os, sys
-
-          errors = []
-          if os.environ.get("PLAN_RESULT") != "success":
-              errors.append(f"plan job result={os.environ.get('PLAN_RESULT')!r}")
-          try:
-              plan = json.loads(os.environ.get("PLAN_JSON", ""))
-          except Exception as error:
-              print(f"aggregate: malformed or missing plan output: {error}", file=sys.stderr)
-              raise SystemExit(1)
-
-          boolean_fields = (
-              "docs_only", "run_lint", "run_app_build", "run_ui_tests",
-              "run_full_packages", "run_contract_semantics", "high_risk",
-          )
-          for field in boolean_fields:
-              if not isinstance(plan.get(field), bool):
-                  errors.append(f"plan field {field} is not boolean")
-          if plan.get("schema_version") != 2:
-              errors.append("unsupported plan schema")
-          if plan.get("run_ui_tests") and not plan.get("run_app_build"):
-              errors.append("UI was requested without app validation")
-          compile_boundary_result = os.environ.get("COMPILE_BOUNDARY_RESULT")
-          if plan.get("run_app_build") and compile_boundary_result != "success":
-              errors.append(
-                  "compile-boundaries: expected success, "
-                  f"observed {compile_boundary_result!r}"
-              )
-
-          affected = plan.get("affected_packages")
-          matrix = plan.get("package_matrix")
-          if not isinstance(affected, list) or not all(isinstance(p, str) for p in affected):
-              errors.append("affected_packages is malformed")
-              affected = []
-          include = matrix.get("include") if isinstance(matrix, dict) else None
-          if not isinstance(include, list):
-              errors.append("package_matrix is malformed")
-              include = []
-          flattened = []
-          for shard in include:
-              packages = shard.get("packages") if isinstance(shard, dict) else None
-              if not isinstance(packages, list) or not packages:
-                  errors.append("matrix contains an empty or malformed shard")
-                  continue
-              flattened.extend(packages)
-          if sorted(flattened) != sorted(affected) or len(flattened) != len(set(flattened)):
-              errors.append("matrix union does not exactly match affected packages")
-
-          expected = {
-              "contract-semantics": bool(plan.get("run_contract_semantics")),
-              "lint": bool(plan.get("run_lint")),
-              "package-tests": bool(affected),
-              "app-and-ui": bool(plan.get("run_app_build") or plan.get("run_ui_tests")),
-          }
-          actual = {
-              "contract-semantics": os.environ.get("CONTRACT_RESULT"),
-              "lint": os.environ.get("LINT_RESULT"),
-              "package-tests": os.environ.get("PACKAGE_RESULT"),
-              "app-and-ui": os.environ.get("APP_RESULT"),
-          }
-          for job, is_required in expected.items():
-              wanted = "success" if is_required else "skipped"
-              if actual[job] != wanted:
-                  errors.append(
-                      f"{job}: expected {wanted}, observed {actual[job]!r}"
-                  )
-
-          proof_raw = os.environ.get("CONTRACT_PROOF", "")
-          if expected["contract-semantics"]:
-              expected_proof = {
-                  "schema_version": 1,
-                  "operations": 83,
-                  "producers": 92,
-                  "matrix_rows": 29,
-                  "relations": 92,
-                  "policy_digest_valid": True,
-              }
-              try:
-                  proof = json.loads(proof_raw)
-              except Exception as error:
-                  errors.append(f"contract-semantics: malformed proof output: {error}")
-              else:
-                  if proof != expected_proof:
-                      errors.append(
-                          "contract-semantics: proof output does not match 83/92/29/92 "
-                          "with a valid policy digest"
-                      )
-          elif proof_raw:
-              errors.append("contract-semantics: unplanned job emitted proof output")
-
-          print("Plan reasons:", ", ".join(plan.get("reason_codes", [])))
-          print("Packages:", ", ".join(affected) if affected else "none")
-          print(
-              "compile-boundaries:",
-              compile_boundary_result or "not-run",
-              f"(required={bool(plan.get('run_app_build'))})",
-          )
-          for job in ("contract-semantics", "lint", "package-tests", "app-and-ui"):
-              print(f"{job}: {actual[job]} (required={expected[job]})")
-          if errors:
-              for error in errors:
-                  print(f"aggregate failure: {error}", file=sys.stderr)
-              raise SystemExit(1)
-          print("All required work succeeded and all unrequired work skipped explicitly.")
-          PY
+        run: python3 scripts/ci/required_gate.py
 
       - name: Summarize aggregate
         if: ${{ always() }}
@@ -943,7 +963,7 @@ jobs:
           APP_RESULT: ${{ needs.app-and-ui.result }}
           BUILD_FOR_TESTING_SECONDS: ${{ needs.app-and-ui.outputs.build_for_testing_seconds }}
           CACHE_BYTES: ${{ needs.app-and-ui.outputs.cache_bytes }}
-          CACHE_HIT: ${{ needs.app-and-ui.outputs.cache_hit }}
+          CACHE_STATUS: ${{ needs.app-and-ui.outputs.cache_status }}
           COMPILE_BOUNDARY_RESULT: ${{ needs.app-and-ui.outputs.compile_boundary_result }}
           CONTRACT_DURATION_SECONDS: ${{ needs.contract-semantics.outputs.duration_seconds }}
           CONTRACT_PROOF: ${{ needs.contract-semantics.outputs.proof }}
@@ -956,6 +976,7 @@ jobs:
           PLAN_JSON: ${{ needs.plan.outputs.plan_json }}
           PLAN_RESULT: ${{ needs.plan.result }}
           RESOLVE_SECONDS: ${{ needs.app-and-ui.outputs.resolve_seconds }}
+          REQUIRED_CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
           SETUP_SECONDS: ${{ needs.app-and-ui.outputs.setup_seconds }}
           SIMULATOR_SECONDS: ${{ needs.app-and-ui.outputs.simulator_seconds }}
           UI_TEST_SECONDS: ${{ needs.app-and-ui.outputs.ui_test_seconds }}
@@ -1021,7 +1042,7 @@ jobs:
                   )
               )
               summary.write(
-                  f"- Dependency source cache: hit={shown('CACHE_HIT', 'disabled-or-miss')}, "
+                  f"- Dependency source cache: status={shown('CACHE_STATUS', 'not-run')}, "
                   f"bytes={shown('CACHE_BYTES', '0')}\n"
               )
               summary.write(
@@ -1029,7 +1050,13 @@ jobs:
               )
               summary.write(
                   "- Failure category: " +
-                  ("aggregate" if shown("VERIFY_OUTCOME", "missing") == "failure" else "none") +
+                  (
+                      "required-checkout-" + shown("REQUIRED_CHECKOUT_OUTCOME", "missing")
+                      if shown("REQUIRED_CHECKOUT_OUTCOME", "missing") != "success"
+                      else "aggregate-" + shown("VERIFY_OUTCOME", "missing")
+                      if shown("VERIFY_OUTCOME", "missing") != "success"
+                      else "none"
+                  ) +
                   "\n"
               )
           PY

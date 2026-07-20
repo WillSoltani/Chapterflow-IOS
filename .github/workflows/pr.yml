@@ -6,6 +6,9 @@ name: Legacy CI — Manual Fallback
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -17,7 +20,9 @@ jobs:
     runs-on: macos-15
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Install SwiftLint
         run: brew install swiftlint
@@ -37,14 +42,20 @@ jobs:
     runs-on: macos-26
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       # Select the newest installed Xcode 26 explicitly (no-op if already default)
       # and fail loudly, listing what IS available, if 26 is somehow missing.
       - name: Select Xcode 26
         run: |
-          echo "Installed Xcodes:"; ls -d /Applications/Xcode*.app 2>/dev/null || true
-          latest26="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)"
+          shopt -s nullglob
+          installed_xcodes=(/Applications/Xcode*.app)
+          xcode_26_candidates=(/Applications/Xcode_26*.app)
+          echo "Installed Xcodes:"
+          printf '%s\n' "${installed_xcodes[@]}"
+          latest26="$(printf '%s\n' "${xcode_26_candidates[@]}" | sort -V | tail -1)"
           if [ -n "$latest26" ]; then
             sudo xcode-select -s "$latest26/Contents/Developer"
           fi
@@ -59,7 +70,7 @@ jobs:
       # incremental rebuild (SwiftPM re-verifies and rebuilds only what changed, so a stale
       # hit is never incorrect — at worst it rebuilds).
       - name: Cache SPM repositories & build
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/Library/Caches/org.swift.swiftpm/repositories
@@ -170,19 +181,25 @@ jobs:
     needs: build-and-test
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
 
       - name: Select Xcode 26
         run: |
-          echo "Installed Xcodes:"; ls -d /Applications/Xcode*.app 2>/dev/null || true
-          latest26="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -1)"
+          shopt -s nullglob
+          installed_xcodes=(/Applications/Xcode*.app)
+          xcode_26_candidates=(/Applications/Xcode_26*.app)
+          echo "Installed Xcodes:"
+          printf '%s\n' "${installed_xcodes[@]}"
+          latest26="$(printf '%s\n' "${xcode_26_candidates[@]}" | sort -V | tail -1)"
           if [ -n "$latest26" ]; then
             sudo xcode-select -s "$latest26/Contents/Developer"
           fi
           xcodebuild -version
 
       - name: Cache SPM repositories
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/Library/Caches/org.swift.swiftpm/repositories
           key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
