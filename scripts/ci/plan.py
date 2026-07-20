@@ -638,6 +638,9 @@ def create_plan(
         run_lint = run_app_build = run_ui_tests = False
 
     if ui_override == "on":
+        docs_only = False
+        if "docs_only" in reasons:
+            reasons.remove("docs_only")
         run_ui_tests = run_app_build = True
         _add_reason(reasons, "manual_ui_on")
     elif ui_override == "off" and run_ui_tests:
@@ -668,11 +671,174 @@ def create_plan(
         "high_risk": high_risk,
         "reason_codes": reasons or ["no_executable_impact"],
     }
-    validate_plan(plan, full_packages)
+    validate_plan(plan, full_packages, graph)
     return plan
 
 
-def validate_plan(plan: dict[str, object], allowed_packages: Sequence[str]) -> None:
+def _validate_semantic_risk_floor(
+    plan: dict[str, object],
+    allowed_packages: Sequence[str],
+    graph: dict[str, list[str]],
+) -> None:
+    """Reject plans that structurally parse but under-select required work."""
+
+    allowed = set(allowed_packages)
+    if not allowed or allowed - set(graph):
+        raise PlanError("semantic validation lacks the authoritative package graph")
+
+    changed_files = plan["changed_files"]
+    affected = set(plan["affected_packages"])
+    reasons = set(plan["reason_codes"])
+    event = plan["event"]
+    mode = plan["mode"]
+
+    required_reasons: set[str] = set()
+    full_required = False
+
+    event_reasons = {
+        "push": "push_main",
+        "schedule": "scheduled_full",
+        "merge_group": "merge_queue_full",
+    }
+    if event in event_reasons:
+        full_required = True
+        required_reasons.add(event_reasons[event])
+    if mode in {"full", "benchmark", "clean"}:
+        full_required = True
+        required_reasons.add(f"mode_{mode}")
+
+    if plan.get("merge_base") == "unavailable":
+        full_required = True
+        required_reasons.add("diff_unavailable")
+    if "diff_unavailable" in reasons or "ci_full_label" in reasons:
+        full_required = True
+
+    manual_override = "manual_package_override" in reasons
+    if manual_override and (event != "workflow_dispatch" or mode != "affected"):
+        raise PlanError(
+            "manual package override provenance is not valid for this event/mode"
+        )
+    if not changed_files:
+        if manual_override:
+            if not affected:
+                raise PlanError("manual package override selected no testable package")
+        else:
+            full_required = True
+            required_reasons.add("empty_diff")
+
+    directly_changed_packages: set[str] = set()
+    required_contract = False
+    required_lint = False
+    required_app_build = False
+    required_ui = False
+
+    for path in changed_files:
+        package = package_for_path(path, graph)
+        if package:
+            directly_changed_packages.add(package)
+
+        full_reason = path_forces_full(path, package)
+        if full_reason:
+            full_required = True
+            required_reasons.add(full_reason)
+        elif package:
+            required_reasons.add("package_impact")
+        elif is_docs_only_path(path):
+            pass
+        elif path.startswith(APP_EXTENSION_PREFIXES):
+            required_app_build = True
+            required_reasons.add("embedded_extension_change")
+        else:
+            full_required = True
+            required_reasons.add("unknown_path")
+
+        if package and package_path_needs_ui(path, package):
+            required_ui = True
+            required_reasons.add("ui_risk")
+        if path_needs_contract_semantics(path):
+            required_contract = True
+        if path.endswith(".swift"):
+            required_lint = True
+
+    impacted = reverse_closure(directly_changed_packages, graph).intersection(allowed)
+    missing_impacted = impacted - affected
+    if missing_impacted:
+        raise PlanError(
+            "affected package selection omitted reverse dependents: "
+            f"{sorted(missing_impacted)}"
+        )
+
+    app_linked_packages = set(graph) - {"Fixtures"}
+    if directly_changed_packages.intersection(app_linked_packages):
+        required_app_build = True
+
+    if manual_override:
+        required_reasons.add("manual_package_override")
+        override_closure = reverse_closure(affected, graph).intersection(allowed)
+        missing_override_dependents = override_closure - affected
+        if missing_override_dependents:
+            raise PlanError(
+                "manual package override omitted reverse dependents: "
+                f"{sorted(missing_override_dependents)}"
+            )
+
+    if "manual_ui_on" in reasons:
+        required_app_build = required_ui = True
+    if "manual_ui_off_ignored" in reasons and not plan["run_ui_tests"]:
+        raise PlanError("manual UI-off provenance hid required UI validation")
+
+    if full_required:
+        required_contract = required_lint = required_app_build = required_ui = True
+        if not plan["run_full_packages"]:
+            raise PlanError("risk classification requires full validation")
+
+    required_decisions = {
+        "run_contract_semantics": required_contract,
+        "run_lint": required_lint,
+        "run_app_build": required_app_build,
+        "run_ui_tests": required_ui,
+    }
+    for field, required in required_decisions.items():
+        if required and not plan[field]:
+            raise PlanError(f"risk classification requires {field}")
+
+    if plan["run_contract_semantics"]:
+        required_reasons.add("contract_semantics")
+    elif "contract_semantics" in reasons:
+        raise PlanError("contract semantic provenance has no selected lane")
+
+    missing_reasons = required_reasons - reasons
+    if missing_reasons:
+        raise PlanError(
+            f"plan omitted derived reason codes: {sorted(missing_reasons)}"
+        )
+
+    all_docs = bool(changed_files) and all(
+        is_docs_only_path(path) for path in changed_files
+    )
+    if plan["docs_only"] and (not all_docs or manual_override):
+        raise PlanError("docs-only provenance does not match the changed paths")
+    executable_selected = bool(affected) or any(
+        plan[field]
+        for field in (
+            "run_contract_semantics",
+            "run_lint",
+            "run_app_build",
+            "run_ui_tests",
+            "run_full_packages",
+        )
+    )
+    if all_docs and not executable_selected and not plan["docs_only"]:
+        raise PlanError("safe docs-only skip lacks explicit provenance")
+    if "docs_only" in reasons and not plan["docs_only"]:
+        raise PlanError("docs-only reason does not match the plan decision")
+
+
+def validate_plan(
+    plan: dict[str, object],
+    allowed_packages: Sequence[str],
+    graph: dict[str, list[str]],
+) -> None:
     if plan.get("schema_version") != SCHEMA_VERSION:
         raise PlanError("invalid plan schema")
     boolean_fields = (
@@ -715,6 +881,8 @@ def validate_plan(plan: dict[str, object], allowed_packages: Sequence[str]) -> N
         raise PlanError("malformed affected package list")
     if set(affected) - set(allowed_packages):
         raise PlanError("plan selected an unknown or untestable package")
+    if affected != sorted(set(affected)):
+        raise PlanError("affected package list is not canonical, sorted, and unique")
 
     matrix = plan.get("package_matrix")
     if not isinstance(matrix, dict) or not isinstance(matrix.get("include"), list):
@@ -772,6 +940,8 @@ def validate_plan(plan: dict[str, object], allowed_packages: Sequence[str]) -> N
         raise PlanError(f"plan has unsupported reason codes: {sorted(unknown_reasons)}")
     if plan["docs_only"] and "docs_only" not in reasons:
         raise PlanError("docs-only plan has no explicit safe-skip reason")
+
+    _validate_semantic_risk_floor(plan, allowed_packages, graph)
 
 
 def write_github_outputs(path: Path, plan: dict[str, object]) -> None:

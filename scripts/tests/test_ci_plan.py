@@ -20,6 +20,50 @@ import generate_package_graph  # noqa: E402
 import required_gate  # noqa: E402
 
 
+VALIDATION_STEP_CONDITIONS = {
+    "Verify current-worktree native contract semantics": None,
+    "SwiftLint strict": None,
+    "Run requested package shard": None,
+    "Verify WP-DEV-01 non-Debug compile boundaries": (
+        "${{ needs.plan.outputs.run_app_build == 'true' }}"
+    ),
+    "Verify semantic local-package graph": None,
+    "Resolve application dependencies": None,
+    "Boot newest available iPhone simulator": (
+        "${{ needs.plan.outputs.run_ui_tests == 'true' }}"
+    ),
+    "Build app for deterministic UI testing": (
+        "${{ needs.plan.outputs.run_ui_tests == 'true' }}"
+    ),
+    "Run UI tests without rebuilding": (
+        "${{ needs.plan.outputs.run_ui_tests == 'true' }}"
+    ),
+    "Build unsigned simulator app": (
+        "${{ needs.plan.outputs.run_ui_tests != 'true' && "
+        "needs.plan.outputs.run_app_build == 'true' }}"
+    ),
+}
+
+
+def invalid_validation_step_conditions(source: str) -> list[str]:
+    failures: list[str] = []
+    for name, expected in VALIDATION_STEP_CONDITIONS.items():
+        marker = f"      - name: {name}\n"
+        if source.count(marker) != 1:
+            failures.append(f"{name}: missing or duplicated")
+            continue
+        block = source.split(marker, 1)[1].split("\n      - name:", 1)[0]
+        conditions = [
+            line.removeprefix("        if:").strip()
+            for line in block.splitlines()
+            if line.startswith("        if:")
+        ]
+        wanted = [] if expected is None else [expected]
+        if conditions != wanted:
+            failures.append(f"{name}: expected if={wanted!r}, observed {conditions!r}")
+    return failures
+
+
 class CIPlanTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -206,6 +250,23 @@ class CIPlanTests(unittest.TestCase):
                 "affected": "all",
                 "reasons": {"ci_full_label", "contract_semantics"},
             },
+            {
+                "name": "manual-ui-on-docs",
+                "paths": ["docs/README.md"],
+                "event": "workflow_dispatch",
+                "ui": "on",
+                "expected": {
+                    "docs_only": False,
+                    "run_contract_semantics": False,
+                    "run_lint": False,
+                    "run_app_build": True,
+                    "run_ui_tests": True,
+                    "run_full_packages": False,
+                    "high_risk": False,
+                },
+                "affected": set(),
+                "reasons": {"manual_ui_on"},
+            },
         )
 
         self.assertEqual(
@@ -219,6 +280,7 @@ class CIPlanTests(unittest.TestCase):
                     event=row.get("event", "pull_request"),
                     mode=row.get("mode", "affected"),
                     labels=row.get("labels", []),
+                    ui=row.get("ui", "auto"),
                 )
                 for field, expected in row["expected"].items():
                     self.assertEqual(result[field], expected, field)
@@ -278,7 +340,11 @@ class CIPlanTests(unittest.TestCase):
         for result in (docs, full):
             with self.subTest(valid=result["reason_codes"]):
                 errors = required_gate.verify_required(
-                    json.dumps(result), expected_results(result), self.all_packages
+                    json.dumps(result),
+                    expected_results(result),
+                    self.all_packages,
+                    self.graph,
+                    result,
                 )
                 self.assertEqual(errors, [])
 
@@ -288,7 +354,7 @@ class CIPlanTests(unittest.TestCase):
                 results["plan"] = outcome
                 self.assertTrue(
                     required_gate.verify_required(
-                        json.dumps(full), results, self.all_packages
+                        json.dumps(full), results, self.all_packages, self.graph, full
                     )
                 )
 
@@ -306,7 +372,7 @@ class CIPlanTests(unittest.TestCase):
                     results[job] = outcome
                     self.assertTrue(
                         required_gate.verify_required(
-                            json.dumps(full), results, self.all_packages
+                            json.dumps(full), results, self.all_packages, self.graph, full
                         )
                     )
 
@@ -316,7 +382,7 @@ class CIPlanTests(unittest.TestCase):
                 results[job] = "success"
                 self.assertTrue(
                     required_gate.verify_required(
-                        json.dumps(docs), results, self.all_packages
+                        json.dumps(docs), results, self.all_packages, self.graph, docs
                     )
                 )
 
@@ -324,16 +390,57 @@ class CIPlanTests(unittest.TestCase):
         malformed_full["run_contract_semantics"] = False
         self.assertTrue(
             required_gate.verify_required(
-                json.dumps(malformed_full), expected_results(full), self.all_packages
+                json.dumps(malformed_full),
+                expected_results(full),
+                self.all_packages,
+                self.graph,
+                full,
             )
         )
         for payload in ("", "null", "[]", "{not-json"):
             with self.subTest(malformed_plan=payload):
                 self.assertTrue(
                     required_gate.verify_required(
-                        payload, expected_results(full), self.all_packages
+                        payload,
+                        expected_results(full),
+                        self.all_packages,
+                        self.graph,
+                        full,
                     )
                 )
+
+        forged_workflow_plan = copy.deepcopy(full)
+        for field in (
+            "run_contract_semantics",
+            "run_lint",
+            "run_app_build",
+            "run_ui_tests",
+            "run_full_packages",
+            "high_risk",
+        ):
+            forged_workflow_plan[field] = False
+        forged_workflow_plan["affected_packages"] = []
+        forged_workflow_plan["package_matrix"] = {"include": []}
+        all_skipped = {
+            "plan": "success",
+            "contract-semantics": "skipped",
+            "contract-proof": "",
+            "lint": "skipped",
+            "package-tests": "skipped",
+            "app-and-ui": "skipped",
+            "compile-boundaries": "skipped",
+        }
+        forged_errors = required_gate.verify_required(
+            json.dumps(forged_workflow_plan),
+            all_skipped,
+            self.all_packages,
+            self.graph,
+            full,
+        )
+        self.assertTrue(forged_errors)
+        self.assertTrue(
+            any("risk classification requires full validation" in error for error in forged_errors)
+        )
 
         for proof in ("", "{}", "not-json"):
             with self.subTest(contract_proof=proof):
@@ -341,18 +448,38 @@ class CIPlanTests(unittest.TestCase):
                 results["contract-proof"] = proof
                 self.assertTrue(
                     required_gate.verify_required(
-                        json.dumps(full), results, self.all_packages
+                        json.dumps(full), results, self.all_packages, self.graph, full
                     )
                 )
 
         workflow = (ROOT / ".github/workflows/pr-v2.yml").read_text(encoding="utf-8")
+        self.assertEqual(invalid_validation_step_conditions(workflow), [])
+        mutation_marker = "      - name: Run requested package shard\n"
+        for condition in (
+            "${{ steps.source-cache.outputs.cache-hit == 'true' }}",
+            "${{ env.CACHE_READY == 'true' }}",
+        ):
+            cache_gated_mutation = workflow.replace(
+                mutation_marker,
+                mutation_marker + f"        if: {condition}\n",
+                1,
+            )
+            self.assertTrue(
+                any(
+                    failure.startswith("Run requested package shard: expected if=")
+                    for failure in invalid_validation_step_conditions(
+                        cache_gated_mutation
+                    )
+                )
+            )
         for provenance in (
             "disabled-clean-mode",
             "restore-failed",
             "restore-cancelled",
             "cache_status=hit",
             "cache_status=miss",
-            "cancelled",
+            "cache_status=not-run",
+            "cache_status=unavailable",
             "if-no-files-found: error",
             "scripts/ci/required_gate.py",
         ):
@@ -366,6 +493,161 @@ class CIPlanTests(unittest.TestCase):
             self.assertNotIn(
                 "secrets.", (ROOT / workflow_path).read_text(encoding="utf-8")
             )
+
+    def test_semantic_risk_floor_rejects_underselected_plans(self) -> None:
+        rows: list[
+            tuple[str, dict[str, object], dict[str, object]]
+        ] = []
+
+        workflow = self.make_plan([".github/workflows/pr-v2.yml"])
+        workflow_authority = copy.deepcopy(workflow)
+        for field in (
+            "run_contract_semantics",
+            "run_lint",
+            "run_app_build",
+            "run_ui_tests",
+            "run_full_packages",
+            "high_risk",
+        ):
+            workflow[field] = False
+        workflow["affected_packages"] = []
+        workflow["package_matrix"] = {"include": []}
+        rows.append(("workflow-all-skipped", workflow_authority, workflow))
+
+        ui = self.make_plan(
+            ["Packages/LibraryFeature/Sources/LibraryFeature/Routes/LibraryRoute.swift"]
+        )
+        ui_authority = copy.deepcopy(ui)
+        ui["run_ui_tests"] = False
+        rows.append(("ui-lane-cleared", ui_authority, ui))
+
+        contract = self.make_plan(
+            ["Packages/AIFeature/Sources/AIFeature/Audio/AudioPlayer.swift"]
+        )
+        contract_authority = copy.deepcopy(contract)
+        contract["run_contract_semantics"] = False
+        rows.append(("contract-lane-cleared", contract_authority, contract))
+
+        dependency = self.make_plan(
+            ["Packages/AIFeature/Sources/AIFeature/Audio/AudioPlayer.swift"]
+        )
+        dependency_authority = copy.deepcopy(dependency)
+        removed = "AppFeature"
+        dependency["affected_packages"] = [
+            package for package in dependency["affected_packages"] if package != removed
+        ]
+        dependency["package_matrix"] = {
+            "include": [
+                {
+                    **shard,
+                    "packages": [
+                        package for package in shard["packages"] if package != removed
+                    ],
+                }
+                for shard in dependency["package_matrix"]["include"]
+                if any(package != removed for package in shard["packages"])
+            ]
+        }
+        rows.append(("reverse-dependent-removed", dependency_authority, dependency))
+
+        unknown = self.make_plan(["Unclassified/thing.data"])
+        unknown_authority = copy.deepcopy(unknown)
+        for field in (
+            "run_contract_semantics",
+            "run_lint",
+            "run_app_build",
+            "run_ui_tests",
+            "run_full_packages",
+            "high_risk",
+        ):
+            unknown[field] = False
+        unknown["affected_packages"] = []
+        unknown["package_matrix"] = {"include": []}
+        rows.append(("unknown-path-downgraded", unknown_authority, unknown))
+
+        all_skipped = {
+            "plan": "success",
+            "contract-semantics": "skipped",
+            "contract-proof": "",
+            "lint": "skipped",
+            "package-tests": "skipped",
+            "app-and-ui": "skipped",
+            "compile-boundaries": "skipped",
+        }
+        for name, authority, malformed in rows:
+            with self.subTest(row=name, authority="validator"):
+                with self.assertRaises(plan.PlanError):
+                    plan.validate_plan(malformed, self.all_packages, self.graph)
+            with self.subTest(row=name, authority="required-gate"):
+                errors = required_gate.verify_required(
+                    json.dumps(malformed),
+                    all_skipped,
+                    self.all_packages,
+                    self.graph,
+                    authority,
+                )
+                self.assertTrue(any(error.startswith("invalid plan:") for error in errors))
+
+    def test_required_gate_binds_independent_plan_authority(self) -> None:
+        docs = self.make_plan(["docs/README.md"])
+        workflow = self.make_plan([".github/workflows/pr-v2.yml"])
+        push_workflow = self.make_plan(
+            [".github/workflows/pr-v2.yml"], event="push"
+        )
+        full_mode = self.make_plan(["docs/README.md"], mode="full")
+        labeled = self.make_plan(["docs/README.md"], labels=["ci-full"])
+        manual = self.make_plan(
+            [],
+            event="workflow_dispatch",
+            packages=["AppFeature"],
+        )
+        empty_diff = self.make_plan([])
+        ui_on = self.make_plan(
+            ["docs/README.md"],
+            event="workflow_dispatch",
+            ui="on",
+        )
+        ui_auto = self.make_plan(
+            ["docs/README.md"],
+            event="workflow_dispatch",
+        )
+        forged_head = copy.deepcopy(workflow)
+        forged_head["head_sha"] = "c" * 40
+
+        rows = (
+            ("changed-paths", workflow, docs),
+            ("event", workflow, push_workflow),
+            ("mode", full_mode, docs),
+            ("label-removal", labeled, docs),
+            ("manual-override", empty_diff, manual),
+            ("ui-override", ui_on, ui_auto),
+            ("head", workflow, forged_head),
+        )
+        all_skipped = {
+            "plan": "success",
+            "contract-semantics": "skipped",
+            "contract-proof": "",
+            "lint": "skipped",
+            "package-tests": "skipped",
+            "app-and-ui": "skipped",
+            "compile-boundaries": "skipped",
+        }
+        for name, authority, forged in rows:
+            with self.subTest(authority=name):
+                errors = required_gate.verify_required(
+                    json.dumps(forged),
+                    all_skipped,
+                    self.all_packages,
+                    self.graph,
+                    authority,
+                )
+                self.assertTrue(
+                    any(
+                        "plan does not match independently recomputed authority"
+                        in error
+                        for error in errors
+                    )
+                )
 
     def test_markdown_only_selects_lightweight_validation(self) -> None:
         result = self.make_plan(["docs/ios/CI_PERFORMANCE_AND_OPTIMIZATION.md"])
@@ -700,19 +982,19 @@ class CIPlanTests(unittest.TestCase):
         malformed = copy.deepcopy(result)
         malformed["package_matrix"] = {"include": []}
         with self.assertRaises(plan.PlanError):
-            plan.validate_plan(malformed, self.all_packages)
+            plan.validate_plan(malformed, self.all_packages, self.graph)
         malformed = copy.deepcopy(result)
         malformed["run_ui_tests"] = "true"
         with self.assertRaises(plan.PlanError):
-            plan.validate_plan(malformed, self.all_packages)
+            plan.validate_plan(malformed, self.all_packages, self.graph)
         malformed = copy.deepcopy(result)
         del malformed["run_contract_semantics"]
         with self.assertRaises(plan.PlanError):
-            plan.validate_plan(malformed, self.all_packages)
+            plan.validate_plan(malformed, self.all_packages, self.graph)
         malformed = copy.deepcopy(result)
         malformed["run_contract_semantics"] = "true"
         with self.assertRaises(plan.PlanError):
-            plan.validate_plan(malformed, self.all_packages)
+            plan.validate_plan(malformed, self.all_packages, self.graph)
 
 
 if __name__ == "__main__":

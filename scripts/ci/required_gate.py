@@ -7,6 +7,7 @@ import json
 import os
 import sys
 from collections.abc import Mapping, Sequence
+from pathlib import Path
 
 import plan as ci_plan
 
@@ -30,10 +31,69 @@ RESULT_ENVIRONMENTS = {
 }
 
 
+def authoritative_plan_from_environment(
+    root: Path,
+    graph: dict[str, list[str]],
+    environment: Mapping[str, str],
+) -> dict[str, object]:
+    """Recompute the complete plan from GitHub-owned event and input context."""
+
+    required = (
+        "CI_BASE_SHA",
+        "CI_EVENT_NAME",
+        "CI_HEAD_SHA",
+        "CI_INPUT_MODE",
+        "CI_INPUT_PACKAGES",
+        "CI_INPUT_SHARDS",
+        "CI_INPUT_UI",
+        "CI_LABELS_JSON",
+    )
+    missing = [name for name in required if name not in environment]
+    if missing:
+        raise ci_plan.PlanError(f"missing trusted plan authority: {missing}")
+
+    base_sha = environment["CI_BASE_SHA"]
+    head_sha = environment["CI_HEAD_SHA"]
+    if not base_sha or not head_sha:
+        raise ci_plan.PlanError("trusted base/head authority is empty")
+
+    labels_raw = environment["CI_LABELS_JSON"]
+    labels = (
+        []
+        if not labels_raw or labels_raw == "null"
+        else ci_plan.parse_labels(labels_raw)
+    )
+    try:
+        max_shards = int(environment["CI_INPUT_SHARDS"])
+    except ValueError as error:
+        raise ci_plan.PlanError("trusted shard authority is not an integer") from error
+
+    diff = ci_plan.resolve_git_diff(root, base_sha, head_sha)
+    return ci_plan.create_plan(
+        root=root,
+        graph=graph,
+        changed_files=diff.paths,
+        base_sha=base_sha,
+        head_sha=head_sha,
+        merge_base=diff.merge_base,
+        event=environment["CI_EVENT_NAME"],
+        mode=environment["CI_INPUT_MODE"],
+        labels=labels,
+        package_override=ci_plan.parse_package_override(
+            environment["CI_INPUT_PACKAGES"]
+        ),
+        ui_override=environment["CI_INPUT_UI"],
+        max_shards=max_shards,
+        diff_failed=diff.failed,
+    )
+
+
 def verify_required(
     plan_json: str,
     results: Mapping[str, str | None],
     allowed_packages: Sequence[str],
+    graph: dict[str, list[str]],
+    authoritative_plan: dict[str, object],
 ) -> list[str]:
     """Return every deterministic gate error; an empty list means success."""
 
@@ -49,9 +109,27 @@ def verify_required(
         return [*errors, "malformed plan output: top level is not an object"]
 
     try:
-        ci_plan.validate_plan(decoded, allowed_packages)
+        ci_plan.validate_plan(authoritative_plan, allowed_packages, graph)
+    except ci_plan.PlanError as error:
+        errors.append(f"invalid independently recomputed plan: {error}")
+        return errors
+
+    try:
+        ci_plan.validate_plan(decoded, allowed_packages, graph)
     except ci_plan.PlanError as error:
         errors.append(f"invalid plan: {error}")
+        return errors
+
+    if decoded != authoritative_plan:
+        differing_fields = sorted(
+            key
+            for key in set(decoded).union(authoritative_plan)
+            if decoded.get(key) != authoritative_plan.get(key)
+        )
+        errors.append(
+            "plan does not match independently recomputed authority; differing fields: "
+            + ", ".join(differing_fields)
+        )
         return errors
 
     affected = decoded["affected_packages"]
@@ -115,13 +193,20 @@ def main() -> int:
         graph = ci_plan.load_graph(root)
         ci_plan.verify_graph(root, graph)
         allowed_packages = ci_plan.testable_packages(root, graph)
+        authoritative_plan = authoritative_plan_from_environment(root, graph, os.environ)
     except ci_plan.PlanError as error:
         print(f"aggregate failure: cannot establish package authority: {error}", file=sys.stderr)
         return 1
 
     plan_json = os.environ.get("PLAN_JSON", "")
     results = results_from_environment(os.environ)
-    errors = verify_required(plan_json, results, allowed_packages)
+    errors = verify_required(
+        plan_json,
+        results,
+        allowed_packages,
+        graph,
+        authoritative_plan,
+    )
 
     try:
         decoded = json.loads(plan_json)

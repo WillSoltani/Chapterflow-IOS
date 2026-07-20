@@ -486,7 +486,7 @@ jobs:
       - name: Summarize package shard
         if: ${{ always() }}
         env:
-          CACHE_HIT: ${{ steps.source-cache.outputs.cache-hit || 'false' }}
+          CACHE_HIT: ${{ steps.source-cache.outputs.cache-hit }}
           CACHE_SIZE_OUTCOME: ${{ steps.cache-size.outcome }}
           CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
           ESTIMATED_SECONDS: ${{ matrix.estimated_seconds }}
@@ -498,17 +498,19 @@ jobs:
           SOURCE_CACHE_OUTCOME: ${{ steps.source-cache.outcome }}
         shell: bash
         run: |
-          cache_status=miss
+          cache_status=unavailable
           if [[ "$EVENT_NAME" == workflow_dispatch && "$INPUT_MODE" == clean ]]; then
             cache_status=disabled-clean-mode
           elif [[ "$SOURCE_CACHE_OUTCOME" == failure ]]; then
             cache_status=restore-failed
           elif [[ "$SOURCE_CACHE_OUTCOME" == cancelled ]]; then
             cache_status=restore-cancelled
-          elif [[ "$CACHE_HIT" == true ]]; then
+          elif [[ "$SOURCE_CACHE_OUTCOME" == skipped ]]; then
+            cache_status=not-run
+          elif [[ "$SOURCE_CACHE_OUTCOME" == success && "$CACHE_HIT" == true ]]; then
             cache_status=hit
-          elif [[ "$CACHE_HIT" != false ]]; then
-            cache_status=unavailable
+          elif [[ "$SOURCE_CACHE_OUTCOME" == success && "$CACHE_HIT" == false ]]; then
+            cache_status=miss
           fi
           failure_category=none
           if [[ "$CHECKOUT_OUTCOME" == failure ]]; then
@@ -799,7 +801,7 @@ jobs:
           BUILD_FOR_TESTING_OUTCOME: ${{ steps.build-for-testing.outcome }}
           CACHE_SAVE_OUTCOME: ${{ steps.cache-save.outcome }}
           CACHE_SIZE_OUTCOME: ${{ steps.cache-size.outcome }}
-          CACHE_HIT: ${{ steps.source-cache.outputs.cache-hit || 'false' }}
+          CACHE_HIT: ${{ steps.source-cache.outputs.cache-hit }}
           CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
           COMPILE_BOUNDARY_OUTCOME: ${{ steps.compile-boundaries.outcome }}
           EVENT_NAME: ${{ github.event_name }}
@@ -817,17 +819,19 @@ jobs:
             tests="$(grep -Eo 'Executed [0-9]+ tests?.*' "$RUNNER_TEMP/xcodebuild-ui-tests.log" | tail -1 || true)"
             [[ -n "$tests" ]] || tests="unreported"
           fi
-          cache_status=miss
+          cache_status=unavailable
           if [[ "$EVENT_NAME" == workflow_dispatch && "$INPUT_MODE" == clean ]]; then
             cache_status=disabled-clean-mode
           elif [[ "$SOURCE_CACHE_OUTCOME" == failure ]]; then
             cache_status=restore-failed
           elif [[ "$SOURCE_CACHE_OUTCOME" == cancelled ]]; then
             cache_status=restore-cancelled
-          elif [[ "$CACHE_HIT" == true ]]; then
+          elif [[ "$SOURCE_CACHE_OUTCOME" == skipped ]]; then
+            cache_status=not-run
+          elif [[ "$SOURCE_CACHE_OUTCOME" == success && "$CACHE_HIT" == true ]]; then
             cache_status=hit
-          elif [[ "$CACHE_HIT" != false ]]; then
-            cache_status=unavailable
+          elif [[ "$SOURCE_CACHE_OUTCOME" == success && "$CACHE_HIT" == false ]]; then
+            cache_status=miss
           fi
           echo "cache-status=$cache_status" >> "$GITHUB_OUTPUT"
           failure_category=none
@@ -927,12 +931,21 @@ jobs:
         id: checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Verify every planned result
         id: verify
         env:
           APP_RESULT: ${{ needs.app-and-ui.result }}
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before || 'origin/main' }}
+          CI_EVENT_NAME: ${{ github.event_name }}
+          CI_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+          CI_INPUT_MODE: ${{ inputs.mode || 'affected' }}
+          CI_INPUT_PACKAGES: ${{ inputs.packages || '' }}
+          CI_INPUT_SHARDS: ${{ inputs.package_shards || '2' }}
+          CI_INPUT_UI: ${{ inputs.ui || 'auto' }}
+          CI_LABELS_JSON: ${{ toJSON(github.event.pull_request.labels.*.name) }}
           COMPILE_BOUNDARY_RESULT: ${{ needs.app-and-ui.outputs.compile_boundary_result }}
           CONTRACT_PROOF: ${{ needs.contract-semantics.outputs.proof }}
           CONTRACT_RESULT: ${{ needs.contract-semantics.result }}
