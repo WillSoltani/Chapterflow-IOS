@@ -133,13 +133,15 @@ struct ReflectionRowView: View {
     }
 }
 
-// MARK: - Preview helpers
+// MARK: - Local spacing
 
-#if DEBUG
 private extension CGFloat {
     static let cfSpacing6: CGFloat = 6
 }
 
+// MARK: - Previews
+
+#if DEBUG
 #Preview("Synced – no feedback", traits: .sizeThatFitsLayout) {
     let item = ReflectionDisplayItem.synced(ChapterReflection(
         reflectionId: "r1",
