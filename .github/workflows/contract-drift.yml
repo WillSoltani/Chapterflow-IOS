@@ -33,7 +33,7 @@ jobs:
 
     steps:
       - name: Check out iOS
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           path: ios
           fetch-depth: 0
@@ -66,7 +66,7 @@ jobs:
           echo "phase=$phase" >> "$GITHUB_OUTPUT"
 
       - name: Check out pinned public backend source
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: WillSoltani/ChapterFlow
           ref: ${{ steps.backend_source.outputs.sha }}
@@ -90,7 +90,7 @@ jobs:
         run: bash scripts/test-backend-contract-provenance.sh
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 20.20.0
           cache: npm

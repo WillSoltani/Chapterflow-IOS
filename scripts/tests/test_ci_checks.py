@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 import tempfile
@@ -14,6 +15,147 @@ sys.path.insert(0, str(ROOT / "scripts/ci"))
 
 import check_repository  # noqa: E402
 import run_package_shard  # noqa: E402
+
+
+class WorkflowSecurityTests(unittest.TestCase):
+    DEVELOPMENT_WORKFLOWS = (
+        ".github/workflows/pr-v2.yml",
+        ".github/workflows/contract-drift.yml",
+        ".github/workflows/pr.yml",
+    )
+    IMMUTABLE_ACTION = re.compile(r"^[0-9a-f]{40}$")
+    VERSION_COMMENT = re.compile(r"^v[0-9]+(?:\.[0-9]+){1,2}$")
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.sources = {
+            path: (ROOT / path).read_text(encoding="utf-8")
+            for path in cls.DEVELOPMENT_WORKFLOWS
+        }
+
+    @staticmethod
+    def checkout_step_blocks(source: str) -> list[str]:
+        lines = source.splitlines()
+        blocks: list[str] = []
+        for index, line in enumerate(lines):
+            if "uses: actions/checkout@" not in line:
+                continue
+            start = index
+            step_indent = None
+            while start >= 0:
+                match = re.match(r"^(\s*)-\s+(?:name|uses):", lines[start])
+                if match:
+                    step_indent = len(match.group(1))
+                    break
+                start -= 1
+            if step_indent is None:
+                raise AssertionError("checkout is not inside a recognizable workflow step")
+            end = start + 1
+            while end < len(lines):
+                match = re.match(r"^(\s*)-\s+(?:name|uses):", lines[end])
+                if match and len(match.group(1)) == step_indent:
+                    break
+                end += 1
+            blocks.append("\n".join(lines[start:end]))
+        return blocks
+
+    def test_fork_and_same_repo_threat_models(self) -> None:
+        self.assertEqual(
+            set(self.sources),
+            {
+                ".github/workflows/pr-v2.yml",
+                ".github/workflows/contract-drift.yml",
+                ".github/workflows/pr.yml",
+            },
+        )
+        combined = "\n".join(self.sources.values())
+        for path, source in self.sources.items():
+            with self.subTest(path=path, control="permissions"):
+                self.assertRegex(source, r"(?m)^permissions:\n  contents: read$")
+                self.assertNotRegex(source, r"(?m)^\s*[a-z-]+:\s+write$")
+                self.assertNotIn("write-all", source)
+            with self.subTest(path=path, control="token-and-runner"):
+                self.assertNotIn("secrets.", source)
+                self.assertNotIn("self-hosted", source)
+                self.assertNotRegex(source, r"(?m)^\s*runs-on:\s*\[.*self-hosted")
+            with self.subTest(path=path, control="privileged-trigger"):
+                for trigger in (
+                    "pull_request_target:",
+                    "workflow_run:",
+                    "issue_comment:",
+                    "repository_dispatch:",
+                ):
+                    self.assertNotIn(trigger, source)
+            with self.subTest(path=path, control="expression-injection"):
+                self.assertNotRegex(
+                    source,
+                    r"\$\{\{\s*github\.event\.(?:pull_request\.)?"
+                    r"(?:title|body|head\.label|head\.ref)\s*\}\}",
+                )
+
+        required = self.sources[".github/workflows/pr-v2.yml"]
+        self.assertRegex(
+            required,
+            r"types: \[opened, synchronize, reopened, labeled, unlabeled\]",
+        )
+        self.assertIn("merge_group:\n    types: [checks_requested]", required)
+        pull_request_section = required.split("  pull_request:\n", 1)[1].split(
+            "  push:\n", 1
+        )[0]
+        self.assertNotIn("paths:", pull_request_section)
+        self.assertIn("'CI / Required'", required)
+        self.assertIn(
+            "needs: [plan, contract-semantics, lint, package-tests, app-and-ui]",
+            required,
+        )
+        self.assertIn("if: ${{ always() }}", required)
+        self.assertIn("github.event_name != 'pull_request'", required)
+        self.assertIn("github.event_name != 'merge_group'", required)
+        self.assertIn("actions/cache/restore@", required)
+        self.assertIn("actions/cache/save@", required)
+        self.assertNotIn("actions/cache@", required)
+        self.assertNotIn("actions/download-artifact", combined)
+        self.assertEqual(combined.count("if-no-files-found: error"), 4)
+        for diagnostic in (
+            "ci-plan-diagnostic.txt",
+            "lint-diagnostic.txt",
+            "package-diagnostic-${SHARD}.txt",
+            "app-ui-diagnostic.txt",
+        ):
+            self.assertIn(diagnostic, required)
+        for release_coupling in ("release.yml", "TestFlight", "App Store", "ASC_KEY_ID"):
+            self.assertNotIn(release_coupling, combined)
+
+        legacy = self.sources[".github/workflows/pr.yml"]
+        self.assertIn("on:\n  workflow_dispatch:", legacy)
+        self.assertNotIn("pull_request:", legacy)
+
+    def test_action_refs_and_credentials(self) -> None:
+        external_actions = 0
+        checkouts = 0
+        for path, source in self.sources.items():
+            for line_number, line in enumerate(source.splitlines(), start=1):
+                match = re.search(r"\buses:\s*(\S+)(?:\s+#\s*(\S+))?\s*$", line)
+                if not match:
+                    continue
+                action, comment = match.groups()
+                if action.startswith("./"):
+                    continue
+                external_actions += 1
+                self.assertIn("@", action, f"{path}:{line_number}")
+                _, reference = action.rsplit("@", 1)
+                self.assertRegex(reference, self.IMMUTABLE_ACTION, f"{path}:{line_number}")
+                self.assertIsNotNone(comment, f"missing version comment at {path}:{line_number}")
+                self.assertRegex(
+                    comment or "", self.VERSION_COMMENT, f"{path}:{line_number}"
+                )
+            blocks = self.checkout_step_blocks(source)
+            checkouts += len(blocks)
+            for block in blocks:
+                self.assertIn("persist-credentials: false", block, path)
+
+        self.assertGreater(external_actions, 0)
+        self.assertGreater(checkouts, 0)
 
 
 class RepositoryCheckTests(unittest.TestCase):

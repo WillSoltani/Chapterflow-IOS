@@ -22,6 +22,16 @@ from typing import Iterable, Sequence
 SCHEMA_VERSION = 2
 GRAPH_SCHEMA_VERSION = 2
 
+SUPPORTED_EVENTS = (
+    "pull_request",
+    "push",
+    "merge_group",
+    "schedule",
+    "workflow_dispatch",
+)
+SUPPORTED_MODES = ("affected", "full", "benchmark", "clean")
+SUPPORTED_UI_OVERRIDES = ("auto", "on", "off")
+
 FOUNDATION_PACKAGES = {
     "AppFeature",
     "CoreKit",
@@ -106,6 +116,40 @@ UI_SAFE_SOURCE_PREFIXES = {
     ),
 }
 
+REASON_CODES = {
+    "app_host",
+    "ci_full_label",
+    "ci_planner_test_change",
+    "compile_boundary_gate_change",
+    "contract_semantics",
+    "contract_semantics_policy_or_verifier",
+    "diff_unavailable",
+    "docs_only",
+    "embedded_extension_change",
+    "empty_diff",
+    "execution_policy_or_shared_config",
+    "foundation_or_shared_package",
+    "manifest_or_lockfile",
+    "manual_package_override",
+    "manual_ui_off_ignored",
+    "manual_ui_on",
+    "merge_queue_full",
+    "mode_benchmark",
+    "mode_clean",
+    "mode_full",
+    "no_executable_impact",
+    "package_impact",
+    "project_configuration",
+    "push_main",
+    "scheduled_full",
+    "shared_build_configuration",
+    "shared_test_configuration",
+    "ui_risk",
+    "ui_test_surface",
+    "unknown_path",
+    "workflow_or_ci_change",
+}
+
 class PlanError(RuntimeError):
     """A deterministic planning or validation failure."""
 
@@ -133,9 +177,20 @@ def _run_git(root: Path, *args: str) -> subprocess.CompletedProcess[str]:
 
 
 def _normalise_path(raw_path: str) -> str:
-    path = raw_path.strip().replace("\\", "/")
-    candidate = PurePosixPath(path)
-    if not path or candidate.is_absolute() or ".." in candidate.parts:
+    if not isinstance(raw_path, str):
+        raise PlanError(f"changed path is not text: {raw_path!r}")
+    if not raw_path.isprintable():
+        raise PlanError(f"changed path contains a control character: {raw_path!r}")
+    if raw_path != raw_path.strip() or "\\" in raw_path:
+        raise PlanError(f"noncanonical changed path: {raw_path!r}")
+    candidate = PurePosixPath(raw_path)
+    if (
+        not raw_path
+        or not candidate.parts
+        or candidate.is_absolute()
+        or ".." in candidate.parts
+        or str(candidate) != raw_path
+    ):
         raise PlanError(f"unsafe or empty changed path: {raw_path!r}")
     return str(candidate)
 
@@ -477,6 +532,12 @@ def create_plan(
     max_shards: int,
     diff_failed: bool = False,
 ) -> dict[str, object]:
+    if event not in SUPPORTED_EVENTS:
+        raise PlanError(f"unsupported event: {event!r}")
+    if mode not in SUPPORTED_MODES:
+        raise PlanError(f"unsupported mode: {mode!r}")
+    if ui_override not in SUPPORTED_UI_OVERRIDES:
+        raise PlanError(f"unsupported UI override: {ui_override!r}")
     normalised = sorted({_normalise_path(path) for path in changed_files})
     full_packages = testable_packages(root, graph)
     weights, affinities = load_duration_weights(root)
@@ -628,6 +689,25 @@ def validate_plan(plan: dict[str, object], allowed_packages: Sequence[str]) -> N
     if plan["run_ui_tests"] and not plan["run_app_build"]:
         raise PlanError("UI tests require app build validation")
 
+    event = plan.get("event")
+    mode = plan.get("mode")
+    if event not in SUPPORTED_EVENTS:
+        raise PlanError("plan contains an unsupported event")
+    if mode not in SUPPORTED_MODES:
+        raise PlanError("plan contains an unsupported mode")
+
+    changed_files = plan.get("changed_files")
+    if not isinstance(changed_files, list) or not all(
+        isinstance(path, str) for path in changed_files
+    ):
+        raise PlanError("malformed changed file list")
+    try:
+        canonical_files = sorted({_normalise_path(path) for path in changed_files})
+    except PlanError as error:
+        raise PlanError(f"plan contains a noncanonical changed path: {error}") from error
+    if canonical_files != changed_files:
+        raise PlanError("changed file list is not canonical, sorted, and unique")
+
     affected = plan.get("affected_packages")
     if not isinstance(affected, list) or not all(
         isinstance(package, str) for package in affected
@@ -654,11 +734,44 @@ def validate_plan(plan: dict[str, object], allowed_packages: Sequence[str]) -> N
     if plan["run_full_packages"] and set(affected) != set(allowed_packages):
         raise PlanError("full validation omitted a testable package")
 
+    if plan["high_risk"] != plan["run_full_packages"]:
+        raise PlanError("high-risk and full-package decisions must agree")
+    if plan["run_full_packages"] and not all(
+        plan[field]
+        for field in (
+            "run_contract_semantics",
+            "run_lint",
+            "run_app_build",
+            "run_ui_tests",
+        )
+    ):
+        raise PlanError("full/high-risk validation omitted a required lane")
+    if plan["docs_only"] and (
+        affected
+        or plan["run_contract_semantics"]
+        or plan["run_lint"]
+        or plan["run_app_build"]
+        or plan["run_ui_tests"]
+        or plan["run_full_packages"]
+        or plan["high_risk"]
+    ):
+        raise PlanError("docs-only validation selected an executable lane")
+
+    if event in {"push", "schedule", "merge_group"} and not plan["run_full_packages"]:
+        raise PlanError(f"{event} must select full validation")
+    if mode in {"full", "benchmark", "clean"} and not plan["run_full_packages"]:
+        raise PlanError(f"{mode} mode must select full validation")
+
     reasons = plan.get("reason_codes")
     if not isinstance(reasons, list) or not reasons or not all(
         isinstance(reason, str) and reason for reason in reasons
     ):
         raise PlanError("plan has no valid reason codes")
+    unknown_reasons = set(reasons) - REASON_CODES
+    if unknown_reasons:
+        raise PlanError(f"plan has unsupported reason codes: {sorted(unknown_reasons)}")
+    if plan["docs_only"] and "docs_only" not in reasons:
+        raise PlanError("docs-only plan has no explicit safe-skip reason")
 
 
 def write_github_outputs(path: Path, plan: dict[str, object]) -> None:
@@ -707,15 +820,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base", default="origin/main")
     parser.add_argument("--head", default="HEAD")
-    parser.add_argument("--event", default="pull_request")
+    parser.add_argument("--event", choices=SUPPORTED_EVENTS, default="pull_request")
     parser.add_argument(
         "--mode",
-        choices=("affected", "full", "benchmark", "clean"),
+        choices=SUPPORTED_MODES,
         default="affected",
     )
     parser.add_argument("--labels", default="[]")
     parser.add_argument("--packages", default="")
-    parser.add_argument("--ui", choices=("auto", "on", "off"), default="auto")
+    parser.add_argument("--ui", choices=SUPPORTED_UI_OVERRIDES, default="auto")
     parser.add_argument("--max-shards", type=int, default=2)
     parser.add_argument("--changed-file", action="append", default=[])
     parser.add_argument("--output")
