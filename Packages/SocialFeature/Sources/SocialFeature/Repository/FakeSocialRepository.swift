@@ -1,3 +1,4 @@
+#if DEBUG
 import Foundation
 import Models
 import CoreKit
@@ -326,3 +327,4 @@ public actor FakeSocialRepository: SocialRepository {
         return ReferralApplyResult(success: true, message: "Referral code applied! Your friend will receive their reward.")
     }
 }
+#endif
