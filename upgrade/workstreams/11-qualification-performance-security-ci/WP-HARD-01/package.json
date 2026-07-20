@@ -54,6 +54,10 @@
       {
         "repo": "ios",
         "glob": "scripts/tests/test_ci_checks.py"
+      },
+      {
+        "repo": "ios",
+        "glob": "scripts/tests/test_ci_workflow.py"
       }
     ],
     "prohibitedPaths": [
