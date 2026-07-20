@@ -188,6 +188,26 @@ NUMERIC_PERFORMANCE_CEILINGS = {
 }
 
 
+def package_container_issues(package_id: str, package: object) -> list[str]:
+    if not isinstance(package, dict):
+        return [f"{package_id} package must be an object"]
+    issues: list[str] = []
+    ownership = package.get("ownership")
+    if not isinstance(ownership, dict):
+        issues.append(f"{package_id} ownership must be an object")
+    elif not isinstance(ownership.get("allowedPaths"), list):
+        issues.append(f"{package_id} allowedPaths must be a list")
+    if not isinstance(package.get("estimate"), dict):
+        issues.append(f"{package_id} estimate must be an object")
+    return issues
+
+
+def backlog_container_issues(backlog: object) -> list[str]:
+    if not isinstance(backlog, dict):
+        return ["backlog must be an object"]
+    return [] if isinstance(backlog.get("counts"), dict) else ["backlog counts must be an object"]
+
+
 def canonical_relative_glob(value: object, context: str, issues: list[str]) -> str | None:
     if not isinstance(value, str) or not value:
         issues.append(f"{context} must be a non-empty string")
@@ -575,6 +595,51 @@ def validate_root_accounting_self_tests(packages: dict[str, dict]) -> list[dict[
     return results
 
 
+def validate_container_shape_self_tests(
+    packages: dict[str, dict], backlog: dict,
+) -> list[dict[str, object]]:
+    native = packages.get("WP-NATIVE-01")
+    if not isinstance(native, dict):
+        fail("container-shape self-tests require WP-NATIVE-01")
+        return []
+    package_cases: list[tuple[str, dict, str]] = []
+
+    estimate_list = copy.deepcopy(native)
+    estimate_list["estimate"] = []
+    package_cases.append(("estimate-list", estimate_list, "estimate must be an object"))
+
+    ownership_list = copy.deepcopy(native)
+    ownership_list["ownership"] = []
+    package_cases.append(("ownership-list", ownership_list, "ownership must be an object"))
+
+    allowed_paths_null = copy.deepcopy(native)
+    allowed_paths_null["ownership"]["allowedPaths"] = None
+    package_cases.append(("allowed-paths-null", allowed_paths_null, "allowedPaths must be a list"))
+
+    results: list[dict[str, object]] = []
+    for case_id, mutated, expected in package_cases:
+        issues = package_container_issues("WP-NATIVE-01", mutated)
+        matched = any(expected in issue for issue in issues)
+        results.append({"case": case_id, "expected": expected, "matched": matched, "issues": issues})
+        if not matched:
+            fail(f"container-shape self-test {case_id} did not fail with {expected!r}")
+
+    backlog_counts = copy.deepcopy(backlog)
+    backlog_counts["counts"] = []
+    issues = backlog_container_issues(backlog_counts)
+    expected = "backlog counts must be an object"
+    matched = expected in issues
+    results.append({
+        "case": "backlog-counts-list",
+        "expected": expected,
+        "matched": matched,
+        "issues": issues,
+    })
+    if not matched:
+        fail("container-shape self-test backlog-counts-list did not fail")
+    return results
+
+
 def run_git(arguments: list[str]) -> tuple[bytes | None, str | None]:
     try:
         result = subprocess.run(
@@ -678,6 +743,20 @@ def validate_packages(backlog: dict, locks_doc: dict) -> dict[str, dict]:
         if package_id in packages:
             fail(f"duplicate package ID: {package_id}")
         packages[package_id] = package
+        for issue in package_container_issues(package_id, package):
+            fail(issue)
+        ownership = package.get("ownership")
+        if not isinstance(ownership, dict):
+            ownership = {}
+            package["ownership"] = ownership
+        allowed = ownership.get("allowedPaths")
+        if not isinstance(allowed, list):
+            allowed = []
+            ownership["allowedPaths"] = allowed
+        estimate = package.get("estimate")
+        if not isinstance(estimate, dict):
+            estimate = {}
+            package["estimate"] = estimate
         if path.parent.name != package_id:
             fail(f"directory/ID mismatch: {path.parent.name} != {package_id}")
         if path.parents[1].name != package.get("workstream"):
@@ -686,13 +765,13 @@ def validate_packages(backlog: dict, locks_doc: dict) -> dict[str, dict]:
             if not (path.parent / companion).is_file():
                 fail(f"{package_id} missing {companion}")
 
-        owner = package.get("ownership", {}).get("ownerLane")
-        if not owner or owner in owners:
+        owner = ownership.get("ownerLane")
+        if not isinstance(owner, str) or not owner or owner in owners:
             fail(f"{package_id} must have a unique non-empty owner lane")
-        owners.add(owner)
-        if package.get("ownership", {}).get("writableOwner") != "single":
+        else:
+            owners.add(owner)
+        if ownership.get("writableOwner") != "single":
             fail(f"{package_id} writableOwner must be single")
-        allowed = package.get("ownership", {}).get("allowedPaths", [])
         if not allowed:
             fail(f"{package_id} has no allowed paths")
         for claim_index, claim in enumerate(allowed if isinstance(allowed, list) else []):
@@ -707,12 +786,11 @@ def validate_packages(backlog: dict, locks_doc: dict) -> dict[str, dict]:
                 fail(f"{package_id} has overbroad write claim: {glob}")
             if glob.startswith("upgrade/") or glob.startswith("/Users/radinsoltani/Chapterflow-IOS"):
                 fail(f"{package_id} claims prohibited plan/owner path: {glob}")
-        prohibited_text = json.dumps(package.get("ownership", {}).get("prohibitedPaths", []))
+        prohibited_text = json.dumps(ownership.get("prohibitedPaths", []))
         for marker in ("upgrade/**", "/Users/radinsoltani/Chapterflow-IOS/**", "#117"):
             if marker not in prohibited_text:
                 fail(f"{package_id} prohibited paths omit {marker}")
 
-        estimate = package.get("estimate", {})
         minutes = estimate.get("minutes")
         planned_files = estimate.get("plannedFiles")
         max_files = estimate.get("maxFiles")
@@ -1226,6 +1304,44 @@ def split_performance_command(command: str, package_id: str) -> list[str]:
         return []
 
 
+def performance_command_shape_issues(
+    tokens: list[str],
+    *,
+    flags: dict[str, int],
+    valued_options: dict[str, int],
+) -> list[str]:
+    issues: list[str] = []
+    if tokens[:2] != ["python3", "scripts/visual/run_paired_performance.py"]:
+        issues.append("must start with exact python3 paired-runner executable")
+        return issues
+    observed_flags = {option: 0 for option in flags}
+    observed_values = {option: 0 for option in valued_options}
+    index = 2
+    while index < len(tokens):
+        token = tokens[index]
+        if token in flags:
+            observed_flags[token] += 1
+            index += 1
+            continue
+        if token in valued_options:
+            if index + 1 >= len(tokens) or tokens[index + 1].startswith("--"):
+                issues.append(f"{token} must have one value")
+                index += 1
+                continue
+            observed_values[token] += 1
+            index += 2
+            continue
+        issues.append(f"contains unexpected token {token!r}")
+        index += 1
+    for option, expected in flags.items():
+        if observed_flags[option] != expected:
+            issues.append(f"{option} must occur exactly {expected} time(s)")
+    for option, expected in valued_options.items():
+        if observed_values[option] != expected:
+            issues.append(f"{option} must occur exactly {expected} time(s)")
+    return issues
+
+
 def validate_performance_consumer_contracts(
     packages: dict[str, dict],
     budgets_by_id: dict[str, dict],
@@ -1235,6 +1351,16 @@ def validate_performance_consumer_contracts(
         fail("WP-NATIVE-01 must declare exactly one paired-runner self-test command")
     else:
         native_tokens = split_performance_command(native_commands[0], "WP-NATIVE-01")
+        for issue in performance_command_shape_issues(
+            native_tokens,
+            flags={"--self-test": 1},
+            valued_options={
+                "--self-test-budget-id": 2,
+                "--budget-manifest": 1,
+                "--output": 1,
+            },
+        ):
+            fail(f"WP-NATIVE-01 paired-runner command {issue}")
         native_allowed = {
             "--self-test", "--self-test-budget-id", "--budget-manifest", "--output",
         }
@@ -1285,6 +1411,15 @@ def validate_performance_consumer_contracts(
             "--budget-manifest", "--budget-id", "--output",
         } | set(expected["devices"])
         allowed_options = required_options | {"--instruments-template"}
+        for issue in performance_command_shape_issues(
+            tokens,
+            flags={},
+            valued_options={
+                **{option: 1 for option in required_options},
+                "--instruments-template": 2,
+            },
+        ):
+            fail(f"{package_id} paired-runner command {issue}")
         actual_options = {token for token in tokens if token.startswith("--")}
         if actual_options != allowed_options:
             fail(f"{package_id} paired-runner options drift from the canonical interface")
@@ -1357,10 +1492,71 @@ def validate_performance_consumer_contracts(
             fail(f"{package_id} budget fixture drifts from its consumer command")
 
 
+def validate_performance_command_self_tests(
+    packages: dict[str, dict],
+) -> list[dict[str, object]]:
+    native_commands = performance_commands("WP-NATIVE-01", packages)
+    reader_commands = performance_commands("WP-READER-01", packages)
+    if len(native_commands) != 1 or len(reader_commands) != 1:
+        fail("performance-command self-tests require canonical NATIVE and READER commands")
+        return []
+    native_tokens = split_performance_command(native_commands[0], "WP-NATIVE-01")
+    reader_tokens = split_performance_command(reader_commands[0], "WP-READER-01")
+    reader_valued = {
+        option: 1
+        for option in (
+            "--project", "--scheme", "--main-worktree", "--candidate-worktree",
+            "--main-sha", "--candidate-sha", "--test", "--samples", "--iphone-udid",
+            "--ipad-udid", "--operating-system", "--toolchain-id", "--fixture",
+            "--derived-data-root", "--budget-manifest", "--budget-id", "--output",
+        )
+    }
+    reader_valued["--instruments-template"] = 2
+    cases = [
+        (
+            "echo-prefix",
+            ["echo", *reader_tokens],
+            {},
+            reader_valued,
+            "exact python3 paired-runner executable",
+        ),
+        (
+            "extra-positional-suffix",
+            [*reader_tokens, "EXTRA_POSITIONAL"],
+            {},
+            reader_valued,
+            "unexpected token",
+        ),
+        (
+            "duplicate-self-test-flag",
+            [*native_tokens, "--self-test"],
+            {"--self-test": 1},
+            {"--self-test-budget-id": 2, "--budget-manifest": 1, "--output": 1},
+            "--self-test must occur exactly 1 time",
+        ),
+    ]
+    results: list[dict[str, object]] = []
+    for case_id, tokens, flags, valued_options, expected in cases:
+        issues = performance_command_shape_issues(
+            tokens,
+            flags=flags,
+            valued_options=valued_options,
+        )
+        matched = any(expected in issue for issue in issues)
+        results.append({"case": case_id, "expected": expected, "matched": matched, "issues": issues})
+        if not matched:
+            fail(f"performance-command self-test {case_id} did not fail with {expected!r}")
+    return results
+
+
 def performance_budget_issues(document: object) -> list[str]:
     issues: list[str] = []
     if not isinstance(document, dict):
         return ["performance budgets must be a JSON object"]
+    if document.get("schemaVersion") != 1:
+        issues.append("performance budget schemaVersion must remain 1")
+    if document.get("status") != "predeclared-before-implementation":
+        issues.append("performance budget status must remain predeclared-before-implementation")
     source = document.get("source")
     if not isinstance(source, dict):
         issues.append("performance budget source must be an object")
@@ -1504,6 +1700,18 @@ def validate_performance_budget_self_tests(document: object) -> list[dict[str, o
     malformed_devices["requiredDeviceClasses"] = ["compact", {"device": "ipad"}]
     cases.append(("malformed-device-classes", malformed_devices, "required device classes drift"))
 
+    schema_drift = copy.deepcopy(document)
+    schema_drift["schemaVersion"] = 999
+    cases.append(("budget-schema-drift", schema_drift, "schemaVersion must remain 1"))
+
+    status_drift = copy.deepcopy(document)
+    status_drift["status"] = "runtime-authored"
+    cases.append((
+        "budget-status-drift",
+        status_drift,
+        "status must remain predeclared-before-implementation",
+    ))
+
     results: list[dict[str, object]] = []
     for case_id, mutated, expected in cases:
         issues = performance_budget_issues(mutated)
@@ -1540,7 +1748,10 @@ def validate_performance_budgets(packages: dict[str, dict]) -> list[dict[str, ob
         and isinstance(budget.get("id"), str)
     }
     validate_performance_consumer_contracts(packages, budgets_by_id)
-    return validate_performance_budget_self_tests(document)
+    return [
+        *validate_performance_budget_self_tests(document),
+        *validate_performance_command_self_tests(packages),
+    ]
 
 
 def validate_final_remediation_contracts(packages: dict[str, dict], locks_doc: dict) -> None:
@@ -1680,6 +1891,7 @@ def validate_final_remediation_contracts(packages: dict[str, dict], locks_doc: d
         "stateSource=fixture", "transactionClaim=none", "owner-closure-required",
         "ExtensionPresentationResultInput", "DEBUG/test-only",
         "testExtensionPresentationResultInputSeparatesFixtureAndLegacyProduction",
+        "--output results/native/ui-test-membership.json",
         "production durability/success/dismiss/open claim",
         "--package-diff WP-NATIVE-01",
         "reader-toolbar.depth-option", "reader-toolbar.tone-option",
@@ -1760,11 +1972,18 @@ def main() -> int:
     locks_doc = JSON.get(ROOT / "program/resource-locks.json", {})
     root_accounting_results: list[dict[str, object]] = []
     performance_budget_results: list[dict[str, object]] = []
+    container_shape_results: list[dict[str, object]] = []
     if not all(isinstance(value, dict) for value in (backlog, dag, locks_doc)):
         fail("program JSON documents must be objects")
     else:
+        for issue in backlog_container_issues(backlog):
+            fail(issue)
+        if not isinstance(backlog.get("counts"), dict):
+            backlog["counts"] = {}
         packages = validate_packages(backlog, locks_doc)
-        root_accounting_results = validate_root_accounting_self_tests(packages)
+        if not ERRORS:
+            root_accounting_results = validate_root_accounting_self_tests(packages)
+            container_shape_results = validate_container_shape_self_tests(packages, backlog)
         validate_graph(backlog, dag, locks_doc, packages)
         validate_evaluations(backlog)
         performance_budget_results = validate_performance_budgets(packages)
@@ -1807,6 +2026,7 @@ def main() -> int:
         print(json.dumps(root_accounting_results, indent=2, sort_keys=True))
     if arguments.show_remediation_negative_tests:
         print(json.dumps({
+            "containerShapes": container_shape_results,
             "performanceBudgets": performance_budget_results,
             "rootAccounting": root_accounting_results,
         }, indent=2, sort_keys=True))
