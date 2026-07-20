@@ -9,9 +9,13 @@ Atomically claim the package, `xcode-project`, and `simulator-device`, then crea
 1. add the synchronized `ChapterFlowUITests/UpgradeEvidence` group and red tests for placeholder/equivalent/missing/mismatched evidence;
 2. bind native artifacts to deterministic inputs and candidate head;
 3. add narrow shared focus/announcement/target/status/motion primitives;
-4. produce localization and touch-target inventories with assigned owner packages and explicit exceptions;
-5. implement real localized Share/Action capture, signed-out, error, and success presentation in
-   each extension target and catalog without changing outbox transaction semantics;
+4. produce localization and touch-target inventories with stable IDs, measured/unverified status,
+   truthful compliance, explicit exceptions, and owner-closure-required findings; assign
+   `reader-toolbar.depth-option` and `reader-toolbar.tone-option` to WP-READER-01 without marking them compliant;
+5. implement target-owned localized Share/Action capture, signed-out, pending, error, and success
+   presentation plus deterministic fixtures. Keep production success unreachable from void/unverified
+   callbacks, label fixture evidence `stateSource=fixture` and `transactionClaim=none`, and stop before
+   any result-bearing outbox/controller wiring owned by WP-EXT-01;
 6. add the paired current-main/candidate iOS performance runner with pinned device/toolchain/fixture,
    isolated builds, retained XCTest/Instruments artifacts, and fail-closed budget consumption;
 7. publish exact scenario/artifact schemas for later feature packages.

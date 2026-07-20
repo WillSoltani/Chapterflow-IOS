@@ -15,6 +15,8 @@
   },
   "evidenceAnchors": [
     "ExtensionOutboxWriter",
+    "ShareViewController",
+    "ActionViewController",
     "AppModel+Extensions.drainExtensionOutbox",
     "ShareExtension",
     "ActionExtension",
@@ -41,6 +43,14 @@
       {
         "repo": "ios",
         "glob": "ChapterFlowUITests/UpgradeEvidence/ExtensionUpgradeEvidenceTests.swift"
+      },
+      {
+        "repo": "ios",
+        "glob": "ShareExtension/ShareViewController.swift"
+      },
+      {
+        "repo": "ios",
+        "glob": "ActionExtension/ActionViewController.swift"
       },
       {
         "repo": "ios",
@@ -111,7 +121,9 @@
       "Ownerless items remain quarantined unless D-DATA-01 authorizes attribution.",
       "Extensions do not open the main app SwiftData store.",
       "Every outbound private shared snapshot carries an opaque owner; WP-ENGAGE-01 publishes it and WP-NOTIFY-01 reads it after this schema integrates.",
-      "WP-NATIVE-01 supplies integrated real-localized Share/Action presentation and catalogs; this package validates those inherited surfaces while owning only transactional extension data behavior."
+      "WP-NATIVE-01 supplies integrated real-localized Share/Action presentation, catalogs, and an explicit pending/committed/failure presentation boundary; this package does not edit those views or catalogs.",
+      "The extension capture API is result-bearing and fail-closed: it returns committed only after the complete versioned envelope crosses the declared durability boundary and a fresh reader reopens and decodes the exact mutation.",
+      "Share/Action production controllers map committed to the inherited success state and exactly one success announcement before dismissal or app opening; every non-committed result preserves recoverable input and maps to inherited pending/error/retry presentation without false success."
     ]
   },
   "resourceLocks": [
@@ -120,10 +132,50 @@
   "estimate": {
     "minutes": 120,
     "validationSupportRoots": 1,
-    "plannedFiles": 15,
+    "plannedFiles": 17,
     "maxFiles": 20,
     "primaryRoots": 3,
     "maxPrimaryRoots": 3,
+    "rootAccounting": {
+      "primaryGroups": [
+        {
+          "id": "extension-transaction-boundary",
+          "paths": [
+            "ShareExtension/ShareViewController.swift",
+            "ActionExtension/ActionViewController.swift",
+            "SharedExtensionKit/**"
+          ],
+          "plannedFiles": 8
+        },
+        {
+          "id": "persistence-envelope",
+          "paths": [
+            "Packages/Persistence/Sources/Persistence/PendingExtensionItem.swift",
+            "Packages/Persistence/Sources/Persistence/ExtensionOutbox.swift",
+            "Packages/Persistence/Sources/Persistence/SharedAppStateSnapshot.swift",
+            "Packages/Persistence/Sources/Persistence/SharedStateWriter.swift",
+            "Packages/Persistence/Tests/PersistenceTests/ExtensionOutboxTests.swift",
+            "Packages/Persistence/Tests/PersistenceTests/SharedSnapshotOwnershipTests.swift"
+          ],
+          "plannedFiles": 6
+        },
+        {
+          "id": "app-import",
+          "paths": [
+            "Packages/AppFeature/Sources/AppFeature/AppModel+Extensions.swift",
+            "Packages/AppFeature/Tests/AppFeatureTests/ExtensionImportTests.swift"
+          ],
+          "plannedFiles": 2
+        }
+      ],
+      "nonPrimaryPaths": [
+        {
+          "path": "ChapterFlowUITests/UpgradeEvidence/ExtensionUpgradeEvidenceTests.swift",
+          "class": "validation-support",
+          "plannedFiles": 1
+        }
+      ]
+    },
     "splitIf": [
       "the outcome can integrate independently",
       "authorization or validation differs materially",
@@ -175,7 +227,8 @@
     "AC-EXT-01-04",
     "AC-EXT-01-05",
     "AC-EXT-01-06",
-    "AC-EXT-01-07"
+    "AC-EXT-01-07",
+    "AC-EXT-01-08"
   ],
   "validationLanes": [
     "owning package tests",

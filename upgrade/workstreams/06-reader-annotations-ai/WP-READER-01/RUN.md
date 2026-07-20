@@ -21,7 +21,10 @@ You are the sole implementation owner for **WP-READER-01 — Make reading contro
 
 1. Confirm one ReaderModel owner and retain/cancel every lifetime-sensitive chapter, preference, and progress task.
 2. Reject stale chapter/tone/depth results and treat CancellationError separately.
-3. Make controls reachable at default target sizes, with VoiceOver focus/order, Reduce Motion/Transparency, and keyboard/pointer support.
+3. Close `reader-toolbar.depth-option` and `reader-toolbar.tone-option` by providing measured
+   44×44-or-larger hit regions, then close every remaining Reader-owned target finding with runtime
+   geometry and accessibility evidence. Do not convert either known 36-point target into an exception;
+   preserve VoiceOver focus/order, Reduce Motion/Transparency, and keyboard/pointer support.
 4. Persist reader preferences and position under account/book/chapter/variant identity with debounced durable writes.
 5. Prove table of contents, previous/next chapter, background/foreground, relaunch, and adaptive reader layout.
 6. Prove account A → sign out → account B cancels stale work and clears/re-scopes chapter, variant,

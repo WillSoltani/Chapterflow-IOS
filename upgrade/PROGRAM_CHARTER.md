@@ -91,6 +91,19 @@ fake path and call the package complete.
 and participates in collision checks; broad UI-test globs and later `project.pbxproj` edits are
 forbidden. This exception cannot be used for production source, shared fixtures, or another test root.
 
+For the reviewed NATIVE/EXT/READER ownership revision, `estimate.rootAccounting` is mandatory and
+machine-validated. It assigns every allowed path exactly once to a named primary group or to a narrow
+non-primary class, and its planned-file allocations must sum exactly to `plannedFiles`. A primary
+group normally resolves to one filesystem implementation root. The sole approved multi-directory
+group is WP-EXT-01's `extension-transaction-boundary`, containing exactly
+`SharedExtensionKit/**`, `ShareExtension/ShareViewController.swift`, and
+`ActionExtension/ActionViewController.swift`. Those controllers are thin production adapters for
+the same result-bearing durable-capture contract; this grouping grants no ownership of either
+extension view, catalog, or another target file. The validator rejects every other cross-root group,
+unclassified path, duplicate assignment, catch-all, or file-allocation mismatch. This is a bounded
+reconsolidation inside WP-EXT-01's unchanged three-root and twenty-file maxima, not a general root
+exception or permission to widen another package.
+
 ## Qualification remediation lifecycle
 
 Package source metadata is immutable planning intent; live state is derived from Git and evidence as

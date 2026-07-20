@@ -220,6 +220,109 @@ def validate_packages(backlog: dict, locks_doc: dict) -> dict[str, dict]:
         if not all(isinstance(value, int) for value in (roots, max_roots)) or not (1 <= roots <= max_roots <= 3):
             fail(f"{package_id} root envelope must satisfy 1 <= roots <= max <= 3")
 
+        if package_id in {"WP-NATIVE-01", "WP-EXT-01", "WP-READER-01"}:
+            accounting = estimate.get("rootAccounting", {})
+            groups = accounting.get("primaryGroups", [])
+            non_primary = accounting.get("nonPrimaryPaths", [])
+            if not isinstance(groups, list) or len(groups) != roots:
+                fail(f"{package_id} rootAccounting must declare exactly primaryRoots groups")
+                groups = []
+            if not isinstance(non_primary, list):
+                fail(f"{package_id} rootAccounting.nonPrimaryPaths must be a list")
+                non_primary = []
+
+            allowed_globs = {
+                claim.get("glob") for claim in allowed
+                if isinstance(claim, dict) and claim.get("repo") == "ios"
+            }
+            assigned: list[str] = []
+            planned_allocation = 0
+            group_ids: set[str] = set()
+
+            def implementation_root(glob: str) -> str:
+                parts = glob.split("/")
+                if parts and parts[0] == "Packages" and len(parts) >= 2:
+                    return "/".join(parts[:2])
+                return parts[0] if parts else ""
+
+            approved_multi_root = {
+                "ShareExtension/ShareViewController.swift",
+                "ActionExtension/ActionViewController.swift",
+                "SharedExtensionKit/**",
+            }
+            for group in groups:
+                if not isinstance(group, dict):
+                    fail(f"{package_id} rootAccounting primary group must be an object")
+                    continue
+                group_id = group.get("id")
+                group_paths = group.get("paths", [])
+                group_files = group.get("plannedFiles")
+                if not isinstance(group_id, str) or not group_id or group_id in group_ids:
+                    fail(f"{package_id} rootAccounting primary group IDs must be unique and non-empty")
+                else:
+                    group_ids.add(group_id)
+                if not isinstance(group_paths, list) or not group_paths:
+                    fail(f"{package_id} rootAccounting group {group_id} has no paths")
+                    group_paths = []
+                if not isinstance(group_files, int) or group_files < 1:
+                    fail(f"{package_id} rootAccounting group {group_id} needs positive plannedFiles")
+                else:
+                    planned_allocation += group_files
+                assigned.extend(path for path in group_paths if isinstance(path, str))
+                root_keys = {implementation_root(path) for path in group_paths if isinstance(path, str)}
+                if len(root_keys) > 1 and not (
+                    package_id == "WP-EXT-01"
+                    and group_id == "extension-transaction-boundary"
+                    and set(group_paths) == approved_multi_root
+                ):
+                    fail(f"{package_id} rootAccounting group {group_id} crosses implementation roots")
+
+            allowed_non_primary_classes = {
+                "validation-support", "validation-tooling", "project-configuration"
+            }
+            validation_support_paths = 0
+            for item in non_primary:
+                if not isinstance(item, dict):
+                    fail(f"{package_id} rootAccounting non-primary entry must be an object")
+                    continue
+                path_value = item.get("path")
+                path_class = item.get("class")
+                path_files = item.get("plannedFiles")
+                if not isinstance(path_value, str) or not path_value:
+                    fail(f"{package_id} rootAccounting non-primary path must be non-empty")
+                    continue
+                assigned.append(path_value)
+                if path_class not in allowed_non_primary_classes:
+                    fail(f"{package_id} rootAccounting has invalid non-primary class {path_class}")
+                if path_class == "validation-support":
+                    validation_support_paths += 1
+                    if not path_value.startswith("ChapterFlowUITests/UpgradeEvidence/"):
+                        fail(f"{package_id} validation-support path is outside UpgradeEvidence")
+                elif path_class == "validation-tooling" and not path_value.startswith("scripts/"):
+                    fail(f"{package_id} validation-tooling path is outside scripts")
+                elif path_class == "project-configuration" and not path_value.startswith("ChapterFlow.xcodeproj/"):
+                    fail(f"{package_id} project-configuration path is outside the Xcode project")
+                if not isinstance(path_files, int) or path_files < 1:
+                    fail(f"{package_id} rootAccounting non-primary path needs positive plannedFiles")
+                else:
+                    planned_allocation += path_files
+
+            if validation_support_paths != estimate.get("validationSupportRoots"):
+                fail(f"{package_id} rootAccounting validation-support count drift")
+            if len(assigned) != len(set(assigned)):
+                fail(f"{package_id} rootAccounting assigns a path more than once")
+            if set(assigned) != allowed_globs:
+                fail(
+                    f"{package_id} rootAccounting path drift; "
+                    f"missing={sorted(allowed_globs - set(assigned))}, "
+                    f"extra={sorted(set(assigned) - allowed_globs)}"
+                )
+            if planned_allocation != planned_files:
+                fail(
+                    f"{package_id} rootAccounting planned-file allocation "
+                    f"{planned_allocation} != plannedFiles {planned_files}"
+                )
+
         primary_skills = package.get("skills", {}).get("primary", [])
         review_skills = package.get("skills", {}).get("review", [])
         routed_skills = primary_skills + review_skills
@@ -813,6 +916,63 @@ def validate_final_remediation_contracts(packages: dict[str, dict], locks_doc: d
     }
     if not required_extension_paths.issubset(native_paths) or "WP-EXT-01" not in native.get("blocks", []):
         fail("WP-NATIVE-01 must own and precede real Share/Action localization")
+    controller_paths = {
+        "ShareExtension/ShareViewController.swift",
+        "ActionExtension/ActionViewController.swift",
+    }
+    if native_paths & controller_paths:
+        fail("WP-NATIVE-01 presentation ownership must not include production extension controllers")
+
+    ext = packages.get("WP-EXT-01", {})
+    ext_paths = {claim.get("glob") for claim in ext.get("ownership", {}).get("allowedPaths", [])}
+    if not controller_paths.issubset(ext_paths) or ext_paths & required_extension_paths:
+        fail("WP-EXT-01 must own only the two production controllers, not NATIVE views/catalogs")
+    if ext.get("estimate", {}).get("plannedFiles") != 17 or ext.get("estimate", {}).get("maxFiles") != 20:
+        fail("WP-EXT-01 result wiring must remain at 17 planned files inside the unchanged 20-file cap")
+    if ext.get("estimate", {}).get("primaryRoots") != 3 or ext.get("estimate", {}).get("maxPrimaryRoots") != 3:
+        fail("WP-EXT-01 result wiring must remain inside the unchanged three-root cap")
+    if "AC-EXT-01-08" not in ext.get("acceptanceCriteria", []):
+        fail("WP-EXT-01 must fail closed on Share/Action capture failure transitions")
+
+    native_root = ROOT / "workstreams/03-native-design-accessibility-localization/WP-NATIVE-01"
+    ext_root = ROOT / "workstreams/09-routing-notifications-extensions/WP-EXT-01"
+    reader_root = ROOT / "workstreams/06-reader-annotations-ai/WP-READER-01"
+    native_contract = "\n".join(
+        (native_root / name).read_text(encoding="utf-8")
+        for name in ("SPEC.md", "RUN.md", "VALIDATE.md")
+    )
+    ext_contract = "\n".join(
+        (ext_root / name).read_text(encoding="utf-8")
+        for name in ("SPEC.md", "RUN.md", "VALIDATE.md")
+    )
+    reader_contract = "\n".join(
+        (reader_root / name).read_text(encoding="utf-8")
+        for name in ("SPEC.md", "RUN.md", "VALIDATE.md")
+    )
+    for marker in (
+        "stateSource=fixture", "transactionClaim=none", "owner-closure-required",
+        "reader-toolbar.depth-option", "reader-toolbar.tone-option",
+    ):
+        if marker not in native_contract:
+            fail(f"WP-NATIVE-01 presentation/inventory boundary omits {marker}")
+    for marker in (
+        "fresh reopen/decode", "testShareAndActionSuccessFollowsDurableCommit",
+        "testShareAndActionFailuresNeverShowSuccessOrDismiss", "AC-EXT-01-08",
+    ):
+        if marker not in ext_contract:
+            fail(f"WP-EXT-01 durable-result boundary omits {marker}")
+    for marker in (
+        "reader-toolbar.depth-option", "reader-toolbar.tone-option",
+        "READER-03-TARGETS-02", "--owner-package WP-READER-01",
+    ):
+        if marker not in reader_contract:
+            fail(f"WP-READER-01 target closure omits {marker}")
+
+    reader = packages.get("WP-READER-01", {})
+    if "WP-NATIVE-01" not in reader.get("blockedBy", []) or "WP-NATIVE-01" not in ext.get("blockedBy", []):
+        fail("NATIVE must retain its existing dependency direction into READER and EXT")
+    if len(packages) != 24:
+        fail("NATIVE/EXT/READER revision must preserve the 24-package hard cap")
     learn = packages.get("WP-LEARN-01", {})
     learn_paths = {claim.get("glob") for claim in learn.get("ownership", {}).get("allowedPaths", [])}
     required_review_paths = {

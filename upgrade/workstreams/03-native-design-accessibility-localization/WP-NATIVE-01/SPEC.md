@@ -11,14 +11,17 @@ Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend
 1. Pin deterministic data, locale, calendar, clock, animation, appearance, device, font, and candidate-head inputs.
 2. Reject placeholder/equivalent/missing/mismatched baselines; use pixel comparison only for stable content and semantic/manual evidence for OS chrome.
 3. Provide shared, narrow DesignSystem primitives for focus/announcement, non-color status, motion/transparency, and comfortable targets without redesigning features.
-4. Generate a machine-readable localization inventory and touch-target inventory with named owner packages and 44-point defaults; any 28–43-point exception requires adjacency and equivalent accessibility justification.
+4. Generate machine-readable localization and touch-target inventories with stable path-plus-symbol/control IDs, named owner packages, measured or explicitly unverified dimensions, and separate compliance status. A 28–43-point exception requires adjacency and an equivalent accessible action. Owner assignment is not compliance: WP-NATIVE-01 closes its own findings and preserves feature-owned findings for their declared package.
 5. Define exact compact/iPad/AX/real-locale/pseudo-long/RTL/contrast/motion scenario and artifact schemas that every visible package reruns on its own candidate head.
 6. Add one project-owned filesystem-synchronized `ChapterFlowUITests/UpgradeEvidence` source group so
    later packages can create only their declared exact Swift test file without editing the Xcode
    project or sharing a broad UI-test write root.
-7. Localize the visible Share and Action extension capture/signed-out/error/success states in their
-   target-owned catalogs with at least one real non-English translation, and include them in the
-   deterministic locale, RTL, focus, announcement, non-color, motion/transparency, and target matrix.
+7. Own and localize Share/Action capture, signed-out, pending, error, and success presentation in
+   target-owned catalogs with at least one real non-English translation. Exercise each state through
+   deterministic injected fixtures across locale, RTL, focus, announcement, non-color,
+   motion/transparency, contrast, and target scenarios. A NATIVE success fixture proves rendering
+   only. Production success remains unreachable from a void or unverified callback, and this package
+   does not add, remove, reorder, or reinterpret outbox, dismissal, or app-open transaction behavior.
 8. Provide a deterministic paired iOS performance runner that builds current-main before candidate,
    pins device/OS/toolchain/fixture, uses XCUITest metrics plus declared Instruments templates,
    retains raw samples/xcresults/traces, and consumes but cannot relax the predeclared budgets.
@@ -45,11 +48,13 @@ Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend
 
 ### AC-NATIVE-01-04
 
-- Given app plus Share/Action extension surfaces in a real non-English locale, pseudo-long text,
-  plurals/formatting, and RTL
-- When the semantic matrix runs
-- Then meaning, action order, reading order, and semantic media direction are preserved from each
-  target-owned catalog
+- Given deterministic Share/Action capture, signed-out, pending, error, and success presentation
+  fixtures backed by each target-owned catalog
+- When every declared real-locale, pseudo-long, plural/formatting, and RTL scenario actually executes
+- Then localized meaning, logical action and reading order, semantic media direction, focus,
+  announcements, and non-color status are preserved; each artifact records the executed inputs,
+  `stateSource: fixture`, and `transactionClaim: none`, and claims no durable write, import,
+  dismissal, or app-open ordering
 
 ### AC-NATIVE-01-05
 
@@ -59,9 +64,12 @@ Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend
 
 ### AC-NATIVE-01-06
 
-- Given every visible production surface in the inventory, including Share and Action extensions
-- When localization and target scans run
-- Then each string/surface has an owner package and every target is at least 44×44 points or has an explicit 28–43-point exception with equivalent access
+- Given every visible production string and interactive target, including Share and Action extensions
+- When localization and target inventories run
+- Then each item has a stable ID, owner package, evidence source, measurement status, and truthful
+  compliance status; every WP-NATIVE-01-owned target is at least 44×44 points or has a validated
+  28–43-point equivalent-access exception, while every out-of-package sub-44 or unverified target
+  remains `owner-closure-required` and is never reported compliant
 
 ### AC-NATIVE-01-07
 
@@ -79,7 +87,17 @@ Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend
 
 The harness and shared primitives do not own feature redesign or product authority. This package's
 visible product edit is limited to Share/Action localization and accessibility presentation; it does
-not change their outbox transaction semantics. Evidence contains no private content, identifiers, or tokens. Feature packages generate their own candidate-head artifacts and close their assigned inventory. The synchronized UI-test group grants ownership only to each exact package-declared test file; later packages never edit the project or another package's tests. iOS 18 retains the same user outcome as enhanced APIs; there is no universal spacing-grid claim. Revert harness, project membership, primitives, extension localization, metadata, and baselines together; never retain silent skips or mass-approved baselines.
+not change their outbox transaction semantics. Presentation-state names do not imply transaction
+success. Until WP-EXT-01 integrates, a void or unverified production callback cannot trigger success
+copy, a success announcement, dismissal, or app opening as proof of persistence; if preserving that
+boundary requires a transaction-path edit, stop `BLOCKED_SCOPE_REPLAN`. Evidence contains no private
+content, identifiers, or tokens. Feature packages generate their own candidate-head artifacts and
+close their assigned inventory; `reader-toolbar.depth-option` and `reader-toolbar.tone-option` remain
+open for WP-READER-01 until its exact-head evidence closes them. The synchronized UI-test group grants
+ownership only to each exact package-declared test file; later packages never edit the project or
+another package's tests. iOS 18 retains the same user outcome as enhanced APIs; there is no universal
+spacing-grid claim. Revert harness, project membership, primitives, extension localization, metadata,
+and baselines together; never retain silent skips or mass-approved baselines.
 
 ## Test plan and definition of done
 
