@@ -34,7 +34,8 @@ Atomically claim the package, `xcode-project`, and `simulator-device`, then crea
    unchanged production controllers. The evidence build must be Debug-only, require
    `CF_NATIVE_EXTENSION_EVIDENCE_BUILD`, include the host, exclude `ShareViewController.swift` and
    `ActionViewController.swift`, preserve their principal class names and existing Info.plists, and
-   fail compilation for missing, dual, cross-wired, or non-DEBUG conditions;
+   fail project validation or compilation before runtime for missing, dual, cross-wired, or
+   non-DEBUG conditions;
 7. drive a privacy-safe versioned text fixture from a containing/system host through the system
    extension UI into the installed `ShareExtension.appex` and `ActionExtension.appex`. Observe the
    actual extension process and target-owned fixture hierarchy for every state/dimension. Source

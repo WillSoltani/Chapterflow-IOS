@@ -145,7 +145,7 @@ initializer cannot be selected by production construction. The shared evidence h
 the two extension source phases, is excluded from ordinary Debug and Release, and compiles only with
 `DEBUG`, `CF_NATIVE_EXTENSION_EVIDENCE_BUILD`, and exactly one target flag. Evidence builds exclude
 the production controllers without changing them or either Info.plist; malformed flag/source
-combinations fail compilation. WP-EXT-01 exclusively owns the
+combinations fail project validation or compilation before runtime. WP-EXT-01 exclusively owns the
 result-bearing writer/controller transition and all production durability, success, announcement,
 dismissal, and app-open truth; NATIVE must stop before changing that transaction path.
 Evidence contains no private content, identifiers, or tokens. Feature packages generate their own
