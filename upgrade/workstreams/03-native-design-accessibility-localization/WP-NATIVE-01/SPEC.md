@@ -29,7 +29,27 @@ Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend
    result-provider overload that accepts `ExtensionPresentationResultInput` without performing or
    interpreting a transaction. WP-EXT-01 alone supplies that provider and owns production durability,
    result mapping, success/failure proof, dismissal, and app opening.
-8. Provide a deterministic paired iOS performance runner with one canonical fail-closed CLI. It
+8. Replace exactly `scripts/localization/scenarios.json` with the single shared DEBUG evidence source
+   `scripts/localization/NativeExtensionEvidenceHost.swift`, keeping the exact 20-file manifest and
+   every existing root/allocation. Move the complete former localization envelope, schemas, fixtures,
+   and scenarios under `scripts/visual/native-matrix.json#localizationMatrix`; the retained validator
+   consumes it with `--manifest-key localizationMatrix`, while the distinct runtime matrix remains the
+   authority for actual target execution. Add the host as one explicit file reference and exactly one
+   source-phase entry in each extension target, never the main app or UI-test bundle. Per-file
+   conditions are `CF_NATIVE_SHARE_EVIDENCE_TARGET` and `CF_NATIVE_ACTION_EVIDENCE_TARGET`.
+   Ordinary Debug and Release builds exclude the host. The evidence build is Debug-only, requires
+   `CF_NATIVE_EXTENSION_EVIDENCE_BUILD`, and uses `EXCLUDED_SOURCE_FILE_NAMES` through
+   `CF_NATIVE_EXTENSION_EXCLUDED_SOURCES` to exclude `ShareViewController.swift` and
+   `ActionViewController.swift`. The host supplies those unchanged principal class names, parses a
+   versioned privacy-safe system-host fixture token, and instantiates the actual target-local DEBUG
+   seam. The existing controllers and Info.plists remain read-only.
+9. Invoke the installed `ShareExtension.appex` and `ActionExtension.appex` through a real
+   containing/system host and system extension UI. Bind the observed extension bundle/process,
+   scenario token, target-owned view hierarchy, candidate head, and artifact digests. Source scanning,
+   importing extension views into the main app or UI-test bundle, direct `.appex` launch, hardcoded
+   markers, or static fixture claims do not satisfy runtime evidence. Action-extension discovery and
+   invocation must pass on the pinned simulator; nondeterministic discovery is a blocker, not a skip.
+10. Provide a deterministic paired iOS performance runner with one canonical fail-closed CLI. It
    verifies exact current-main/candidate worktrees and expected HEADs, builds current-main before
    candidate, consumes the selected structured budget ID, pins the budget-declared device classes,
    OS, toolchain, fixture, samples, and Hangs/SwiftUI templates, isolates DerivedData, and retains raw
@@ -76,6 +96,15 @@ Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend
   Cancel; fixture injection is DEBUG/test-only and unreachable from production construction; and the
   typed production seam remains consumable by WP-EXT-01 without editing either view or catalog
 
+- Given the guarded extension evidence build
+- When its containing app is installed and the Share and Action extensions are selected through a
+  containing/system host's system UI
+- Then each real `.appex` runs its target-specific evidence principal controller, instantiates the
+  actual target-local DEBUG fixture seam, and emits exact-head presentation/localization/accessibility
+  evidence with `stateSource=fixture` and `transactionClaim=none`; the evidence build excludes both
+  production controllers, while ordinary Debug and Release builds exclude the evidence host and
+  include those controllers under the unchanged Info.plists
+
 ### AC-NATIVE-01-05
 
 - Given stable content and OS-dependent chrome/material surfaces
@@ -112,7 +141,11 @@ success. Until WP-EXT-01 integrates, NATIVE preserves the existing production in
 not its unsafe void-success behavior: the legacy capture path fails immediately and visibly without
 invoking its void callback, retains recoverable input, clears busy state, and leaves Cancel available,
 so the temporary degradation neither hangs nor silently loses data. The DEBUG/test-only fixture
-initializer cannot be selected by production construction. WP-EXT-01 exclusively owns the
+initializer cannot be selected by production construction. The shared evidence host belongs only to
+the two extension source phases, is excluded from ordinary Debug and Release, and compiles only with
+`DEBUG`, `CF_NATIVE_EXTENSION_EVIDENCE_BUILD`, and exactly one target flag. Evidence builds exclude
+the production controllers without changing them or either Info.plist; malformed flag/source
+combinations fail compilation. WP-EXT-01 exclusively owns the
 result-bearing writer/controller transition and all production durability, success, announcement,
 dismissal, and app-open truth; NATIVE must stop before changing that transaction path.
 Evidence contains no private content, identifiers, or tokens. Feature packages generate their own
@@ -121,8 +154,20 @@ candidate-head artifacts and close their assigned inventory; `reader-toolbar.dep
 The synchronized UI-test group grants ownership only to each exact package-declared test file; later
 packages never edit the project or another package's tests. iOS 18 retains the same user outcome as
 enhanced APIs; there is no universal spacing-grid claim. Revert harness, project membership,
-primitives, extension localization, metadata, and baselines together; never retain silent skips or
-mass-approved baselines.
+primitives, extension localization, metadata, and baselines together. The path exchange rolls back
+atomically: remove the evidence-host membership/source, restore the standalone localization scenario
+file and validator input, and restore the before manifest. Never retain a partial source/oracle swap,
+silent skips, or mass-approved baselines.
+
+## Platform authority
+
+Apple defines an app extension as a separate process whose lifecycle begins when a person selects it
+through a host app's UI, and directs XCTest-based extension tests to use the containing app as the
+host environment. The evidence host therefore changes only the DEBUG extension entry controller and
+still requires real host-mediated `.appex` invocation; direct executable launch or source import is
+not equivalent. See [Understand How an App Extension Works](https://developer.apple.com/library/archive/documentation/General/Conceptual/ExtensibilityPG/ExtensionOverview.html),
+[Creating an App Extension](https://developer.apple.com/library/archive/documentation/General/Conceptual/ExtensibilityPG/ExtensionCreation.html),
+and [Adding tests to your Xcode project](https://developer.apple.com/documentation/xcode/adding-tests-to-your-xcode-project).
 
 ## Test plan and definition of done
 

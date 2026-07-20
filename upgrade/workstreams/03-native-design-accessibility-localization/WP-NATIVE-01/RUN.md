@@ -22,11 +22,30 @@ Atomically claim the package, `xcode-project`, and `simulator-device`, then crea
    localized retry/error. Expose a distinct typed production result-provider overload for WP-EXT-01,
    then stop before its result-bearing outbox/controller wiring or transaction validation. This is
    the source-compatible production initializer/callback boundary; NATIVE makes no production durability/success/dismiss/open claim;
-6. add the paired current-main/candidate iOS performance runner with the exact canonical worktree,
+6. perform the exact cap-neutral support-path exchange: remove
+   `scripts/localization/scenarios.json`, add
+   `scripts/localization/NativeExtensionEvidenceHost.swift`, and move the complete localization
+   schema/oracle under `scripts/visual/native-matrix.json#localizationMatrix` for the retained
+   validator's `--manifest-key localizationMatrix` input. In `project.pbxproj`, give the host exactly
+   one explicit membership in each extension source phase and none in the main app or UI-test bundle.
+   Use per-target flags `CF_NATIVE_SHARE_EVIDENCE_TARGET` and
+   `CF_NATIVE_ACTION_EVIDENCE_TARGET`. Ordinary Debug and Release must exclude the host through
+   `EXCLUDED_SOURCE_FILE_NAMES` and `CF_NATIVE_EXTENSION_EXCLUDED_SOURCES` while including the
+   unchanged production controllers. The evidence build must be Debug-only, require
+   `CF_NATIVE_EXTENSION_EVIDENCE_BUILD`, include the host, exclude `ShareViewController.swift` and
+   `ActionViewController.swift`, preserve their principal class names and existing Info.plists, and
+   fail compilation for missing, dual, cross-wired, or non-DEBUG conditions;
+7. drive a privacy-safe versioned text fixture from a containing/system host through the system
+   extension UI into the installed `ShareExtension.appex` and `ActionExtension.appex`. Observe the
+   actual extension process and target-owned fixture hierarchy for every state/dimension. Source
+   scanning, direct `.appex` launch, main app or UI-test bundle source import, hardcoded marker-only
+   proof, and static fixture claims are forbidden substitutes. Record `stateSource=fixture` and
+   `transactionClaim=none`; make no write, durability, production-success, dismissal, or app-open claim;
+8. add the paired current-main/candidate iOS performance runner with the exact canonical worktree,
    expected-HEAD, budget-ID, device, OS, toolchain, fixture, sample, trace-template, DerivedData, and
    artifact-directory interface consumed by WP-READER-01 and WP-GRAPH-01; self-test both complete
    consumer plans, build main first, retain XCTest/Instruments artifacts, and reject legacy,
    mismatched, missing, duplicate, or relaxed inputs;
-7. publish exact scenario/artifact schemas for later feature packages.
+9. publish exact scenario/artifact schemas for later feature packages.
 
 Run every AC selector and supporting gate. Each selector must match at least one test with zero failures/skips/waivers. Commit a candidate before validation and independent exact-head review; any remediation creates a new head. Publish/merge only when all predicates hold. Never approve product baselines in bulk, redesign features, perform release work, or touch PR #117.
