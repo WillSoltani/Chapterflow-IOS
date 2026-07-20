@@ -370,6 +370,46 @@ NATIVE_AC07_COMMAND = (
     "--root ChapterFlowUITests/UpgradeEvidence --require-target ChapterFlowUITests "
     "--output results/native/ui-test-membership.json"
 )
+NATIVE_AC04_UNIT_COMMAND = (
+    "python3 scripts/localization/validate_matrix.py "
+    "--manifest scripts/visual/native-matrix.json --manifest-key localizationMatrix "
+    "--candidate <SHA> --output results/native/localization.json"
+)
+NATIVE_AC04_EXTENSION_COMMAND = (
+    "python3 scripts/visual/run_native_matrix.py --project ChapterFlow.xcodeproj "
+    "--scheme ChapterFlow "
+    "--test ChapterFlowUITests/NativeEvidenceTests/testShareActionLocalizedAccessibilityMatrix "
+    "--iphone-udid <PINNED_IPHONE_UDID> --ipad-udid <PINNED_IPAD_UDID> "
+    "--scenarios scripts/visual/native-matrix.json "
+    "--derived-data /private/tmp/Chapterflow-DD-native-extensions-<SHA> "
+    "--require-dimensions light,dark,compact-iphone,regular-ipad,accessibility,voiceover,"
+    "increased-contrast,reduce-motion,reduce-transparency,real-locale,pseudo-long,rtl,keyboard-pointer "
+    "--extension-evidence-host scripts/localization/NativeExtensionEvidenceHost.swift "
+    "--extension-evidence-condition CF_NATIVE_EXTENSION_EVIDENCE_BUILD "
+    "--source-exclusion-variable CF_NATIVE_EXTENSION_EXCLUDED_SOURCES "
+    "--exclude-production-source ShareViewController.swift "
+    "--exclude-production-source ActionViewController.swift "
+    "--require-appex ShareExtension.appex --require-appex ActionExtension.appex "
+    "--require-containing-or-system-host-invocation "
+    "--output results/native/extension-localization-matrix"
+)
+NATIVE_AC04_BOUNDARY_COMMAND = (
+    "xcodebuild test -project ChapterFlow.xcodeproj -scheme ChapterFlow -configuration Debug "
+    "-derivedDataPath /private/tmp/Chapterflow-DD-native-extension-boundary-<SHA> "
+    "-destination 'platform=iOS Simulator,id=<PINNED_UDID>' "
+    "-resultBundlePath results/native/extension-presentation-boundary.xcresult "
+    "-only-testing:ChapterFlowUITests/NativeEvidenceTests/"
+    "testExtensionPresentationResultInputSeparatesFixtureAndLegacyProduction "
+    "-parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO "
+    "SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) CF_NATIVE_EXTENSION_EVIDENCE_BUILD' "
+    "CF_NATIVE_EXTENSION_EXCLUDED_SOURCES='ShareViewController.swift ActionViewController.swift'"
+)
+EXPECTED_NATIVE_ASSERTION_COMMANDS = {
+    "NATIVE-04-UNIT-01": NATIVE_AC04_UNIT_COMMAND,
+    "NATIVE-04-EXTENSION-02": NATIVE_AC04_EXTENSION_COMMAND,
+    "NATIVE-04-PRODUCTION-BOUNDARY-03": NATIVE_AC04_BOUNDARY_COMMAND,
+    "NATIVE-07-PROJECT-01": NATIVE_AC07_COMMAND,
+}
 EXPECTED_PERFORMANCE_BUDGET_DIGESTS = {
     "PERF-COLD-LAUNCH": "db0518f9180f9fe4f4eb4bd332d97649956823ef04127df5b84c6b2e8b6f0259",
     "PERF-READER-HITCH": "064d0451ffa7b2773504463a5145aea9310a04ecaab1777e871698e5d1a553ca",
@@ -868,6 +908,32 @@ def validate_root_accounting_self_tests(packages: dict[str, dict]) -> list[dict[
     return results
 
 
+def native_assertion_command_issues(native_validate: str) -> list[str]:
+    issues: list[str] = []
+    rows_by_assertion: dict[str, list[list[str]]] = {}
+    for line in native_validate.splitlines():
+        if not line.startswith("|"):
+            continue
+        cells = [cell.strip() for cell in line.split("|")[1:-1]]
+        if len(cells) < 3:
+            continue
+        rows_by_assertion.setdefault(cells[1], []).append(cells)
+    for assertion_id, expected_command in EXPECTED_NATIVE_ASSERTION_COMMANDS.items():
+        rows = rows_by_assertion.get(assertion_id, [])
+        if len(rows) != 1:
+            issues.append(f"{assertion_id} must have exactly one validation row")
+            continue
+        command_cell = rows[0][2]
+        match = re.fullmatch(r"`([^`]*)`", command_cell)
+        if match is None:
+            issues.append(f"{assertion_id} command cell must contain one literal command")
+            continue
+        actual_command = match.group(1)
+        if actual_command != expected_command:
+            issues.append(f"{assertion_id} command drifted from the exact reviewed literal")
+    return issues
+
+
 def native_extension_host_issues(
     packages: dict[str, dict],
     native_contract: str,
@@ -985,8 +1051,7 @@ def native_extension_host_issues(
             issues.append(f"WP-NATIVE-01 extension host contract omits {marker}")
     if "--manifest-key localizationMatrix" not in native_validate:
         issues.append("WP-NATIVE-01 localization oracle was not moved to localizationMatrix")
-    if NATIVE_AC07_COMMAND not in native_validate:
-        issues.append("WP-NATIVE-01 AC07 project-membership command drifted")
+    issues.extend(native_assertion_command_issues(native_validate))
     for marker in ("reader-toolbar.depth-option", "reader-toolbar.tone-option", "WP-READER-01"):
         if marker not in reader_contract:
             issues.append(f"WP-READER-01 touch-target ownership contract omits {marker}")
@@ -1137,9 +1202,41 @@ def validate_native_extension_host_self_tests(packages: dict[str, dict]) -> list
     )
     add("reader-ownership-broadened", reader_broadened, "WP-READER-01 ownership drifted")
 
+    static_extension_validate = native_validate.replace(
+        f"`{NATIVE_AC04_EXTENSION_COMMAND}`",
+        f"`{NATIVE_AC04_UNIT_COMMAND}`",
+    )
     add(
-        "ac07-command-weakened", copy.deepcopy(packages), "AC07 project-membership command drifted",
-        validate=native_validate.replace(NATIVE_AC07_COMMAND, "python3 true"),
+        "extension-runtime-static-substitution", copy.deepcopy(packages),
+        "NATIVE-04-EXTENSION-02 command drifted",
+        validate=static_extension_validate,
+    )
+    relocated_ac07_validate = native_validate.replace(
+        f"`{NATIVE_AC07_COMMAND}`",
+        f"`{NATIVE_AC04_UNIT_COMMAND}`",
+    ) + f"\n<!-- relocated but non-executable: {NATIVE_AC07_COMMAND} -->\n"
+    add(
+        "ac07-command-relocated", copy.deepcopy(packages),
+        "NATIVE-07-PROJECT-01 command drifted",
+        validate=relocated_ac07_validate,
+    )
+    weakened_unit_validate = native_validate.replace(
+        "--manifest-key localizationMatrix", "--manifest-key staticClaim", 1,
+    )
+    add(
+        "localization-row-weakened", copy.deepcopy(packages),
+        "NATIVE-04-UNIT-01 command drifted",
+        validate=weakened_unit_validate,
+    )
+    weakened_boundary_validate = native_validate.replace(
+        "CF_NATIVE_EXTENSION_EXCLUDED_SOURCES='ShareViewController.swift ActionViewController.swift'",
+        "CF_NATIVE_EXTENSION_EXCLUDED_SOURCES=''",
+        1,
+    )
+    add(
+        "boundary-controller-exclusion-weakened", copy.deepcopy(packages),
+        "NATIVE-04-PRODUCTION-BOUNDARY-03 command drifted",
+        validate=weakened_boundary_validate,
     )
     add(
         "reader-touch-ownership-removed", copy.deepcopy(packages), "touch-target ownership contract omits",
