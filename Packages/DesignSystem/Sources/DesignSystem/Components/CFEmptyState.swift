@@ -38,18 +38,24 @@ public struct CFEmptyState: View {
                     // .glass ButtonStyle ships with iOS 26 SDK (Xcode 26 / Swift 6.1+).
 #if swift(>=6.2)
                     if #available(iOS 26, macOS 26, *) {
-                        Button(label, action: action)
-                            .frame(minWidth: 44, minHeight: 44)
+                        Button(action: action) {
+                            Text(label)
+                                .frame(minWidth: 44, minHeight: 44)
+                        }
                             .buttonStyle(.glass)
                     } else {
-                        Button(label, action: action)
-                            .frame(minWidth: 44, minHeight: 44)
+                        Button(action: action) {
+                            Text(label)
+                                .frame(minWidth: 44, minHeight: 44)
+                        }
                             .buttonStyle(.bordered)
                             .tint(.cfAccent)
                     }
 #else
-                    Button(label, action: action)
-                        .frame(minWidth: 44, minHeight: 44)
+                    Button(action: action) {
+                        Text(label)
+                            .frame(minWidth: 44, minHeight: 44)
+                    }
                         .buttonStyle(.bordered)
                         .tint(.cfAccent)
 #endif
