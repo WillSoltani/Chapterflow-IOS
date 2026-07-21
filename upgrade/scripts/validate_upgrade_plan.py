@@ -540,7 +540,17 @@ EXPECTED_NATIVE_RUNTIME_INTEGRATED_PLAN_PATHS = [
     "upgrade/workstreams/03-native-design-accessibility-localization/WP-NATIVE-01/package.json",
 ]
 EXPECTED_NATIVE_RUNTIME_INTEGRATED_PLAN_MAIN = "bb77cad011f1918d6f453167cc2e013e6b8d884f"
+EXPECTED_NATIVE_RUNTIME_AGGREGATE_PRODUCT_BASE = "bb77cad011f1918d6f453167cc2e013e6b8d884f"
 EXPECTED_NATIVE_RUNTIME_RECONCILED_BASE = "887c5778f80c8fec4869ff1b6a5d7ab7b79e7f5c"
+EXPECTED_NATIVE_RUNTIME_FIRST_CORRECTED_HEAD = "f1fc5a9083821951f2ea8d3d6fe8412de7b0dea5"
+EXPECTED_NATIVE_RUNTIME_FIRST_CORRECTED_TREE = "3b311b5e7bdcab4f876714d91d88a7baaa586ce0"
+EXPECTED_NATIVE_RUNTIME_REMAINING_FINDINGS = [
+    "exact-localization-formatting-rtl-oracle-comparisons",
+    "exact-automatable-accessibility-semantics-and-explicit-manual-qualification-boundaries",
+    "per-record-exact-privacy-safe-fixture-payload-digest",
+    "production-boundary-runtime-executable-and-Info.plist-identity-bound-to-built-appex",
+    "execute-four-candidate-negative-cli-paths",
+]
 EXPECTED_NATIVE_SYSTEM_TRAITS = [
     "colorSchemeContrast",
     "accessibilityReduceMotion",
@@ -1232,6 +1242,7 @@ def native_runtime_evidence_issues(
             "reviewedCandidate": "39843e6d6a0e3468f61ed86f180500bdb7529c44",
             "reviewedTree": "9afbb87bb859ead2dad46f180da2911e119e62c3",
             "integratedPlanMain": EXPECTED_NATIVE_RUNTIME_INTEGRATED_PLAN_MAIN,
+            "aggregateProductManifestBase": EXPECTED_NATIVE_RUNTIME_AGGREGATE_PRODUCT_BASE,
             "reconciledCorrectionBase": EXPECTED_NATIVE_RUNTIME_RECONCILED_BASE,
             "ownerTaskId": "019f7d18-71fa-7102-b3b4-6fa43842963e",
             "packageClaim": "retained-by-WP-NATIVE-01",
@@ -1250,6 +1261,11 @@ def native_runtime_evidence_issues(
         else:
             if next_correction.get("maximumCycles") != 1:
                 issues.append("runtime evidence correction must authorize exactly one cycle")
+            if (
+                next_correction.get("acceptedHead") != EXPECTED_NATIVE_RUNTIME_FIRST_CORRECTED_HEAD
+                or next_correction.get("acceptedTree") != EXPECTED_NATIVE_RUNTIME_FIRST_CORRECTED_TREE
+            ):
+                issues.append("runtime evidence first correction acceptance identity drifted")
             if next_correction.get("authorizedProductPaths") != EXPECTED_NATIVE_RUNTIME_CORRECTION_PATHS:
                 issues.append("runtime evidence correction must preserve the exact six-file product envelope")
             if next_correction.get("authorizedProductPathCount") != 6:
@@ -1265,6 +1281,50 @@ def native_runtime_evidence_issues(
                 "twenty-first-candidate-path", "new-lock", "acceptance-gate-weakening",
             ]:
                 issues.append("runtime evidence correction forbidden expansion contract drifted")
+        additional = authority.get("additionalCorrection")
+        if not isinstance(additional, dict):
+            issues.append("runtime evidence additionalCorrection must be an object")
+        else:
+            if (
+                additional.get("authorizedBy") != "owner-controller-explicit"
+                or additional.get("authorizationScope")
+                != "exactly-one-additional-adjudicated-correction-cycle"
+                or additional.get("base") != EXPECTED_NATIVE_RUNTIME_FIRST_CORRECTED_HEAD
+                or additional.get("baseTree") != EXPECTED_NATIVE_RUNTIME_FIRST_CORRECTED_TREE
+                or additional.get("maximumCycles") != 1
+            ):
+                issues.append("runtime evidence additional correction authority or base drifted")
+            if additional.get("reviewDisposition") != {
+                "status": "not-clear", "P0": 0, "P1": 3, "P2": 3,
+            }:
+                issues.append("runtime evidence additional correction must preserve the six adjudicated findings")
+            if additional.get("resolvedPlanFinding") != (
+                "aggregate-supporting-gate-must-use-retained-product-manifest-base"
+            ):
+                issues.append("runtime evidence aggregate product-manifest finding drifted")
+            if additional.get("remainingProductFindings") != EXPECTED_NATIVE_RUNTIME_REMAINING_FINDINGS:
+                issues.append("runtime evidence additional correction must name the exact five product findings")
+            if additional.get("staticReviewGate") != {
+                "timing": "before-xcode",
+                "exactHead": True,
+                "requiredDisposition": {"P0": 0, "P1": 0, "P2": 0},
+            }:
+                issues.append("runtime evidence additional correction requires clear exact-head static review before Xcode")
+            if additional.get("authorizedProductPaths") != EXPECTED_NATIVE_RUNTIME_CORRECTION_PATHS:
+                issues.append("runtime evidence additional correction must preserve the exact six-file product envelope")
+            if additional.get("authorizedProductPathCount") != 6:
+                issues.append("runtime evidence additional correction authorizedProductPathCount must equal six")
+            if (
+                additional.get("candidateManifestPathCount") != 20
+                or additional.get("candidateManifestMaxFiles") != 20
+                or additional.get("candidateManifestMaxPrimaryRoots") != 3
+            ):
+                issues.append("runtime evidence additional correction must preserve the 20-path/three-root cap")
+            if additional.get("forbiddenExpansion") != [
+                "new-product-file", "new-target", "generic-evidence-framework",
+                "twenty-first-candidate-path", "new-lock", "acceptance-gate-weakening",
+            ]:
+                issues.append("runtime evidence additional correction forbidden expansion contract drifted")
 
     if native.get("resourceLocks") != ["xcode-project", "simulator-device"]:
         issues.append("runtime evidence correction must preserve existing package locks")
@@ -1374,7 +1434,8 @@ def native_runtime_evidence_issues(
         "exactly 62", "exactly two xcresults", "token-scoped observers",
         "exact payload", "configuration digests", "process/executable/Info.plist",
         "stop on the first deterministic mismatch", "nonzero exact",
-        "--require-correction-envelope", "attempt-chain ID",
+        "--require-correction-envelope", "attempt-chain ID", "retained aggregate product-manifest base",
+        "fresh exact-head static review", "four candidate-negative CLI paths",
     ):
         if marker.lower() not in normalized_contract:
             issues.append(f"runtime evidence contract prose omits {marker}")
@@ -2191,11 +2252,37 @@ def correction_reconciliation_observation_issues(
         issues.append("WP-NATIVE-01 reconciliation product blobs differ from the reviewed candidate")
     if not corrected_descends_from_reconciled_base:
         issues.append("WP-NATIVE-01 corrected head must descend from the reconciled correction base")
+    if next_correction.get("acceptedHead") != EXPECTED_NATIVE_RUNTIME_FIRST_CORRECTED_HEAD:
+        issues.append("WP-NATIVE-01 first correction accepted head drifted")
     allowed = next_correction.get("authorizedProductPaths")
     if not correction_paths:
         issues.append("WP-NATIVE-01 correction diff must change at least one authorized path")
     if not isinstance(allowed, list) or any(path not in allowed for path in correction_paths):
         issues.append("WP-NATIVE-01 correction diff escaped the exact six-file product envelope")
+    return issues
+
+
+def additional_correction_observation_issues(
+    package: dict,
+    requested_base: str,
+    corrected_descends_from_base: bool,
+    correction_paths: list[str],
+) -> list[str]:
+    correction = package.get("runtimeEvidenceCorrection")
+    authority = correction.get("authority") if isinstance(correction, dict) else None
+    additional = authority.get("additionalCorrection") if isinstance(authority, dict) else None
+    if not isinstance(additional, dict):
+        return ["WP-NATIVE-01 has no additional runtime correction envelope"]
+    issues: list[str] = []
+    if requested_base != additional.get("base"):
+        issues.append("WP-NATIVE-01 additional correction base must equal frozen f1fc5a9 candidate")
+    if not corrected_descends_from_base:
+        issues.append("WP-NATIVE-01 additional corrected head must descend from frozen f1fc5a9 candidate")
+    allowed = additional.get("authorizedProductPaths")
+    if not correction_paths:
+        issues.append("WP-NATIVE-01 additional correction diff must change at least one authorized path")
+    if not isinstance(allowed, list) or any(path not in allowed for path in correction_paths):
+        issues.append("WP-NATIVE-01 additional correction diff escaped the exact six-file product envelope")
     return issues
 
 
@@ -2216,6 +2303,21 @@ def correction_reconciliation_issues(
         reviewed_candidate, integrated_plan_main, reconciled_base,
     )):
         return ["WP-NATIVE-01 runtime correction reconciliation identities are invalid"]
+
+    additional = authority.get("additionalCorrection")
+    additional_base = additional.get("base") if isinstance(additional, dict) else None
+    if base == additional_base:
+        _, descendant_error = run_git(["merge-base", "--is-ancestor", base, head])
+        return additional_correction_observation_issues(
+            package, base, descendant_error is None, correction_paths,
+        )
+    if base != reconciled_base:
+        return [
+            "WP-NATIVE-01 correction base must equal the reconciled correction base "
+            "or frozen f1fc5a9 additional-correction base"
+        ]
+    if head != EXPECTED_NATIVE_RUNTIME_FIRST_CORRECTED_HEAD:
+        return ["WP-NATIVE-01 first correction envelope head must equal accepted f1fc5a9 candidate"]
 
     errors: list[str] = []
     parents_output, parents_error = run_git(["show", "-s", "--format=%P", reconciled_base])

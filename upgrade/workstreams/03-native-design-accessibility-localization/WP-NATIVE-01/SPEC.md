@@ -72,18 +72,26 @@ Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend
     executed case set must be identical and unique, with exactly `matched=20`, `passed=20`,
     `failed=0`, and `skipped=0`. Missing, duplicate, silently unexecuted, altered, skipped, or
     expectation-drifted cases fail the command.
-12. Resume exactly one correction cycle against reviewed candidate
-    `39843e6d6a0e3468f61ed86f180500bdb7529c44` / tree
-    `9afbb87bb859ead2dad46f180da2911e119e62c3`. The package claim remains with WP-NATIVE-01;
-    `xcode-project` and `simulator-device` were released and must be reacquired before their next use.
-    The correction may edit only the five reviewed runtime files plus
-    `scripts/visual/native-matrix.json`: `ActionExtension/ActionView.swift`,
+12. Preserve the accepted first correction from reconciled base
+    `887c5778f80c8fec4869ff1b6a5d7ab7b79e7f5c` to frozen product candidate
+    `f1fc5a9083821951f2ea8d3d6fe8412de7b0dea5`. The retained aggregate product-manifest base is
+    separately `bb77cad011f1918d6f453167cc2e013e6b8d884f`; its diff to `f1fc5a9` is exactly the 20
+    product paths and must not use `840e0a4`, whose diff also includes five integrated plan paths.
+    Owner/controller authorization permits exactly one additional adjudicated correction cycle from
+    `f1fc5a9` under retained task `019f7d18-71fa-7102-b3b4-6fa43842963e`. It may edit only these
+    exact six paths: `ActionExtension/ActionView.swift`,
     `ShareExtension/ShareView.swift`,
     `ChapterFlowUITests/UpgradeEvidence/NativeUpgradeEvidenceTests.swift`,
     `scripts/localization/NativeExtensionEvidenceHost.swift`,
     `scripts/visual/run_native_matrix.py`, and `scripts/visual/native-matrix.json`. These six paths are
     already members of the exact 20-path candidate manifest; the 20-file/three-root cap, dependency DAG,
     existing locks, WP-EXT-01 transaction ownership, and every release boundary remain unchanged.
+    The five remaining product findings are exact localization/formatting/RTL oracle comparisons;
+    exact automatable accessibility semantics with explicit spoken VoiceOver, pointer, and system-
+    preconfiguration manual qualification boundaries; a per-record exact privacy-safe fixture payload
+    digest; production-boundary runtime executable and Info.plist identity bound to the built `.appex`;
+    and actual execution of all four candidate-negative CLI paths. A fresh exact-head static review
+    with P0/P1/P2 all zero is required before any Xcode command.
 13. Automate only observable semantics: discover named system extension elements and select installed
     extension display names, then verify labels, values, traits, order, focus, geometry, and rendered
     state. Spoken VoiceOver output, pointer behavior, and system preconfiguration are explicit manual or
@@ -172,7 +180,7 @@ WP-READER-01 owner closures.
   fixture records state `systemTraitClaim=none`
 
 - Given the full Share/Action correction matrix
-- When runtime evidence executes after a clear static review
+- When runtime evidence executes after a fresh exact-head static review with P0/P1/P2 all zero
 - Then build-boundary runs first, one representative Share record and one representative Action record
   run second, production-boundary runs third with a required nonzero exact candidate SHA, and the full
   62-record matrix runs last; the first deterministic mismatch stops execution without retry-based
