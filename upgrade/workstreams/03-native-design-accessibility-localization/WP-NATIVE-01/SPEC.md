@@ -95,6 +95,13 @@ Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend
     pseudo-long, RTL, plural, formatting, and accessibility results contain observed rendered/semantic
     consequences, not repeated plan inputs. The full-matrix artifact contains exactly two xcresults,
     one for the pinned iPhone and one for the pinned iPad.
+15. Bind the four runtime stages to one attempt-chain ID and attempt number one. Build-boundary creates
+    stage one only when the chain and output are absent; each later stage requires and hashes the exact
+    successful predecessor manifest. Existing stage output, a different chain/candidate/configuration,
+    an out-of-order stage, or any second attempt fails without overwrite. Production-boundary runs
+    through the existing native-matrix runner, compares the nonzero exact candidate to `git rev-parse
+    HEAD`, and executes missing, all-zero, malformed, and mismatched candidate negative cases before
+    the valid case. The full matrix repeats the named-system-element and installed-display-name gates.
 
 ### Touch-target scanner regression registry
 
@@ -169,7 +176,8 @@ WP-READER-01 owner closures.
 - Then build-boundary runs first, one representative Share record and one representative Action record
   run second, production-boundary runs third with a required nonzero exact candidate SHA, and the full
   62-record matrix runs last; the first deterministic mismatch stops execution without retry-based
-  greening, and the final matrix retains exactly two xcresults
+  greening; every stage is attempt one in the same predecessor-digest chain and refuses existing output;
+  and the final matrix retains exactly two xcresults
 
 ### AC-NATIVE-01-05
 

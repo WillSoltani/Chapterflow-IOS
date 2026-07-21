@@ -88,7 +88,12 @@ other product lane. Within declared paths:
 15. after the clear static review, run build-boundary first; run the representative
     `shareextension-compact-iphone-light` and `actionextension-compact-iphone-light` records second;
     run production-boundary third with a required nonzero exact 40-character lowercase candidate SHA;
-    then run the full 62-record matrix. Stop on the first deterministic mismatch and do not retry to
-    obtain green evidence.
+    then run the full 62-record matrix. Use one shared attempt-chain ID and attempt number one;
+    build-boundary requires an empty chain, every later stage verifies the prior stage's successful
+    manifest digest, and every stage fails if its output already exists. Production-boundary must use
+    the native-matrix runner to compare the supplied nonzero SHA with `git rev-parse HEAD` and execute
+    missing/all-zero/malformed/mismatched candidate negatives. The full matrix repeats named-system-
+    element and installed-display-name discovery. Stop on the first deterministic mismatch and do not
+    overwrite or retry to obtain green evidence.
 
 Run every AC selector and supporting gate. Each selector must match at least one test with zero failures/skips/waivers. Commit a candidate before validation and independent exact-head review; any remediation creates a new head. Publish/merge only when all predicates hold. Preserve 24 packages, the dependency DAG, all locks, the 20-path/three-root cap, WP-EXT-01 transaction ownership, and every release boundary. Never approve product baselines in bulk, redesign features, perform release work, or touch PR #117.

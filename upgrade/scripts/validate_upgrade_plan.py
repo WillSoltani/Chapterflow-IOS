@@ -402,6 +402,7 @@ NATIVE_AC04_EXTENSION_COMMAND = (
     "--exclude-production-source ActionViewController.swift "
     "--require-appex ShareExtension.appex --require-appex ActionExtension.appex "
     "--require-containing-or-system-host-invocation "
+    "--require-named-system-elements --require-installed-extension-display-names "
     "--expected-record-count 62 --expected-xcresult-count 2 "
     "--require-system-input-source system "
     "--require-system-trait-values colorSchemeContrast,accessibilityReduceMotion,accessibilityReduceTransparency "
@@ -410,20 +411,32 @@ NATIVE_AC04_EXTENSION_COMMAND = (
     "--require-token-scoped-reset-observers --require-exact-payload-digest "
     "--require-exact-configuration-digest "
     "--require-extension-identity process,executable,Info.plist "
+    "--attempt-chain-id <ATTEMPT_CHAIN_ID> --stage 4-of-4 --require-attempt-number 1 "
+    "--require-predecessor-manifest results/native/extension-production-boundary/manifest.json "
+    "--require-predecessor-stage 3-of-4 --fail-if-stage-artifact-exists "
     "--stop-on-first-deterministic-mismatch --forbid-retry-greening "
     "--output results/native/extension-localization-matrix"
 )
 NATIVE_AC04_BOUNDARY_COMMAND = (
-    "xcodebuild test -project ChapterFlow.xcodeproj -scheme ChapterFlow -configuration Debug "
-    "-derivedDataPath /private/tmp/Chapterflow-DD-native-extension-boundary-<EXACT_CANDIDATE_SHA> "
-    "-destination 'platform=iOS Simulator,id=<PINNED_UDID>' "
-    "-resultBundlePath results/native/extension-presentation-boundary.xcresult "
-    "-only-testing:ChapterFlowUITests/NativeEvidenceTests/"
+    "python3 scripts/visual/run_native_matrix.py --project ChapterFlow.xcodeproj "
+    "--scheme ChapterFlow --extension-production-boundary "
+    "--candidate-worktree <CANDIDATE_WORKTREE> --candidate <EXACT_CANDIDATE_SHA> "
+    "--expected-head <EXACT_CANDIDATE_SHA> --iphone-udid <PINNED_IPHONE_UDID> "
+    "--test ChapterFlowUITests/NativeEvidenceTests/"
     "testExtensionPresentationResultInputSeparatesFixtureAndLegacyProduction "
-    "-parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO "
-    "SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) CF_NATIVE_EXTENSION_EVIDENCE_BUILD' "
-    "CF_NATIVE_EXTENSION_EXCLUDED_SOURCES='ShareViewController.swift ActionViewController.swift' "
-    "CF_NATIVE_EVIDENCE_CANDIDATE=<EXACT_CANDIDATE_SHA>"
+    "--derived-data /private/tmp/Chapterflow-DD-native-extension-boundary-<EXACT_CANDIDATE_SHA> "
+    "--result-bundle results/native/extension-presentation-boundary.xcresult "
+    "--extension-evidence-condition CF_NATIVE_EXTENSION_EVIDENCE_BUILD "
+    "--source-exclusion-variable CF_NATIVE_EXTENSION_EXCLUDED_SOURCES "
+    "--exclude-production-source ShareViewController.swift "
+    "--exclude-production-source ActionViewController.swift "
+    "--negative-candidate-case missing --negative-candidate-case all-zero "
+    "--negative-candidate-case malformed --negative-candidate-case mismatched "
+    "--attempt-chain-id <ATTEMPT_CHAIN_ID> --stage 3-of-4 --require-attempt-number 1 "
+    "--require-predecessor-manifest results/native/extension-representative/manifest.json "
+    "--require-predecessor-stage 2-of-4 --fail-if-stage-artifact-exists "
+    "--stop-on-first-deterministic-mismatch --forbid-retry-greening "
+    "--output results/native/extension-production-boundary"
 )
 NATIVE_AC04_BUILD_BOUNDARY_COMMAND = (
     "python3 scripts/visual/run_native_matrix.py --project ChapterFlow.xcodeproj "
@@ -460,6 +473,9 @@ NATIVE_AC04_BUILD_BOUNDARY_COMMAND = (
     "--negative-build-case ActionExtension:controller-host-collision "
     "--negative-build-case ShareExtension:release-evidence-reachability "
     "--negative-build-case ActionExtension:release-evidence-reachability "
+    "--attempt-chain-id <ATTEMPT_CHAIN_ID> --stage 1-of-4 --require-attempt-number 1 "
+    "--require-empty-attempt-chain --fail-if-stage-artifact-exists "
+    "--stop-on-first-deterministic-mismatch --forbid-retry-greening "
     "--output results/native/extension-build-boundary"
 )
 NATIVE_AC04_REPRESENTATIVE_COMMAND = (
@@ -471,7 +487,10 @@ NATIVE_AC04_REPRESENTATIVE_COMMAND = (
     "--record shareextension-compact-iphone-light "
     "--record actionextension-compact-iphone-light --expected-record-count 2 "
     "--require-named-system-elements --require-installed-extension-display-names "
-    "--stop-on-first-deterministic-mismatch "
+    "--attempt-chain-id <ATTEMPT_CHAIN_ID> --stage 2-of-4 --require-attempt-number 1 "
+    "--require-predecessor-manifest results/native/extension-build-boundary/manifest.json "
+    "--require-predecessor-stage 1-of-4 --fail-if-stage-artifact-exists "
+    "--stop-on-first-deterministic-mismatch --forbid-retry-greening "
     "--output results/native/extension-representative"
 )
 NATIVE_AC06_TARGETS_REGRESSION_COMMAND = (
@@ -498,10 +517,10 @@ EXPECTED_NATIVE_ASSERTION_AC = {
 }
 EXPECTED_NATIVE_ASSERTION_ROW_SHA256 = {
     "NATIVE-04-UNIT-01": "76382608cc88d69f790643f9adf610345ceb6a5982f65905390fd5181c5d0d58",
-    "NATIVE-04-EXTENSION-02": "401225f9ffe4c95e16a6c4d43befa7e7c55463c4741b82a0ac2baebaaf4344de",
-    "NATIVE-04-PRODUCTION-BOUNDARY-03": "7c249ca66f51ef79bb24dcdaaf25dd2b800a9d8763bdbab211b619bef11b864b",
-    "NATIVE-04-BUILD-BOUNDARY-04": "674ff0d6722edd7dc18abed7ebba06f68b1cd6feeb0dca99449e6e5a66a2ba5f",
-    "NATIVE-04-REPRESENTATIVE-05": "77d0a1db95decb2ec8afbdcb89150e90522a20dbdbdcda061171146633b045e2",
+    "NATIVE-04-EXTENSION-02": "a5842ba451f19b616270669cf553be31cca5c23903ded9c65b2b1ab99279db99",
+    "NATIVE-04-PRODUCTION-BOUNDARY-03": "c1c0780696d1ac88c14df9a0ebb7b7c9ce89c51c13aee1a3426054d2d1561ecf",
+    "NATIVE-04-BUILD-BOUNDARY-04": "c9c78538d629239f94dd71841b30004d90eafd48dd68b1a1aeab54c3e451bbe4",
+    "NATIVE-04-REPRESENTATIVE-05": "31be602950771d79b1cb941657e86eae601cf01721a8e5aa5c3a7382cb598584",
     "NATIVE-06-TARGETS-REGRESSION-02": "2a283eec9501b2944390a9a1ed2db142b23e35a953fabbef7b346aafce1e3661",
     "NATIVE-07-PROJECT-01": "56b1d628a1f8a25aa0fd35fcfda3ab253509e23bc9a418c7c286c8b8e9f3f999",
 }
@@ -529,6 +548,20 @@ EXPECTED_NATIVE_VALIDATION_ORDER = [
     "NATIVE-04-REPRESENTATIVE-05",
     "NATIVE-04-PRODUCTION-BOUNDARY-03",
     "NATIVE-04-EXTENSION-02",
+]
+EXPECTED_NATIVE_ASSERTION_IDS = [
+    "NATIVE-01-UNIT-01",
+    "NATIVE-02-UI-01",
+    "NATIVE-03-UI-01",
+    "NATIVE-04-UNIT-01",
+    *EXPECTED_NATIVE_VALIDATION_ORDER,
+    "NATIVE-05-UNIT-01",
+    "NATIVE-05-PERF-RUNNER-02",
+    "NATIVE-06-INVENTORY-01",
+    "NATIVE-06-TARGETS-01",
+    "NATIVE-06-TARGETS-REGRESSION-02",
+    "NATIVE-07-PROJECT-01",
+    "NATIVE-08-A11Y-01",
 ]
 EXPECTED_PERFORMANCE_BUDGET_DIGESTS = {
     "PERF-COLD-LAUNCH": "db0518f9180f9fe4f4eb4bd332d97649956823ef04127df5b84c6b2e8b6f0259",
@@ -1133,13 +1166,18 @@ def acceptance_evidence_lines(native_validate: str) -> tuple[list[str], list[str
 def native_assertion_command_issues(native_validate: str) -> list[str]:
     section, issues = acceptance_evidence_lines(native_validate)
     rows_by_assertion: dict[str, list[list[str]]] = {}
+    assertion_order: list[str] = []
     for line in section:
         if not line.startswith("|"):
             continue
         cells = [cell.strip() for cell in line.split("|")[1:-1]]
         if len(cells) < 3:
             continue
+        if len(cells) == 5 and cells[0].startswith("AC-NATIVE-01-"):
+            assertion_order.append(cells[1])
         rows_by_assertion.setdefault(cells[1], []).append(cells)
+    if assertion_order != EXPECTED_NATIVE_ASSERTION_IDS:
+        issues.append("WP-NATIVE-01 assertion ID set/order drifted; placeholder rows are forbidden")
     for assertion_id, expected_command in EXPECTED_NATIVE_ASSERTION_COMMANDS.items():
         rows = rows_by_assertion.get(assertion_id, [])
         if len(rows) != 1:
@@ -1283,6 +1321,13 @@ def native_runtime_evidence_issues(
             issues.append("runtime full matrix must preserve exactly 62 records")
         if records.get("executionOrderAfterClearStaticReview") != EXPECTED_NATIVE_RUNTIME_ORDER:
             issues.append("runtime execution order drifted")
+        if records.get("stageChain") != {
+            "identity": "required-shared-attempt-chain-id",
+            "requiredAttemptNumber": 1,
+            "predecessorManifestDigest": "required-after-first-stage",
+            "existingStageArtifactDisposition": "fail-no-overwrite-or-retry",
+        }:
+            issues.append("runtime stage chain/order/single-attempt contract drifted")
         if records.get("stopPolicy") != "stop-on-first-deterministic-mismatch-no-retry-based-greening":
             issues.append("runtime deterministic mismatch policy drifted")
         if records.get("observedConsequenceRequirements") != [
@@ -1318,6 +1363,7 @@ def native_runtime_evidence_issues(
         "exactly 62", "exactly two xcresults", "token-scoped observers",
         "exact payload", "configuration digests", "process/executable/Info.plist",
         "stop on the first deterministic mismatch", "nonzero exact",
+        "--require-correction-envelope", "attempt-chain ID",
     ):
         if marker.lower() not in normalized_contract:
             issues.append(f"runtime evidence contract prose omits {marker}")
@@ -1557,13 +1603,67 @@ def validate_native_extension_host_self_tests(packages: dict[str, dict]) -> list
     candidate_binding["WP-NATIVE-01"]["runtimeEvidenceCorrection"]["candidateBinding"]["productionBoundaryCandidate"] = "optional"
     add("runtime-exact-candidate-binding-weakened", candidate_binding, "exact candidate binding")
 
+    stage_chain = copy.deepcopy(packages)
+    stage_chain["WP-NATIVE-01"]["runtimeEvidenceCorrection"]["runtimeRecords"]["stageChain"]["requiredAttemptNumber"] = 2
+    add("runtime-stage-chain-weakened", stage_chain, "stage chain/order/single-attempt")
+
     missing_candidate_command = native_validate.replace(
-        " CF_NATIVE_EVIDENCE_CANDIDATE=<EXACT_CANDIDATE_SHA>", "", 1,
+        " --expected-head <EXACT_CANDIDATE_SHA>", "", 1,
     )
     add(
         "runtime-production-candidate-command-removed", copy.deepcopy(packages),
         "NATIVE-04-PRODUCTION-BOUNDARY-03 command drifted",
         validate=missing_candidate_command,
+    )
+
+    missing_candidate_negative = native_validate.replace(
+        " --negative-candidate-case malformed", "", 1,
+    )
+    add(
+        "runtime-production-candidate-negative-removed", copy.deepcopy(packages),
+        "NATIVE-04-PRODUCTION-BOUNDARY-03 command drifted",
+        validate=missing_candidate_negative,
+    )
+
+    full_matrix_coordinate_fallback = mutate_validation_cell(
+        "NATIVE-04-EXTENSION-02", 2,
+        "`" + NATIVE_AC04_EXTENSION_COMMAND.replace(
+            "--require-named-system-elements --require-installed-extension-display-names ", "",
+        ) + "`",
+    )
+    add(
+        "runtime-full-matrix-named-selection-removed", copy.deepcopy(packages),
+        "NATIVE-04-EXTENSION-02 command drifted",
+        validate=full_matrix_coordinate_fallback,
+    )
+
+    representative_predecessor_removed = mutate_validation_cell(
+        "NATIVE-04-REPRESENTATIVE-05", 2,
+        "`" + NATIVE_AC04_REPRESENTATIVE_COMMAND.replace(
+            "--require-predecessor-manifest results/native/extension-build-boundary/manifest.json ", "",
+        ) + "`",
+    )
+    add(
+        "runtime-stage-predecessor-removed", copy.deepcopy(packages),
+        "NATIVE-04-REPRESENTATIVE-05 command drifted",
+        validate=representative_predecessor_removed,
+    )
+
+    final_native_row = next(
+        line for line in native_validate.splitlines()
+        if "| NATIVE-08-A11Y-01 |" in line
+    )
+    placeholder_row = (
+        "| AC-NATIVE-01-04 | NATIVE-04-TODO-99 | `echo TODO results/native/todo.json` "
+        "| placeholder | `results/native/todo.json` |"
+    )
+    placeholder_validate = native_validate.replace(
+        final_native_row + "\n", final_native_row + "\n" + placeholder_row + "\n", 1,
+    )
+    add(
+        "runtime-placeholder-row-added", copy.deepcopy(packages),
+        "placeholder rows are forbidden",
+        validate=placeholder_validate,
     )
 
     path_21 = copy.deepcopy(packages)
@@ -1774,9 +1874,7 @@ def validate_native_extension_host_self_tests(packages: dict[str, dict]) -> list
         validate=weakened_unit_validate,
     )
     weakened_boundary_validate = native_validate.replace(
-        "CF_NATIVE_EXTENSION_EXCLUDED_SOURCES='ShareViewController.swift ActionViewController.swift'",
-        "CF_NATIVE_EXTENSION_EXCLUDED_SOURCES=''",
-        1,
+        " --exclude-production-source ActionViewController.swift", "", 1,
     )
     add(
         "boundary-controller-exclusion-weakened", copy.deepcopy(packages),
@@ -1921,6 +2019,23 @@ def validate_native_extension_host_self_tests(packages: dict[str, dict]) -> list
     })
     if not duplicate_key_matched:
         fail("extension-evidence-host self-test duplicate-replacement-key did not fail")
+    escaped_correction_issues = correction_diff_issues(
+        packages["WP-NATIVE-01"],
+        "39843e6d6a0e3468f61ed86f180500bdb7529c44",
+        ["Packages/DesignSystem/Sources/DesignSystem/NativeEvidenceAccessibility.swift"],
+    )
+    escaped_correction_matched = any(
+        "escaped the exact six-file product envelope" in issue
+        for issue in escaped_correction_issues
+    )
+    results.append({
+        "case": "runtime-correction-diff-escaped-six-files",
+        "expected": "escaped the exact six-file product envelope",
+        "matched": escaped_correction_matched,
+        "issues": escaped_correction_issues,
+    })
+    if not escaped_correction_matched:
+        fail("runtime correction diff envelope self-test did not fail")
     for case_id, mutated, expected, contract, validate, reader_text in cases:
         issues = collect(mutated, contract, validate, reader_text)
         matched = any(expected.lower() in issue.lower() for issue in issues)
@@ -1991,7 +2106,30 @@ def run_git(arguments: list[str]) -> tuple[bytes | None, str | None]:
     return result.stdout, None
 
 
-def validate_candidate_diff(package: dict, base: str, head: str, require_binding: bool) -> None:
+def correction_diff_issues(package: dict, base: str, actual_paths: list[str]) -> list[str]:
+    issues: list[str] = []
+    correction = package.get("runtimeEvidenceCorrection")
+    authority = correction.get("authority") if isinstance(correction, dict) else None
+    next_correction = authority.get("nextCorrection") if isinstance(authority, dict) else None
+    if not isinstance(next_correction, dict):
+        return ["WP-NATIVE-01 has no runtime correction envelope"]
+    if base != authority.get("reviewedCandidate"):
+        issues.append("WP-NATIVE-01 correction base must equal the reviewed candidate")
+    allowed = next_correction.get("authorizedProductPaths")
+    if not actual_paths:
+        issues.append("WP-NATIVE-01 correction diff must change at least one authorized path")
+    if not isinstance(allowed, list) or any(path not in allowed for path in actual_paths):
+        issues.append("WP-NATIVE-01 correction diff escaped the exact six-file product envelope")
+    return issues
+
+
+def validate_candidate_diff(
+    package: dict,
+    base: str,
+    head: str,
+    require_binding: bool,
+    require_correction_envelope: bool,
+) -> None:
     package_id = package.get("id", "unknown")
     if not re.fullmatch(r"[0-9a-f]{40}", base) or not re.fullmatch(r"[0-9a-f]{40}", head):
         fail(f"{package_id} --base and --head must be full lowercase SHAs")
@@ -2002,6 +2140,9 @@ def validate_candidate_diff(package: dict, base: str, head: str, require_binding
     replacement = accounting.get("pathReplacement") if isinstance(accounting, dict) else None
     if not isinstance(binding, dict):
         fail(f"{package_id} has no candidateBinding for --package-diff")
+        return
+    if require_binding and require_correction_envelope:
+        fail("--require-candidate-binding and --require-correction-envelope are mutually exclusive")
         return
     if require_binding and (binding.get("base") != base or binding.get("head") != head):
         fail(f"{package_id} requested candidate identities drift from candidateBinding")
@@ -2032,7 +2173,13 @@ def validate_candidate_diff(package: dict, base: str, head: str, require_binding
         )
         if require_binding and actual_paths != binding.get("paths"):
             fail(f"{package_id} candidate path manifest drift")
-        if not require_binding and package_id == "WP-NATIVE-01":
+        if require_correction_envelope:
+            if package_id != "WP-NATIVE-01":
+                fail(f"{package_id} has no runtime correction envelope")
+            else:
+                for issue in correction_diff_issues(package, base, actual_paths):
+                    fail(issue)
+        elif not require_binding and package_id == "WP-NATIVE-01":
             expected_after = replacement.get("afterPaths") if isinstance(replacement, dict) else None
             if actual_paths != expected_after:
                 fail(f"{package_id} remediation path manifest drift from adjudicated replacement")
@@ -2219,6 +2366,7 @@ def validate_packages(backlog: dict, locks_doc: dict) -> dict[str, dict]:
                     if (
                         "--extension-build-boundary" not in command
                         and "--extension-representative-records" not in command
+                        and "--extension-production-boundary" not in command
                     ):
                         dimension_match = re.search(r"--require-dimensions ([^ `|]+)", command)
                         dimensions = set(dimension_match.group(1).split(",")) if dimension_match else set()
@@ -3310,6 +3458,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--base", metavar="FULL_SHA")
     parser.add_argument("--head", metavar="FULL_SHA")
     parser.add_argument("--require-candidate-binding", action="store_true")
+    parser.add_argument("--require-correction-envelope", action="store_true")
     parser.add_argument("--show-root-accounting-negative-tests", action="store_true")
     parser.add_argument("--show-remediation-negative-tests", action="store_true")
     return parser.parse_args()
@@ -3357,11 +3506,12 @@ def main() -> int:
                     arguments.base,
                     arguments.head,
                     arguments.require_candidate_binding,
+                    arguments.require_correction_envelope,
                 )
         elif arguments.base is not None or arguments.head is not None:
             fail("--base/--head require --package-diff")
-        elif arguments.require_candidate_binding:
-            fail("--require-candidate-binding requires --package-diff")
+        elif arguments.require_candidate_binding or arguments.require_correction_envelope:
+            fail("candidate binding/envelope flags require --package-diff")
     validate_links()
 
     if ERRORS:
@@ -3374,7 +3524,11 @@ def main() -> int:
     case_count = backlog.get("counts", {}).get("evaluationCases")
     print(f"PASS: upgrade plan validated ({workstream_count} workstreams, {package_count} packages, {case_count} eval cases)")
     if arguments.package_diff is not None:
-        disposition = "bound" if arguments.require_candidate_binding else "accounted"
+        disposition = (
+            "bound" if arguments.require_candidate_binding
+            else "correction-envelope" if arguments.require_correction_envelope
+            else "accounted"
+        )
         print(
             f"PASS: {arguments.package_diff} candidate diff {disposition} "
             f"({arguments.base}..{arguments.head})"

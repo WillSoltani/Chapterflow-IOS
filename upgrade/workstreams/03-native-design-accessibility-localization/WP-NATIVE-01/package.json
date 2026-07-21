@@ -477,6 +477,12 @@
         "production-boundary",
         "full-62-record-matrix"
       ],
+      "stageChain": {
+        "identity": "required-shared-attempt-chain-id",
+        "requiredAttemptNumber": 1,
+        "predecessorManifestDigest": "required-after-first-stage",
+        "existingStageArtifactDisposition": "fail-no-overwrite-or-retry"
+      },
       "stopPolicy": "stop-on-first-deterministic-mismatch-no-retry-based-greening",
       "observedConsequenceRequirements": [
         "localized-rendered-value",
