@@ -389,9 +389,10 @@ NATIVE_AC04_EXTENSION_COMMAND = (
     "python3 scripts/visual/run_native_matrix.py --project ChapterFlow.xcodeproj "
     "--scheme ChapterFlow "
     "--test ChapterFlowUITests/NativeEvidenceTests/testShareActionLocalizedAccessibilityMatrix "
+    "--candidate <EXACT_CANDIDATE_SHA> "
     "--iphone-udid <PINNED_IPHONE_UDID> --ipad-udid <PINNED_IPAD_UDID> "
     "--scenarios scripts/visual/native-matrix.json "
-    "--derived-data /private/tmp/Chapterflow-DD-native-extensions-<SHA> "
+    "--derived-data /private/tmp/Chapterflow-DD-native-extensions-<EXACT_CANDIDATE_SHA> "
     "--require-dimensions light,dark,compact-iphone,regular-ipad,accessibility,voiceover,"
     "increased-contrast,reduce-motion,reduce-transparency,real-locale,pseudo-long,rtl,keyboard-pointer "
     "--extension-evidence-host scripts/localization/NativeExtensionEvidenceHost.swift "
@@ -401,18 +402,28 @@ NATIVE_AC04_EXTENSION_COMMAND = (
     "--exclude-production-source ActionViewController.swift "
     "--require-appex ShareExtension.appex --require-appex ActionExtension.appex "
     "--require-containing-or-system-host-invocation "
+    "--expected-record-count 62 --expected-xcresult-count 2 "
+    "--require-system-input-source system "
+    "--require-system-trait-values colorSchemeContrast,accessibilityReduceMotion,accessibilityReduceTransparency "
+    "--require-fixture-input-source fixture --require-fixture-system-trait-claim none "
+    "--require-observed-consequences localization,rtl,plural,formatting,accessibility "
+    "--require-token-scoped-reset-observers --require-exact-payload-digest "
+    "--require-exact-configuration-digest "
+    "--require-extension-identity process,executable,Info.plist "
+    "--stop-on-first-deterministic-mismatch --forbid-retry-greening "
     "--output results/native/extension-localization-matrix"
 )
 NATIVE_AC04_BOUNDARY_COMMAND = (
     "xcodebuild test -project ChapterFlow.xcodeproj -scheme ChapterFlow -configuration Debug "
-    "-derivedDataPath /private/tmp/Chapterflow-DD-native-extension-boundary-<SHA> "
+    "-derivedDataPath /private/tmp/Chapterflow-DD-native-extension-boundary-<EXACT_CANDIDATE_SHA> "
     "-destination 'platform=iOS Simulator,id=<PINNED_UDID>' "
     "-resultBundlePath results/native/extension-presentation-boundary.xcresult "
     "-only-testing:ChapterFlowUITests/NativeEvidenceTests/"
     "testExtensionPresentationResultInputSeparatesFixtureAndLegacyProduction "
     "-parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO "
     "SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) CF_NATIVE_EXTENSION_EVIDENCE_BUILD' "
-    "CF_NATIVE_EXTENSION_EXCLUDED_SOURCES='ShareViewController.swift ActionViewController.swift'"
+    "CF_NATIVE_EXTENSION_EXCLUDED_SOURCES='ShareViewController.swift ActionViewController.swift' "
+    "CF_NATIVE_EVIDENCE_CANDIDATE=<EXACT_CANDIDATE_SHA>"
 )
 NATIVE_AC04_BUILD_BOUNDARY_COMMAND = (
     "python3 scripts/visual/run_native_matrix.py --project ChapterFlow.xcodeproj "
@@ -451,6 +462,18 @@ NATIVE_AC04_BUILD_BOUNDARY_COMMAND = (
     "--negative-build-case ActionExtension:release-evidence-reachability "
     "--output results/native/extension-build-boundary"
 )
+NATIVE_AC04_REPRESENTATIVE_COMMAND = (
+    "python3 scripts/visual/run_native_matrix.py --project ChapterFlow.xcodeproj "
+    "--scheme ChapterFlow --extension-representative-records "
+    "--candidate <EXACT_CANDIDATE_SHA> --iphone-udid <PINNED_IPHONE_UDID> "
+    "--scenarios scripts/visual/native-matrix.json "
+    "--derived-data /private/tmp/Chapterflow-DD-native-extension-representative-<EXACT_CANDIDATE_SHA> "
+    "--record shareextension-compact-iphone-light "
+    "--record actionextension-compact-iphone-light --expected-record-count 2 "
+    "--require-named-system-elements --require-installed-extension-display-names "
+    "--stop-on-first-deterministic-mismatch "
+    "--output results/native/extension-representative"
+)
 NATIVE_AC06_TARGETS_REGRESSION_COMMAND = (
     "python3 scripts/visual/touch_targets.py --self-test "
     "--output results/native/touch-target-scanner-regressions.json"
@@ -460,6 +483,7 @@ EXPECTED_NATIVE_ASSERTION_COMMANDS = {
     "NATIVE-04-EXTENSION-02": NATIVE_AC04_EXTENSION_COMMAND,
     "NATIVE-04-PRODUCTION-BOUNDARY-03": NATIVE_AC04_BOUNDARY_COMMAND,
     "NATIVE-04-BUILD-BOUNDARY-04": NATIVE_AC04_BUILD_BOUNDARY_COMMAND,
+    "NATIVE-04-REPRESENTATIVE-05": NATIVE_AC04_REPRESENTATIVE_COMMAND,
     "NATIVE-06-TARGETS-REGRESSION-02": NATIVE_AC06_TARGETS_REGRESSION_COMMAND,
     "NATIVE-07-PROJECT-01": NATIVE_AC07_COMMAND,
 }
@@ -468,17 +492,44 @@ EXPECTED_NATIVE_ASSERTION_AC = {
     "NATIVE-04-EXTENSION-02": "AC-NATIVE-01-04",
     "NATIVE-04-PRODUCTION-BOUNDARY-03": "AC-NATIVE-01-04",
     "NATIVE-04-BUILD-BOUNDARY-04": "AC-NATIVE-01-04",
+    "NATIVE-04-REPRESENTATIVE-05": "AC-NATIVE-01-04",
     "NATIVE-06-TARGETS-REGRESSION-02": "AC-NATIVE-01-06",
     "NATIVE-07-PROJECT-01": "AC-NATIVE-01-07",
 }
 EXPECTED_NATIVE_ASSERTION_ROW_SHA256 = {
     "NATIVE-04-UNIT-01": "76382608cc88d69f790643f9adf610345ceb6a5982f65905390fd5181c5d0d58",
-    "NATIVE-04-EXTENSION-02": "ae8cce33a2acbc6e81e9309bab0ff4b46c5d96a385ae71aec16863eb14154562",
-    "NATIVE-04-PRODUCTION-BOUNDARY-03": "4ae66895eb655e124e542118c55288eb75d53ca2bdf46cb864ac3ca8a86bc9dc",
+    "NATIVE-04-EXTENSION-02": "401225f9ffe4c95e16a6c4d43befa7e7c55463c4741b82a0ac2baebaaf4344de",
+    "NATIVE-04-PRODUCTION-BOUNDARY-03": "7c249ca66f51ef79bb24dcdaaf25dd2b800a9d8763bdbab211b619bef11b864b",
     "NATIVE-04-BUILD-BOUNDARY-04": "674ff0d6722edd7dc18abed7ebba06f68b1cd6feeb0dca99449e6e5a66a2ba5f",
+    "NATIVE-04-REPRESENTATIVE-05": "77d0a1db95decb2ec8afbdcb89150e90522a20dbdbdcda061171146633b045e2",
     "NATIVE-06-TARGETS-REGRESSION-02": "2a283eec9501b2944390a9a1ed2db142b23e35a953fabbef7b346aafce1e3661",
     "NATIVE-07-PROJECT-01": "56b1d628a1f8a25aa0fd35fcfda3ab253509e23bc9a418c7c286c8b8e9f3f999",
 }
+EXPECTED_NATIVE_RUNTIME_CORRECTION_PATHS = [
+    "ActionExtension/ActionView.swift",
+    "ChapterFlowUITests/UpgradeEvidence/NativeUpgradeEvidenceTests.swift",
+    "ShareExtension/ShareView.swift",
+    "scripts/localization/NativeExtensionEvidenceHost.swift",
+    "scripts/visual/native-matrix.json",
+    "scripts/visual/run_native_matrix.py",
+]
+EXPECTED_NATIVE_SYSTEM_TRAITS = [
+    "colorSchemeContrast",
+    "accessibilityReduceMotion",
+    "accessibilityReduceTransparency",
+]
+EXPECTED_NATIVE_RUNTIME_ORDER = [
+    "build-boundary",
+    "representative-share-action",
+    "production-boundary",
+    "full-62-record-matrix",
+]
+EXPECTED_NATIVE_VALIDATION_ORDER = [
+    "NATIVE-04-BUILD-BOUNDARY-04",
+    "NATIVE-04-REPRESENTATIVE-05",
+    "NATIVE-04-PRODUCTION-BOUNDARY-03",
+    "NATIVE-04-EXTENSION-02",
+]
 EXPECTED_PERFORMANCE_BUDGET_DIGESTS = {
     "PERF-COLD-LAUNCH": "db0518f9180f9fe4f4eb4bd332d97649956823ef04127df5b84c6b2e8b6f0259",
     "PERF-READER-HITCH": "064d0451ffa7b2773504463a5145aea9310a04ecaab1777e871698e5d1a553ca",
@@ -1112,6 +1163,178 @@ def native_assertion_command_issues(native_validate: str) -> list[str]:
     return issues
 
 
+def native_runtime_evidence_issues(
+    packages: dict[str, dict],
+    native_contract: str,
+    native_validate: str,
+) -> list[str]:
+    issues: list[str] = []
+    native = packages.get("WP-NATIVE-01")
+    if not isinstance(native, dict):
+        return ["runtime evidence correction requires WP-NATIVE-01"]
+    correction = native.get("runtimeEvidenceCorrection")
+    if not isinstance(correction, dict):
+        return ["WP-NATIVE-01 runtimeEvidenceCorrection must be an object"]
+
+    authority = correction.get("authority")
+    if not isinstance(authority, dict):
+        issues.append("runtime evidence correction authority must be an object")
+    else:
+        exact_authority = {
+            "acceptedMain": "840e0a48920e1e59c3a6ec9f3be5ae7028c98169",
+            "reviewedCandidate": "39843e6d6a0e3468f61ed86f180500bdb7529c44",
+            "reviewedTree": "9afbb87bb859ead2dad46f180da2911e119e62c3",
+            "ownerTaskId": "019f7d18-71fa-7102-b3b4-6fa43842963e",
+            "packageClaim": "retained-by-WP-NATIVE-01",
+            "releasedResourceClaims": ["xcode-project", "simulator-device"],
+        }
+        for field, expected in exact_authority.items():
+            if authority.get(field) != expected:
+                issues.append(f"runtime evidence correction authority.{field} drifted")
+        if authority.get("reviewDisposition") != {
+            "status": "not-clear", "P0": 0, "P1": 5, "P2": 2,
+        }:
+            issues.append("runtime evidence correction must preserve the seven reviewed findings")
+        next_correction = authority.get("nextCorrection")
+        if not isinstance(next_correction, dict):
+            issues.append("runtime evidence nextCorrection must be an object")
+        else:
+            if next_correction.get("maximumCycles") != 1:
+                issues.append("runtime evidence correction must authorize exactly one cycle")
+            if next_correction.get("authorizedProductPaths") != EXPECTED_NATIVE_RUNTIME_CORRECTION_PATHS:
+                issues.append("runtime evidence correction must preserve the exact six-file product envelope")
+            if next_correction.get("authorizedProductPathCount") != 6:
+                issues.append("runtime evidence correction authorizedProductPathCount must equal six")
+            if (
+                next_correction.get("candidateManifestPathCount") != 20
+                or next_correction.get("candidateManifestMaxFiles") != 20
+                or next_correction.get("candidateManifestMaxPrimaryRoots") != 3
+            ):
+                issues.append("runtime evidence correction must preserve the 20-path/three-root cap")
+            if next_correction.get("forbiddenExpansion") != [
+                "new-product-file", "new-target", "generic-evidence-framework",
+                "twenty-first-candidate-path", "new-lock", "acceptance-gate-weakening",
+            ]:
+                issues.append("runtime evidence correction forbidden expansion contract drifted")
+
+    if native.get("resourceLocks") != ["xcode-project", "simulator-device"]:
+        issues.append("runtime evidence correction must preserve existing package locks")
+    estimate = native.get("estimate", {})
+    if not isinstance(estimate, dict) or (
+        estimate.get("plannedFiles"), estimate.get("maxFiles"),
+        estimate.get("primaryRoots"), estimate.get("maxPrimaryRoots"),
+    ) != (20, 20, 3, 3):
+        issues.append("runtime evidence correction must preserve package file/root caps")
+
+    traits = correction.get("traitEvidence")
+    if not isinstance(traits, dict):
+        issues.append("runtime trait evidence contract must be an object")
+    else:
+        if traits.get("publicGetOnlyEnvironmentValues") != EXPECTED_NATIVE_SYSTEM_TRAITS:
+            issues.append("runtime system trait list drifted from the three public get-only values")
+        system = traits.get("systemDerived")
+        if not isinstance(system, dict) or (
+            system.get("inputSource") != "system"
+            or system.get("requiredObservedValues") != EXPECTED_NATIVE_SYSTEM_TRAITS
+            or system.get("requestedSystemStateClaim")
+            != "allowed-only-when-extension-process-observation-matches-request-and-independent-rendered-consequence-is-verified"
+            or system.get("preconfiguredMismatchDisposition") != "failed-never-passed-or-skipped"
+        ):
+            issues.append("runtime system-derived provenance or observed-consequence gate drifted")
+        fixture = traits.get("fixtureBehavior")
+        if not isinstance(fixture, dict) or fixture != {
+            "inputSource": "fixture",
+            "systemTraitClaim": "none",
+            "qualification": "behavior-only-not-system-setting-proof",
+        }:
+            issues.append("runtime fixture provenance must remain inputSource=fixture and systemTraitClaim=none")
+
+    manual = correction.get("manualEvidence")
+    if not isinstance(manual, dict) or manual != {
+        "automatableSemanticChecks": [
+            "named-discovered-system-elements",
+            "installed-extension-display-names",
+            "accessibility-label-value-trait-order-focus",
+            "rendered-layout-and-state-consequences",
+        ],
+        "manualOrSystemPreconfigurationChecks": [
+            "spoken-VoiceOver-outcome",
+            "pointer-outcome",
+            "requested-system-setting-preconfiguration",
+        ],
+        "selfAttestation": "forbidden",
+    }:
+        issues.append("runtime manual/system-preconfiguration classification must fail closed")
+
+    records = correction.get("runtimeRecords")
+    if not isinstance(records, dict):
+        issues.append("runtimeRecords must be an object")
+    else:
+        if records.get("representativeRecordIDs") != [
+            "shareextension-compact-iphone-light", "actionextension-compact-iphone-light",
+        ]:
+            issues.append("runtime representative Share/Action record IDs drifted")
+        if records.get("fullMatrixRecordCount") != 62 or records.get("perTargetDeviceRecordCounts") != {
+            "ShareExtension.compact-iphone": 15,
+            "ActionExtension.compact-iphone": 15,
+            "ShareExtension.regular-ipad": 16,
+            "ActionExtension.regular-ipad": 16,
+        }:
+            issues.append("runtime full matrix must preserve exactly 62 records")
+        if records.get("executionOrderAfterClearStaticReview") != EXPECTED_NATIVE_RUNTIME_ORDER:
+            issues.append("runtime execution order drifted")
+        if records.get("stopPolicy") != "stop-on-first-deterministic-mismatch-no-retry-based-greening":
+            issues.append("runtime deterministic mismatch policy drifted")
+        if records.get("observedConsequenceRequirements") != [
+            "localized-rendered-value", "rtl-rendered-order",
+            "plural-selected-branch-and-rendered-value", "formatted-rendered-value",
+            "accessibility-rendered-semantic-or-visual-consequence",
+        ]:
+            issues.append("runtime observed localization/accessibility consequence requirements drifted")
+
+    integrity = correction.get("integrity")
+    if not isinstance(integrity, dict) or integrity != {
+        "observerScope": "record-token-scoped",
+        "observerReset": "before-each-record",
+        "requiredDigests": ["exact-payload-digest", "exact-configuration-digest"],
+        "requiredIdentityBindings": [
+            "extension-process", "extension-executable", "extension-Info.plist",
+        ],
+        "fullMatrixXCResultCount": 2,
+        "fullMatrixXCResults": ["pinned-iphone", "pinned-ipad"],
+    }:
+        issues.append("runtime observer/digest/identity/exactly-two-xcresults contract drifted")
+    if correction.get("candidateBinding") != {
+        "productionBoundaryCandidate": "required-nonzero-exact-40-lowercase-hex-sha",
+        "missingOrZeroCandidateDisposition": "fail-before-test-execution",
+    }:
+        issues.append("runtime production-boundary exact candidate binding drifted")
+
+    normalized_contract = " ".join(native_contract.split()).lower()
+    for marker in (
+        "inputSource=system", "inputSource=fixture", "systemTraitClaim=none",
+        "get-only system preferences", "spoken VoiceOver", "pointer behavior",
+        "named discovered system elements", "installed extension display names",
+        "exactly 62", "exactly two xcresults", "token-scoped observers",
+        "exact payload", "configuration digests", "process/executable/Info.plist",
+        "stop on the first deterministic mismatch", "nonzero exact",
+    ):
+        if marker.lower() not in normalized_contract:
+            issues.append(f"runtime evidence contract prose omits {marker}")
+
+    section, table_issues = acceptance_evidence_lines(native_validate)
+    issues.extend(table_issues)
+    row_order: list[str] = []
+    for line in section:
+        cells = [cell.strip() for cell in line.split("|")[1:-1]] if line.startswith("|") else []
+        if len(cells) == 5 and cells[1] in EXPECTED_NATIVE_VALIDATION_ORDER:
+            row_order.append(cells[1])
+    if row_order != EXPECTED_NATIVE_VALIDATION_ORDER:
+        issues.append("runtime validation rows drifted from build/representative/production/full order")
+    issues.extend(native_assertion_command_issues(native_validate))
+    return issues
+
+
 def native_extension_host_issues(
     packages: dict[str, dict],
     native_contract: str,
@@ -1264,6 +1487,7 @@ def validate_native_extension_host_self_tests(packages: dict[str, dict]) -> list
             estimate,
         )
         issues.extend(native_extension_host_issues(mutated, contract, validate, reader_text))
+        issues.extend(native_runtime_evidence_issues(mutated, contract, validate))
         return issues
 
     cases: list[tuple[str, dict[str, dict], str, str, str, str]] = []
@@ -1286,6 +1510,61 @@ def validate_native_extension_host_self_tests(packages: dict[str, dict]) -> list
     missing_replacement = copy.deepcopy(packages)
     del missing_replacement["WP-NATIVE-01"]["estimate"]["rootAccounting"]["pathReplacement"]
     add("missing-replacement", missing_replacement, "pathReplacement")
+
+    system_as_fixture = copy.deepcopy(packages)
+    system_as_fixture["WP-NATIVE-01"]["runtimeEvidenceCorrection"]["traitEvidence"]["systemDerived"]["inputSource"] = "fixture"
+    add("runtime-system-provenance-weakened", system_as_fixture, "system-derived provenance")
+
+    fixture_claim = copy.deepcopy(packages)
+    fixture_claim["WP-NATIVE-01"]["runtimeEvidenceCorrection"]["traitEvidence"]["fixtureBehavior"]["systemTraitClaim"] = "requested-state"
+    add("runtime-fixture-system-claim", fixture_claim, "inputSource=fixture and systemTraitClaim=none")
+
+    consequence_removed = copy.deepcopy(packages)
+    consequence_removed["WP-NATIVE-01"]["runtimeEvidenceCorrection"]["runtimeRecords"]["observedConsequenceRequirements"].pop()
+    add("runtime-observed-consequence-removed", consequence_removed, "observed localization/accessibility consequence")
+
+    six_file_removed = copy.deepcopy(packages)
+    six_file_removed["WP-NATIVE-01"]["runtimeEvidenceCorrection"]["authority"]["nextCorrection"]["authorizedProductPaths"].pop()
+    add("runtime-six-file-envelope-removed", six_file_removed, "exact six-file product envelope")
+
+    seventh_file = copy.deepcopy(packages)
+    seventh_file["WP-NATIVE-01"]["runtimeEvidenceCorrection"]["authority"]["nextCorrection"]["authorizedProductPaths"].append("scripts/visual/new-framework.py")
+    add("runtime-seventh-correction-file", seventh_file, "exact six-file product envelope")
+
+    record_count = copy.deepcopy(packages)
+    record_count["WP-NATIVE-01"]["runtimeEvidenceCorrection"]["runtimeRecords"]["fullMatrixRecordCount"] = 61
+    add("runtime-record-count-weakened", record_count, "exactly 62 records")
+
+    execution_order = copy.deepcopy(packages)
+    execution_order["WP-NATIVE-01"]["runtimeEvidenceCorrection"]["runtimeRecords"]["executionOrderAfterClearStaticReview"] = [
+        "representative-share-action", "build-boundary", "production-boundary", "full-62-record-matrix",
+    ]
+    add("runtime-execution-order-weakened", execution_order, "execution order drifted")
+
+    manual_attestation = copy.deepcopy(packages)
+    manual_attestation["WP-NATIVE-01"]["runtimeEvidenceCorrection"]["manualEvidence"]["selfAttestation"] = "allowed"
+    add("runtime-manual-self-attestation", manual_attestation, "manual/system-preconfiguration classification")
+
+    observer_scope = copy.deepcopy(packages)
+    observer_scope["WP-NATIVE-01"]["runtimeEvidenceCorrection"]["integrity"]["observerScope"] = "global"
+    add("runtime-observer-scope-weakened", observer_scope, "observer/digest/identity/exactly-two-xcresults")
+
+    xcresult_count = copy.deepcopy(packages)
+    xcresult_count["WP-NATIVE-01"]["runtimeEvidenceCorrection"]["integrity"]["fullMatrixXCResultCount"] = 3
+    add("runtime-xcresult-count-weakened", xcresult_count, "observer/digest/identity/exactly-two-xcresults")
+
+    candidate_binding = copy.deepcopy(packages)
+    candidate_binding["WP-NATIVE-01"]["runtimeEvidenceCorrection"]["candidateBinding"]["productionBoundaryCandidate"] = "optional"
+    add("runtime-exact-candidate-binding-weakened", candidate_binding, "exact candidate binding")
+
+    missing_candidate_command = native_validate.replace(
+        " CF_NATIVE_EVIDENCE_CANDIDATE=<EXACT_CANDIDATE_SHA>", "", 1,
+    )
+    add(
+        "runtime-production-candidate-command-removed", copy.deepcopy(packages),
+        "NATIVE-04-PRODUCTION-BOUNDARY-03 command drifted",
+        validate=missing_candidate_command,
+    )
 
     path_21 = copy.deepcopy(packages)
     path_21["WP-NATIVE-01"]["estimate"]["rootAccounting"]["pathReplacement"]["afterPaths"].append(
@@ -1937,7 +2216,10 @@ def validate_packages(backlog: dict, locks_doc: dict) -> dict[str, dict]:
                     }
                     if "--derived-data" not in command:
                         fail(f"{package_id} {criterion} native matrix omits isolated --derived-data")
-                    if "--extension-build-boundary" not in command:
+                    if (
+                        "--extension-build-boundary" not in command
+                        and "--extension-representative-records" not in command
+                    ):
                         dimension_match = re.search(r"--require-dimensions ([^ `|]+)", command)
                         dimensions = set(dimension_match.group(1).split(",")) if dimension_match else set()
                         if dimensions != required_dimensions:
@@ -2978,6 +3260,10 @@ def validate_final_remediation_contracts(packages: dict[str, dict], locks_doc: d
 
     for issue in native_extension_host_issues(
         packages, native_contract, native_validate, reader_contract,
+    ):
+        fail(issue)
+    for issue in native_runtime_evidence_issues(
+        packages, native_contract, native_validate,
     ):
         fail(issue)
 
