@@ -56,6 +56,26 @@ Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend
    samples/xcresults/traces below one artifact directory. Its self-test parses and plans the complete
    Reader and Graph consumer fixtures and rejects missing, unknown, duplicate, relaxed, legacy, or
    cross-wired inputs; the runner never authors or relaxes a predeclared budget.
+11. Add one fail-closed `--self-test` mode inside the existing `scripts/visual/touch_targets.py`; do
+    not add a dedicated test file. The literal command is
+    `python3 scripts/visual/touch_targets.py --self-test --output results/native/touch-target-scanner-regressions.json`.
+    Every named case constructs a deterministic source fixture and calls the same production scanner
+    seam used by `--check`, never duplicated parsing or condition logic. The reviewed registry and
+    executed case set must be identical and unique, with exactly `matched=20`, `passed=20`,
+    `failed=0`, and `skipped=0`. Missing, duplicate, silently unexecuted, altered, skipped, or
+    expectation-drifted cases fail the command.
+
+### Touch-target scanner regression registry
+
+The exact 20 reviewed named cases are: `direct-button`, `direct-non-button`, `trailing-frame`,
+`multiline-frame`, `label-frame`, `self-constant`, `designsystem-constant`, `partial-dimensions`,
+`sibling-frame-non-borrowing`, `nested-frame-non-borrowing`, `line-comments-ignored`,
+`block-comments-ignored`, `ordinary-strings-ignored`, `multiline-strings-ignored`,
+`previews-ignored`, `inactive-debug-ignored`, `active-ios-conditions`,
+`elseif-else-fail-closed`, `valid-adjacent-exception`, and `invalid-exception-forms`. The final case
+covers malformed, commented, string-contained, and nonadjacent exception markers. These scanner
+regressions do not close `reader-toolbar.depth-option` or `reader-toolbar.tone-option`; both remain
+WP-READER-01 owner closures.
 
 ## Acceptance criteria
 
@@ -119,6 +139,11 @@ Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend
   compliance status; every WP-NATIVE-01-owned target is at least 44×44 points or has a validated
   28–43-point equivalent-access exception, while every out-of-package sub-44 or unverified target
   remains `owner-closure-required` and is never reported compliant
+
+- Given the exact reviewed 20-case touch-target scanner registry
+- When the scanner's in-file self-test runs through the production scanner seam
+- Then all 20 unique named cases execute with `matched=20`, `passed=20`, `failed=0`, and `skipped=0`,
+  and registry, execution, or expectation drift fails closed without changing Reader owner closures
 
 ### AC-NATIVE-01-07
 
