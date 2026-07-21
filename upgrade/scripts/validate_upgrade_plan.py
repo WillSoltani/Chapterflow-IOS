@@ -532,6 +532,15 @@ EXPECTED_NATIVE_RUNTIME_CORRECTION_PATHS = [
     "scripts/visual/native-matrix.json",
     "scripts/visual/run_native_matrix.py",
 ]
+EXPECTED_NATIVE_RUNTIME_INTEGRATED_PLAN_PATHS = [
+    "upgrade/scripts/validate_upgrade_plan.py",
+    "upgrade/workstreams/03-native-design-accessibility-localization/WP-NATIVE-01/RUN.md",
+    "upgrade/workstreams/03-native-design-accessibility-localization/WP-NATIVE-01/SPEC.md",
+    "upgrade/workstreams/03-native-design-accessibility-localization/WP-NATIVE-01/VALIDATE.md",
+    "upgrade/workstreams/03-native-design-accessibility-localization/WP-NATIVE-01/package.json",
+]
+EXPECTED_NATIVE_RUNTIME_INTEGRATED_PLAN_MAIN = "bb77cad011f1918d6f453167cc2e013e6b8d884f"
+EXPECTED_NATIVE_RUNTIME_RECONCILED_BASE = "887c5778f80c8fec4869ff1b6a5d7ab7b79e7f5c"
 EXPECTED_NATIVE_SYSTEM_TRAITS = [
     "colorSchemeContrast",
     "accessibilityReduceMotion",
@@ -1222,6 +1231,8 @@ def native_runtime_evidence_issues(
             "acceptedMain": "840e0a48920e1e59c3a6ec9f3be5ae7028c98169",
             "reviewedCandidate": "39843e6d6a0e3468f61ed86f180500bdb7529c44",
             "reviewedTree": "9afbb87bb859ead2dad46f180da2911e119e62c3",
+            "integratedPlanMain": EXPECTED_NATIVE_RUNTIME_INTEGRATED_PLAN_MAIN,
+            "reconciledCorrectionBase": EXPECTED_NATIVE_RUNTIME_RECONCILED_BASE,
             "ownerTaskId": "019f7d18-71fa-7102-b3b4-6fa43842963e",
             "packageClaim": "retained-by-WP-NATIVE-01",
             "releasedResourceClaims": ["xcode-project", "simulator-device"],
@@ -2019,9 +2030,18 @@ def validate_native_extension_host_self_tests(packages: dict[str, dict]) -> list
     })
     if not duplicate_key_matched:
         fail("extension-evidence-host self-test duplicate-replacement-key did not fail")
-    escaped_correction_issues = correction_diff_issues(
+    escaped_correction_issues = correction_reconciliation_observation_issues(
         packages["WP-NATIVE-01"],
-        "39843e6d6a0e3468f61ed86f180500bdb7529c44",
+        EXPECTED_NATIVE_RUNTIME_RECONCILED_BASE,
+        [
+            packages["WP-NATIVE-01"]["runtimeEvidenceCorrection"]["authority"]["reviewedCandidate"],
+            EXPECTED_NATIVE_RUNTIME_INTEGRATED_PLAN_MAIN,
+        ],
+        EXPECTED_NATIVE_RUNTIME_INTEGRATED_PLAN_PATHS,
+        EXPECTED_NATIVE_AFTER_PATHS,
+        [],
+        [],
+        True,
         ["Packages/DesignSystem/Sources/DesignSystem/NativeEvidenceAccessibility.swift"],
     )
     escaped_correction_matched = any(
@@ -2106,21 +2126,132 @@ def run_git(arguments: list[str]) -> tuple[bytes | None, str | None]:
     return result.stdout, None
 
 
-def correction_diff_issues(package: dict, base: str, actual_paths: list[str]) -> list[str]:
+def git_diff_paths(base: str, head: str) -> tuple[list[str], str | None]:
+    output, error = run_git(["diff", "--name-only", "-z", base, head, "--"])
+    if error is not None or output is None:
+        return [], error or "git diff returned no output"
+    return sorted(
+        value.decode("utf-8", errors="strict")
+        for value in output.split(b"\0")
+        if value
+    ), None
+
+
+def git_blob_mismatches(
+    expected_commit: str,
+    actual_commit: str,
+    paths: list[str],
+) -> tuple[list[str], str | None]:
+    mismatches: list[str] = []
+    for path in paths:
+        expected, expected_error = run_git(["rev-parse", f"{expected_commit}:{path}"])
+        actual, actual_error = run_git(["rev-parse", f"{actual_commit}:{path}"])
+        if expected_error is not None or actual_error is not None:
+            return [], expected_error or actual_error
+        if expected != actual:
+            mismatches.append(path)
+    return mismatches, None
+
+
+def correction_reconciliation_observation_issues(
+    package: dict,
+    requested_base: str,
+    parents: list[str],
+    integrated_plan_paths: list[str],
+    candidate_paths: list[str],
+    integrated_plan_blob_mismatches: list[str],
+    candidate_blob_mismatches: list[str],
+    corrected_descends_from_reconciled_base: bool,
+    correction_paths: list[str],
+) -> list[str]:
     issues: list[str] = []
     correction = package.get("runtimeEvidenceCorrection")
     authority = correction.get("authority") if isinstance(correction, dict) else None
     next_correction = authority.get("nextCorrection") if isinstance(authority, dict) else None
     if not isinstance(next_correction, dict):
         return ["WP-NATIVE-01 has no runtime correction envelope"]
-    if base != authority.get("reviewedCandidate"):
-        issues.append("WP-NATIVE-01 correction base must equal the reviewed candidate")
+    reviewed_candidate = authority.get("reviewedCandidate")
+    integrated_plan_main = authority.get("integratedPlanMain")
+    reconciled_base = authority.get("reconciledCorrectionBase")
+    if requested_base != reconciled_base:
+        issues.append("WP-NATIVE-01 correction base must equal the reconciled correction base")
+    if parents != [reviewed_candidate, integrated_plan_main]:
+        issues.append("WP-NATIVE-01 reconciled correction base parents or order drifted")
+    if integrated_plan_paths != EXPECTED_NATIVE_RUNTIME_INTEGRATED_PLAN_PATHS:
+        issues.append("WP-NATIVE-01 reconciliation drifted from the exact approved PR #149 plan paths")
+    if integrated_plan_blob_mismatches:
+        issues.append("WP-NATIVE-01 reconciliation plan blobs differ from integrated plan main")
+    expected_candidate_paths = (
+        package.get("estimate", {}).get("rootAccounting", {})
+        .get("pathReplacement", {}).get("afterPaths")
+    )
+    if candidate_paths != expected_candidate_paths:
+        issues.append("WP-NATIVE-01 reconciliation drifted from the exact 20-path candidate manifest")
+    if candidate_blob_mismatches:
+        issues.append("WP-NATIVE-01 reconciliation product blobs differ from the reviewed candidate")
+    if not corrected_descends_from_reconciled_base:
+        issues.append("WP-NATIVE-01 corrected head must descend from the reconciled correction base")
     allowed = next_correction.get("authorizedProductPaths")
-    if not actual_paths:
+    if not correction_paths:
         issues.append("WP-NATIVE-01 correction diff must change at least one authorized path")
-    if not isinstance(allowed, list) or any(path not in allowed for path in actual_paths):
+    if not isinstance(allowed, list) or any(path not in allowed for path in correction_paths):
         issues.append("WP-NATIVE-01 correction diff escaped the exact six-file product envelope")
     return issues
+
+
+def correction_reconciliation_issues(
+    package: dict,
+    base: str,
+    head: str,
+    correction_paths: list[str],
+) -> list[str]:
+    correction = package.get("runtimeEvidenceCorrection")
+    authority = correction.get("authority") if isinstance(correction, dict) else None
+    if not isinstance(authority, dict):
+        return ["WP-NATIVE-01 runtime correction authority is unavailable"]
+    reviewed_candidate = authority.get("reviewedCandidate")
+    integrated_plan_main = authority.get("integratedPlanMain")
+    reconciled_base = authority.get("reconciledCorrectionBase")
+    if not all(isinstance(value, str) for value in (
+        reviewed_candidate, integrated_plan_main, reconciled_base,
+    )):
+        return ["WP-NATIVE-01 runtime correction reconciliation identities are invalid"]
+
+    errors: list[str] = []
+    parents_output, parents_error = run_git(["show", "-s", "--format=%P", reconciled_base])
+    parents = [] if parents_output is None else parents_output.decode("ascii").strip().split()
+    if parents_error is not None:
+        errors.append(f"WP-NATIVE-01 cannot resolve reconciled correction base: {parents_error}")
+    integrated_plan_paths, plan_paths_error = git_diff_paths(reviewed_candidate, reconciled_base)
+    if plan_paths_error is not None:
+        errors.append(f"WP-NATIVE-01 cannot read reconciliation plan paths: {plan_paths_error}")
+    candidate_paths, candidate_paths_error = git_diff_paths(integrated_plan_main, reconciled_base)
+    if candidate_paths_error is not None:
+        errors.append(f"WP-NATIVE-01 cannot read reconciliation candidate paths: {candidate_paths_error}")
+    plan_blob_mismatches, plan_blobs_error = git_blob_mismatches(
+        integrated_plan_main, reconciled_base, EXPECTED_NATIVE_RUNTIME_INTEGRATED_PLAN_PATHS,
+    )
+    if plan_blobs_error is not None:
+        errors.append(f"WP-NATIVE-01 cannot compare reconciliation plan blobs: {plan_blobs_error}")
+    candidate_blob_mismatches, candidate_blobs_error = git_blob_mismatches(
+        reviewed_candidate, reconciled_base, EXPECTED_NATIVE_AFTER_PATHS,
+    )
+    if candidate_blobs_error is not None:
+        errors.append(f"WP-NATIVE-01 cannot compare reconciliation candidate blobs: {candidate_blobs_error}")
+    _, descendant_error = run_git(["merge-base", "--is-ancestor", reconciled_base, head])
+    if errors:
+        return errors
+    return correction_reconciliation_observation_issues(
+        package,
+        base,
+        parents,
+        integrated_plan_paths,
+        candidate_paths,
+        plan_blob_mismatches,
+        candidate_blob_mismatches,
+        descendant_error is None,
+        correction_paths,
+    )
 
 
 def validate_candidate_diff(
@@ -2177,7 +2308,7 @@ def validate_candidate_diff(
             if package_id != "WP-NATIVE-01":
                 fail(f"{package_id} has no runtime correction envelope")
             else:
-                for issue in correction_diff_issues(package, base, actual_paths):
+                for issue in correction_reconciliation_issues(package, base, head, actual_paths):
                     fail(issue)
         elif not require_binding and package_id == "WP-NATIVE-01":
             expected_after = replacement.get("afterPaths") if isinstance(replacement, dict) else None
