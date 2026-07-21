@@ -382,6 +382,139 @@
       ]
     }
   },
+  "runtimeEvidenceCorrection": {
+    "authority": {
+      "acceptedMain": "840e0a48920e1e59c3a6ec9f3be5ae7028c98169",
+      "reviewedCandidate": "39843e6d6a0e3468f61ed86f180500bdb7529c44",
+      "reviewedTree": "9afbb87bb859ead2dad46f180da2911e119e62c3",
+      "reviewDisposition": {
+        "status": "not-clear",
+        "P0": 0,
+        "P1": 5,
+        "P2": 2
+      },
+      "ownerTaskId": "019f7d18-71fa-7102-b3b4-6fa43842963e",
+      "packageClaim": "retained-by-WP-NATIVE-01",
+      "releasedResourceClaims": [
+        "xcode-project",
+        "simulator-device"
+      ],
+      "nextCorrection": {
+        "maximumCycles": 1,
+        "authorizedProductPaths": [
+          "ActionExtension/ActionView.swift",
+          "ChapterFlowUITests/UpgradeEvidence/NativeUpgradeEvidenceTests.swift",
+          "ShareExtension/ShareView.swift",
+          "scripts/localization/NativeExtensionEvidenceHost.swift",
+          "scripts/visual/native-matrix.json",
+          "scripts/visual/run_native_matrix.py"
+        ],
+        "authorizedProductPathCount": 6,
+        "candidateManifestPathCount": 20,
+        "candidateManifestMaxFiles": 20,
+        "candidateManifestMaxPrimaryRoots": 3,
+        "forbiddenExpansion": [
+          "new-product-file",
+          "new-target",
+          "generic-evidence-framework",
+          "twenty-first-candidate-path",
+          "new-lock",
+          "acceptance-gate-weakening"
+        ]
+      }
+    },
+    "traitEvidence": {
+      "publicGetOnlyEnvironmentValues": [
+        "colorSchemeContrast",
+        "accessibilityReduceMotion",
+        "accessibilityReduceTransparency"
+      ],
+      "systemDerived": {
+        "inputSource": "system",
+        "requiredObservedValues": [
+          "colorSchemeContrast",
+          "accessibilityReduceMotion",
+          "accessibilityReduceTransparency"
+        ],
+        "requestedSystemStateClaim": "allowed-only-when-extension-process-observation-matches-request-and-independent-rendered-consequence-is-verified",
+        "preconfiguredMismatchDisposition": "failed-never-passed-or-skipped"
+      },
+      "fixtureBehavior": {
+        "inputSource": "fixture",
+        "systemTraitClaim": "none",
+        "qualification": "behavior-only-not-system-setting-proof"
+      }
+    },
+    "manualEvidence": {
+      "automatableSemanticChecks": [
+        "named-discovered-system-elements",
+        "installed-extension-display-names",
+        "accessibility-label-value-trait-order-focus",
+        "rendered-layout-and-state-consequences"
+      ],
+      "manualOrSystemPreconfigurationChecks": [
+        "spoken-VoiceOver-outcome",
+        "pointer-outcome",
+        "requested-system-setting-preconfiguration"
+      ],
+      "selfAttestation": "forbidden"
+    },
+    "runtimeRecords": {
+      "representativeRecordIDs": [
+        "shareextension-compact-iphone-light",
+        "actionextension-compact-iphone-light"
+      ],
+      "fullMatrixRecordCount": 62,
+      "perTargetDeviceRecordCounts": {
+        "ShareExtension.compact-iphone": 15,
+        "ActionExtension.compact-iphone": 15,
+        "ShareExtension.regular-ipad": 16,
+        "ActionExtension.regular-ipad": 16
+      },
+      "executionOrderAfterClearStaticReview": [
+        "build-boundary",
+        "representative-share-action",
+        "production-boundary",
+        "full-62-record-matrix"
+      ],
+      "stageChain": {
+        "identity": "required-shared-attempt-chain-id",
+        "requiredAttemptNumber": 1,
+        "predecessorManifestDigest": "required-after-first-stage",
+        "existingStageArtifactDisposition": "fail-no-overwrite-or-retry"
+      },
+      "stopPolicy": "stop-on-first-deterministic-mismatch-no-retry-based-greening",
+      "observedConsequenceRequirements": [
+        "localized-rendered-value",
+        "rtl-rendered-order",
+        "plural-selected-branch-and-rendered-value",
+        "formatted-rendered-value",
+        "accessibility-rendered-semantic-or-visual-consequence"
+      ]
+    },
+    "integrity": {
+      "observerScope": "record-token-scoped",
+      "observerReset": "before-each-record",
+      "requiredDigests": [
+        "exact-payload-digest",
+        "exact-configuration-digest"
+      ],
+      "requiredIdentityBindings": [
+        "extension-process",
+        "extension-executable",
+        "extension-Info.plist"
+      ],
+      "fullMatrixXCResultCount": 2,
+      "fullMatrixXCResults": [
+        "pinned-iphone",
+        "pinned-ipad"
+      ]
+    },
+    "candidateBinding": {
+      "productionBoundaryCandidate": "required-nonzero-exact-40-lowercase-hex-sha",
+      "missingOrZeroCandidateDisposition": "fail-before-test-execution"
+    }
+  },
   "skills": {
     "primary": [
       "repo:swift-testing-expert",

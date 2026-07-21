@@ -4,7 +4,14 @@ Commit candidate first. Run validation and independent review against that immut
 
 You are the sole owner for **WP-NATIVE-01 — Establish deterministic native evidence and accessibility foundations**. Read current instructions, program policies, package artifacts, live source/tests, and the routed native/accessibility skills. Reverify exact base, protected owner checkout, open work, locks, and frozen PR #117.
 
-Atomically claim the package, `xcode-project`, and `simulator-device`, then create one isolated iOS worktree/branch. Within declared paths:
+The package claim remains owned by task `019f7d18-71fa-7102-b3b4-6fa43842963e` in
+`/private/tmp/Chapterflow-IOS-wp-native-01`; do not replace or release it. The prior `xcode-project` and
+`simulator-device` claims were released. After a clear static review, reacquire each just before its
+next use under the existing lock protocol. Revalidate accepted main
+`840e0a48920e1e59c3a6ec9f3be5ae7028c98169`, reviewed candidate
+`39843e6d6a0e3468f61ed86f180500bdb7529c44`, and tree
+`9afbb87bb859ead2dad46f180da2911e119e62c3`. Resume the same isolated product worktree/branch and no
+other product lane. Within declared paths:
 
 1. add the synchronized `ChapterFlowUITests/UpgradeEvidence` group and red tests for placeholder/equivalent/missing/mismatched evidence;
 2. bind native artifacts to deterministic inputs and candidate head;
@@ -54,5 +61,39 @@ Atomically claim the package, `xcode-project`, and `simulator-device`, then crea
    consumer plans, build main first, retain XCTest/Instruments artifacts, and reject legacy,
    mismatched, missing, duplicate, or relaxed inputs;
 10. publish exact scenario/artifact schemas for later feature packages.
+11. perform at most one correction cycle and edit only `ActionExtension/ActionView.swift`,
+    `ShareExtension/ShareView.swift`,
+    `ChapterFlowUITests/UpgradeEvidence/NativeUpgradeEvidenceTests.swift`,
+    `scripts/localization/NativeExtensionEvidenceHost.swift`,
+    `scripts/visual/run_native_matrix.py`, and `scripts/visual/native-matrix.json`. The matrix file is
+    the only addition to the five reviewed runtime files and is already inside the exact 20-path
+    manifest. Stop `BLOCKED` before adding a file/target/framework, a 21st manifest path, a lock, or a
+    weaker gate;
+12. separate real system-trait records from behavior fixtures. A real extension record reports
+    `inputSource=system` plus the public system-derived `colorSchemeContrast`,
+    `accessibilityReduceMotion`, and `accessibilityReduceTransparency` values observed in that process.
+    Claim a requested state only when the value matches and an independent rendered consequence is
+    observed. Treat a preconfigured-system mismatch as failed, never passed/skipped. A deterministic
+    behavior fixture reports `inputSource=fixture` and `systemTraitClaim=none` and cannot qualify a
+    system setting;
+13. replace coordinate-only activity selection with named discovered system elements and the installed
+    extension display names. Automate semantic labels/values/traits/order/focus/geometry and rendered
+    state only. Spoken VoiceOver, pointer behavior, and system preconfiguration remain explicit manual
+    evidence and may not be self-attested;
+14. reset token-scoped observers before every record; bind exact payload/configuration digests and the
+    extension process/executable/Info.plist identities; record observed localized values, RTL order,
+    selected plural branch, formatted value, and accessibility/rendered consequence instead of copying
+    planned assertions. Require exactly 62 full-matrix records—15 compact-iPhone and 16 regular-iPad
+    records per extension—and exactly two full-matrix xcresults, pinned iPhone then pinned iPad;
+15. after the clear static review, run build-boundary first; run the representative
+    `shareextension-compact-iphone-light` and `actionextension-compact-iphone-light` records second;
+    run production-boundary third with a required nonzero exact 40-character lowercase candidate SHA;
+    then run the full 62-record matrix. Use one shared attempt-chain ID and attempt number one;
+    build-boundary requires an empty chain, every later stage verifies the prior stage's successful
+    manifest digest, and every stage fails if its output already exists. Production-boundary must use
+    the native-matrix runner to compare the supplied nonzero SHA with `git rev-parse HEAD` and execute
+    missing/all-zero/malformed/mismatched candidate negatives. The full matrix repeats named-system-
+    element and installed-display-name discovery. Stop on the first deterministic mismatch and do not
+    overwrite or retry to obtain green evidence.
 
-Run every AC selector and supporting gate. Each selector must match at least one test with zero failures/skips/waivers. Commit a candidate before validation and independent exact-head review; any remediation creates a new head. Publish/merge only when all predicates hold. Never approve product baselines in bulk, redesign features, perform release work, or touch PR #117.
+Run every AC selector and supporting gate. Each selector must match at least one test with zero failures/skips/waivers. Commit a candidate before validation and independent exact-head review; any remediation creates a new head. Publish/merge only when all predicates hold. Preserve 24 packages, the dependency DAG, all locks, the 20-path/three-root cap, WP-EXT-01 transaction ownership, and every release boundary. Never approve product baselines in bulk, redesign features, perform release work, or touch PR #117.

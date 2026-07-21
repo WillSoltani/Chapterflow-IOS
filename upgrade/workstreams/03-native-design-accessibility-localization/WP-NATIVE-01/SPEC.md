@@ -49,6 +49,14 @@ Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend
    importing extension views into the main app or UI-test bundle, direct `.appex` launch, hardcoded
    markers, or static fixture claims do not satisfy runtime evidence. Action-extension discovery and
    invocation must pass on the pinned simulator; nondeterministic discovery is a blocker, not a skip.
+   System-trait evidence and fixture-behavior evidence are separate. Automated real-extension records
+   use `inputSource=system` and record the public system-derived `colorSchemeContrast`,
+   `accessibilityReduceMotion`, and `accessibilityReduceTransparency` values observed inside the
+   extension process. They may claim a requested system state only when that observation matches the
+   request and an independent rendered consequence is verified. A preconfigured simulator/device that
+   does not report the requested value fails that scenario; it is never passed or skipped. Deterministic
+   behavior fixtures use `inputSource=fixture` and `systemTraitClaim=none`; they exercise rendering
+   branches but do not qualify a system setting.
 10. Provide a deterministic paired iOS performance runner with one canonical fail-closed CLI. It
    verifies exact current-main/candidate worktrees and expected HEADs, builds current-main before
    candidate, consumes the selected structured budget ID, pins the budget-declared device classes,
@@ -64,6 +72,36 @@ Evidence is static at iOS `22da44d27bc18771f4d7db7681e17c10970ccb13` and backend
     executed case set must be identical and unique, with exactly `matched=20`, `passed=20`,
     `failed=0`, and `skipped=0`. Missing, duplicate, silently unexecuted, altered, skipped, or
     expectation-drifted cases fail the command.
+12. Resume exactly one correction cycle against reviewed candidate
+    `39843e6d6a0e3468f61ed86f180500bdb7529c44` / tree
+    `9afbb87bb859ead2dad46f180da2911e119e62c3`. The package claim remains with WP-NATIVE-01;
+    `xcode-project` and `simulator-device` were released and must be reacquired before their next use.
+    The correction may edit only the five reviewed runtime files plus
+    `scripts/visual/native-matrix.json`: `ActionExtension/ActionView.swift`,
+    `ShareExtension/ShareView.swift`,
+    `ChapterFlowUITests/UpgradeEvidence/NativeUpgradeEvidenceTests.swift`,
+    `scripts/localization/NativeExtensionEvidenceHost.swift`,
+    `scripts/visual/run_native_matrix.py`, and `scripts/visual/native-matrix.json`. These six paths are
+    already members of the exact 20-path candidate manifest; the 20-file/three-root cap, dependency DAG,
+    existing locks, WP-EXT-01 transaction ownership, and every release boundary remain unchanged.
+13. Automate only observable semantics: discover named system extension elements and select installed
+    extension display names, then verify labels, values, traits, order, focus, geometry, and rendered
+    state. Spoken VoiceOver output, pointer behavior, and system preconfiguration are explicit manual or
+    preconfigured-system evidence and cannot be self-attested. Coordinate-only activity selection and
+    copied planned assertions are not evidence.
+14. Emit exactly 62 full-matrix records: 15 compact-iPhone and 16 regular-iPad records for each of Share
+    and Action. Every record resets token-scoped observers, binds exact payload and configuration
+    digests, and binds the extension process, executable, and Info.plist identities. Localization,
+    pseudo-long, RTL, plural, formatting, and accessibility results contain observed rendered/semantic
+    consequences, not repeated plan inputs. The full-matrix artifact contains exactly two xcresults,
+    one for the pinned iPhone and one for the pinned iPad.
+15. Bind the four runtime stages to one attempt-chain ID and attempt number one. Build-boundary creates
+    stage one only when the chain and output are absent; each later stage requires and hashes the exact
+    successful predecessor manifest. Existing stage output, a different chain/candidate/configuration,
+    an out-of-order stage, or any second attempt fails without overwrite. Production-boundary runs
+    through the existing native-matrix runner, compares the nonzero exact candidate to `git rev-parse
+    HEAD`, and executes missing, all-zero, malformed, and mismatched candidate negative cases before
+    the valid case. The full matrix repeats the named-system-element and installed-display-name gates.
 
 ### Touch-target scanner regression registry
 
@@ -124,6 +162,22 @@ WP-READER-01 owner closures.
   evidence with `stateSource=fixture` and `transactionClaim=none`; the evidence build excludes both
   production controllers, while ordinary Debug and Release builds exclude the evidence host and
   include those controllers under the unchanged Info.plists
+
+- Given a requested contrast, Reduce Motion, or Reduce Transparency system setting
+- When a real Share or Action extension record executes
+- Then the artifact distinguishes `inputSource=system` from `inputSource=fixture`; reports the actual
+  extension-process value for `colorSchemeContrast`, `accessibilityReduceMotion`, and
+  `accessibilityReduceTransparency`; claims the requested state only after a matching observation and
+  independently observed rendered consequence; and fails rather than passes/skips on mismatch, while
+  fixture records state `systemTraitClaim=none`
+
+- Given the full Share/Action correction matrix
+- When runtime evidence executes after a clear static review
+- Then build-boundary runs first, one representative Share record and one representative Action record
+  run second, production-boundary runs third with a required nonzero exact candidate SHA, and the full
+  62-record matrix runs last; the first deterministic mismatch stops execution without retry-based
+  greening; every stage is attempt one in the same predecessor-digest chain and refuses existing output;
+  and the final matrix retains exactly two xcresults
 
 ### AC-NATIVE-01-05
 
@@ -194,6 +248,10 @@ not equivalent. See [Understand How an App Extension Works](https://developer.ap
 [Creating an App Extension](https://developer.apple.com/library/archive/documentation/General/Conceptual/ExtensibilityPG/ExtensionCreation.html),
 and [Adding tests to your Xcode project](https://developer.apple.com/documentation/xcode/adding-tests-to-your-xcode-project).
 
+SwiftUI's `colorSchemeContrast`, `accessibilityReduceMotion`, and
+`accessibilityReduceTransparency` environment values are get-only system preferences. Public APIs do
+not let the extension set them. Explicit view behavior inputs therefore cannot prove an OS setting.
+
 ## Test plan and definition of done
 
-Run every exact selector in [VALIDATE.md](VALIDATE.md), the full DesignSystem suite, native-evidence UI selectors, inventory schema checks, app build, independent exact-head review, required CI, merge verification, and safe cleanup. Missing runtime/manual evidence is blocked, not fabricated.
+Run every exact selector in [VALIDATE.md](VALIDATE.md), the full DesignSystem suite, native-evidence UI selectors, inventory schema checks, app build, independent exact-head review, required CI, merge verification, and safe cleanup. After a clear static review, execute build-boundary, representative Share+Action, production-boundary, and the full 62-record matrix in that order. Missing runtime/manual/system-preconfiguration evidence is failed or blocked as declared, never fabricated, self-attested, passed, or skipped.
