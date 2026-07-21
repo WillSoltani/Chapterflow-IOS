@@ -388,6 +388,7 @@
       "reviewedCandidate": "39843e6d6a0e3468f61ed86f180500bdb7529c44",
       "reviewedTree": "9afbb87bb859ead2dad46f180da2911e119e62c3",
       "integratedPlanMain": "bb77cad011f1918d6f453167cc2e013e6b8d884f",
+      "aggregateProductManifestBase": "bb77cad011f1918d6f453167cc2e013e6b8d884f",
       "reconciledCorrectionBase": "887c5778f80c8fec4869ff1b6a5d7ab7b79e7f5c",
       "reviewDisposition": {
         "status": "not-clear",
@@ -403,6 +404,58 @@
       ],
       "nextCorrection": {
         "maximumCycles": 1,
+        "acceptedHead": "f1fc5a9083821951f2ea8d3d6fe8412de7b0dea5",
+        "acceptedTree": "3b311b5e7bdcab4f876714d91d88a7baaa586ce0",
+        "authorizedProductPaths": [
+          "ActionExtension/ActionView.swift",
+          "ChapterFlowUITests/UpgradeEvidence/NativeUpgradeEvidenceTests.swift",
+          "ShareExtension/ShareView.swift",
+          "scripts/localization/NativeExtensionEvidenceHost.swift",
+          "scripts/visual/native-matrix.json",
+          "scripts/visual/run_native_matrix.py"
+        ],
+        "authorizedProductPathCount": 6,
+        "candidateManifestPathCount": 20,
+        "candidateManifestMaxFiles": 20,
+        "candidateManifestMaxPrimaryRoots": 3,
+        "forbiddenExpansion": [
+          "new-product-file",
+          "new-target",
+          "generic-evidence-framework",
+          "twenty-first-candidate-path",
+          "new-lock",
+          "acceptance-gate-weakening"
+        ]
+      },
+      "additionalCorrection": {
+        "authorizedBy": "owner-controller-explicit",
+        "authorizationScope": "exactly-one-additional-adjudicated-correction-cycle",
+        "base": "f1fc5a9083821951f2ea8d3d6fe8412de7b0dea5",
+        "baseTree": "3b311b5e7bdcab4f876714d91d88a7baaa586ce0",
+        "maximumCycles": 1,
+        "reviewDisposition": {
+          "status": "not-clear",
+          "P0": 0,
+          "P1": 3,
+          "P2": 3
+        },
+        "resolvedPlanFinding": "aggregate-supporting-gate-must-use-retained-product-manifest-base",
+        "remainingProductFindings": [
+          "exact-localization-formatting-rtl-oracle-comparisons",
+          "exact-automatable-accessibility-semantics-and-explicit-manual-qualification-boundaries",
+          "per-record-exact-privacy-safe-fixture-payload-digest",
+          "production-boundary-runtime-executable-and-Info.plist-identity-bound-to-built-appex",
+          "execute-four-candidate-negative-cli-paths"
+        ],
+        "staticReviewGate": {
+          "timing": "before-xcode",
+          "exactHead": true,
+          "requiredDisposition": {
+            "P0": 0,
+            "P1": 0,
+            "P2": 0
+          }
+        },
         "authorizedProductPaths": [
           "ActionExtension/ActionView.swift",
           "ChapterFlowUITests/UpgradeEvidence/NativeUpgradeEvidenceTests.swift",

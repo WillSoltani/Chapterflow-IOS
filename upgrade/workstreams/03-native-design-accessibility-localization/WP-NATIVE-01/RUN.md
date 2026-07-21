@@ -61,7 +61,12 @@ other product lane. Within declared paths:
    consumer plans, build main first, retain XCTest/Instruments artifacts, and reject legacy,
    mismatched, missing, duplicate, or relaxed inputs;
 10. publish exact scenario/artifact schemas for later feature packages.
-11. perform at most one correction cycle and edit only `ActionExtension/ActionView.swift`,
+11. preserve the accepted first correction from `887c5778f80c8fec4869ff1b6a5d7ab7b79e7f5c`
+    to frozen product candidate `f1fc5a9083821951f2ea8d3d6fe8412de7b0dea5`. Use retained aggregate
+    product-manifest base `bb77cad011f1918d6f453167cc2e013e6b8d884f` only for the literal exact
+    20-product-path supporting gate; do not use `840e0a4`, whose diff includes five integrated plan
+    paths. Owner/controller authorization permits exactly one additional adjudicated correction cycle
+    from `f1fc5a9`. Edit only `ActionExtension/ActionView.swift`,
     `ShareExtension/ShareView.swift`,
     `ChapterFlowUITests/UpgradeEvidence/NativeUpgradeEvidenceTests.swift`,
     `scripts/localization/NativeExtensionEvidenceHost.swift`,
@@ -69,6 +74,12 @@ other product lane. Within declared paths:
     the only addition to the five reviewed runtime files and is already inside the exact 20-path
     manifest. Stop `BLOCKED` before adding a file/target/framework, a 21st manifest path, a lock, or a
     weaker gate;
+    close exactly these five remaining product findings: exact localization/formatting/RTL oracle
+    comparisons; exact automatable accessibility semantics plus explicit manual qualification
+    boundaries; per-record exact privacy-safe fixture payload digest; production-boundary runtime
+    executable/Info.plist identity bound to the built `.appex`; and actual execution of all four
+    candidate-negative CLI paths. Commit the additional-correction candidate and require a fresh
+    exact-head static review with P0/P1/P2 all zero before running any Xcode command;
 12. separate real system-trait records from behavior fixtures. A real extension record reports
     `inputSource=system` plus the public system-derived `colorSchemeContrast`,
     `accessibilityReduceMotion`, and `accessibilityReduceTransparency` values observed in that process.
@@ -94,6 +105,7 @@ other product lane. Within declared paths:
     the native-matrix runner to compare the supplied nonzero SHA with `git rev-parse HEAD` and execute
     missing/all-zero/malformed/mismatched candidate negatives. The full matrix repeats named-system-
     element and installed-display-name discovery. Stop on the first deterministic mismatch and do not
-    overwrite or retry to obtain green evidence.
+    overwrite or retry to obtain green evidence. The first deterministic runtime mismatch remains the
+    terminal stop for that candidate.
 
 Run every AC selector and supporting gate. Each selector must match at least one test with zero failures/skips/waivers. Commit a candidate before validation and independent exact-head review; any remediation creates a new head. Publish/merge only when all predicates hold. Preserve 24 packages, the dependency DAG, all locks, the 20-path/three-root cap, WP-EXT-01 transaction ownership, and every release boundary. Never approve product baselines in bulk, redesign features, perform release work, or touch PR #117.
